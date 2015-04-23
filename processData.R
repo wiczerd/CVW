@@ -34,7 +34,7 @@ fixOccCode <- function(df) {
                 group_by(id) %>%
                 arrange(date) %>%
                 mutate(occ = as.integer(ifelse(lfStat == 2 | lfStat == 3, NA, occ))) %>%
-        		mutate( occ = na.locf(occ, na.rm = FALSE)) %>%
+        		mutate(occ = na.locf(occ, na.rm = FALSE)) %>%
         		mutate(job = as.integer(ifelse(is.na(job), 0, job))) %>%
         		mutate(job = as.integer(ifelse(lfStat == 2 | lfStat == 3, 0, job))) 
 }

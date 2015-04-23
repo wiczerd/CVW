@@ -121,3 +121,19 @@ EEqr <-summary(wageRegEE)
 wageChangesUE <- subset(wageChanges, UE)
 wageRegUE <- rq(residWageChange ~ switchedOcc + unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesUE)
 UEqr <-summary(wageRegUE)
+
+rm(wageChangesUE)
+rm(wageChangesEE)
+
+
+# Wage change distributions ---------------------------------------------
+u_recession <- quantile(haver$unrateSA,probs=0.75)
+wageChanges$Rec <- (wageChanges$unrateSA>u_recession)
+#wageChangesRec <- subset(wageChanges,Rec)
+#wageChangesExp <- subset(wageChanges,!Rec)
+resChangeOutlier <- quantile(wageChanges$residWageChange,probs=c(0.05,0.95),na.rm=T)
+wageChanges$Out <- (wageChanges$residWageChange<resChangeOutlier[1] |
+						wageChanges$residWageChange>resChangeOutlier[2] |
+						is.na(wageChanges$residWageChange) )
+wageChangesIn <- subset(wageChanges,!Out)
+boxplot(residWageChange~Rec,data=wageChangesIn)
