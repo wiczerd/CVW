@@ -57,7 +57,7 @@ analytic96 <- analytic96 %>%
         arrange(id, date) %>%
         mutate(lastResidWage = as.numeric(ifelse(switchedJob & job != 0, lag(resid), NA))) %>%
         mutate(lastResidWage = na.locf(lastResidWage, na.rm = FALSE)) %>%
-        mutate(residWageChange = lead(resid) - lastResidWage)
+        mutate(residWageChange = lead(resid) - lastResidWage) %>%
 
 # Save data, remove from environment
 saveRDS(analytic96, "./Data/analytic96.RData")
@@ -141,3 +141,53 @@ analytic08 <- analytic08 %>%
 # Save data, remove from environment
 saveRDS(analytic08, "./Data/analytic08.RData")
 rm(list = c("processed08", "analytic08"))
+
+# now create wage innovations as just the wage differences, whether or not switch job
+#
+# 1996 Panel --------------------------------------------------------------
+analytic96 <- readRDS("./Data/analytic96.RData")
+analytic96 <- analytic96 %>%
+		filter(!is.na(lfStat)) %>%
+		arrange(id, date) %>%
+		group_by(id) %>%
+		mutate(residWageInnov = lead(resid) -resid )
+analytic96 <- mutate(analytic96,residWageInnov = as.numeric(ifelse( lfStat == 1, residWageInnov,NA ) ) )
+# Save data, remove from environment
+saveRDS(analytic96, "./Data/analytic96.RData")
+rm(analytic96)
+
+# 2001 Panel --------------------------------------------------------------
+analytic01 <- readRDS("./Data/analytic01.RData")
+analytic01 <- analytic01 %>%
+	filter(!is.na(lfStat)) %>%
+	arrange(id, date) %>%
+	group_by(id) %>%
+	mutate(residWageInnov = lead(resid) - resid)
+analytic01 <- mutate(analytic01,residWageInnov = as.numeric(ifelse( lfStat == 1, residWageInnov,NA ) ) )
+# Save data, remove from environment
+saveRDS(analytic01, "./Data/analytic01.RData")
+rm(analytic01)
+
+# 2004 Panel --------------------------------------------------------------
+analytic04 <- readRDS("./Data/analytic04.RData")
+analytic04 <- analytic04 %>%
+	filter(!is.na(lfStat)) %>%
+	arrange(id, date) %>%
+	group_by(id) %>%
+	mutate(residWageInnov = lead(resid) - resid)
+analytic04 <- mutate(analytic04,residWageInnov = as.numeric(ifelse( lfStat == 1, residWageInnov,NA ) ) )
+# Save data, remove from environment
+saveRDS(analytic04, "./Data/analytic04.RData")
+rm(analytic04)
+
+# 2008 Panel --------------------------------------------------------------
+analytic08 <- readRDS("./Data/analytic08.RData")
+analytic08 <- analytic08 %>%
+	filter(!is.na(lfStat)) %>%
+	arrange(id, date) %>%
+	group_by(id) %>%
+	mutate(residWageInnov = lead(resid) - resid)
+analytic08 <- mutate(analytic08,residWageInnov = as.numeric(ifelse( lfStat == 1, residWageInnov,NA ) ) )
+# Save data, remove from environment
+saveRDS(analytic08, "./Data/analytic08.RData")
+rm(analytic08)

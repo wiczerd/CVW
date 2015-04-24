@@ -23,7 +23,7 @@ haver <- haver %>%
                date = as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")) %>%
         select(-year, -month)
 
-toKeep <- c("wpfinwgt", "switchedOcc", "EE", "UE", "switched2d", "residWageChange", "date")
+toKeep <- c("wpfinwgt", "switchedOcc", "EE", "UE", "switched2d", "residWageChange", "residWageInnov", "date")
 
 # Load data --------------------------------------------------------------
 analytic96 <- readRDS("./Data/analytic96.RData")
@@ -49,6 +49,14 @@ wageChanges <- analytic08 %>%
         bind_rows(wageChanges)
 rm(analytic08)
 
+#merge in unemployment
+wageChanges <- left_join(wageChanges,haver, by="date")
+
+
+# store full set
+saveRDS(wageChanges, "./Data/wageChanges.RData")
+
+# throw out all but job switches
 wageChanges <- wageChanges %>%
         mutate(posChange = (residWageChange > 0),
                negChange = (residWageChange < 0)) %>%
@@ -95,9 +103,6 @@ with(wageChanges, wtd.mean(negChange[switchedOcc & EE],
 with(wageChanges, wtd.mean(negChange[switchedOcc & UE], 
                            wpfinwgt[switchedOcc & UE], na.rm = TRUE)) 
 
-#merge in unemployment
-wageChanges <- left_join(wageChanges,haver, by="date")
-
 # Correlation
 dirWageChanges <- wageChanges %>%
         group_by(date) %>%
@@ -127,13 +132,16 @@ rm(wageChangesEE)
 
 
 # Wage change distributions ---------------------------------------------
+wageChanges <- readRDS( "./Data/wageChanges.RData")
+
 u_recession <- quantile(haver$unrateSA,probs=0.75)
 wageChanges$Rec <- (wageChanges$unrateSA>u_recession)
 #wageChangesRec <- subset(wageChanges,Rec)
 #wageChangesExp <- subset(wageChanges,!Rec)
-resChangeOutlier <- quantile(wageChanges$residWageChange,probs=c(0.05,0.95),na.rm=T)
-wageChanges$Out <- (wageChanges$residWageChange<resChangeOutlier[1] |
-						wageChanges$residWageChange>resChangeOutlier[2] |
-						is.na(wageChanges$residWageChange) )
+resInnovOutlier <- quantile(wageChanges$residWageInnov,probs=c(0.05,0.95),na.rm=T)
+wageChanges$Out <- (wageChanges$residWageInnov<resInnovOutlier[1] |
+						wageChanges$residWageInnov>resInnovOutlier[2] |
+						is.na(wageChanges$residWageInnov) |
+						abs(wageChanges$residWageInnov) < 1e-5)
 wageChangesIn <- subset(wageChanges,!Out)
-boxplot(residWageChange~Rec,data=wageChangesIn)
+boxplot(residWageInnov~Rec,data=wageChangesIn)
