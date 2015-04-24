@@ -23,7 +23,11 @@ haver <- haver %>%
                date = as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")) %>%
         select(-year, -month)
 
-toKeep <- c("wpfinwgt", "switchedOcc", "EE", "UE", "switched2d", "residWageChange", "residWageInnov", "date")
+toKeep <- c("wpfinwgt", "switchedOcc", "EE", "UE", "switched2d", "residWageChange", "residWageChange_wU", "residWageChange_wA", "lfStat", "date")
+
+detach("package:xlsx")
+detach("package:xlsxjars")
+detach("package:rJava")
 
 # Load data --------------------------------------------------------------
 analytic96 <- readRDS("./Data/analytic96.RData")
@@ -120,12 +124,16 @@ with(dirWageChanges, cor(pctPosUE, unrateNSA, use = "complete.obs"))
 
 # Quantile regressions ----------------------------------------------------
 wageChangesEE <- subset(wageChanges, EE)
-wageRegEE <- rq(residWageChange ~ switchedOcc + unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesEE)
-EEqr <-summary(wageRegEE)
+wageRegEE.nSu <- rq(residWageChange ~ switchedOcc + unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesEE)
+EEqr.nSu <-summary(wageRegEE.nSu)
+wageRegEE.wSu <- rq(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesEE)
+EEqr.wSu <-summary(wageRegEE.wSu)
 
 wageChangesUE <- subset(wageChanges, UE)
-wageRegUE <- rq(residWageChange ~ switchedOcc + unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesUE)
-UEqr <-summary(wageRegUE)
+wageRegUE.nSu <- rq(residWageChange ~ switchedOcc + unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesUE)
+UEqr.nSu <-summary(wageRegUE.nSu)
+wageRegUE.wSu <- rq(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesUE)
+UEqr.wSu <-summary(wageRegUE.wSu)
 
 rm(wageChangesUE)
 rm(wageChangesEE)
@@ -135,7 +143,7 @@ rm(wageChangesEE)
 wageChanges <- readRDS( "./Data/wageChanges.RData")
 
 u_recession <- quantile(haver$unrateSA,probs=0.75)
-wageChanges$Rec <- (wageChanges$unrateSA>u_recession)
+wageChanges$Rec <- (wageChanges$date> )
 #wageChangesRec <- subset(wageChanges,Rec)
 #wageChangesExp <- subset(wageChanges,!Rec)
 resInnovOutlier <- quantile(wageChanges$residWageInnov,probs=c(0.05,0.95),na.rm=T)

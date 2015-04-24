@@ -9,6 +9,8 @@ library(zoo)
 library(reshape2)
 library(ggplot2)
 
+setwd("~/workspace/CVW/R")
+
 # Function for weighted moving average
 # x, wts, and new.name are strings
 movingAverage <- function(df, x, wts, new.name) {
