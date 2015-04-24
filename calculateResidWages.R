@@ -150,8 +150,10 @@ analytic96 <- analytic96 %>%
 		filter(!is.na(lfStat)) %>%
 		arrange(id, date) %>%
 		group_by(id) %>%
-		mutate(residWageInnov = lead(resid) -resid )
-analytic96 <- mutate(analytic96,residWageInnov = as.numeric(ifelse( lfStat == 1, residWageInnov,NA ) ) )
+		mutate(residWageInnov = (exp(lead(resid)) - exp(resid) )/exp(resid))
+analytic96 <- analytic96 %>%
+		mutate(residWageInnov = as.numeric(ifelse( lfStat == 1, residWageInnov,NA ) ) )
+		mutate(residWageInnov = as.numeric(ifelse( lead(lfStat) == 2, (0 - exp(resid) )/exp(resid) , residWageInnov ) ) )
 # Save data, remove from environment
 saveRDS(analytic96, "./Data/analytic96.RData")
 rm(analytic96)
@@ -162,8 +164,10 @@ analytic01 <- analytic01 %>%
 	filter(!is.na(lfStat)) %>%
 	arrange(id, date) %>%
 	group_by(id) %>%
-	mutate(residWageInnov = lead(resid) - resid)
-analytic01 <- mutate(analytic01,residWageInnov = as.numeric(ifelse( lfStat == 1, residWageInnov,NA ) ) )
+	mutate(residWageInnov = (exp(lead(resid)) - exp(resid) )/exp(resid))
+analytic96 <- analytic96 %>%
+	mutate(residWageInnov = as.numeric(ifelse( lfStat == 1, residWageInnov,NA ) ) )
+	mutate(residWageInnov = as.numeric(ifelse( lead(lfStat) == 2, (0 - exp(resid) )/exp(resid) , residWageInnov ) ) )
 # Save data, remove from environment
 saveRDS(analytic01, "./Data/analytic01.RData")
 rm(analytic01)
@@ -174,8 +178,10 @@ analytic04 <- analytic04 %>%
 	filter(!is.na(lfStat)) %>%
 	arrange(id, date) %>%
 	group_by(id) %>%
-	mutate(residWageInnov = lead(resid) - resid)
-analytic04 <- mutate(analytic04,residWageInnov = as.numeric(ifelse( lfStat == 1, residWageInnov,NA ) ) )
+	mutate(residWageInnov = (exp(lead(resid)) - exp(resid) )/exp(resid))
+analytic96 <- analytic96 %>%
+	mutate(residWageInnov = as.numeric(ifelse( lfStat == 1, residWageInnov,NA ) ) )
+	mutate(residWageInnov = as.numeric(ifelse( lead(lfStat) == 2, (0 - exp(resid) )/exp(resid) , residWageInnov ) ) )
 # Save data, remove from environment
 saveRDS(analytic04, "./Data/analytic04.RData")
 rm(analytic04)
@@ -186,8 +192,10 @@ analytic08 <- analytic08 %>%
 	filter(!is.na(lfStat)) %>%
 	arrange(id, date) %>%
 	group_by(id) %>%
-	mutate(residWageInnov = lead(resid) - resid)
-analytic08 <- mutate(analytic08,residWageInnov = as.numeric(ifelse( lfStat == 1, residWageInnov,NA ) ) )
+	mutate(residWageInnov = (exp(lead(resid)) - exp(resid) )/exp(resid))
+analytic96 <- analytic96 %>%
+	mutate(residWageInnov = as.numeric(ifelse( lfStat == 1, residWageInnov,NA ) ) )
+	mutate(residWageInnov = as.numeric(ifelse( lead(lfStat) == 2, (0 - exp(resid) )/exp(resid) , residWageInnov ) ) )
 # Save data, remove from environment
 saveRDS(analytic08, "./Data/analytic08.RData")
 rm(analytic08)
