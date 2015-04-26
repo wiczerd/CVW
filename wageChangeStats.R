@@ -10,6 +10,7 @@ library(dplyr)
 library(ggplot2)
 library(xlsx)
 library(quantreg)
+library(McSpatial)
 
 setwd("~/workspace/CVW/R")
 
@@ -139,17 +140,22 @@ rm(wageChangesUE)
 rm(wageChangesEE)
 
 
+# Machado - Mata Decomposition ----------------------------------------
+
+
+
+
 # Wage change distributions ---------------------------------------------
 wageChanges <- readRDS( "./Data/wageChanges.RData")
 
-u_recession <- quantile(haver$unrateSA,probs=0.75)
-wageChanges$Rec <- (wageChanges$date> )
-#wageChangesRec <- subset(wageChanges,Rec)
-#wageChangesExp <- subset(wageChanges,!Rec)
-resInnovOutlier <- quantile(wageChanges$residWageInnov,probs=c(0.05,0.95),na.rm=T)
-wageChanges$Out <- (wageChanges$residWageInnov<resInnovOutlier[1] |
-						wageChanges$residWageInnov>resInnovOutlier[2] |
-						is.na(wageChanges$residWageInnov) |
-						abs(wageChanges$residWageInnov) < 1e-5)
+rec_dates   <- as.Date(c("2001-03-01", "2001-11-01","2007-12-01", "2009-06-01"))
+wageChanges$Rec <- ((wageChanges$date>rec_dates[1] & wageChanges$date<rec_dates[2] ) | (wageChanges$date>rec_dates[3] & wageChanges$date<rec_dates[4] ))
+wageChangesRec <- subset(wageChanges,wageChanges$Rec)
+wageChangesExp <- subset(wageChanges,!wageChanges$Rec)
+resChangeOutlier <- quantile(wageChanges$residWageChange_wU,probs=c(0.025,0.975),na.rm=T)
+wageChanges$Out <- (wageChanges$residWageChange_wU<resChangeOutlier[1] |
+						wageChanges$residWageChange_wU>resChangeOutlier[2] |
+						is.na(wageChanges$residWageChange_wU) )
 wageChangesIn <- subset(wageChanges,!Out)
-boxplot(residWageInnov~Rec,data=wageChangesIn)
+wageChangesIn.kde <- density(wageChangesIn$residWageChange_wU,na.rm=T)
+plot(wageChangesIn.kde)
