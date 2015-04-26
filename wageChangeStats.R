@@ -65,7 +65,8 @@ saveRDS(wageChanges, "./Data/wageChanges.RData")
 wageChanges <- wageChanges %>%
         mutate(posChange = (residWageChange > 0),
                negChange = (residWageChange < 0)) %>%
-        filter(!is.nan(residWageChange))
+	# drop the ones with no wage change (i.e missing values)
+        filter(!(is.nan(residWageChange) & is.nan(residWageChange_wU) & is.nan(residWageChange_wA) ) )
 
 # Summary statistics --------------------------------------------------------------
 
@@ -124,6 +125,8 @@ with(dirWageChanges, cor(pctPosUE, unrateNSA, use = "complete.obs"))
 
 
 # Quantile regressions ----------------------------------------------------
+wageChanges <- readRDS( "./Data/wageChanges.RData")
+
 wageChangesEE <- subset(wageChanges, EE)
 wageRegEE.nSu <- rq(residWageChange ~ switchedOcc + unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesEE)
 EEqr.nSu <-summary(wageRegEE.nSu)
@@ -139,7 +142,6 @@ UEqr.wSu <-summary(wageRegUE.wSu)
 rm(wageChangesUE)
 rm(wageChangesEE)
 
-
 # Machado - Mata Decomposition ----------------------------------------
 
 
@@ -152,6 +154,7 @@ rec_dates   <- as.Date(c("2001-03-01", "2001-11-01","2007-12-01", "2009-06-01"))
 wageChanges$Rec <- ((wageChanges$date>rec_dates[1] & wageChanges$date<rec_dates[2] ) | (wageChanges$date>rec_dates[3] & wageChanges$date<rec_dates[4] ))
 wageChangesRec <- subset(wageChanges,wageChanges$Rec)
 wageChangesExp <- subset(wageChanges,!wageChanges$Rec)
+
 resChangeOutlier <- quantile(wageChanges$residWageChange_wU,probs=c(0.025,0.975),na.rm=T)
 wageChanges$Out <- (wageChanges$residWageChange_wU<resChangeOutlier[1] |
 						wageChanges$residWageChange_wU>resChangeOutlier[2] |
@@ -159,3 +162,14 @@ wageChanges$Out <- (wageChanges$residWageChange_wU<resChangeOutlier[1] |
 wageChangesIn <- subset(wageChanges,!Out)
 wageChangesIn.kde <- density(wageChangesIn$residWageChange_wU,na.rm=T)
 plot(wageChangesIn.kde)
+
+wageChangesIn.rec <- qplot(residWageChange_wU,na.rm=T,data=wageChangesIn, colour = Rec, geom="density")
+plot(wageChangesIn.rec)
+wageChangesIn.kde <- density(wageChangesIn$residWageChange_wU,na.rm=T)
+plot(wageChangesIn.kde)
+
+bp_wU<-boxplot(residWageChange_wU~Rec,data=wageChangesIn,names=c("Expansion","Recession"))
+title("Wage change distribution when changing jobs or into unemployment")
+
+bp_wA<-boxplot(residWageChange_wA~Rec,data=wageChangesIn,names=c("Expansion","Recession"))
+title("Wage change distribution")
