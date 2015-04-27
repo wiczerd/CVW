@@ -16,6 +16,7 @@ calculateResiduals <- function(df) {
 					female + black + hispanic + factor(soc2d), data = df,
 				na.action = na.exclude, weights = wpfinwgt)
 	resid <- residuals(model)
+	resid <- resid + coef(model)[1]
 	data.frame(df, resid)
 }
 
@@ -49,7 +50,20 @@ analytic96 <- analytic96 %>%
 	do(calculateResiduals(.)) %>%
 	ungroup %>%
 	select(-one_of(regressors))
-
+# Create quarter dates
+analytic96 <- analytic96 %>%
+  mutate(date_q = as.yearqtr(date)) %>%
+ # mutate(qtr <- quarters(date)) %>%
+#  mutate(yr <- year(date)) %>%
+  mutate(resid_lev = exp(resid)) %>%
+  mutate(resid_lev = ifelse(lfStat>1 , 0. ,resid_lev))
+  
+analytic96 <- analytic96 %>%
+  filter(!is.na(lfStat)) %>%
+  group_by(id, as.integer(date_q) %>%
+  sumarise(resid_q = mean(resid_lev)) %>% #if they did not repsond for a month, whole qtr gets NA
+  mutate(resid_q <- log(resid_q))
+  
 # Calculate last residual wage and find residual wage change
 analytic96 <- analytic96 %>%
 	filter(!is.na(lfStat)) %>%
@@ -67,6 +81,7 @@ analytic96 <- analytic96 %>%
 	mutate(residWageChange_wA = (lead(resid)) - resid ) %>%
 	mutate(residWageChange_wA = as.numeric(ifelse( lead(lfStat) == 2 | lead(lfStat) == 3, -1. , residWageChange_wA)) ) %>%
 	mutate(residWageChange_wA = as.numeric(ifelse( lfStat == 1, residWageChange_wA,NA ) ) )
+
 
 # Save data, remove from environment
 saveRDS(analytic96, "./Data/analytic96.RData")
