@@ -10,8 +10,6 @@ library(foreign)
 library(stats)
 library(reshape2)
 
-setwd("~/workspace/CVW/R")
-
 # Read crosswalk files
 coc2000_to_occ1990 <- read.dta("./Crosswalks/coc2000_2_occ1990.dta")
 occ1990_to_SOC2d <- read.dta("./Crosswalks/occ90_2_soc2d.dta", convert.underscore = TRUE) %>%
@@ -30,40 +28,39 @@ genLFStat <- function(df) {#
 
 # Correct occupation code
 fixOccCode <- function(df) {
-        df %>%
-                group_by(id) %>%
+        group_by(df, id) %>%
                 arrange(date) %>%
-                mutate(occ = as.integer(ifelse(lfStat == 2 | lfStat == 3, NA, occ))) %>%
-        		mutate(occ = na.locf(occ, na.rm = FALSE)) %>%
-        		mutate(job = as.integer(ifelse(is.na(job), 0, job))) %>%
-        		mutate(job = as.integer(ifelse(lfStat == 2 | lfStat == 3, 0, job))) 
+                mutate(occ = as.integer(ifelse(lfStat == 2 | lfStat == 3, NA, occ)),
+                       occ = na.locf(occ, na.rm = FALSE),
+                       job = as.integer(ifelse(is.na(job), 0, job)),
+                       job = as.integer(ifelse(lfStat == 2 | lfStat == 3, 0, job))) 
 }
 
 # Generate occupation switching and LF flow dummies
-# df must be grouped and arranged
-# genFlowDummies <- function(df) {
-#         mutate(df,
-#                switchedJob = job != lead(job),
-#                switchedOcc = (occ != lead(occ)),
-#                EE = lfStat == 1 & lead(lfStat) == 1 & switchedJob &
-#                        !is.na(occ) & !is.na(lead(occ)),
-#                UE = lfStat == 2 & lead(lfStat) == 1 & switchedJob &
-#                        !is.na(occ) & !is.na(lead(occ)))
-#                #EEraw = lfStat == 1 & lead(lfStat) == 1 & switchedJob,
-#                #UEraw = lfStat == 2 & lead(lfStat) == 1 & switchedJob)
-# }
 genFlowDummies <- function(df) {
-	df$switchedJob <- df$job != lead(df$job)
-	df$switchedOcc <- (df$occ != lead(df$occ))
-	df$EE <- df$lfStat == 1 & lead(df$lfStat) == 1 & df$switchedJob &	
-		!is.na(df$occ) & !is.na(lead(df$occ))
-	df$UE <- df$lfStat == 2 & lead(df$lfStat) == 1 & df$switchedJob &
-		!is.na(df$occ) & !is.na(lead(df$occ))
-	return(df)     
-
+        group_by(df, id) %>%
+                arrange(date) %>%
+                mutate(switchedJob = job != lead(job),
+                       switchedOcc = (occ != lead(occ)),
+                       EE = lfStat == 1 & lead(lfStat) == 1 & switchedJob &
+                               !is.na(occ) & !is.na(lead(occ)),
+                       UE = lfStat == 2 & lead(lfStat) == 1 & switchedJob &
+                               !is.na(occ) & !is.na(lead(occ)))
 }
 
-
+# Generate unemployment duration
+# If respondent enters panel unemployed, duration will be NA for that spell
+# can only call after genLFStat
+genUnempDuration <- function(df) {
+        group_by(df, id) %>%
+                arrange(date) %>%
+                mutate(unemployed = lfStat == 2) %>%
+                mutate(spellID = as.integer(ifelse(unemployed & !lag(unemployed), 1:n(), NA))) %>%
+                mutate(spellID = na.locf(spellID, na.rm = FALSE)) %>%
+                group_by(id, spellID) %>%
+                mutate(unempDur = as.integer(ifelse(unemployed & !is.na(spellID), cumsum(unemployed), NA))) %>%
+                select(-spellID)
+}
 
 # 1996
 sipp96 <- readRDS("./Data/sipp96.RData")
@@ -71,6 +68,7 @@ processed96 <- sipp96 %>%
         genLFStat(.) %>%                                        # generate LF status variable
         fixOccCode(.) %>%                                       # fix occupation codes
         genFlowDummies(.) %>%                                   # generate flow dummies
+        genUnempDuration(.) %>%
         mutate(occ = as.integer(ifelse(occ >= 1000, 
                                        occ/10, occ))) %>%
         left_join(occ1990_to_SOC2d, 
@@ -88,6 +86,7 @@ processed01 <- sipp01 %>%
         genLFStat(.) %>%                                        # generate LF status variable
         fixOccCode(.) %>%                                       # fix occupation code
         genFlowDummies(.) %>%                                   # generate flow dummies
+        genUnempDuration(.) %>%
         mutate(occ = as.integer(ifelse(occ >= 1000, 
                                        occ/10, occ))) %>%
         left_join(occ1990_to_SOC2d, 
@@ -105,6 +104,7 @@ processed04 <- sipp04 %>%
         genLFStat(.) %>%                                        # generate LF status variable
         fixOccCode(.) %>%                                       # fix occupation code
         genFlowDummies(.) %>%                                   # generate flow dummies
+        genUnempDuration(.) %>%
         mutate(occ = as.integer(ifelse(occ >= 1000, 
                                        occ/10, occ))) %>%
         left_join(coc2000_to_occ1990, 
@@ -123,6 +123,7 @@ processed08 <- sipp08 %>%
         genLFStat(.) %>%                                        # generate LF status variable
         fixOccCode(.) %>%                                       # fix occupation code
         genFlowDummies(.) %>%                                   # generate flow dummies
+        genUnempDuration(.) %>%
         mutate(occ = as.integer(ifelse(occ >= 1000, 
                                        occ/10, occ))) %>%
         left_join(coc2000_to_occ1990, 
