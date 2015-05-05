@@ -11,8 +11,9 @@ library(ggplot2)
 library(xlsx)
 library(quantreg)
 library(McSpatial)
+library(reshape2)
 
-setwd("~/workspace/CVW/R")
+#setwd("~/workspace/CVW/R")
 
 # Read unemployment data
 haver <- read.xlsx("./Data/unrate.xlsx", sheetName = "data", 
@@ -24,7 +25,9 @@ haver <- haver %>%
                date = as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")) %>%
         select(-year, -month)
 
-toKeep <- c("wpfinwgt", "switchedOcc", "EE", "UE", "switched2d", "residWageChange", "residWageChange_wU", "residWageChange_wA", "lfStat", "date")
+toKeep <- c("wpfinwgt", "switchedOcc", "EE", "UE", "switched2d", 
+            "residWageChange", "residWageChange_wU", "lfStat", "date",
+            "residWageChange_q", "residWageChange_q_wU")
 
 detach("package:xlsx")
 detach("package:xlsxjars")
@@ -150,10 +153,48 @@ rm(wageChangesEE)
 # Wage change distributions ---------------------------------------------
 wageChanges <- readRDS( "./Data/wageChanges.RData")
 
+# recession dates
 rec_dates   <- as.Date(c("2001-03-01", "2001-11-01","2007-12-01", "2009-06-01"))
-wageChanges$Rec <- ((wageChanges$date>rec_dates[1] & wageChanges$date<rec_dates[2] ) | (wageChanges$date>rec_dates[3] & wageChanges$date<rec_dates[4] ))
-wageChangesRec <- subset(wageChanges,wageChanges$Rec)
-wageChangesExp <- subset(wageChanges,!wageChanges$Rec)
+wageChanges$Rec <- ((wageChanges$date>rec_dates[1] & wageChanges$date<rec_dates[2] ) | 
+                            (wageChanges$date>rec_dates[3] & wageChanges$date<rec_dates[4] ))
+
+wageChangesLong <- melt(wageChanges, id.vars = c("id", "date", "Rec"),
+                        measure.vars = c("residWageChange_wU", "residWageChange_q_wU"))
+wageChangesLong <- subset(wageChangesLong, !is.na(Rec))
+
+# format variables for better plotting
+wageChangesLong$Rec <- as.factor(wageChangesLong$Rec)
+levels(wageChangesLong$Rec) <- c("Expansion", "Recession")
+levels(wageChangesLong$variable) <- c("Monthly", "Quarterly")
+
+# exp/rec panes
+png("./Figures/wageChangeDensityRecExp.png", width = 782, height = 569)
+ggplot(wageChangesLong, aes(value, fill = variable)) +
+        geom_density(alpha = 0.5) +
+        facet_grid(. ~ Rec) +
+        xlim(c(-3.75, 3.75)) +
+        ggtitle("Wage change distribution in expansion & recession") +
+        labs(fill = "Aggregation")
+dev.off()
+
+# monthly/quarterly panes
+png("./Figures/wageChangeDensityMthQtr.png", width = 782, height = 569)
+ggplot(wageChangesLong, aes(value, fill = Rec)) +
+        geom_density(alpha = 0.5) +
+        facet_grid(. ~ variable) +
+        xlim(c(-3.75, 3.75)) +
+        ggtitle("Wage change distribution by aggregation") +
+        labs(fill = "Business cycle")
+dev.off()
+
+# # subset for recessions and expansions
+# wageChangesRec <- subset(wageChanges,wageChanges$Rec)
+# wageChangesExp <- subset(wageChanges,!wageChanges$Rec)
+# 
+# wageChangesRecLong <- melt(wageChangesRec, id.vars = c("id", "date"),
+#                          measure.vars = c("residWageChange_wU", "residWageChange_q_wU"))
+# wageChangesExpLong <- melt(wageChangesExp, id.vars = c("id", "date"),
+#                            measure.vars = c("residWageChange_wU", "residWageChange_q_wU"))
 
 resChangeOutlier <- quantile(wageChanges$residWageChange_wU,probs=c(0.025,0.975),na.rm=T)
 wageChanges$Out <- (wageChanges$residWageChange_wU<resChangeOutlier[1] |
