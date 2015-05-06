@@ -10,6 +10,8 @@ library(foreign)
 library(stats)
 library(reshape2)
 
+setwd("~/workspace/CVW/R")
+
 # Read crosswalk files
 coc2000_to_occ1990 <- read.dta("./Crosswalks/coc2000_2_occ1990.dta")
 occ1990_to_SOC2d <- read.dta("./Crosswalks/occ90_2_soc2d.dta", convert.underscore = TRUE) %>%
@@ -38,14 +40,14 @@ fixOccCode <- function(df) {
 
 # Generate occupation switching and LF flow dummies
 genFlowDummies <- function(df) {
-        group_by(df, id) %>%
-                arrange(date) %>%
-                mutate(switchedJob = job != lead(job),
-                       switchedOcc = (occ != lead(occ)),
-                       EE = lfStat == 1 & lead(lfStat) == 1 & switchedJob &
-                               !is.na(occ) & !is.na(lead(occ)),
-                       UE = lfStat == 2 & lead(lfStat) == 1 & switchedJob &
-                               !is.na(occ) & !is.na(lead(occ)))
+  group_by(df, id) %>%
+    arrange(date) %>%
+    mutate(switchedJob = job != lead(job)) %>%
+    mutate(switchedOcc = (occ != lead(occ))) %>%
+    mutate(EE = lfStat == 1 & lead(lfStat) == 1 & switchedJob &
+             !is.na(occ) & !is.na(lead(occ)) ) %>%
+    mutate(UE = lfStat == 2 & lead(lfStat) == 1 & switchedJob &
+             !is.na(occ) & !is.na(lead(occ)))
 }
 
 # Generate unemployment duration
@@ -54,7 +56,8 @@ genFlowDummies <- function(df) {
 genUnempDuration <- function(df) {
         group_by(df, id) %>%
                 arrange(date) %>%
-                mutate(unemployed = lfStat == 2) %>%
+                mutate(unemployed = lfStat == 2)
+        group_by(df, id) %>%
                 mutate(spellID = as.integer(ifelse(unemployed & !lag(unemployed), 1:n(), NA))) %>%
                 mutate(spellID = na.locf(spellID, na.rm = FALSE)) %>%
                 group_by(id, spellID) %>%
@@ -66,7 +69,8 @@ genUnempDuration <- function(df) {
 sipp96 <- readRDS("./Data/sipp96.RData")
 processed96 <- sipp96 %>%
         genLFStat(.) %>%                                        # generate LF status variable
-        fixOccCode(.) %>%                                       # fix occupation codes
+        fixOccCode(.)                                           # fix occupation codes
+processed96 <- sipp96 %>%
         genFlowDummies(.) %>%                                   # generate flow dummies
         genUnempDuration(.) %>%
         mutate(occ = as.integer(ifelse(occ >= 1000, 

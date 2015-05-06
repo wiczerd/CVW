@@ -8,7 +8,7 @@ library(stats)
 library(zoo)
 library(reshape2)
 
-#setwd("~/workspace/CVW/R")
+setwd("~/workspace/CVW/R")
 
 # Functions ---------------------------------------------------------------
 # Create function to calculate residuals

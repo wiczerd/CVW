@@ -13,7 +13,7 @@ library(quantreg)
 library(McSpatial)
 library(reshape2)
 
-#setwd("~/workspace/CVW/R")
+setwd("~/workspace/CVW/R")
 
 # Read unemployment data
 haver <- read.xlsx("./Data/unrate.xlsx", sheetName = "data", 
@@ -69,7 +69,7 @@ wageChanges <- wageChanges %>%
         mutate(posChange = (residWageChange > 0),
                negChange = (residWageChange < 0)) %>%
 	# drop the ones with no wage change (i.e missing values)
-        filter(!(is.nan(residWageChange) & is.nan(residWageChange_wU) & is.nan(residWageChange_wA) ) )
+        filter(!(is.nan(residWageChange) & is.nan(residWageChange_wU) ) )
 
 # Summary statistics --------------------------------------------------------------
 
@@ -145,10 +145,6 @@ UEqr.wSu <-summary(wageRegUE.wSu)
 rm(wageChangesUE)
 rm(wageChangesEE)
 
-# Machado - Mata Decomposition ----------------------------------------
-
-
-
 
 # Wage change distributions ---------------------------------------------
 wageChanges <- readRDS( "./Data/wageChanges.RData")
@@ -214,3 +210,11 @@ title("Wage change distribution when changing jobs or into unemployment")
 
 bp_wA<-boxplot(residWageChange_wA~Rec,data=wageChangesIn,names=c("Expansion","Recession"))
 title("Wage change distribution")
+
+# Machado - Mata Decomposition ----------------------------------------
+
+# do the regressions I'll use
+mm_rq.expansion <- rq(residWageChange_wU ~ switchedOcc,tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt,  data=subset(wageChanges,!wageChanges$Rec))
+
+mm_rq.recession <- rq(residWageChange_wU ~ switchedOcc,tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt,  data=subset(wageChanges,wageChanges$Rec))
+
