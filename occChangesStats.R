@@ -26,6 +26,14 @@ haver <- haver %>%
 # 1996 Panel --------------------------------------------------------------
 processed96 <- readRDS("./Data/processed96.RData")
 
+# Extract data for the switching probit
+demoKeepVars <- c("wpfinwgt","race","educ","switchedJob"
+				  ,"switchedOcc","unempDur","date","lfStat"
+				  ,"age","female","occ","UE","EE")
+demoProbit <-  select(processed96,one_of(demoKeepVars))
+demoProbit <-  mutate(demoProbit,swOccJob = switchedOcc & switchedJob & !is.na(occ), na.rm =T)
+
+
 # Calculate probability of switching using raw code
 prSwitching <-  group_by(processed96, date) %>%
         summarize(prSwitchedOcc = weighted.mean(switchedOcc[EE | UE], wpfinwgt[EE | UE],
@@ -42,6 +50,12 @@ rm(processed96)
 
 # 2001 Panel --------------------------------------------------------------
 processed01 <- readRDS("./Data/processed01.RData")
+
+demoProbit01 <-  select(processed01,one_of(demoKeepVars))
+demoProbit01 <-  mutate(demoProbit01,swOccJob = switchedOcc & switchedJob & !is.na(occ), na.rm =T) %>%
+	bind_rows(demoProbit)
+demoProbit <- demoProbit01
+rm(demoProbit01)
 
 # Calculate probability of switching, add to prSwitching
 prSwitching <-  group_by(processed01, date) %>%
@@ -61,6 +75,12 @@ rm(processed01)
 # 2004 Panel --------------------------------------------------------------
 processed04 <- readRDS("./Data/processed04.RData")
 
+demoProbit04 <-  select(processed04,one_of(demoKeepVars))
+demoProbit04 <-  mutate(demoProbit04,swOccJob = switchedOcc & switchedJob & !is.na(occ), na.rm =T) %>%
+	bind_rows(demoProbit)
+demoProbit <- demoProbit04
+rm(demoProbit04)
+
 #Calculate probability of switching, add to prSwitching
 prSwitching <-  group_by(processed04, date) %>%
         summarize(prSwitchedOcc = weighted.mean(switchedOcc[EE | UE], wpfinwgt[EE | UE],
@@ -78,6 +98,15 @@ rm(processed04)
 
 # 2008 Panel --------------------------------------------------------------
 processed08 <- readRDS("./Data/processed08.RData")
+
+demoProbit08 <-  select(processed08,one_of(demoKeepVars))
+demoProbit08 <-  mutate(demoProbit08,swOccJob = switchedOcc & switchedJob & !is.na(occ), na.rm =T) %>%
+	bind_rows(demoProbit)
+demoProbit <- demoProbit08
+rm(demoProbit08)
+# save demo probit
+saveRDS(demoProbit, "./Data/demoProbit.RData")
+rm(demoProbit)
 
 #Calculate probability of switching, add to prSwitching
 prSwitching <-  group_by(processed08, date) %>%
@@ -138,3 +167,9 @@ UEReg <- rq(unrateNSA ~ prSwitchedOccUE, tau = c(0.25, 0.50, 0.75),
 # All together
 together <- rq(unrateNSA ~ prSwitchedOcc + prSwitchedOccEE + prSwitchedOccUE,
                  tau = c(0.25, 0.50, 0.75), data = prSwitchingAndUnemployment)
+
+rm(list=c("prSwitchingAndUnemployment","prSwitching"))
+
+demoProbit <- readRDS("./Data/demoProbit.RData")
+
+demoProbit<-left_join(demoProbit,haver)

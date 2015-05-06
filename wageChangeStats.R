@@ -208,13 +208,14 @@ plot(wageChangesIn.kde)
 bp_wU<-boxplot(residWageChange_wU~Rec,data=wageChangesIn,names=c("Expansion","Recession"))
 title("Wage change distribution when changing jobs or into unemployment")
 
-bp_wA<-boxplot(residWageChange_wA~Rec,data=wageChangesIn,names=c("Expansion","Recession"))
-title("Wage change distribution")
+bp<-boxplot(residWageChange~Rec,data=wageChangesIn,names=c("Expansion","Recession"))
+title("Wage change distribution, excluding unemployment")
 
 # Machado - Mata Decomposition ----------------------------------------
 
 # do the regressions I'll use
-mm_rq.expansion <- rq(residWageChange_wU ~ switchedOcc,tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt,  data=subset(wageChanges,!wageChanges$Rec))
-
-mm_rq.recession <- rq(residWageChange_wU ~ switchedOcc,tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt,  data=subset(wageChanges,wageChanges$Rec))
+wageChangesRec <- subset(wageChanges,wageChanges$Rec)
+wageChangesExp <- subset(wageChanges,!wageChanges$Rec)
+mm_rq.expansion <- rq(residWageChange_wU ~ switchedOcc,tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt,  data=wageChangesExp)
+mm_rq.recession <- rq(residWageChange_wU ~ switchedOcc,tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt,  data=wageChangesRec )
 
