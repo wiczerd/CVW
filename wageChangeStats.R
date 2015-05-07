@@ -215,12 +215,12 @@ title("Wage change distribution, excluding unemployment")
 
 # do the regressions I'll use
 wageChangesRec <- subset(wageChanges,wageChanges$Rec & (UE | EE))
-outliers_rec <- quantile(wageChangesRec$residWageChange,probs=c(0.025,0.975),na.rm=T)
+outliers_rec <- quantile(wageChangesRec$residWageChange,probs=c(0.01,0.99),na.rm=T)
 wageChangesRec <- subset(wageChangesRec, !is.na(wageChangesRec$residWageChange)
 						 & wageChangesRec$residWageChange > outliers_rec[1] 
 						 & wageChangesRec$residWageChange < outliers_rec[2] )
 wageChangesExp <- subset(wageChanges,!wageChanges$Rec  & (UE | EE))
-outliers_exp <- quantile(wageChangesExp$residWageChange,probs=c(0.025,0.975),na.rm=T)
+outliers_exp <- quantile(wageChangesExp$residWageChange,probs=c(0.01,0.99),na.rm=T)
 wageChangesExp <- subset(wageChangesExp, !is.na(wageChangesExp$residWageChange)
 						 & wageChangesExp$residWageChange > outliers_exp[1] 
 						 & wageChangesExp$residWageChange < outliers_exp[2] )
