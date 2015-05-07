@@ -180,10 +180,24 @@ demoProbit <- subset(demoProbit,!is.na(occ) & switchedJob) %>%
 	mutate(lths = as.integer(educ == 1)) %>%
 	select(-educ,-race)
 
-swDemo.EE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age , 
-			  family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
-swDemo.UE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age , 
-				 family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
-swDemo <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + UE + age , 
-				 family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
+rec_dates   <- as.Date(c("2001-03-01", "2001-11-01","2007-12-01", "2009-06-01"))
+demoProbit$Rec <- ((demoProbit$date>rec_dates[1] & demoProbit$date<rec_dates[2] ) | 
+						(demoProbit$date>rec_dates[3] & demoProbit$date<rec_dates[4] ))
 
+
+#swDemo.EE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age , 
+#			  family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
+#swDemo.UE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age , 
+#				 family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
+#swDemo <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + UE + age , 
+#				 family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
+
+swDemo.EE <- glm(swOccJob ~ Rec + nwhite + univ + lths + female + age , 
+				 family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
+swDemo.UE <- glm(swOccJob ~ Rec + nwhite + univ + lths + female + age , 
+				 family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
+swDemo <- glm(swOccJob ~ Rec + nwhite + univ + lths + female + UE + age , 
+			  family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
+
+
+rm(list=c("demoProbit","haver"))
