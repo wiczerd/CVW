@@ -170,6 +170,20 @@ together <- rq(unrateNSA ~ prSwitchedOcc + prSwitchedOccEE + prSwitchedOccUE,
 
 rm(list=c("prSwitchingAndUnemployment","prSwitching"))
 
-demoProbit <- readRDS("./Data/demoProbit.RData")
+# Probit switching ----------------------------------------------------------
 
-demoProbit<-left_join(demoProbit,haver)
+demoProbit <- readRDS("./Data/demoProbit.RData")
+demoProbit <- subset(demoProbit,!is.na(occ) & switchedJob) %>%
+	left_join(haver) %>%
+	mutate(nwhite = as.integer(race > 1)) %>%
+	mutate(univ = as.integer(educ >= 4)) %>%
+	mutate(lths = as.integer(educ == 1)) %>%
+	select(-educ,-race)
+
+swDemo.EE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age + I(age^2), 
+			  family=binomial(link="logit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
+swDemo.UE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age + I(age^2), 
+				 family=binomial(link="logit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
+swDemo <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + UE + age + I(age^2), 
+				 family=binomial(link="logit"), data= demoProbit, na.action=na.omit)
+
