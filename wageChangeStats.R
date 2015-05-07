@@ -214,8 +214,23 @@ title("Wage change distribution, excluding unemployment")
 # Machado - Mata Decomposition ----------------------------------------
 
 # do the regressions I'll use
-wageChangesRec <- subset(wageChanges,wageChanges$Rec)
-wageChangesExp <- subset(wageChanges,!wageChanges$Rec)
-mm_rq.expansion <- rq(residWageChange_wU ~ switchedOcc,tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt,  data=wageChangesExp)
-mm_rq.recession <- rq(residWageChange_wU ~ switchedOcc,tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt,  data=wageChangesRec )
+wageChangesRec <- subset(wageChanges,wageChanges$Rec & (UE | EE))
+outliers_rec <- quantile(wageChangesRec$residWageChange,probs=c(0.025,0.975),na.rm=T)
+wageChangesRec <- subset(wageChangesRec, !is.na(wageChangesRec$residWageChange)
+						 & wageChangesRec$residWageChange > outliers_rec[1] 
+						 & wageChangesRec$residWageChange < outliers_rec[2] )
+wageChangesExp <- subset(wageChanges,!wageChanges$Rec  & (UE | EE))
+outliers_exp <- quantile(wageChangesExp$residWageChange,probs=c(0.025,0.975),na.rm=T)
+wageChangesExp <- subset(wageChangesExp, !is.na(wageChangesExp$residWageChange)
+						 & wageChangesExp$residWageChange > outliers_exp[1] 
+						 & wageChangesExp$residWageChange < outliers_exp[2] )
+
+# these are the quantile regressions we will be decomposing:
+#mm_rq.expansion <- rq(residWageChange ~ switchedOcc,tau = c(0.25, .5, .75), weights= wpfinwgt,  data=wageChangesExp)
+#mm_rq.recession <- rq(residWageChange ~ switchedOcc,tau = c(0.25, .5, .75), weights= wpfinwgt,  data=wageChangesRec )
+
+mm_bmat.exp <-qregbmat(residWageChange ~ switchedOcc, data=wageChangesExp, graphb = F)
+mm_bmat.rec <-qregbmat(residWageChange ~ switchedOcc, data=wageChangesRec, graphb = F)
+mm_wageChanges <- qregsim2(residWageChange ~ switchedOcc, ~ switchedOcc,wageChangesExp,wageChangesRec,
+						   mm_bmat.exp,mm_bmat.rec,timenames=c("Expansion","Recession"))
 
