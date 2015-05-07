@@ -180,10 +180,10 @@ demoProbit <- subset(demoProbit,!is.na(occ) & switchedJob) %>%
 	mutate(lths = as.integer(educ == 1)) %>%
 	select(-educ,-race)
 
-swDemo.EE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age + I(age^2), 
-			  family=binomial(link="logit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
-swDemo.UE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age + I(age^2), 
-				 family=binomial(link="logit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
-swDemo <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + UE + age + I(age^2), 
-				 family=binomial(link="logit"), data= demoProbit, na.action=na.omit)
+swDemo.EE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age , 
+			  family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
+swDemo.UE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age , 
+				 family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
+swDemo <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + UE + age , 
+				 family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
 
