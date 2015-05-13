@@ -10,7 +10,7 @@ library(foreign)
 library(stats)
 library(reshape2)
 
-setwd("~/workspace/CVW/R")
+#setwd("~/workspace/CVW/R")
 
 # Read crosswalk files
 coc2000_to_occ1990 <- read.dta("./Crosswalks/coc2000_2_occ1990.dta")
@@ -19,50 +19,65 @@ occ1990_to_SOC2d <- read.dta("./Crosswalks/occ90_2_soc2d.dta", convert.underscor
 
 # Generate LF status variable from esr
 genLFStat <- function(df) {#
-        # 1: employed
-        # 2: unemployed
-        # 3: NILF
-        mutate(df, 
-               lfStat = ifelse(esr == 1 | esr == 2 | esr == 4, 1, 0),
-               lfStat = ifelse(esr == 3 | esr == 5 | esr == 6 | esr == 7, 2, lfStat),
-               lfStat = ifelse(esr == 8, 3, lfStat))
+        result <- df %>%
+                # 1: employed
+                mutate(lfStat = ifelse(esr == 1 | esr == 2 | esr == 4, 1, 0)) %>%
+                # 2: unemployed
+                mutate(lfStat = ifelse(esr == 3 | esr == 5 | esr == 6 | esr == 7, 2, lfStat)) %>%
+                # 3: NILF
+                mutate(lfStat = ifelse(esr == 8, 3, lfStat))
+        return(result)
 }
 
 # Correct occupation code
 fixOccCode <- function(df) {
-        group_by(df, id) %>%
+        result <- df %>%
+                group_by(id) %>%
                 arrange(date) %>%
-                mutate(occ = as.integer(ifelse(lfStat == 2 | lfStat == 3, NA, occ)),
-                       occ = na.locf(occ, na.rm = FALSE),
-                       job = as.integer(ifelse(is.na(job), 0, job)),
-                       job = as.integer(ifelse(lfStat == 2 | lfStat == 3, 0, job))) 
+                # replace occ with NA if unemployed or NILF
+                mutate(occ = as.integer(ifelse(lfStat == 2 | lfStat == 3, NA, occ))) %>%
+                # carry forward last observation of occ to fill NAs
+                mutate(occ = na.locf(occ, na.rm = FALSE)) %>%
+                # replace NA job codes with 0
+                mutate(job = as.integer(ifelse(is.na(job), 0, job))) %>%
+                # replace job code with 0 if unemployed or NILF 
+                mutate(job = as.integer(ifelse(lfStat == 2 | lfStat == 3, 0, job)))
+        return(result)
 }
 
 # Generate occupation switching and LF flow dummies
 genFlowDummies <- function(df) {
-  group_by(df, id) %>%
-    arrange(date) %>%
-    mutate(switchedJob = job != lead(job)) %>%
-    mutate(switchedOcc = (occ != lead(occ))) %>%
-    mutate(EE = lfStat == 1 & lead(lfStat) == 1 & switchedJob &
-             !is.na(occ) & !is.na(lead(occ)) ) %>%
-    mutate(UE = lfStat == 2 & lead(lfStat) == 1 & switchedJob &
-             !is.na(occ) & !is.na(lead(occ)))
+        result <- df %>%
+                group_by(id) %>%
+                arrange(date) %>%
+                mutate(switchedJob = job != lead(job)) %>%
+                mutate(switchedOcc = (occ != lead(occ))) %>%
+                mutate(EE = lfStat == 1 & lead(lfStat) == 1 & switchedJob &
+                               !is.na(occ) & !is.na(lead(occ)) ) %>%
+                mutate(UE = lfStat == 2 & lead(lfStat) == 1 & switchedJob &
+                               !is.na(occ) & !is.na(lead(occ)))
+        return(result)
 }
 
 # Generate unemployment duration
 # If respondent enters panel unemployed, duration will be NA for that spell
 # can only call after genLFStat
 genUnempDuration <- function(df) {
-        group_by(df, id) %>%
+        result <- df %>%
+                group_by(id) %>%
                 arrange(date) %>%
+                # generate dummy for unemployed
                 mutate(unemployed = lfStat == 2)
-        group_by(df, id) %>%
+        result <- result %>%
+                # generate unique id for each period respondent enters unemployment
                 mutate(spellID = as.integer(ifelse(unemployed & !lag(unemployed), 1:n(), NA))) %>%
+                # carryforward unique id
                 mutate(spellID = na.locf(spellID, na.rm = FALSE)) %>%
                 group_by(id, spellID) %>%
+                # in each spell, calculate cumulative sum of unemployed
                 mutate(unempDur = as.integer(ifelse(unemployed & !is.na(spellID), cumsum(unemployed), NA))) %>%
                 select(-spellID)
+        return(result)
 }
 
 # 1996
@@ -70,7 +85,7 @@ sipp96 <- readRDS("./Data/sipp96.RData")
 processed96 <- sipp96 %>%
         genLFStat(.) %>%                                        # generate LF status variable
         fixOccCode(.)                                           # fix occupation codes
-processed96 <- sipp96 %>%
+processed96 <- processed96 %>%
         genFlowDummies(.) %>%                                   # generate flow dummies
         genUnempDuration(.) %>%
         mutate(occ = as.integer(ifelse(occ >= 1000, 
