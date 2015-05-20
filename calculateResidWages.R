@@ -12,39 +12,53 @@ setwd("~/workspace/CVW/R")
 
 # Functions ---------------------------------------------------------------
 # Create function to calculate residuals
-calculateResiduals <- function(df) {
-        model <- lm(logEarnm ~ experience + I(experience^2) + factor(educ) + 
-                            female + black + hispanic + factor(soc2d), data = df,
-                    na.action = na.exclude, weights = wpfinwgt)
-        resid <- residuals(model)
-        resid <- resid + coef(model)[1]
-        data.frame(df, resid)
+# add a constant (previously was constant from regression, now is 1996 avg)
+calculateResiduals <- function(df, const = 0) {
+        # group data by year
+        df <- group_by(df, year)
+        # regression within each year
+#         model <- lm(logEarnm ~ experience + I(experience^2) + factor(educ) + 
+#                             female + black + hispanic + factor(soc2d), data = df,
+#                     na.action = na.exclude, weights = wpfinwgt)
+        # regress on a constant (resid = Xi - mean(X))
+        model <- lm(logEarnm ~ 1, data = df, na.action = na.exclude, 
+                    weights = wpfinwgt)
+        # calculate residuals
+        # either get PCE deflator or add 1996 avg instead of adding coef
+        resid <- residuals(model) + const
+        # append residuals to df
+        result <- data.frame(df, resid)
+        # ungroup and remove regressions
+        result <- result %>% ungroup %>% select(-one_of(regressors))
+        return(result)
 }
 
-# Create function calculate last residual observed wage
+# Create function to calculate last residual observed wage
 fillDownResidual <- function(df) {
-        df %>%
+        result <- df %>%
                 group_by(id) %>%
                 arrange(id, date) %>%
                 mutate(lastResidWage = as.numeric(ifelse(switchedJob & job != 0, lag(resid), NA))) %>%
                 mutate(lastResidWage = na.locf(lastResidWage, na.rm = FALSE)) %>%
                 mutate(lastResidWage_q = as.numeric(ifelse(switchedJob & job != 0, lag(resid_q, 3), NA))) %>%
-                mutate(lastResidWage_q = na.locf(lastResidWage_q, na.rm = FALSE)) 
+                mutate(lastResidWage_q = na.locf(lastResidWage_q, na.rm = FALSE))
+        return(result)
 }
 
 # Create function to generate regressor variables
 genRegressors <- function(df) {
-        df %>%
+        result <- df %>%
                 mutate(logEarnm = log(earnm)) %>%
                 mutate(yearsSchool = as.integer(ifelse(educ == 1, 9, NA)),
                        yearsSchool = as.integer(ifelse(educ == 2, 12, yearsSchool)),
                        yearsSchool = as.integer(ifelse(educ == 3, 14, yearsSchool)),
                        yearsSchool = as.integer(ifelse(educ == 4, 16, yearsSchool)),
                        yearsSchool = as.integer(ifelse(educ == 5, 18, yearsSchool))) %>%
-                mutate(experience = age - yearsSchool,
-                       black = (race == 2),
-                       hispanic = (race == 3),
-                       year = as.numeric(format(date, "%Y")))
+                mutate(experience = age - yearsSchool) %>%
+                mutate(black = (race == 2)) %>%
+                mutate(hispanic = (race == 3)) %>%
+                mutate(year = as.numeric(format(date, "%Y")))
+        return(result)
 }
 
 regressors <- c("age", "educ", "female", "race", "yearsSchool",
@@ -57,12 +71,11 @@ processed96 <- readRDS("./Data/processed96.RData")
 # Generate regressor variables
 analytic96 <- genRegressors(processed96)
 
+# Find average log wage for 1996 panel
+avg1996 <- weighted.mean(analytic96$logEarnm, analytic96$wpfinwgt, na.rm = TRUE)
+
 # Run regression within each year, remove regressors
-analytic96 <- analytic96 %>%
-        group_by(year) %>%
-        calculateResiduals(.) %>%
-        ungroup %>%
-        select(-one_of(regressors))
+analytic96 <- calculateResiduals(analytic96, avg1996)
 
 analytic96 <- analytic96 %>%
         mutate(resid_lev = exp(resid)) %>%
@@ -100,11 +113,7 @@ processed01 <- readRDS("./Data/processed01.RData")
 analytic01 <- genRegressors(processed01)
 
 # Run regression within each year, remove regressors
-analytic01 <- analytic01 %>%
-        group_by(year) %>%
-        calculateResiduals(.) %>%
-        ungroup %>%
-        select(-one_of(regressors))
+analytic01 <- calculateResiduals(analytic01, avg1996)
 
 analytic01 <- analytic01 %>%
         mutate(resid_lev = exp(resid)) %>%
@@ -143,11 +152,7 @@ processed04 <- readRDS("./Data/processed04.RData")
 analytic04 <- genRegressors(processed04)
 
 # Run regression within each year, remove regressors
-analytic04 <- analytic04 %>%
-        group_by(year) %>%
-        calculateResiduals(.) %>%
-        ungroup %>%
-        select(-one_of(regressors))
+analytic04 <- calculateResiduals(analytic04, avg1996)
 
 analytic04 <- analytic04 %>%
         mutate(resid_lev = exp(resid)) %>%
@@ -185,11 +190,7 @@ processed08 <- readRDS("./Data/processed08.RData")
 analytic08 <- genRegressors(processed08)
 
 # Run regression within each year, remove regressors
-analytic08 <- analytic08 %>%
-        group_by(year) %>%
-        calculateResiduals(.) %>%
-        ungroup %>%
-        select(-one_of(regressors))
+analytic08 <- calculateResiduals(analytic08, avg1996)
 
 analytic08 <- analytic08 %>%
         mutate(resid_lev = exp(resid)) %>%

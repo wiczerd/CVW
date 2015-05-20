@@ -66,8 +66,8 @@ saveRDS(wageChanges, "./Data/wageChanges.RData")
 
 # throw out all but job switches
 wageChanges <- wageChanges %>%
-        mutate(posChange = (residWageChange > 0),
-               negChange = (residWageChange < 0)) %>%
+        mutate(posChange = (residWageChange > 0)) %>%
+        mutate(negChange = (residWageChange < 0)) %>%
 	# drop the ones with no wage change (i.e missing values)
         filter(!(is.nan(residWageChange) & is.nan(residWageChange_wU) ) )
 
@@ -120,7 +120,8 @@ dirWageChanges <- wageChanges %>%
                   pctPosEE = wtd.mean(posChange[switchedOcc & EE], 
                                      wpfinwgt[switchedOcc & EE], na.rm = TRUE),
                   pctPosUE = wtd.mean(posChange[switchedOcc & UE], 
-                                      wpfinwgt[switchedOcc & UE], na.rm = TRUE))
+                                      wpfinwgt[switchedOcc & UE], na.rm = TRUE),
+                  unrateNSA = first(unrateNSA))
 
 with(dirWageChanges, cor(pctPos, unrateNSA, use = "complete.obs"))
 with(dirWageChanges, cor(pctPosEE, unrateNSA, use = "complete.obs"))
