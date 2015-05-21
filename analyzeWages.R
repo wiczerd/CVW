@@ -11,6 +11,9 @@ library(ggplot2)
 
 setwd("~/workspace/CVW/R")
 
+# Use 1 digit occupations from CEPR? (soc2d)
+useSoc2d <- TRUE
+
 # Function for weighted moving average
 # x, wts, and new.name are strings
 movingAverage <- function(df, x, wts, new.name) {
@@ -21,7 +24,7 @@ movingAverage <- function(df, x, wts, new.name) {
         return(df)
 }
 
-# Create cumuluative distribution function to apply with do()
+# Create cumuluative distribution function
 calculateCumul <- function(df) {
         cumulFunc <- ecdf(df$resid)
         percentile <- round(cumulFunc(df$resid)*100)
@@ -29,7 +32,12 @@ calculateCumul <- function(df) {
 }
 
 # 1996 Panel --------------------------------------------------------------
-analytic96 <- readRDS("./Data/analytic96.RData")
+
+if(useSoc2d) {
+        analytic96 <- readRDS("./Data/analytic96soc2d.RData")
+} else {
+        analytic96 <- readRDS("./Data/analytic96.RData")
+}
 
 # Calculate income percentile within two-digit SOC code
 incomePercentiles <- analytic96 %>%
@@ -57,7 +65,12 @@ incomeChanges <- analytic96 %>%
 rm(analytic96)
 
 # 2001 Panel --------------------------------------------------------------
-analytic01 <- readRDS("./Data/analytic01.RData")
+
+if(useSoc2d) {
+        analytic01 <- readRDS("./Data/analytic01soc2d.RData")
+} else {
+        analytic01 <- readRDS("./Data/analytic01.RData")
+}
 
 # Calculate income percentile within two-digit SOC code, append
 incomePercentiles <- analytic01 %>%
@@ -117,7 +130,12 @@ incomeChanges <- analytic04 %>%
 rm(analytic04)
 
 # 2008 Panel --------------------------------------------------------------
-analytic08 <- readRDS("./Data/analytic08.RData")
+
+if(useSoc2d) {
+        analytic08 <- readRDS("./Data/analytic08soc2d.RData")
+} else {
+        analytic08 <- readRDS("./Data/analytic08.RData")
+}
 
 # Calculate income percentile within two-digit SOC code, append
 incomePercentiles <- analytic08 %>%
@@ -147,6 +165,13 @@ incomeChanges <- analytic08 %>%
 rm(analytic08)
 
 # Plots -------------------------------------------------------------------
+
+if(useSoc2d) {
+        setwd("./Figures/soc2d")
+} else {
+        setwd("./Figures/occ")
+}
+
 incomePercentiles <- incomePercentiles %>%
         filter(!is.na(percentile)) %>%
         group_by(percentile) %>%
@@ -161,8 +186,8 @@ incomeChanges <- incomeChanges %>%
         do(movingAverage(., "meanIncomeChangeEE", "numEE", new.name = "maEE")) %>%
         do(movingAverage(., "meanIncomeChangeUE", "numUE", new.name = "maUE")) %>%
         select(date, starts_with("ma"), panel)
-        
-png("./Figures/prSwitchingByIncome.png", width = 782, height = 569)
+
+png("prSwitchingByIncome.png", width = 782, height = 569)
 ggplot(incomePercentiles, aes(percentile, prSwitching)) + geom_point() + geom_line() +
         ggtitle("P(Switching) by Income Percentile") + 
         ylab("P(Switching)") + xlab("Income percentile within two-digit SOC occupation")
@@ -171,10 +196,12 @@ dev.off()
 incomeChanges <- melt(incomeChanges, id = c("date", "panel"))
 levels(incomeChanges$variable) <- c("Pooled", "Employment-to-Employment", "Unemployment-to-Employment")
 
-png("./Figures/incomeChangesMA.png", width = 782, height = 569)
+png("incomeChangesMA.png", width = 782, height = 569)
 ggplot(incomeChanges, aes(date, value, color = panel)) + geom_point() + geom_line() +
         facet_grid(. ~ variable) +
         ggtitle("Moving Average 6(1)6 of Residual Log Income Change by LF Flow") +
         xlab("Date") + ylab("Mean Change in Residual Log Income") +
         labs(color = "Panel")
 dev.off()
+
+setwd("../../")

@@ -10,12 +10,18 @@ library(foreign)
 library(stats)
 library(reshape2)
 
-#setwd("~/workspace/CVW/R")
+setwd("~/workspace/CVW/R")
+#setwd("G:/Research_Analyst/Eubanks/Occupation switching")
+
+# Use 1 digit occupations from CEPR? (soc2d)
+useSoc2d <- TRUE
 
 # Read crosswalk files
 coc2000_to_occ1990 <- read.dta("./Crosswalks/coc2000_2_occ1990.dta")
 occ1990_to_SOC2d <- read.dta("./Crosswalks/occ90_2_soc2d.dta", convert.underscore = TRUE) %>%
         select(-.merge.occs)
+
+# Functions ---------------------------------------------------------------
 
 # Generate LF status variable from esr
 genLFStat <- function(df) {#
@@ -31,6 +37,14 @@ genLFStat <- function(df) {#
 
 # Correct occupation code
 fixOccCode <- function(df) {
+        
+        if(useSoc2d) {
+                # drop occ and replace with soc2d
+                df <- df %>%
+                        select(-occ) %>%
+                        rename(occ = soc2d)
+        }
+        
         result <- df %>%
                 group_by(id) %>%
                 arrange(date) %>%
@@ -42,6 +56,7 @@ fixOccCode <- function(df) {
                 mutate(job = as.integer(ifelse(is.na(job), 0, job))) %>%
                 # replace job code with 0 if unemployed or NILF 
                 mutate(job = as.integer(ifelse(lfStat == 2 | lfStat == 3, 0, job)))
+        
         return(result)
 }
 
@@ -80,77 +95,108 @@ genUnempDuration <- function(df) {
         return(result)
 }
 
-# 1996
+# 1996 Panel --------------------------------------------------------------
+
 sipp96 <- readRDS("./Data/sipp96.RData")
+
+# add soc2d codes
 processed96 <- sipp96 %>%
-        genLFStat(.) %>%                                        # generate LF status variable
-        fixOccCode(.)                                           # fix occupation codes
-processed96 <- processed96 %>%
-        genFlowDummies(.) %>%                                   # generate flow dummies
-        genUnempDuration(.) %>%
-        mutate(occ = as.integer(ifelse(occ >= 1000, 
-                                       occ/10, occ))) %>%
+        mutate(occDiv = as.integer(ifelse(occ >= 1000, 
+                                          occ/10, occ))) %>%
         left_join(occ1990_to_SOC2d, 
-                  by = c("occ" = "occ1990")) %>%                # add SOC codes
-        group_by(id) %>%                                        # group by id
-        arrange(date) %>%                                       # sort by date witin id
-        mutate(switched2d = (soc2d != lead(soc2d))) %>%         # generate adjusted switch dummies
-        select(-occ2000)
-saveRDS(processed96, "./Data/processed96.RData")
+                  by = c("occDiv" = "occ1990")) %>%
+        select(-occDiv, -occ2000)
+
+# generate variables for analysis
+processed96 <- processed96 %>%
+        genLFStat(.) %>%                                        
+        fixOccCode(.) %>%                                      
+        genFlowDummies(.) %>%                           
+        genUnempDuration(.)
+
+if(useSoc2d) {
+        saveRDS(processed96, "./Data/processed96soc2d.RData")
+} else {
+        saveRDS(processed96, "./Data/processed96.RData")
+}
 rm(list = c("sipp96", "processed96"))
 
-# 2001
+# 2001 Panel --------------------------------------------------------------
+
 sipp01 <- readRDS("./Data/sipp01.RData")
+
+# add soc2d codes
 processed01 <- sipp01 %>%
-        genLFStat(.) %>%                                        # generate LF status variable
-        fixOccCode(.) %>%                                       # fix occupation code
-        genFlowDummies(.) %>%                                   # generate flow dummies
-        genUnempDuration(.) %>%
-        mutate(occ = as.integer(ifelse(occ >= 1000, 
+        mutate(occDiv = as.integer(ifelse(occ >= 1000, 
                                        occ/10, occ))) %>%
         left_join(occ1990_to_SOC2d, 
-                  by = c("occ" = "occ1990")) %>%                # add SOC codes
-        group_by(id) %>%                                        # group by id
-        arrange(date) %>%                                       # sort by date witin id
-        mutate(switched2d = (soc2d != lead(soc2d))) %>%         # generate adjusted switch dummies
-        select(-occ2000)
-saveRDS(processed01, "./Data/processed01.RData")
+                  by = c("occDiv" = "occ1990")) %>%
+        select(-occDiv, -occ2000)
+
+# generate variables for analysis
+processed01 <- processed01 %>%        
+        genLFStat(.) %>%
+        fixOccCode(.) %>%
+        genFlowDummies(.) %>%
+        genUnempDuration(.)
+
+if(useSoc2d) {
+        saveRDS(processed01, "./Data/processed01soc2d.RData")
+} else {
+        saveRDS(processed01, "./Data/processed01.RData")
+}
 rm(list = c("sipp01", "processed01"))
 
-# 2004
+# 2004 Panel --------------------------------------------------------------
+
 sipp04 <- readRDS("./Data/sipp04.RData")
+
+# add soc2d codes
 processed04 <- sipp04 %>%
-        genLFStat(.) %>%                                        # generate LF status variable
-        fixOccCode(.) %>%                                       # fix occupation code
-        genFlowDummies(.) %>%                                   # generate flow dummies
-        genUnempDuration(.) %>%
-        mutate(occ = as.integer(ifelse(occ >= 1000, 
+        mutate(occDiv = as.integer(ifelse(occ >= 1000, 
                                        occ/10, occ))) %>%
         left_join(coc2000_to_occ1990, 
-                  by = c("occ" = "coc2000")) %>%                # convert codes to 1990
-        left_join(occ1990_to_SOC2d, by = "occ1990") %>%         # add SOC codes
-        group_by(id) %>%                                        # group by id
-        arrange(date) %>%                                       # sort by date witin id
-        mutate(switched2d = (soc2d != lead(soc2d))) %>%         # generate adjusted switch dummies
-        select(-occ1990, -occ2000)
-saveRDS(processed04, "./Data/processed04.RData")
+                  by = c("occDiv" = "coc2000")) %>%
+        left_join(occ1990_to_SOC2d, by = "occ1990") %>%
+        select(-occDiv, -occ2000, -occ1990)
+        
+# generate variables for analysis
+processed04<- processed04 %>%
+        genLFStat(.) %>%
+        fixOccCode(.) %>%
+        genFlowDummies(.) %>%
+        genUnempDuration(.)
+
+if(useSoc2d) {
+        saveRDS(processed04, "./Data/processed04soc2d.RData")
+} else {
+        saveRDS(processed04, "./Data/processed04.RData")
+}
 rm(list = c("sipp04", "processed04"))
 
-# 2008
+# 2008 Panel --------------------------------------------------------------
+
 sipp08 <- readRDS("./Data/sipp08.RData")
+
+# add soc2d codes
 processed08 <- sipp08 %>%
-        genLFStat(.) %>%                                        # generate LF status variable
-        fixOccCode(.) %>%                                       # fix occupation code
-        genFlowDummies(.) %>%                                   # generate flow dummies
-        genUnempDuration(.) %>%
-        mutate(occ = as.integer(ifelse(occ >= 1000, 
+        mutate(occDiv = as.integer(ifelse(occ >= 1000, 
                                        occ/10, occ))) %>%
         left_join(coc2000_to_occ1990, 
-                  by = c("occ" = "coc2000")) %>%                # convert codes to 1990
-        left_join(occ1990_to_SOC2d, by = "occ1990") %>%         # add SOC codes
-        group_by(id) %>%                                        # group by id
-        arrange(date) %>%                                       # sort by date witin id
-        mutate(switched2d = (soc2d != lead(soc2d))) %>%         # generate adjusted switch dummies
-        select(-occ1990, -occ2000)
-saveRDS(processed08, "./Data/processed08.RData")
+                  by = c("occDiv" = "coc2000")) %>%
+        left_join(occ1990_to_SOC2d, by = "occ1990") %>%
+        select(-occDiv, -occ2000, -occ1990)
+
+# generate variables for analysis
+processed08 <- processed08 %>%
+        genLFStat(.) %>%
+        fixOccCode(.) %>%
+        genFlowDummies(.) %>%
+        genUnempDuration(.)
+
+if(useSoc2d) {
+        saveRDS(processed08, "./Data/processed08soc2d.RData")
+} else {
+        saveRDS(processed08, "./Data/processed08.RData")
+}
 rm(list = c("sipp08", "processed08"))

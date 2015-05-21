@@ -165,7 +165,7 @@ levels(wageChangesLong$Rec) <- c("Expansion", "Recession")
 levels(wageChangesLong$variable) <- c("Monthly", "Quarterly")
 
 # exp/rec panes
-png("./Figures/wageChangeDensityRecExp.png", width = 782, height = 569)
+postscript(file = "./Figures/wageChangeDensityRecExp.eps", width = 782, height = 569)
 ggplot(wageChangesLong, aes(value, fill = variable)) +
         geom_density(alpha = 0.5) +
         facet_grid(. ~ Rec) +
@@ -175,13 +175,24 @@ ggplot(wageChangesLong, aes(value, fill = variable)) +
 dev.off()
 
 # monthly/quarterly panes
-png("./Figures/wageChangeDensityMthQtr.png", width = 782, height = 569)
+postscript(file="./Figures/wageChangeDensityMthQtr.eps", width = 782, height = 569)
 ggplot(wageChangesLong, aes(value, fill = Rec)) +
         geom_density(alpha = 0.5) +
         facet_grid(. ~ variable) +
         xlim(c(-3.75, 3.75)) +
         ggtitle("Wage change distribution by aggregation") +
         labs(fill = "Business cycle")
+dev.off()
+
+#box plot of the same thing
+wageChangesLong <- subset(wageChangesLong,wageChangesLong$variable=="Monthly")
+postscript(file="./Figures/wageChangeBoxMth.eps", width = 782, height = 569)
+ggplot(wageChangesLong, aes(y = value, x = Rec)) +
+  geom_boxplot() +
+  guides(fill=F) +
+  stat_summary(fun.y=mean, geom="point", shape=5, size=4) +
+  ggtitle("Wage change distribution by aggregation") +
+  labs(fill = "Business cycle")
 dev.off()
 
 # # subset for recessions and expansions

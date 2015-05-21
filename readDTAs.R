@@ -7,7 +7,7 @@ library(dplyr)
 
 # specify which variables to keep from CEPR sets A, B, and D
 keepVars <- c("age", "educ", "female", "id", "race", "month", 
-              "wpfinwgt", "year", "earnm", "occ", "job", "esr",
+              "wpfinwgt", "year", "earnm", "wage","occ", "job", "esr",
               "occ14", "ind23")
 
 # input: full path to dta file with merged CEPR sets A, B, and D
