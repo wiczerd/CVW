@@ -15,6 +15,10 @@ library(reshape2)
 
 setwd("~/workspace/CVW/R")
 
+# Use 1 digit occupations from CEPR? (soc2d)
+useSoc2d <- TRUE
+
+
 # Read unemployment data
 haver <- read.xlsx("./Data/unrate.xlsx", sheetName = "data", 
                    startRow = 2, colIndex = 2:4)
@@ -25,7 +29,7 @@ haver <- haver %>%
                date = as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")) %>%
         select(-year, -month)
 
-toKeep <- c("wpfinwgt", "switchedOcc", "EE", "UE", "switched2d", 
+toKeep <- c("wpfinwgt", "switchedOcc", "EE", "UE",  
             "residWageChange", "residWageChange_wU", "lfStat", "date",
             "residWageChange_q", "residWageChange_q_wU")
 
@@ -34,24 +38,45 @@ detach("package:xlsxjars")
 detach("package:rJava")
 
 # Load data --------------------------------------------------------------
-analytic96 <- readRDS("./Data/analytic96.RData")
+if(useSoc2d) {
+	analytic96 <- readRDS("./Data/analytic96soc2d.RData")
+} else {
+	analytic96 <- readRDS("./Data/analytic96.RData")
+}
+
 wageChanges <- analytic96 %>%
         select(one_of(toKeep))
 rm(analytic96)
 
-analytic01 <- readRDS("./Data/analytic01.RData")
+if(useSoc2d) {
+	analytic01 <- readRDS("./Data/analytic01soc2d.RData")
+} else {
+	analytic01 <- readRDS("./Data/analytic01.RData")
+}
+
 wageChanges <- analytic01 %>%
         select(one_of(toKeep)) %>%
         bind_rows(wageChanges)
 rm(analytic01)
 
-analytic04 <- readRDS("./Data/analytic04.RData")
+
+if(useSoc2d) {
+	analytic04 <- readRDS("./Data/analytic04soc2d.RData")
+} else {
+	analytic04 <- readRDS("./Data/analytic04.RData")
+}
+
 wageChanges <- analytic04 %>%
         select(one_of(toKeep)) %>%
         bind_rows(wageChanges)
 rm(analytic04)
 
-analytic08 <- readRDS("./Data/analytic08.RData")
+
+if(useSoc2d) {
+	analytic08 <- readRDS("./Data/analytic08soc2d.RData")
+} else {
+	analytic08 <- readRDS("./Data/analytic08.RData")
+}
 wageChanges <- analytic08 %>%
         select(one_of(toKeep)) %>%
         bind_rows(wageChanges)
@@ -60,6 +85,7 @@ rm(analytic08)
 #merge in unemployment
 wageChanges <- left_join(wageChanges,haver, by="date")
 
+# throw out infinity
 
 # store full set
 saveRDS(wageChanges, "./Data/wageChanges.RData")
@@ -72,6 +98,11 @@ wageChanges <- wageChanges %>%
         filter(!(is.nan(residWageChange) & is.nan(residWageChange_wU) ) )
 
 # Summary statistics --------------------------------------------------------------
+
+
+wageChangesQrtile <-with(wageChanges, wtd.quantile(residWageChange[EE | UE], wpfinwgt[EE | UE], na.rm = TRUE,probs=c(.25,.5,.75) ) )
+with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & residWageChange>wageChangesQrtile[3]], 
+						   wpfinwgt[(EE | UE) & residWageChange>wageChangesQrtile[3]], na.rm = TRUE))
 
 # Mean wage changes
 with(wageChanges, wtd.mean(residWageChange[switchedOcc & (EE | UE)], 
@@ -91,11 +122,11 @@ with(wageChanges, sqrt(wtd.var(residWageChange[switchedOcc & UE],
 
 # Median of wage changes
 with(wageChanges, wtd.quantile(residWageChange[switchedOcc & (EE | UE)], 
-                               wpfinwgt[switchedOcc & (EE | UE)], probs = .5))
+                               wpfinwgt[switchedOcc & (EE | UE)], probs = c(.1,.25,.5,0.75,0.9 ) ) )
 with(wageChanges, wtd.quantile(residWageChange[switchedOcc & EE], 
-                               wpfinwgt[switchedOcc & EE], probs = .5))
+                               wpfinwgt[switchedOcc & EE], probs = c(.1,.25,.5,0.75,0.9 ) ))
 with(wageChanges, wtd.quantile(residWageChange[switchedOcc & UE], 
-                               wpfinwgt[switchedOcc & UE], probs = .5))
+                               wpfinwgt[switchedOcc & UE], probs = c(.1,.25,.5,0.75,0.9 ) ))
 
 # Fraction of workers with positive and negative wage changes
 # explicitly calculate negative
@@ -154,6 +185,27 @@ wageChanges <- readRDS( "./Data/wageChanges.RData")
 rec_dates   <- as.Date(c("2001-03-01", "2001-11-01","2007-12-01", "2009-06-01"))
 wageChanges$Rec <- ((wageChanges$date>rec_dates[1] & wageChanges$date<rec_dates[2] ) | 
                             (wageChanges$date>rec_dates[3] & wageChanges$date<rec_dates[4] ))
+# exclude outliers
+resChangeOutlier_rec <- quantile(wageChanges$residWageChange_wU[wageChanges$Rec == 1],probs=c(0.025,0.975),na.rm=T)
+resChangeOutlier_exp <- quantile(wageChanges$residWageChange_wU[wageChanges$Rec == 0],probs=c(0.025,0.975),na.rm=T)
+#wageChanges$Out <- (wageChanges$residWageChange_wU<resChangeOutlier[1] |
+#						wageChanges$residWageChange_wU>resChangeOutlier[2] |
+#						is.na(wageChanges$residWageChange_wU) )
+wageChanges$Out <- (  (wageChanges$residWageChange_wU<resChangeOutlier_rec[1] |
+					   	wageChanges$residWageChange_wU>resChangeOutlier_rec[2]) 
+					  & wageChanges$Rec == 1 ) ||
+	(  (wageChanges$residWageChange_wU<resChangeOutlier_exp[1] |
+			wageChanges$residWageChange_wU>resChangeOutlier_exp[2]) 
+			& wageChanges$Rec == 0 )
+resChangeOutlier_q_rec <- quantile(wageChanges$residWageChange_q_wU[wageChanges$Rec == 1],probs=c(0.025,0.975),na.rm=T)
+resChangeOutlier_q_exp <- quantile(wageChanges$residWageChange_q_wU[wageChanges$Rec == 0],probs=c(0.025,0.975),na.rm=T)
+wageChanges$Out_q <- (  (wageChanges$residWageChange_q_wU<resChangeOutlier_q_rec[1] |
+					   	wageChanges$residWageChange_q_wU>resChangeOutlier_q_rec[2]) 
+					  & wageChanges$Rec == 1 ) ||
+	(  (wageChanges$residWageChange_q_wU<resChangeOutlier_q_exp[1] |
+			wageChanges$residWageChange_q_wU>resChangeOutlier_q_exp[2]) 
+			& wageChanges$Rec == 0 ) 
+
 
 wageChangesLong <- melt(wageChanges, id.vars = c("id", "date", "Rec"),
                         measure.vars = c("residWageChange_wU", "residWageChange_q_wU"))
@@ -165,17 +217,17 @@ levels(wageChangesLong$Rec) <- c("Expansion", "Recession")
 levels(wageChangesLong$variable) <- c("Monthly", "Quarterly")
 
 # exp/rec panes
-postscript(file = "./Figures/wageChangeDensityRecExp.eps", width = 782, height = 569)
-ggplot(wageChangesLong, aes(value, fill = variable)) +
-        geom_density(alpha = 0.5) +
-        facet_grid(. ~ Rec) +
-        xlim(c(-3.75, 3.75)) +
-        ggtitle("Wage change distribution in expansion & recession") +
-        labs(fill = "Aggregation")
-dev.off()
+#postscript(file = "./Figures/wageChangeDensityRecExp.eps", width = 782, height = 569)
+#ggplot(wageChangesLong, aes(value, fill = variable)) +
+#        geom_density(alpha = 0.5) +
+#        facet_grid(. ~ Rec) +
+#        xlim(c(-3.75, 3.75)) +
+#        ggtitle("Wage change distribution in expansion & recession") +
+#        labs(fill = "Aggregation")
+#dev.off()
 
 # monthly/quarterly panes
-postscript(file="./Figures/wageChangeDensityMthQtr.eps", width = 782, height = 569)
+png(file="./Figures/wageChangeDensityMthQtr.png", width = 782, height = 569)
 ggplot(wageChangesLong, aes(value, fill = Rec)) +
         geom_density(alpha = 0.5) +
         facet_grid(. ~ variable) +
@@ -184,10 +236,27 @@ ggplot(wageChangesLong, aes(value, fill = Rec)) +
         labs(fill = "Business cycle")
 dev.off()
 
+# quarterly pane
+png(file="./Figures/wageChangeDensityQtr.png",onefile=FALSE, width = 782, height = 569)
+ggplot(subset(wageChangesLong,wageChangesLong$variable=="Quarterly"), aes(value, fill = Rec)) +
+	geom_density(alpha = 0.5) +
+	xlim(c(-3.75, 3.75)) +
+	ggtitle("Wage change distribution by aggregation") +
+	labs(fill = "Business cycle")
+dev.off()
+
+# monthly pane
+png(file="./Figures/wageChangeDensityMth.png", width = 782, height = 569)
+ggplot( subset(wageChangesLong,wageChangesLong$variable=="Monthly"), aes(value, fill = Rec)) +
+	geom_density(alpha = 0.5) +
+	xlim(c(-3.75, 3.75)) +
+	ggtitle("Wage change distribution by aggregation") +
+	labs(fill = "Business cycle")
+dev.off()
+
 #box plot of the same thing
-wageChangesLong <- subset(wageChangesLong,wageChangesLong$variable=="Monthly")
-postscript(file="./Figures/wageChangeBoxMth.eps", width = 782, height = 569)
-ggplot(wageChangesLong, aes(y = value, x = Rec)) +
+png(file="./Figures/wageChangeBoxQtr.png", width = 782, height = 569)
+ggplot( subset(wageChangesLong,wageChangesLong$variable=="Quarterly"), aes(y = value, x = Rec)) +
   geom_boxplot() +
   guides(fill=F) +
   stat_summary(fun.y=mean, geom="point", shape=5, size=4) +

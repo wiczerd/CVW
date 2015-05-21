@@ -24,7 +24,7 @@ calculateResiduals <- function(df, const = 0) {
         # group data by year
         df <- group_by(df, year)
         # regression within each year
-         model <- lm(logWage ~ experience + I(experience^2) + factor(educ) + 
+         model <- lm(logEarnm ~ experience + I(experience^2) + factor(educ) + 
                              female + black + hispanic + factor(soc2d), data = df,
                      na.action = na.exclude, weights = wpfinwgt)
         # calculate residuals
@@ -53,9 +53,9 @@ genRegressors <- function(df) {
   # import PCE data
   df <- left_join(df,PCE, by="date")
   result <- df %>%
-    mutate(wage = wage/PCE*100) %>%
+    mutate(wage = wage/PCEPI*100) %>%
     mutate(logWage = log(wage)) %>%
-    mutate(earnm = earnm/PCE*100) %>%
+    mutate(earnm = earnm/PCEPI*100) %>%
     mutate(logEarnm = log(earnm)) %>%
     mutate(yearsSchool = as.integer(ifelse(educ == 1, 9, NA)),
            yearsSchool = as.integer(ifelse(educ == 2, 12, yearsSchool)),
@@ -85,17 +85,17 @@ if(useSoc2d) {
 analytic96 <- genRegressors(processed96)
 
 # Find average log wage for 1996 panel
-avg1996 <- weighted.mean(analytic96$logWage, analytic96$wpfinwgt, na.rm = TRUE)
+avg1996 <- weighted.mean(analytic96$logEarnm, analytic96$wpfinwgt, na.rm = TRUE)
 if(reg_resid){
   # Run regression within each year, remove regressors
   analytic96 <- calculateResiduals(analytic96, avg1996)
 }else{
-  analytic96 <- mutate(analytic96,resid = logWage)
+  analytic96 <- mutate(analytic96,resid = logEarnm)
 }
 
 analytic96 <- analytic96 %>%
         mutate(resid_lev = exp(resid)) %>%
-        mutate(resid_lev = ifelse(lfStat > 1 , 0. , resid_lev))
+        mutate(resid_lev = as.numeric(ifelse(lfStat > 1 , 0. , resid_lev)))
 
 # Create quarterly residual wage and quarterly lfStat
 analytic96 <- analytic96 %>%
@@ -141,12 +141,12 @@ if(reg_resid){
   # Run regression within each year, remove regressors
   analytic01 <- calculateResiduals(analytic01, avg1996)
 }else{
-  analytic01 <- mutate(analytic01,resid = logWage)
+  analytic01 <- mutate(analytic01,resid = logEarnm)
 }
 
 analytic01 <- analytic01 %>%
         mutate(resid_lev = exp(resid)) %>%
-        mutate(resid_lev = ifelse(lfStat > 1 , 0. , resid_lev))
+		mutate(resid_lev = as.numeric(ifelse(lfStat > 1 , 0. , resid_lev)))
 
 # Create quarterly residual wage and quarterly lfStat
 analytic01 <- analytic01 %>%
@@ -193,12 +193,12 @@ if(reg_resid){
   # Run regression within each year, remove regressors
   analytic04 <- calculateResiduals(analytic04, avg1996)
 }else{
-  analytic04 <- mutate(analytic04,resid = logWage)
+  analytic04 <- mutate(analytic04,resid = logEarnm)
 }
 
 analytic04 <- analytic04 %>%
         mutate(resid_lev = exp(resid)) %>%
-        mutate(resid_lev = ifelse(lfStat > 1 , 0. , resid_lev))
+		mutate(resid_lev = as.numeric(ifelse(lfStat > 1 , 0. , resid_lev)))
 
 # Create quarterly residual wage and quarterly lfStat
 analytic04 <- analytic04 %>%
@@ -244,12 +244,12 @@ if(reg_resid){
   # Run regression within each year, remove regressors
   analytic08 <- calculateResiduals(analytic08, avg1996)
 }else{
-  analytic08 <- mutate(analytic08,resid = logWage)
+  analytic08 <- mutate(analytic08,resid = logEarnm)
 }
 
 analytic08 <- analytic08 %>%
-        mutate(resid_lev = exp(resid)) %>%
-        mutate(resid_lev = ifelse(lfStat > 1 , 0. , resid_lev))
+		mutate(resid_lev = exp(resid)) %>%
+		mutate(resid_lev = as.numeric(ifelse(lfStat > 1 , 0. , resid_lev)))
 
 # Create quarterly residual wage and quarterly lfStat
 analytic08 <- analytic08 %>%
