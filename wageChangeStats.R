@@ -16,7 +16,7 @@ library(reshape2)
 setwd("~/workspace/CVW/R")
 
 # Use 1 digit occupations from CEPR? (soc2d)
-useSoc2d <- TRUE
+useSoc2d <- F
 
 
 # Read unemployment data
