@@ -17,7 +17,7 @@ setwd("~/workspace/CVW/R")
 
 # Use 1 digit occupations from CEPR? (soc2d)
 useSoc2d <- F
-
+useRegResid <- F
 
 # Read unemployment data
 haver <- read.xlsx("./Data/unrate.xlsx", sheetName = "data", 
@@ -38,20 +38,35 @@ detach("package:xlsxjars")
 detach("package:rJava")
 
 # Load data --------------------------------------------------------------
-if(useSoc2d) {
-	analytic96 <- readRDS("./Data/analytic96soc2d.RData")
-} else {
-	analytic96 <- readRDS("./Data/analytic96.RData")
+
+if(useSoc2d & useRegResid) {
+	analytic96 <- readRDS( "./Data/analytic96soc2dResid.RData")
+} else if(useSoc2d & !useRegResid){
+	analytic96 <- readRDS("./Data/analytic96soc2dRaw.RData")   
+} else if(!useSoc2d & useRegResid){
+	analytic96 <- readRDS("./Data/analytic96Resid.RData")   
+} else if(!useSoc2d & !useRegResid){
+	analytic96 <- readRDS("./Data/analytic96Raw.RData")   
+} else{
+	analytic96 <- readRDS("./Data/analytic96.RData")   
 }
+
 
 wageChanges <- analytic96 %>%
         select(one_of(toKeep))
 rm(analytic96)
 
-if(useSoc2d) {
-	analytic01 <- readRDS("./Data/analytic01soc2d.RData")
-} else {
-	analytic01 <- readRDS("./Data/analytic01.RData")
+
+if(useSoc2d & useRegResid) {
+	analytic01 <- readRDS( "./Data/analytic01soc2dResid.RData")
+} else if(useSoc2d & !useRegResid){
+	analytic01 <- readRDS("./Data/analytic01soc2dRaw.RData")   
+} else if(!useSoc2d & useRegResid){
+	analytic01 <- readRDS("./Data/analytic01Resid.RData")   
+} else if(!useSoc2d & !useRegResid){
+	analytic01 <- readRDS("./Data/analytic01Raw.RData")   
+} else{
+	analytic01 <- readRDS("./Data/analytic01.RData")   
 }
 
 wageChanges <- analytic01 %>%
@@ -60,10 +75,16 @@ wageChanges <- analytic01 %>%
 rm(analytic01)
 
 
-if(useSoc2d) {
-	analytic04 <- readRDS("./Data/analytic04soc2d.RData")
-} else {
-	analytic04 <- readRDS("./Data/analytic04.RData")
+if(useSoc2d & useRegResid) {
+	analytic04 <- readRDS( "./Data/analytic04soc2dResid.RData")
+} else if(useSoc2d & !useRegResid){
+	analytic04 <- readRDS("./Data/analytic04soc2dRaw.RData")   
+} else if(!useSoc2d & useRegResid){
+	analytic04 <- readRDS("./Data/analytic04Resid.RData")   
+} else if(!useSoc2d & !useRegResid){
+	analytic04 <- readRDS("./Data/analytic04Raw.RData")   
+} else{
+	analytic04 <- readRDS("./Data/analytic04.RData")   
 }
 
 wageChanges <- analytic04 %>%
@@ -72,11 +93,18 @@ wageChanges <- analytic04 %>%
 rm(analytic04)
 
 
-if(useSoc2d) {
-	analytic08 <- readRDS("./Data/analytic08soc2d.RData")
-} else {
-	analytic08 <- readRDS("./Data/analytic08.RData")
+if(useSoc2d & useRegResid) {
+	analytic08 <- readRDS("./Data/analytic08soc2dResid.RData")
+} else if(useSoc2d & !useRegResid){
+	analytic08 <- readRDS("./Data/analytic08soc2dRaw.RData")   
+} else if(!useSoc2d & useRegResid){
+	analytic08 <- readRDS("./Data/analytic08Resid.RData")   
+} else if(!useSoc2d & !useRegResid){
+	analytic08 <- readRDS("./Data/analytic08Raw.RData")   
+} else{
+	analytic08 <- readRDS("./Data/analytic08.RData")   
 }
+
 wageChanges <- analytic08 %>%
         select(one_of(toKeep)) %>%
         bind_rows(wageChanges)

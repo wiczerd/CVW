@@ -5,11 +5,13 @@
 # 3) quantile regression of unemployment rate on switching rate
 # For more statistics, see summarizeData.R
 # Precondition: processData.R has been run.
+library(weights)
 library(dplyr)
 library(stats)
 library(ggplot2)
 library(xlsx)
 library(quantreg)
+
 
 setwd("~/workspace/CVW/R")
 
@@ -125,7 +127,12 @@ demoProbit08 <-  mutate(demoProbit08,swOccJob = switchedOcc & switchedJob & !is.
 demoProbit <- demoProbit08
 rm(demoProbit08)
 # save demo probit
-saveRDS(demoProbit, "./Data/demoProbit.RData")
+if(useSoc2d) {
+	saveRDS(demoProbit, "./Data/demoProbitSoc2d.RData")	
+}else{
+	saveRDS(demoProbit, "./Data/demoProbit.RData")	
+}
+
 rm(demoProbit)
 
 #Calculate probability of switching, add to prSwitching
@@ -150,10 +157,10 @@ rm(processed08)
 prSwitchingRaw <- prSwitching
 prSwitching <- prSwitching %>%
         group_by(panel) %>%
-        mutate(cutoffUE = quantile(prSwitchedOccUE, probs = .15, na.rm = TRUE),
-               prSwitchedOccUE = ifelse(prSwitchedOccUE < cutoffUE, 
+        mutate(cutoffUE = quantile(occUEObs, probs = .05, na.rm = TRUE),
+               prSwitchedOccUE = ifelse(occUEObs < cutoffUE, 
                                         NA, prSwitchedOccUE),
-               prSwitchedOcc = ifelse(prSwitchedOccUE < cutoffUE, 
+               prSwitchedOcc = ifelse(occUEObs < cutoffUE, 
                                         NA, prSwitchedOcc)) %>%
         select(-cutoffUE)
         
@@ -165,11 +172,16 @@ with(prSwitching, weighted.mean(prSwitchedOccUE, occUEObs, na.rm = TRUE))
 
 # Correlation
 prSwitchingAndUnemployment <- prSwitching %>%
-        select(date, starts_with("prSwitched"), panel) %>%
+        select(date, starts_with("prSwitched"),starts_with("occ"), panel) %>%
         left_join(haver)
-with(prSwitchingAndUnemployment, cor(prSwitchedOcc, unrateNSA, use = "complete.obs"))
-with(prSwitchingAndUnemployment, cor(prSwitchedOccEE, unrateNSA, use = "complete.obs"))
-with(prSwitchingAndUnemployment, cor(prSwitchedOccUE, unrateNSA, use = "complete.obs"))
+with(prSwitchingAndUnemployment, wtd.cors(prSwitchedOcc, unrateSA, weight=occObs )) 
+with(prSwitchingAndUnemployment, wtd.cors(prSwitchedOccEE, unrateSA, weight=occEEObs))
+with(prSwitchingAndUnemployment, wtd.cors(prSwitchedOccUE, unrateSA, weight=occUEObs))
+
+with(prSwitchingAndUnemployment, cor(prSwitchedOcc, unrateSA, , use = "complete.obs"))
+with(prSwitchingAndUnemployment, cor(prSwitchedOccEE, unrateSA, use = "complete.obs"))
+with(prSwitchingAndUnemployment, cor(prSwitchedOccUE, unrateSA, use = "complete.obs"))
+
 
 # Quantile regressions ----------------------------------------------------
 

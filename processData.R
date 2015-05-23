@@ -14,7 +14,7 @@ setwd("~/workspace/CVW/R")
 #setwd("G:/Research_Analyst/Eubanks/Occupation switching")
 
 # Use 1 digit occupations from CEPR? (soc2d)
-useSoc2d <- TRUE
+useSoc2d <- T
 
 # Read crosswalk files
 coc2000_to_occ1990 <- read.dta("./Crosswalks/coc2000_2_occ1990.dta")
@@ -27,9 +27,10 @@ occ1990_to_SOC2d <- read.dta("./Crosswalks/occ90_2_soc2d.dta", convert.underscor
 genLFStat <- function(df) {#
         result <- df %>%
                 # 1: employed
-                mutate(lfStat = ifelse(esr == 1 | esr == 2 | esr == 4, 1, 0)) %>%
+                #mutate(lfStat = ifelse(esr == 1 | esr == 2 | esr == 4 | esr == 3 | esr == 5, 1, 0)) %>%
+        		mutate(lfStat = ifelse(esr >= 1 & esr <= 5, 1, 0)) %>%
                 # 2: unemployed
-                mutate(lfStat = ifelse(esr == 3 | esr == 5 | esr == 6 | esr == 7, 2, lfStat)) %>%
+                mutate(lfStat = ifelse(esr == 6 | esr == 7, 2, lfStat)) %>%
                 # 3: NILF
                 mutate(lfStat = ifelse(esr == 8, 3, lfStat))
         return(result)
@@ -66,7 +67,8 @@ genFlowDummies <- function(df) {
                 group_by(id) %>%
                 arrange(date) %>%
                 mutate(switchedJob = job != lead(job)) %>%
-                mutate(switchedOcc = (occ != lead(occ))) %>%
+                mutate(switchedOcc = (occ != lead(occ)) & switchedJob &
+                	   	!is.na(occ) & !is.na(lead(occ)) ) %>%
                 mutate(EE = lfStat == 1 & lead(lfStat) == 1 & switchedJob &
                                !is.na(occ) & !is.na(lead(occ)) ) %>%
                 mutate(UE = lfStat == 2 & lead(lfStat) == 1 & switchedJob &

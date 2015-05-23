@@ -10,9 +10,9 @@ library(reshape2)
 
 setwd("~/workspace/CVW/R")
 
-reg_resid <-FALSE
+useRegResid <-FALSE
 # Use 1 digit occupations from CEPR? (soc2d)
-useSoc2d <- TRUE
+useSoc2d <- T
 
 # import PCE deflator
 PCE <- read.csv("./Data/PCE.csv")
@@ -86,7 +86,7 @@ analytic96 <- genRegressors(processed96)
 
 # Find average log wage for 1996 panel
 avg1996 <- weighted.mean(analytic96$logEarnm, analytic96$wpfinwgt, na.rm = TRUE)
-if(reg_resid){
+if(useRegResid){
   # Run regression within each year, remove regressors
   analytic96 <- calculateResiduals(analytic96, avg1996)
 }else{
@@ -119,10 +119,16 @@ analytic96 <- analytic96 %>%
         mutate(residWageChange_q_wU = as.numeric(ifelse(lfStat_q == 1 ,residWageChange_q , -1.)))
 
 # Save data, remove from environment
-if(useSoc2d) {
-        saveRDS(analytic96, "./Data/analytic96soc2d.RData")
+if(useSoc2d & useRegResid) {
+	saveRDS(analytic96, "./Data/analytic96soc2dResid.RData")
+} else if(useSoc2d & !useRegResid){
+	saveRDS(analytic96, "./Data/analytic96soc2dRaw.RData")   
+} else if(!useSoc2d & useRegResid){
+	saveRDS(analytic96, "./Data/analytic96Resid.RData")   
+} else if(!useSoc2d & !useRegResid){
+	saveRDS(analytic96, "./Data/analytic96Raw.RData")   
 } else{
-        saveRDS(analytic96, "./Data/analytic96.RData")   
+	saveRDS(analytic96, "./Data/analytic96.RData")   
 }
 rm(list = c("processed96", "analytic96"))
 
@@ -137,7 +143,7 @@ if(useSoc2d) {
 # Generate regressor variables
 analytic01 <- genRegressors(processed01)
 
-if(reg_resid){
+if(useRegResid){
   # Run regression within each year, remove regressors
   analytic01 <- calculateResiduals(analytic01, avg1996)
 }else{
@@ -170,10 +176,16 @@ analytic01 <- analytic01 %>%
         mutate(residWageChange_q_wU = as.numeric(ifelse(lfStat_q == 1 ,residWageChange_q , -1.)))
 
 # Save data, remove from environment
-if(useSoc2d) {
-        saveRDS(analytic01, "./Data/analytic01soc2d.RData")
+if(useSoc2d & useRegResid) {
+	saveRDS(analytic01, "./Data/analytic01soc2dResid.RData")
+} else if(useSoc2d & !useRegResid){
+	saveRDS(analytic01, "./Data/analytic01soc2dRaw.RData")   
+} else if(!useSoc2d & useRegResid){
+	saveRDS(analytic01, "./Data/analytic01Resid.RData")   
+} else if(!useSoc2d & !useRegResid){
+	saveRDS(analytic01, "./Data/analytic01Raw.RData")   
 } else{
-        saveRDS(analytic01, "./Data/analytic01.RData")   
+	saveRDS(analytic01, "./Data/analytic01.RData")   
 }
 rm(list = c("processed01", "analytic01"))
 
@@ -189,7 +201,7 @@ if(useSoc2d) {
 # Generate regressor variables
 analytic04 <- genRegressors(processed04)
 
-if(reg_resid){
+if(useRegResid){
   # Run regression within each year, remove regressors
   analytic04 <- calculateResiduals(analytic04, avg1996)
 }else{
@@ -222,10 +234,16 @@ analytic04 <- analytic04 %>%
         mutate(residWageChange_q_wU = as.numeric(ifelse(lfStat_q == 1 ,residWageChange_q , -1.)))
 
 # Save data, remove from environment
-if(useSoc2d) {
-        saveRDS(analytic04, "./Data/analytic04soc2d.RData")
+if(useSoc2d & useRegResid) {
+	saveRDS(analytic04, "./Data/analytic04soc2dResid.RData")
+} else if(useSoc2d & !useRegResid){
+	saveRDS(analytic04, "./Data/analytic04soc2dRaw.RData")   
+} else if(!useSoc2d & useRegResid){
+	saveRDS(analytic04, "./Data/analytic04Resid.RData")   
+} else if(!useSoc2d & !useRegResid){
+	saveRDS(analytic04, "./Data/analytic04Raw.RData")   
 } else{
-        saveRDS(analytic04, "./Data/analytic04.RData")   
+	saveRDS(analytic04, "./Data/analytic04.RData")   
 }
 rm(list = c("processed04", "analytic04"))
 
@@ -240,7 +258,7 @@ if(useSoc2d) {
 # Generate regressor variables
 analytic08 <- genRegressors(processed08)
 
-if(reg_resid){
+if(useRegResid){
   # Run regression within each year, remove regressors
   analytic08 <- calculateResiduals(analytic08, avg1996)
 }else{
@@ -273,8 +291,14 @@ analytic08 <- analytic08 %>%
         mutate(residWageChange_q_wU = as.numeric(ifelse(lfStat_q == 1 ,residWageChange_q , -1.)))
 
 # Save data, remove from environment
-if(useSoc2d) {
-        saveRDS(analytic08, "./Data/analytic08soc2d.RData")
+if(useSoc2d & useRegResid) {
+        saveRDS(analytic08, "./Data/analytic08soc2dResid.RData")
+} else if(useSoc2d & !useRegResid){
+		saveRDS(analytic08, "./Data/analytic08soc2dRaw.RData")   
+} else if(!useSoc2d & useRegResid){
+	saveRDS(analytic08, "./Data/analytic08Resid.RData")   
+} else if(!useSoc2d & !useRegResid){
+	saveRDS(analytic08, "./Data/analytic08Raw.RData")   
 } else{
         saveRDS(analytic08, "./Data/analytic08.RData")   
 }
