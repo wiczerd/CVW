@@ -16,7 +16,7 @@ library(reshape2)
 setwd("~/workspace/CVW/R")
 
 # Use 1 digit occupations from CEPR? (soc2d)
-useSoc2d <- F
+useSoc2d <- T
 useRegResid <- F
 
 # Read unemployment data
@@ -139,6 +139,21 @@ with(wageChanges, wtd.mean(residWageChange[switchedOcc & EE],
                            wpfinwgt[switchedOcc & EE], na.rm = TRUE))
 with(wageChanges, wtd.mean(residWageChange[switchedOcc & UE], 
                            wpfinwgt[switchedOcc & UE], na.rm = TRUE))
+# no change
+with(wageChanges, wtd.mean(residWageChange[!switchedOcc & (EE | UE)], 
+						   wpfinwgt[!switchedOcc & (EE | UE)], na.rm = TRUE))
+with(wageChanges, wtd.mean(residWageChange[!switchedOcc & EE], 
+						   wpfinwgt[!switchedOcc & EE], na.rm = TRUE))
+with(wageChanges, wtd.mean(residWageChange[!switchedOcc & UE], 
+						   wpfinwgt[!switchedOcc & UE], na.rm = TRUE))
+# tot
+with(wageChanges, wtd.mean(residWageChange[ (EE | UE)], 
+						   wpfinwgt[ (EE | UE)], na.rm = TRUE))
+with(wageChanges, wtd.mean(residWageChange[ EE], 
+						   wpfinwgt[ EE], na.rm = TRUE))
+with(wageChanges, wtd.mean(residWageChange[ UE], 
+						   wpfinwgt[ UE], na.rm = TRUE))
+
 
 # Standard deviation of wage changes
 with(wageChanges, sqrt(wtd.var(residWageChange[switchedOcc & (EE | UE)], 
@@ -150,11 +165,25 @@ with(wageChanges, sqrt(wtd.var(residWageChange[switchedOcc & UE],
 
 # Median of wage changes
 with(wageChanges, wtd.quantile(residWageChange[switchedOcc & (EE | UE)], 
-                               wpfinwgt[switchedOcc & (EE | UE)], probs = c(.1,.25,.5,0.75,0.9 ) ) )
+                               wpfinwgt[switchedOcc & (EE | UE)], probs = c(.25,.5,0.75 ) ) )
 with(wageChanges, wtd.quantile(residWageChange[switchedOcc & EE], 
-                               wpfinwgt[switchedOcc & EE], probs = c(.1,.25,.5,0.75,0.9 ) ))
+                               wpfinwgt[switchedOcc & EE], probs = c(.25,.5,0.75 ) ))
 with(wageChanges, wtd.quantile(residWageChange[switchedOcc & UE], 
-                               wpfinwgt[switchedOcc & UE], probs = c(.1,.25,.5,0.75,0.9 ) ))
+                               wpfinwgt[switchedOcc & UE], probs = c(.25,.5,0.75 ) ))
+#no switch
+with(wageChanges, wtd.quantile(residWageChange[switchedOcc & (EE | UE)], 
+							   wpfinwgt[switchedOcc & (EE | UE)], probs = c(.25,.5,0.75 ) ) )
+with(wageChanges, wtd.quantile(residWageChange[switchedOcc & EE], 
+							   wpfinwgt[switchedOcc & EE], probs = c(.25,.5,0.75 ) ))
+with(wageChanges, wtd.quantile(residWageChange[switchedOcc & UE], 
+							   wpfinwgt[switchedOcc & UE], probs = c(.25,.5,0.75 ) ))
+#tot
+with(wageChanges, wtd.quantile(residWageChange[ (EE | UE)], 
+							   wpfinwgt[ (EE | UE)], probs = c(.25,.5,0.75 ) ) )
+with(wageChanges, wtd.quantile(residWageChange[ EE], 
+							   wpfinwgt[ EE], probs = c(.25,.5,0.75 ) ))
+with(wageChanges, wtd.quantile(residWageChange[ UE], 
+							   wpfinwgt[ UE], probs = c(.25,.5,0.75 ) ))
 
 # Fraction of workers with positive and negative wage changes
 # explicitly calculate negative
@@ -164,12 +193,21 @@ with(wageChanges, wtd.mean(posChange[switchedOcc & EE],
                            wpfinwgt[switchedOcc & EE], na.rm = TRUE)) 
 with(wageChanges, wtd.mean(posChange[switchedOcc & UE], 
                            wpfinwgt[switchedOcc & UE], na.rm = TRUE))
-with(wageChanges, wtd.mean(negChange[switchedOcc & (EE | UE)], 
-                           wpfinwgt[switchedOcc & (EE | UE)], na.rm = TRUE))
-with(wageChanges, wtd.mean(negChange[switchedOcc & EE], 
-                           wpfinwgt[switchedOcc & EE], na.rm = TRUE)) 
-with(wageChanges, wtd.mean(negChange[switchedOcc & UE], 
-                           wpfinwgt[switchedOcc & UE], na.rm = TRUE)) 
+#no swtich
+with(wageChanges, wtd.mean(posChange[!switchedOcc & (EE | UE)], 
+						   wpfinwgt[!switchedOcc & (EE | UE)], na.rm = TRUE))
+with(wageChanges, wtd.mean(posChange[!switchedOcc & EE], 
+						   wpfinwgt[!switchedOcc & EE], na.rm = TRUE)) 
+with(wageChanges, wtd.mean(posChange[!switchedOcc & UE], 
+						   wpfinwgt[!switchedOcc & UE], na.rm = TRUE))
+#tot
+with(wageChanges, wtd.mean(posChange[(EE | UE)], 
+						   wpfinwgt[(EE | UE)], na.rm = TRUE))
+with(wageChanges, wtd.mean(posChange[ EE], 
+						   wpfinwgt[ EE], na.rm = TRUE)) 
+with(wageChanges, wtd.mean(posChange[ UE], 
+						   wpfinwgt[ UE], na.rm = TRUE))
+
 
 # Correlation
 dirWageChanges <- wageChanges %>%
@@ -181,6 +219,19 @@ dirWageChanges <- wageChanges %>%
                   pctPosUE = wtd.mean(posChange[switchedOcc & UE], 
                                       wpfinwgt[switchedOcc & UE], na.rm = TRUE),
                   unrateNSA = first(unrateNSA))
+
+with(dirWageChanges, cor(pctPos, unrateNSA, use = "complete.obs"))
+with(dirWageChanges, cor(pctPosEE, unrateNSA, use = "complete.obs"))
+with(dirWageChanges, cor(pctPosUE, unrateNSA, use = "complete.obs"))
+dirWageChanges <- wageChanges %>%
+	group_by(date) %>%
+	summarize(pctPos = wtd.mean(posChange[!switchedOcc & (EE | UE)], 
+								wpfinwgt[!switchedOcc & (EE | UE)], na.rm = TRUE),
+			  pctPosEE = wtd.mean(posChange[!switchedOcc & EE], 
+			  					wpfinwgt[!switchedOcc & EE], na.rm = TRUE),
+			  pctPosUE = wtd.mean(posChange[!switchedOcc & UE], 
+			  					wpfinwgt[!switchedOcc & UE], na.rm = TRUE),
+			  unrateNSA = first(unrateNSA))
 
 with(dirWageChanges, cor(pctPos, unrateNSA, use = "complete.obs"))
 with(dirWageChanges, cor(pctPosEE, unrateNSA, use = "complete.obs"))
