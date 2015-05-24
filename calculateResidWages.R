@@ -10,9 +10,9 @@ library(reshape2)
 
 setwd("~/workspace/CVW/R")
 
-useRegResid <-FALSE
+useRegResid <-T
 # Use 1 digit occupations from CEPR? (soc2d)
-useSoc2d <- T
+useSoc2d <- F
 
 # import PCE deflator
 PCE <- read.csv("./Data/PCE.csv")
@@ -66,6 +66,9 @@ genRegressors <- function(df) {
     mutate(black = (race == 2)) %>%
     mutate(hispanic = (race == 3)) %>%
     mutate(year = as.numeric(format(date, "%Y")))
+  if(useSoc2d){
+  	result <- mutate(result,soc2d = occ)
+  }
   return(result)
 }
 

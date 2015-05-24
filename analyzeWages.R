@@ -12,8 +12,8 @@ library(ggplot2)
 setwd("~/workspace/CVW/R")
 
 # Use 1 digit occupations from CEPR? (soc2d)
-useSoc2d <- F
-useRegResid <- F
+useSoc2d <- T
+useRegResid <- T
 
 # Function for weighted moving average
 # x, wts, and new.name are strings
@@ -56,7 +56,7 @@ incomePercentiles <- analytic96 %>%
         filter(!is.na(soc2d)) %>%
         group_by(soc2d) %>%
         do(calculateCumul(.)) %>%
-        select(wpfinwgt, switchedOcc, percentile, EE, UE, date)
+        select(wpfinwgt, switchedOcc,switchedJob, percentile, EE, UE, date)
 
 # Calculate mean residual income changes by labor force flow
 incomeChanges <- analytic96 %>%
@@ -99,7 +99,7 @@ incomePercentiles <- analytic01 %>%
         filter(!is.na(soc2d)) %>%
         group_by(soc2d) %>%
         do(calculateCumul(.)) %>%
-        select(wpfinwgt, switchedOcc, percentile, EE, UE, date) %>%
+        select(wpfinwgt, switchedOcc,switchedJob, percentile, EE, UE, date) %>%
         bind_rows(incomePercentiles)
 
 # Calculate mean residual income changes by labor force flow, append
@@ -143,7 +143,7 @@ incomePercentiles <- analytic04 %>%
         filter(!is.na(soc2d)) %>%
         group_by(soc2d) %>%
         do(calculateCumul(.)) %>%
-        select(wpfinwgt, switchedOcc, percentile, EE, UE, date) %>%
+        select(wpfinwgt, switchedOcc,switchedJob, percentile, EE, UE, date) %>%
         bind_rows(incomePercentiles)
 
 # Calculate mean residual income changes by labor force flow, append
@@ -187,7 +187,7 @@ incomePercentiles <- analytic08 %>%
         filter(!is.na(soc2d)) %>%
         group_by(soc2d) %>%
         do(calculateCumul(.)) %>%
-        select(wpfinwgt, switchedOcc, percentile, EE, UE, date) %>%
+        select(wpfinwgt, switchedOcc,switchedJob, percentile, EE, UE, date) %>%
         bind_rows(incomePercentiles)
 
 # Calculate mean residual income changes by labor force flow, append
@@ -223,9 +223,10 @@ incomePercentiles$Rec <- ((incomePercentiles$date>rec_dates[1] & incomePercentil
 
 
 incomePercentiles <- incomePercentiles %>%
-        filter(!is.na(percentile)) %>%
-        group_by(percentile, Rec) %>%
-        summarize(prSwitching = weighted.mean(switchedOcc & (UE | EE), wpfinwgt, na.rm = TRUE))
+	filter(!is.na(percentile)) %>%
+	group_by(percentile, Rec) %>%
+	summarize(prSwitching = weighted.mean(switchedOcc & (UE | EE), wpfinwgt, na.rm = TRUE) /
+			  	weighted.mean( (UE | EE), wpfinwgt, na.rm = TRUE) )
 
 incomeChanges <- incomeChanges %>%
         # why are there NaNs?
@@ -244,7 +245,7 @@ ggplot(incomePercentiles, aes(percentile, prSwitching)) + geom_point() + geom_li
 dev.off()
 
 postscript("prSwitchingByIncomeRec.eps", width = 782, height = 569)
-ggplot(incomePercentiles, aes(percentile, prSwitching, color = Rec)) + 
+ggplot(incomePercentiles, aes(percentile, proSwitching, color = Rec)) + 
 	geom_point() + geom_line() +
 	ggtitle("P(Switching) by Income Percentile") + 
 	ylab("P(Switching)") + xlab("Income percentile within occupation")

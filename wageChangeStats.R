@@ -16,8 +16,8 @@ library(reshape2)
 setwd("~/workspace/CVW/R")
 
 # Use 1 digit occupations from CEPR? (soc2d)
-useSoc2d <- T
-useRegResid <- F
+useSoc2d <- F
+useRegResid <- T
 
 # Read unemployment data
 haver <- read.xlsx("./Data/unrate.xlsx", sheetName = "data", 
@@ -113,17 +113,29 @@ rm(analytic08)
 #merge in unemployment
 wageChanges <- left_join(wageChanges,haver, by="date")
 
-# throw out infinity
+# throw out infinity and missing values
+wageChanges <- wageChanges %>%
+	# drop the ones with no wage change (i.e missing values)
+	filter(!is.infinite(residWageChange) & !is.na(residWageChange_wU) & !is.nan(residWageChange_wU) )
+
 
 # store full set
-saveRDS(wageChanges, "./Data/wageChanges.RData")
+if(useSoc2d & useRegResid) {
+	saveRDS(wageChanges,"./Data/wageChangesSoc2dResid.RData")
+} else if(useSoc2d & !useRegResid){
+	saveRDS(wageChanges,"./Data/wageChangesSoc2dRaw.RData")   
+} else if(!useSoc2d & useRegResid){
+	saveRDS(wageChanges,"./Data/wageChangesResid.RData")   
+} else if(!useSoc2d & !useRegResid){
+	saveRDS(wageChanges,"./Data/wageChangesRaw.RData")   
+} else{
+	saveRDS(wageChanges,"./Data/wageChanges.RData")   
+}
 
 # throw out all but job switches
 wageChanges <- wageChanges %>%
         mutate(posChange = (residWageChange > 0)) %>%
-        mutate(negChange = (residWageChange < 0)) %>%
-	# drop the ones with no wage change (i.e missing values)
-        filter(!(is.nan(residWageChange) & is.nan(residWageChange_wU) ) )
+        mutate(negChange = (residWageChange < 0))
 
 # Summary statistics --------------------------------------------------------------
 
@@ -171,12 +183,12 @@ with(wageChanges, wtd.quantile(residWageChange[switchedOcc & EE],
 with(wageChanges, wtd.quantile(residWageChange[switchedOcc & UE], 
                                wpfinwgt[switchedOcc & UE], probs = c(.25,.5,0.75 ) ))
 #no switch
-with(wageChanges, wtd.quantile(residWageChange[switchedOcc & (EE | UE)], 
-							   wpfinwgt[switchedOcc & (EE | UE)], probs = c(.25,.5,0.75 ) ) )
-with(wageChanges, wtd.quantile(residWageChange[switchedOcc & EE], 
-							   wpfinwgt[switchedOcc & EE], probs = c(.25,.5,0.75 ) ))
-with(wageChanges, wtd.quantile(residWageChange[switchedOcc & UE], 
-							   wpfinwgt[switchedOcc & UE], probs = c(.25,.5,0.75 ) ))
+with(wageChanges, wtd.quantile(residWageChange[!switchedOcc & (EE | UE)], 
+							   wpfinwgt[!switchedOcc & (EE | UE)], probs = c(.25,.5,0.75 ) ) )
+with(wageChanges, wtd.quantile(residWageChange[!switchedOcc & EE], 
+							   wpfinwgt[!switchedOcc & EE], probs = c(.25,.5,0.75 ) ))
+with(wageChanges, wtd.quantile(residWageChange[!switchedOcc & UE], 
+							   wpfinwgt[!switchedOcc & UE], probs = c(.25,.5,0.75 ) ))
 #tot
 with(wageChanges, wtd.quantile(residWageChange[ (EE | UE)], 
 							   wpfinwgt[ (EE | UE)], probs = c(.25,.5,0.75 ) ) )
@@ -204,7 +216,7 @@ with(wageChanges, wtd.mean(posChange[!switchedOcc & UE],
 with(wageChanges, wtd.mean(posChange[(EE | UE)], 
 						   wpfinwgt[(EE | UE)], na.rm = TRUE))
 with(wageChanges, wtd.mean(posChange[ EE], 
-						   wpfinwgt[ EE], na.rm = TRUE)) 
+						   wpfinwgt[ EE], na.rm = TRUE))
 with(wageChanges, wtd.mean(posChange[ UE], 
 						   wpfinwgt[ UE], na.rm = TRUE))
 
@@ -239,18 +251,37 @@ with(dirWageChanges, cor(pctPosUE, unrateNSA, use = "complete.obs"))
 
 
 # Quantile regressions ----------------------------------------------------
-wageChanges <- readRDS( "./Data/wageChanges.RData")
+
+if(useSoc2d & useRegResid) {
+	wageChanges<-readRDS("./Data/wageChangesSoc2dResid.RData")
+} else if(useSoc2d & !useRegResid){
+	wageChanges<-readRDS("./Data/wageChangesSoc2dRaw.RData")   
+} else if(!useSoc2d & useRegResid){
+	wageChanges<-readRDS("./Data/wageChangesResid.RData")   
+} else if(!useSoc2d & !useRegResid){
+	wageChanges<-readRDS("./Data/wageChangesRaw.RData")   
+} else{
+	wageChanges<-readRDS("./Data/wageChanges.RData")   
+}
 
 wageChangesEE <- subset(wageChanges, EE)
+wageOLSEE.nSu <- lm(residWageChange ~ switchedOcc + unrateSA, weights= wpfinwgt, data = wageChangesEE)
 wageRegEE.nSu <- rq(residWageChange ~ switchedOcc + unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesEE)
-EEqr.nSu <-summary(wageRegEE.nSu)
+wageOLSEE.wSu <- lm(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA, weights= wpfinwgt, data = wageChangesEE)
 wageRegEE.wSu <- rq(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesEE)
+EEols.nSu<-summary(wageOLSEE.nSu)
+EEols.wSu<-summary(wageOLSEE.wSu)
+EEqr.nSu <-summary(wageRegEE.nSu)
 EEqr.wSu <-summary(wageRegEE.wSu)
 
 wageChangesUE <- subset(wageChanges, UE)
+wageOLSUE.nSu <- lm(residWageChange ~ switchedOcc + unrateSA, weights= wpfinwgt, data = wageChangesUE)
 wageRegUE.nSu <- rq(residWageChange ~ switchedOcc + unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesUE)
-UEqr.nSu <-summary(wageRegUE.nSu)
+wageOLSUE.wSu <- lm(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA, weights= wpfinwgt, data = wageChangesUE)
 wageRegUE.wSu <- rq(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesUE)
+UEols.nSu <-summary(wageOLSUE.nSu)
+UEols.wSu <-summary(wageOLSUE.wSu)
+UEqr.nSu <-summary(wageRegUE.nSu)
 UEqr.wSu <-summary(wageRegUE.wSu)
 
 rm(wageChangesUE)
@@ -258,7 +289,18 @@ rm(wageChangesEE)
 
 
 # Wage change distributions ---------------------------------------------
-wageChanges <- readRDS( "./Data/wageChanges.RData")
+
+if(useSoc2d & useRegResid) {
+	wageChanges<-readRDS("./Data/wageChangesSoc2dResid.RData")
+} else if(useSoc2d & !useRegResid){
+	wageChanges<-readRDS("./Data/wageChangesSoc2dRaw.RData")   
+} else if(!useSoc2d & useRegResid){
+	wageChanges<-readRDS("./Data/wageChangesResid.RData")   
+} else if(!useSoc2d & !useRegResid){
+	wageChanges<-readRDS("./Data/wageChangesRaw.RData")   
+} else{
+	wageChanges<-readRDS("./Data/wageChanges.RData")   
+}
 
 # recession dates
 rec_dates   <- as.Date(c("2001-03-01", "2001-11-01","2007-12-01", "2009-06-01"))
@@ -374,23 +416,44 @@ title("Wage change distribution, excluding unemployment")
 # Machado - Mata Decomposition ----------------------------------------
 
 # do the regressions I'll use
+wageChanges <- subset(wageChanges, !wageChanges$Out)
 wageChangesRec <- subset(wageChanges,wageChanges$Rec & (UE | EE))
-outliers_rec <- quantile(wageChangesRec$residWageChange,probs=c(0.01,0.99),na.rm=T)
-wageChangesRec <- subset(wageChangesRec, !is.na(wageChangesRec$residWageChange)
-						 & wageChangesRec$residWageChange > outliers_rec[1] 
-						 & wageChangesRec$residWageChange < outliers_rec[2] )
 wageChangesExp <- subset(wageChanges,!wageChanges$Rec  & (UE | EE))
-outliers_exp <- quantile(wageChangesExp$residWageChange,probs=c(0.01,0.99),na.rm=T)
-wageChangesExp <- subset(wageChangesExp, !is.na(wageChangesExp$residWageChange)
-						 & wageChangesExp$residWageChange > outliers_exp[1] 
-						 & wageChangesExp$residWageChange < outliers_exp[2] )
 
 # these are the quantile regressions we will be decomposing:
-#mm_rq.expansion <- rq(residWageChange ~ switchedOcc,tau = c(0.25, .5, .75), weights= wpfinwgt,  data=wageChangesExp)
-#mm_rq.recession <- rq(residWageChange ~ switchedOcc,tau = c(0.25, .5, .75), weights= wpfinwgt,  data=wageChangesRec )
+qtl_delw <- seq(0.2, .8, .1)
+mm_rq.expansion <- rq(residWageChange ~ switchedOcc +UE,tau = qtl_delw, weights= wpfinwgt,  data=wageChangesExp)
+mm_rq.recession <- rq(residWageChange ~ switchedOcc +UE,tau = qtl_delw, weights= wpfinwgt,  data=wageChangesRec )
+mm_lm.expansion <- lm(residWageChange ~ switchedOcc +UE,weights= wpfinwgt,  data=wageChangesExp)
+mm_lm.recession <- lm(residWageChange ~ switchedOcc +UE,weights= wpfinwgt,  data=wageChangesRec)
 
-mm_bmat.exp <-qregbmat(residWageChange ~ switchedOcc, data=wageChangesExp, graphb = F)
-mm_bmat.rec <-qregbmat(residWageChange ~ switchedOcc, data=wageChangesRec, graphb = F)
-mm_wageChanges <- qregsim2(residWageChange ~ switchedOcc, ~ switchedOcc,wageChangesExp,wageChangesRec,
-						   mm_bmat.exp,mm_bmat.rec,timenames=c("Expansion","Recession"))
+
+mm_bmat.exp <-qregbmat(residWageChange ~ switchedOcc + UE , taumat=qtl_delw, data=wageChangesExp, graphb = F)
+mm_bmat.rec <-qregbmat(residWageChange ~ switchedOcc + UE , taumat=qtl_delw, data=wageChangesRec, graphb = F)
+
+#use weighted regression? i.e:
+#mm_bmat.exp <- t(mm_rq.expansion$coefficients)
+#mm_bmat.rec <- t(mm_rq.recession$coefficients)
+for(ki in 1:ncol(mm_bmat.exp)){
+	for(ti in 1:nrow(mm_bmat.exp)){
+		mm_bmat.exp[ti,ki] = mm_rq.expansion$coefficients[ki,ti]
+		mm_bmat.rec[ti,ki] = mm_rq.recession$coefficients[ki,ti]
+	}
+}
+qr_coefs <-data.frame(qtl_delw,mm_bmat.exp,mm_bmat.rec)
+gg <- ggplot( qr_coefs, aes(y = switchedOccTRUE, x = qtl_delw)) +
+	geom_line() + geom_point() 
+gg <- gg + geom_line( aes(y = switchedOccTRUE.1, x = qtl_delw)) +
+	ggtitle("Marginal Effect of Occupation Switching")
+ggsave("./Figures/qtl_swocc.png",width = 5, height = 5)
+
+gg <- ggplot( qr_coefs, aes(y = UETRUE, x = qtl_delw)) +
+	geom_line() + geom_point() 
+gg <- gg + geom_line( aes(y = UETRUE.1, x = qtl_delw)) +
+	ggtitle("Marginal Effect of EUE")
+ggsave("./Figures/qtl_eue.png",width = 5, height = 5)
+
+
+mm_wageChanges <- qregsim2(residWageChange ~ switchedOcc + UE , ~ switchedOcc + UE, wageChangesExp, wageChangesRec,
+						   mm_bmat.exp,mm_bmat.rec, timenames=c("Expansion","Recession"), nsim=5000)
 
