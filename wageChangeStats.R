@@ -11,13 +11,14 @@ library(ggplot2)
 library(xlsx)
 library(quantreg)
 library(McSpatial)
+library(oaxaca)
 library(reshape2)
 
 setwd("~/workspace/CVW/R")
 
 # Use 1 digit occupations from CEPR? (soc2d)
-useSoc2d <- F
-useRegResid <- T
+useSoc2d <- T
+useRegResid <- F
 
 # Read unemployment data
 haver <- read.xlsx("./Data/unrate.xlsx", sheetName = "data", 
@@ -140,9 +141,13 @@ wageChanges <- wageChanges %>%
 # Summary statistics --------------------------------------------------------------
 
 
-wageChangesQrtile <-with(wageChanges, wtd.quantile(residWageChange[EE | UE], wpfinwgt[EE | UE], na.rm = TRUE,probs=c(.25,.5,.75) ) )
+wageChangesQrtile <-with(wageChanges, wtd.quantile(residWageChange[EE | UE], wpfinwgt[EE | UE], na.rm = TRUE,probs=c(.25,.5,.75,.9) ) )
 with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & residWageChange>wageChangesQrtile[3]], 
 						   wpfinwgt[(EE | UE) & residWageChange>wageChangesQrtile[3]], na.rm = TRUE))
+with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & residWageChange>wageChangesQrtile[4]], 
+						   wpfinwgt[(EE | UE) & residWageChange>wageChangesQrtile[4]], na.rm = TRUE))
+
+
 
 # Mean wage changes
 with(wageChanges, wtd.mean(residWageChange[switchedOcc & (EE | UE)], 
@@ -263,12 +268,12 @@ if(useSoc2d & useRegResid) {
 } else{
 	wageChanges<-readRDS("./Data/wageChanges.RData")   
 }
-
+qtl_delw <- c(0.1, 0.25, .5, .75, 0.9)
 wageChangesEE <- subset(wageChanges, EE)
 wageOLSEE.nSu <- lm(residWageChange ~ switchedOcc + unrateSA, weights= wpfinwgt, data = wageChangesEE)
-wageRegEE.nSu <- rq(residWageChange ~ switchedOcc + unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesEE)
+wageRegEE.nSu <- rq(residWageChange ~ switchedOcc + unrateSA, tau =qtl_delw, weights= wpfinwgt, data = wageChangesEE)
 wageOLSEE.wSu <- lm(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA, weights= wpfinwgt, data = wageChangesEE)
-wageRegEE.wSu <- rq(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesEE)
+wageRegEE.wSu <- rq(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA, tau = qtl_delw, weights= wpfinwgt, data = wageChangesEE)
 EEols.nSu<-summary(wageOLSEE.nSu)
 EEols.wSu<-summary(wageOLSEE.wSu)
 EEqr.nSu <-summary(wageRegEE.nSu)
@@ -276,9 +281,9 @@ EEqr.wSu <-summary(wageRegEE.wSu)
 
 wageChangesUE <- subset(wageChanges, UE)
 wageOLSUE.nSu <- lm(residWageChange ~ switchedOcc + unrateSA, weights= wpfinwgt, data = wageChangesUE)
-wageRegUE.nSu <- rq(residWageChange ~ switchedOcc + unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesUE)
+wageRegUE.nSu <- rq(residWageChange ~ switchedOcc + unrateSA, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUE)
 wageOLSUE.wSu <- lm(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA, weights= wpfinwgt, data = wageChangesUE)
-wageRegUE.wSu <- rq(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA, tau = c(0.1, 0.25, .5, .75, 0.9), weights= wpfinwgt, data = wageChangesUE)
+wageRegUE.wSu <- rq(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUE)
 UEols.nSu <-summary(wageOLSUE.nSu)
 UEols.wSu <-summary(wageOLSUE.wSu)
 UEqr.nSu <-summary(wageRegUE.nSu)
@@ -287,6 +292,24 @@ UEqr.wSu <-summary(wageRegUE.wSu)
 rm(wageChangesUE)
 rm(wageChangesEE)
 
+coef_wSu <- cbind(t(wageRegEE.wSu$coefficients),t(wageRegUE.wSu$coefficients))
+coef_wSu <- rbind(cbind(t(wageOLSEE.wSu$coefficients),t(wageOLSUE.wSu$coefficients)), coef_wSu )
+
+qr_nSu <-data.frame(qtl_delw,t(wageRegEE.nSu$coefficients),t(wageRegUE.nSu$coefficients))
+ggA <- ggplot( qr_nSu, aes(y = switchedOccTRUE, x = qtl_delw)) +
+	geom_line(size = 2, colour = "#66CC99") + geom_hline(aes(yintercept=wageOLSEE.nSu$coefficients[2]), colour = "#66CC99" , size = 2)
+ggA <- ggA + geom_line( aes(y = switchedOccTRUE.1, x = qtl_delw), colour = "#9999CC", size = 2) +
+	geom_hline(aes(yintercept=wageOLSUE.nSu$coefficients[2]), size = 2, colour="#9999CC") +
+	labs(list(x="Quantile", y="Wage Change Effect", title="Effect of Occupation Switching"))
+ggsave("./Figures/qtl_sw_nSu.png",width = 5, height = 5)
+
+
+ggB <- ggplot( qr_nSu, aes(y = unrateSA, x = qtl_delw)) +
+	geom_line(size = 2, colour = "#66CC99") + geom_hline(aes(yintercept=wageOLSEE.nSu$coefficients[3]), size = 2, colour = "#66CC99" )
+ggB <- ggB + geom_line( aes(y = unrateSA.1, x = qtl_delw), colour = "#9999CC", size = 2) +
+	geom_hline(aes(yintercept=wageOLSUE.nSu$coefficients[3]), colour="#9999CC", size = 2) +
+	labs(list(x="Quantile", y="Wage Change Effect", title="Effect of Unemployment Rate"))
+ggsave("./Figures/qtl_u_nSu.png",width = 5, height = 5)
 
 # Wage change distributions ---------------------------------------------
 
@@ -303,7 +326,7 @@ if(useSoc2d & useRegResid) {
 }
 
 # recession dates
-rec_dates   <- as.Date(c("2001-03-01", "2001-11-01","2007-12-01", "2009-06-01"))
+rec_dates   <- as.Date(c("2001-03-01", "2001-11-01","2007-12-01", "2009-06-01")) #as.Date(c("2001-03-01", "2001-11-01","2007-12-01", "2010-06-01")) 
 wageChanges$Rec <- ((wageChanges$date>rec_dates[1] & wageChanges$date<rec_dates[2] ) | 
                             (wageChanges$date>rec_dates[3] & wageChanges$date<rec_dates[4] ))
 # exclude outliers
@@ -314,21 +337,22 @@ resChangeOutlier_exp <- quantile(wageChanges$residWageChange_wU[wageChanges$Rec 
 #						is.na(wageChanges$residWageChange_wU) )
 wageChanges$Out <- (  (wageChanges$residWageChange_wU<resChangeOutlier_rec[1] |
 					   	wageChanges$residWageChange_wU>resChangeOutlier_rec[2]) 
-					  & wageChanges$Rec == 1 ) ||
+					  & wageChanges$Rec == 1 ) |
 	(  (wageChanges$residWageChange_wU<resChangeOutlier_exp[1] |
 			wageChanges$residWageChange_wU>resChangeOutlier_exp[2]) 
 			& wageChanges$Rec == 0 )
 resChangeOutlier_q_rec <- quantile(wageChanges$residWageChange_q_wU[wageChanges$Rec == 1],probs=c(0.025,0.975),na.rm=T)
 resChangeOutlier_q_exp <- quantile(wageChanges$residWageChange_q_wU[wageChanges$Rec == 0],probs=c(0.025,0.975),na.rm=T)
 wageChanges$Out_q <- (  (wageChanges$residWageChange_q_wU<resChangeOutlier_q_rec[1] |
-					   	wageChanges$residWageChange_q_wU>resChangeOutlier_q_rec[2]) 
-					  & wageChanges$Rec == 1 ) ||
+						 	wageChanges$residWageChange_q_wU>resChangeOutlier_q_rec[2]) 
+						& wageChanges$Rec == 1 ) |
 	(  (wageChanges$residWageChange_q_wU<resChangeOutlier_q_exp[1] |
 			wageChanges$residWageChange_q_wU>resChangeOutlier_q_exp[2]) 
-			& wageChanges$Rec == 0 ) 
+			& wageChanges$Rec == 0 )
+wageChanges_In <- subset(wageChanges,!wageChanges$Out | is.na(!wageChanges$Out))
 
 
-wageChangesLong <- melt(wageChanges, id.vars = c("id", "date", "Rec"),
+wageChangesLong <- melt(wageChanges_In, id.vars = c("id", "date", "Rec"),
                         measure.vars = c("residWageChange_wU", "residWageChange_q_wU"))
 wageChangesLong <- subset(wageChangesLong, !is.na(Rec))
 
@@ -362,7 +386,7 @@ png(file="./Figures/wageChangeDensityQtr.png",onefile=FALSE, width = 782, height
 ggplot(subset(wageChangesLong,wageChangesLong$variable=="Quarterly"), aes(value, fill = Rec)) +
 	geom_density(alpha = 0.5) +
 	xlim(c(-3.75, 3.75)) +
-	ggtitle("Wage change distribution by aggregation") +
+	ggtitle("Wage change distribution, Quarterly") +
 	labs(fill = "Business cycle")
 dev.off()
 
@@ -370,8 +394,8 @@ dev.off()
 png(file="./Figures/wageChangeDensityMth.png", width = 782, height = 569)
 ggplot( subset(wageChangesLong,wageChangesLong$variable=="Monthly"), aes(value, fill = Rec)) +
 	geom_density(alpha = 0.5) +
-	xlim(c(-3.75, 3.75)) +
-	ggtitle("Wage change distribution by aggregation") +
+	xlim(c(-2.1, 2.1)) +
+	ggtitle("Wage change distribution, Monthly") +
 	labs(fill = "Business cycle")
 dev.off()
 
@@ -381,10 +405,51 @@ ggplot( subset(wageChangesLong,wageChangesLong$variable=="Quarterly"), aes(y = v
   geom_boxplot() +
   guides(fill=F) +
   stat_summary(fun.y=mean, geom="point", shape=5, size=4) +
-  ggtitle("Wage change distribution by aggregation") +
+  ggtitle("Wage change distribution, Quarterly") +
   labs(fill = "Business cycle")
 dev.off()
 
+png(file="./Figures/wageChangeBoxMth.png", width = 782, height = 569)
+ggplot( subset(wageChangesLong,wageChangesLong$variable=="Monthly"), aes(y = value, x = Rec)) +
+	geom_boxplot() +
+	guides(fill=F) +
+	stat_summary(fun.y=mean, geom="point", shape=5, size=4) +
+	ggtitle("Wage change distribution, Monthly") +
+	labs(fill = "Business cycle")
+dev.off()
+
+
+
+wageChangesLong <- melt(wageChanges_In, id.vars = c("id", "date", "Rec"),
+						measure.vars = c("residWageChange", "residWageChange_q"))
+wageChangesLong <- subset(wageChangesLong, !is.na(Rec))
+
+# format variables for better plotting
+wageChangesLong$Rec <- as.factor(wageChangesLong$Rec)
+levels(wageChangesLong$Rec) <- c("Expansion", "Recession")
+levels(wageChangesLong$variable) <- c("Monthly", "Quarterly")
+
+
+# monthly pane
+png(file="./Figures/wageChangeDensityMth_woU.png", width = 782, height = 569)
+ggplot( subset(wageChangesLong,wageChangesLong$variable=="Monthly"), aes(value, fill = Rec)) +
+	geom_density(alpha = 0.5) +
+	xlim(c(-2.1, 2.1)) +
+	ggtitle("Wage change distribution  excluding EU, Monthly") +
+	labs(fill = "Business cycle")
+dev.off()
+
+
+png(file="./Figures/wageChangeBoxMth_woU.png", width = 782, height = 569)
+ggplot( subset(wageChangesLong,wageChangesLong$variable=="Monthly" & wageChangesLong$value >-1 & wageChangesLong$value<1), aes(y = value, x = Rec)) +
+	geom_boxplot() +
+	guides(fill=F) +
+	stat_summary(fun.y=mean, geom="point", shape=5, size=4) +
+	ggtitle("Wage change distribution excluding EU, Monthly") +
+	labs(fill = "Business cycle")
+dev.off()
+
+## Decompositions:
 # # subset for recessions and expansions
 # wageChangesRec <- subset(wageChanges,wageChanges$Rec)
 # wageChangesExp <- subset(wageChanges,!wageChanges$Rec)
@@ -407,18 +472,18 @@ plot(wageChangesIn.rec)
 wageChangesIn.kde <- density(wageChangesIn$residWageChange_wU,na.rm=T)
 plot(wageChangesIn.kde)
 
-bp_wU<-boxplot(residWageChange_wU~Rec,data=wageChangesIn,names=c("Expansion","Recession"))
+bp_wU<-boxplot(residWageChange_wU~Rec,data=wageChanges,names=c("Expansion","Recession"))
 title("Wage change distribution when changing jobs or into unemployment")
 
-bp<-boxplot(residWageChange~Rec,data=wageChangesIn,names=c("Expansion","Recession"))
+bp<-boxplot(residWageChange~Rec,data=wageChanges,names=c("Expansion","Recession"))
 title("Wage change distribution, excluding unemployment")
 
 # Machado - Mata Decomposition ----------------------------------------
 
 # do the regressions I'll use
 wageChanges <- subset(wageChanges, !wageChanges$Out)
-wageChangesRec <- subset(wageChanges,wageChanges$Rec & (UE | EE))
-wageChangesExp <- subset(wageChanges,!wageChanges$Rec  & (UE | EE))
+wageChangesRec <- subset(wageChanges,wageChanges$Rec & (UE|EE))
+wageChangesExp <- subset(wageChanges,!wageChanges$Rec & (UE|EE))
 
 # these are the quantile regressions we will be decomposing:
 qtl_delw <- seq(0.2, .8, .1)
@@ -426,7 +491,6 @@ mm_rq.expansion <- rq(residWageChange ~ switchedOcc +UE,tau = qtl_delw, weights=
 mm_rq.recession <- rq(residWageChange ~ switchedOcc +UE,tau = qtl_delw, weights= wpfinwgt,  data=wageChangesRec )
 mm_lm.expansion <- lm(residWageChange ~ switchedOcc +UE,weights= wpfinwgt,  data=wageChangesExp)
 mm_lm.recession <- lm(residWageChange ~ switchedOcc +UE,weights= wpfinwgt,  data=wageChangesRec)
-
 
 mm_bmat.exp <-qregbmat(residWageChange ~ switchedOcc + UE , taumat=qtl_delw, data=wageChangesExp, graphb = F)
 mm_bmat.rec <-qregbmat(residWageChange ~ switchedOcc + UE , taumat=qtl_delw, data=wageChangesRec, graphb = F)
@@ -441,19 +505,25 @@ for(ki in 1:ncol(mm_bmat.exp)){
 	}
 }
 qr_coefs <-data.frame(qtl_delw,mm_bmat.exp,mm_bmat.rec)
-gg <- ggplot( qr_coefs, aes(y = switchedOccTRUE, x = qtl_delw)) +
-	geom_line() + geom_point() 
-gg <- gg + geom_line( aes(y = switchedOccTRUE.1, x = qtl_delw)) +
-	ggtitle("Marginal Effect of Occupation Switching")
+ggA <- ggplot( qr_coefs, aes(y = switchedOccTRUE, x = qtl_delw)) +
+	geom_line(size = 2) + geom_point() + geom_hline(aes(yintercept=mm_lm.expansion$coefficients[2]))
+ggA <- ggA + geom_line( aes(y = switchedOccTRUE.1, x = qtl_delw), colour = "red", size = 2) +
+	geom_hline(aes(yintercept=mm_lm.recession$coefficients[2]), colour="red") +
+	labs(list(x="Quantile", y="Wage Change Effect", title="Effect of Occupation Switching"))
 ggsave("./Figures/qtl_swocc.png",width = 5, height = 5)
 
-gg <- ggplot( qr_coefs, aes(y = UETRUE, x = qtl_delw)) +
-	geom_line() + geom_point() 
-gg <- gg + geom_line( aes(y = UETRUE.1, x = qtl_delw)) +
-	ggtitle("Marginal Effect of EUE")
+ggB <- ggplot( qr_coefs, aes(y = UETRUE, x = qtl_delw)) +
+	geom_line( size = 2) + geom_point() + geom_hline(aes(yintercept=mm_lm.expansion$coefficients[3]))
+ggB <- ggB + geom_line( aes(y = UETRUE.1, x = qtl_delw), colour = "red", size = 2) +
+	geom_hline(aes(yintercept=mm_lm.recession$coefficients[3]), colour="red") +
+	labs(list(x="Quantile", y="Wage Change Effect", title="Effect of EUE"))
 ggsave("./Figures/qtl_eue.png",width = 5, height = 5)
 
 
-mm_wageChanges <- qregsim2(residWageChange ~ switchedOcc + UE , ~ switchedOcc + UE, wageChangesExp, wageChangesRec,
-						   mm_bmat.exp,mm_bmat.rec, timenames=c("Expansion","Recession"), nsim=5000)
+mm_wageChanges <- qregsim2(residWageChange ~ switchedOcc + UE , ~ switchedOcc + UE , wageChangesExp, wageChangesRec,
+						   mm_bmat.exp, mm_bmat.rec, timenames=c("Expansion","Recession"))
 
+
+#oaxaca decomp
+wageChanges$LRec <- as.logical(wageChanges$Rec == 1)
+oa_wageChanges <- oaxaca(residWageChange ~ switchedOcc + UE | Rec, data=subset(wageChanges, (UE | EE) ) )
