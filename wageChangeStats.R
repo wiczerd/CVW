@@ -9,6 +9,7 @@ library(Hmisc)
 library(dplyr)
 library(ggplot2)
 library(xlsx)
+library(texreg)
 library(quantreg)
 library(McSpatial)
 library(oaxaca)
@@ -278,6 +279,9 @@ EEols.nSu<-summary(wageOLSEE.nSu)
 EEols.wSu<-summary(wageOLSEE.wSu)
 EEqr.nSu <-summary(wageRegEE.nSu)
 EEqr.wSu <-summary(wageRegEE.wSu)
+quantreg::latex(EEqr.nSu,file="./Figures/EEqr_nSu",transpose=T,digits=3)
+quantreg::latex(EEqr.wSu,file="./Figures/EEqr_wSu",transpose=T,digits=3)
+
 
 wageChangesUE <- subset(wageChanges, UE)
 wageOLSUE.nSu <- lm(residWageChange ~ switchedOcc + unrateSA, weights= wpfinwgt, data = wageChangesUE)
@@ -288,12 +292,34 @@ UEols.nSu <-summary(wageOLSUE.nSu)
 UEols.wSu <-summary(wageOLSUE.wSu)
 UEqr.nSu <-summary(wageRegUE.nSu)
 UEqr.wSu <-summary(wageRegUE.wSu)
+quantreg::latex(UEqr.nSu,file="./Figures/UEqr_nSu",transpose=T,digits=3)
+quantreg::latex(UEqr.wSu,file="./Figures/UEqr_wSu",transpose=T,digits=3)
+
+wageChangesUEEE <- subset(wageChanges, UE | EE)
+wageOLS.nSu <- lm(residWageChange ~ switchedOcc + unrateSA + UE, weights= wpfinwgt, data = wageChangesUEEE)
+wageReg.nSu <- rq(residWageChange ~ switchedOcc + unrateSA + UE, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
+wageOLS.wSu <- lm(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA + UE, weights= wpfinwgt, data = wageChangesUEEE)
+wageReg.wSu <- rq(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA + UE, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
+ols.nSu <-summary(wageOLS.nSu)
+ols.wSu <-summary(wageOLS.wSu)
+qr.nSu <-summary(wageReg.nSu)
+qr.wSu <-summary(wageReg.wSu)
+quantreg::latex(qr.nSu,file="./Figures/qr_nSu",transpose=T,digits=3)
+quantreg::latex(qr.wSu,file="./Figures/qr_wSu",transpose=T,digits=3)
+
+png("./Figures/qr_nSu.png")
+plot(qr.nSu, parm=c("switchedOccTRUE","unrateSA"),xlab="Quantile")
+dev.off()
+
 
 rm(wageChangesUE)
 rm(wageChangesEE)
 
 coef_wSu <- cbind(t(wageRegEE.wSu$coefficients),t(wageRegUE.wSu$coefficients))
 coef_wSu <- rbind(cbind(t(wageOLSEE.wSu$coefficients),t(wageOLSUE.wSu$coefficients)), coef_wSu )
+
+coef_nSu <- cbind(t(wageRegEE.nSu$coefficients),t(wageRegUE.nSu$coefficients))
+coef_nSu <- rbind(cbind(t(wageOLSEE.nSu$coefficients),t(wageOLSUE.nSu$coefficients)), coef_nSu )
 
 qr_nSu <-data.frame(qtl_delw,t(wageRegEE.nSu$coefficients),t(wageRegUE.nSu$coefficients))
 ggA <- ggplot( qr_nSu, aes(y = switchedOccTRUE, x = qtl_delw)) +
@@ -310,6 +336,8 @@ ggB <- ggB + geom_line( aes(y = unrateSA.1, x = qtl_delw), colour = "#9999CC", s
 	geom_hline(aes(yintercept=wageOLSUE.nSu$coefficients[3]), colour="#9999CC", size = 2) +
 	labs(list(x="Quantile", y="Wage Change Effect", title="Effect of Unemployment Rate"))
 ggsave("./Figures/qtl_u_nSu.png",width = 5, height = 5)
+
+# splitting between young and old
 
 # Wage change distributions ---------------------------------------------
 
