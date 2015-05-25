@@ -311,6 +311,9 @@ png("./Figures/qr_nSu.png")
 plot(qr.nSu, parm=c("switchedOccTRUE","unrateSA"),xlab="Quantile")
 dev.off()
 
+png("./Figures/qr_wSu.png")
+plot(qr.wSu, parm=c("switchedOccTRUE","switchedOccTRUE:unrateSA","unrateSA","UETRUE"),xlab="Quantile")
+dev.off()
 
 rm(wageChangesUE)
 rm(wageChangesEE)
