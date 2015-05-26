@@ -13,7 +13,7 @@ setwd("~/workspace/CVW/R")
 
 # Use 1 digit occupations from CEPR? (soc2d)
 useSoc2d <- T
-useRegResid <- T
+useRegResid <- F
 
 # Function for weighted moving average
 # x, wts, and new.name are strings
@@ -47,7 +47,9 @@ if(useSoc2d & useRegResid) {
 } else{
 	analytic96 <- readRDS("./Data/analytic96.RData")   
 }
-
+if(useSoc2d){
+	analytic96$soc2d<-analytic96$occ
+}
 analytic96$Rec <- with(analytic96, (date>rec_dates[1] & date<rec_dates[2]) | 
                                             (date>rec_dates[3] & date<rec_dates[4]))
 
@@ -90,7 +92,9 @@ if(useSoc2d & useRegResid) {
 } else{
 	analytic01 <- readRDS("./Data/analytic01.RData")   
 }
-
+if(useSoc2d){
+	analytic01$soc2d<-analytic01$occ
+}
 analytic01$Rec <- with(analytic01, (date>rec_dates[1] & date<rec_dates[2]) | 
                                (date>rec_dates[3] & date<rec_dates[4]))
 
@@ -134,7 +138,9 @@ if(useSoc2d & useRegResid) {
 } else{
 	analytic04 <- readRDS("./Data/analytic04.RData")   
 }
-
+if(useSoc2d){
+	analytic04$soc2d<-analytic04$occ
+}
 analytic04$Rec <- with(analytic04, (date>rec_dates[1] & date<rec_dates[2]) | 
                                (date>rec_dates[3] & date<rec_dates[4]))
 
@@ -177,6 +183,9 @@ if(useSoc2d & useRegResid) {
 	analytic08 <- readRDS("./Data/analytic08Raw.RData")   
 } else{
 	analytic08 <- readRDS("./Data/analytic08.RData")   
+}
+if(useSoc2d){
+	analytic08$soc2d<-analytic08$occ
 }
 
 analytic08$Rec <- with(analytic08, (date>rec_dates[1] & date<rec_dates[2]) | 
@@ -221,12 +230,14 @@ rec_dates   <- as.Date(c("2001-03-01", "2001-11-01","2007-12-01", "2009-06-01"))
 incomePercentiles$Rec <- ((incomePercentiles$date>rec_dates[1] & incomePercentiles$date<rec_dates[2] ) | 
                      (incomePercentiles$date>rec_dates[3] & incomePercentiles$date<rec_dates[4] ))
 
-
+incomePct_safe <-incomePercentiles
 incomePercentiles <- incomePercentiles %>%
 	filter(!is.na(percentile)) %>%
-	group_by(percentile, Rec) %>%
+	group_by(percentile) %>%
 	summarize(prSwitching = weighted.mean(switchedOcc & (UE | EE), wpfinwgt, na.rm = TRUE) /
-			  	weighted.mean( (UE | EE), wpfinwgt, na.rm = TRUE) )
+			  	weighted.mean( (UE | EE), wpfinwgt, na.rm = TRUE),
+				prSwitchingUnc = weighted.mean(switchedOcc & (UE | EE), wpfinwgt, na.rm = TRUE)  )
+	
 
 incomeChanges <- incomeChanges %>%
         # why are there NaNs?
@@ -238,15 +249,21 @@ incomeChanges <- incomeChanges %>%
         do(movingAverage(., "meanIncomeChangeUE", "numUE", new.name = "maUE")) %>%
         select(date, starts_with("ma"), panel)
 
-png("prSwitchingByIncome.png", width = 782, height = 569)
-ggplot(incomePercentiles, aes(percentile, prSwitching)) + geom_point() + geom_line() +
-        ggtitle("P(Switching) by Income Percentile") + 
-        ylab("P(Switching)") + xlab("Income percentile within two-digit SOC occupation")
-dev.off()
+#postscript("prSwitchingByIncome.eps", width = 782, height = 569)
+ggPr<-ggplot(incomePercentiles, aes(percentile, prSwitching)) + geom_point() + geom_smooth() +
+        ggtitle("P(Switching) by Wage Percentile") + 
+        ylab("P(Switching)") + xlab("Wage percentile within two-digit SOC occupation")
+ggsave("prSwitchingByIncome.eps", width = 6, height = 4)
+
+
+ggPr<-ggplot(incomePercentiles, aes(percentile, prSwitchingUnc)) + geom_point() + geom_smooth() +
+	ggtitle("Unconditional P(Switching) by Wage Percentile") + 
+	ylab("P(Switching)") + xlab("Wage percentile within two-digit SOC occupation")
+ggsave("prSwitchingByIncomeUnc.eps", width = 6, height = 4)
 
 postscript("prSwitchingByIncomeRec.eps", width = 782, height = 569)
-ggplot(incomePercentiles, aes(percentile, proSwitching, color = Rec)) + 
-	geom_point() + geom_line() +
+ggPr<-ggplot(incomePercentiles, aes(percentile, prSwitching, color = Rec)) + 
+	geom_smooth() +
 	ggtitle("P(Switching) by Income Percentile") + 
 	ylab("P(Switching)") + xlab("Income percentile within occupation")
 dev.off()

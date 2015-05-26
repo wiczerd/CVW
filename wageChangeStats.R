@@ -147,6 +147,8 @@ with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & residWageChange>wageChangesQr
 						   wpfinwgt[(EE | UE) & residWageChange>wageChangesQrtile[3]], na.rm = TRUE))
 with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & residWageChange>wageChangesQrtile[4]], 
 						   wpfinwgt[(EE | UE) & residWageChange>wageChangesQrtile[4]], na.rm = TRUE))
+with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & residWageChange<wageChangesQrtile[1]], 
+						   wpfinwgt[(EE | UE) & residWageChange<wageChangesQrtile[1]], na.rm = TRUE))
 
 
 
@@ -512,12 +514,12 @@ title("Wage change distribution, excluding unemployment")
 # Machado - Mata Decomposition ----------------------------------------
 
 # do the regressions I'll use
-wageChanges <- subset(wageChanges, !wageChanges$Out)
-wageChangesRec <- subset(wageChanges,wageChanges$Rec & (UE|EE))
-wageChangesExp <- subset(wageChanges,!wageChanges$Rec & (UE|EE))
+#wageChanges <- subset(wageChanges, !wageChanges$Out)
+wageChangesRec <- subset(wageChanges,Rec & (UE|EE) & is.finite(residWageChange) & is.finite(switchedOcc) &  is.finite(UE))
+wageChangesExp <- subset(wageChanges,!Rec & (UE|EE) & is.finite(residWageChange) & is.finite(switchedOcc) & is.finite(UE))
 
 # these are the quantile regressions we will be decomposing:
-qtl_delw <- seq(0.2, .8, .1)
+qtl_delw <- seq(0.1, .9, .1)
 mm_rq.expansion <- rq(residWageChange ~ switchedOcc +UE,tau = qtl_delw, weights= wpfinwgt,  data=wageChangesExp)
 mm_rq.recession <- rq(residWageChange ~ switchedOcc +UE,tau = qtl_delw, weights= wpfinwgt,  data=wageChangesRec )
 mm_lm.expansion <- lm(residWageChange ~ switchedOcc +UE,weights= wpfinwgt,  data=wageChangesExp)
@@ -527,8 +529,8 @@ mm_bmat.exp <-qregbmat(residWageChange ~ switchedOcc + UE , taumat=qtl_delw, dat
 mm_bmat.rec <-qregbmat(residWageChange ~ switchedOcc + UE , taumat=qtl_delw, data=wageChangesRec, graphb = F)
 
 #use weighted regression? i.e:
-#mm_bmat.exp <- t(mm_rq.expansion$coefficients)
-#mm_bmat.rec <- t(mm_rq.recession$coefficients)
+#(mm_bmat.exp - t(mm_rq.expansion$coefficients))/t(mm_rq.expansion$coefficients)
+#(mm_bmat.rec - t(mm_rq.recession$coefficients))/t(mm_rq.recession$coefficients)
 for(ki in 1:ncol(mm_bmat.exp)){
 	for(ti in 1:nrow(mm_bmat.exp)){
 		mm_bmat.exp[ti,ki] = mm_rq.expansion$coefficients[ki,ti]
@@ -550,11 +552,42 @@ ggB <- ggB + geom_line( aes(y = UETRUE.1, x = qtl_delw), colour = "red", size = 
 	labs(list(x="Quantile", y="Wage Change Effect", title="Effect of EUE"))
 ggsave("./Figures/qtl_eue.png",width = 5, height = 5)
 
-
+set.seed(941987)
 mm_wageChanges <- qregsim2(residWageChange ~ switchedOcc + UE , ~ switchedOcc + UE , wageChangesExp, wageChangesRec,
-						   mm_bmat.exp, mm_bmat.rec, timenames=c("Expansion","Recession"))
+						   mm_bmat.exp, mm_bmat.rec, timenames=c("Expansion","Recession"),nsim=14700) # sample size is ~ same as data size 
+dat_mm <- data.frame(mm_wageChanges)
+dat_mm <- dat_mm %>%
+	mutate(pct1211 = d1211/d2211 ) %>%
+	mutate(pct2212 = d2212/d2211 ) %>%
+	mutate(pct1211 = as.numeric(ifelse(abs(pct1211) > 2,NA,pct1211)) ) %>%
+	mutate(pct2212 = as.numeric(ifelse(abs(pct2212) > 2,NA,pct2212)) )
+med.pct1211 <- quantile(dat_mm$pct1211,na.rm=T, probs=.5)
+ggC <- ggplot(dat_mm, aes(x=ytarget,y=pct1211) )	 + geom_smooth(size=2) +
+	labs(list(x="Wage Change",y="Coefficients' contribution",title="The change in distributions due to changed returns"))
+#		geom_hline(aes(yintercept = med.pct1211), size=2)
+ggsave("./Figures/mm_pctcoefs.png",width = 5, height = 5)
 
+mm_wageChanges_swonly <- qregsim2(residWageChange ~ switchedOcc + UE , ~ switchedOcc , wageChangesRec, wageChangesExp,
+							mm_bmat.rec, mm_bmat.exp, timenames=c("Recession","Expansion"),nsim=14700) 
+dat_mm_swonly <- data.frame(mm_wageChanges_swonly)
+dat_mm_swonly <- dat_mm_swonly %>%
+	mutate(pct1211 = d1211/d2211 ) %>%
+	mutate(pct2212 = d2212/d2211 ) %>%
+	mutate(pct1211 = as.numeric(ifelse(abs(pct1211) > 2,NA,pct1211)) ) %>%
+	mutate(pct2212 = as.numeric(ifelse(abs(pct2212) > 2,NA,pct2212)) )
+med.pct1211 <- quantile(dat_mm_swonly$pct1211,na.rm=T, probs=.5)
+ggD <- ggplot(dat_mm_swonly, aes(x=ytarget,y=pct1211) )	 + geom_smooth(size=2) +
+	labs(list(x="Wage Change",y="Switch coefficients' contribution",title="The change in distributions due to changed switching return"))
+#		geom_hline(aes(yintercept = med.pct1211), size=2)
+ggsave("./Figures/mm_pctswcoef.png",width = 5, height = 5)
 
 #oaxaca decomp
-wageChanges$LRec <- as.logical(wageChanges$Rec == 1)
-oa_wageChanges <- oaxaca(residWageChange ~ switchedOcc + UE | Rec, data=subset(wageChanges, (UE | EE) ) )
+wageChanges_oa <-subset(wageChanges, (UE | EE) ) 
+#wageChanges_oa$LRec <- as.logical(ifelse(wageChanges_oa$LRec != F | wageChanges_oa$LRec != F, NA, wageChanges_oa$LRec))
+wageChanges_oa <-subset(wageChanges_oa,  is.finite(Rec) & (Rec==1 | Rec==0) & is.finite(residWageChange) & is.finite(switchedOcc) & is.finite(UE))
+oa_wageChanges <- oaxaca(residWageChange ~ switchedOcc + 
+						 UE | Rec,  data=wageChanges_oa, R=30)
+
+oaxaca.results.1 <- oaxaca(ln.real.wage ~ age + female + LTHS + some.college +
+						   	college + advanced.degree | foreign.born,
+						   data = chicago, R = 30)
