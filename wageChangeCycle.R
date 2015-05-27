@@ -215,6 +215,46 @@ title("Wage change distribution, excluding unemployment")
 wageChangesRec <- subset(wageChanges,Rec & (UE|EE) & is.finite(residWageChange) & is.finite(switchedOcc) &  is.finite(UE))
 wageChangesExp <- subset(wageChanges,!Rec & (UE|EE) & is.finite(residWageChange) & is.finite(switchedOcc) & is.finite(UE))
 
+qtl_delw <- c(0.1,0.25,0.5,0.75,0.9)
+wageReg.expansion <- rq(residWageChange ~ switchedOcc +UE,tau = qtl_delw, weights= wpfinwgt,  data=wageChangesExp)
+wageReg.recession <- rq(residWageChange ~ switchedOcc +UE,tau = qtl_delw, weights= wpfinwgt,  data=wageChangesRec )
+qr.exp <-summary(wageReg.expansion)
+qr.rec <-summary(wageReg.recession)
+#output these regressions:
+quantreg::latex(qr.exp,file="./Figures/qr_exp",transpose=T,digits=3)
+quantreg::latex(qr.rec,file="./Figures/qr_rec",transpose=T,digits=3)
+
+wCE_0 <- with(wageChangesExp, data.frame(residWageChange, switchedOcc, UE, wpfinwgt ))
+wCR_0 <- with(wageChangesRec, data.frame(residWageChange, switchedOcc, UE, wpfinwgt ))
+nobsE <- nrow(wCE_0)
+nobsR <- nrow(wCR_0)
+Nsim = 500
+coSwR_ni <- matrix(0.,nrow=Nsim,ncol=length(qtl_delw) )
+coSwE_ni <- matrix(0.,nrow=Nsim,ncol=length(qtl_delw) )
+# initialize the count of test
+N_EleR_all = 0 # contrapositive of \exists \tau s.t. R<E
+N_EleR_any = 0 # contrapositive of \forall \tau R< E
+N_EleR_pt  = matrix(0.,nrow=1,ncol=length(qtl_delw))
+for(ni in 1:Nsim){
+	# sample from the two distributions (with replacement) run the quantile regression, then run Qu's test
+	wCE_ni <- wCE_0[sample(nobsE, nobsE, replace=T ), ]
+	wCR_ni <- wCR_0[sample(nobsR, nobsR, replace=T ), ]
+	wReg.e_ni <- rq(residWageChange ~ switchedOcc +UE,tau = qtl_delw, weights= wpfinwgt,  data=wCE_ni, ci=F)
+	wReg.r_ni <- rq(residWageChange ~ switchedOcc +UE,tau = qtl_delw, weights= wpfinwgt,  data=wCR_ni, ci=F)
+	coSwR_ni[ni,] <- wReg.r_ni$coefficients[2,]
+	coSwE_ni[ni,] <- wReg.e_ni$coefficients[2,]
+	test_ni = as.integer(coSwE_ni[ni,]-coSwR_ni[ni,] < 0)
+	if( sum(test_ni)==length(qtl_delw) ){
+		N_EleR_all = N_EleR_all+1	
+	}
+	test_ni = as.integer( coSwE_ni[ni,]-coSwR_ni[ni,] < 0 )
+	if( sum(test_ni)>0 ){
+		N_EleR_any = N_EleR_any+1
+	}
+	N_EleR_pt = N_EleR_pt + test_ni
+}
+save.image()
+
 # these are the quantile regressions we will be decomposing:
 qtl_delw <- seq(0.1, .9, .1)
 mm_rq.expansion <- rq(residWageChange ~ switchedOcc +UE,tau = qtl_delw, weights= wpfinwgt,  data=wageChangesExp)
@@ -222,10 +262,13 @@ mm_rq.recession <- rq(residWageChange ~ switchedOcc +UE,tau = qtl_delw, weights=
 mm_lm.expansion <- lm(residWageChange ~ switchedOcc +UE,weights= wpfinwgt,  data=wageChangesExp)
 mm_lm.recession <- lm(residWageChange ~ switchedOcc +UE,weights= wpfinwgt,  data=wageChangesRec)
 
+
+
+#test joint equality of coefficients
+
+# setup regressions, but use weighted regression:
 mm_bmat.exp <-qregbmat(residWageChange ~ switchedOcc + UE , taumat=qtl_delw, data=wageChangesExp, graphb = F)
 mm_bmat.rec <-qregbmat(residWageChange ~ switchedOcc + UE , taumat=qtl_delw, data=wageChangesRec, graphb = F)
-
-#use weighted regression? i.e:
 #(mm_bmat.exp - t(mm_rq.expansion$coefficients))/t(mm_rq.expansion$coefficients)
 #(mm_bmat.rec - t(mm_rq.recession$coefficients))/t(mm_rq.recession$coefficients)
 for(ki in 1:ncol(mm_bmat.exp)){
@@ -258,11 +301,12 @@ dat_mm <- dat_mm %>%
 	mutate(pct2212 = d2212/d2211 ) %>%
 	mutate(pct1211 = as.numeric(ifelse(abs(pct1211) > 2,NA,pct1211)) ) %>%
 	mutate(pct2212 = as.numeric(ifelse(abs(pct2212) > 2,NA,pct2212)) )
-med.pct1211 <- quantile(dat_mm$pct1211,na.rm=T, probs=.5)
-ggC <- ggplot(dat_mm, aes(x=ytarget,y=pct1211) )	 + geom_smooth(size=2) +
-	labs(list(x="Wage Change",y="Coefficients' contribution",title="The change in distributions due to changed returns"))
+med.pct1211 <- quantile(dat_mm$pct2212,na.rm=T, probs=.5)
+ggC <- ggplot(dat_mm, aes(x=ytarget,y=pct2212) )	 + geom_smooth(size=2) +
+	labs(list(x="Wage Change",y="Flows' contribution",title="The change in distributions due to changed worker flows"))
 #		geom_hline(aes(yintercept = med.pct1211), size=2)
-ggsave("./Figures/mm_pctcoefs.png",width = 5, height = 5)
+ggsave("./Figures/mm_pctflows.png",width = 5, height = 5)
+ggsave("./Figures/mm_pctflows.eps",width = 5, height = 5)
 
 mm_wageChanges_swonly <- qregsim2(residWageChange ~ switchedOcc + UE , ~ switchedOcc , wageChangesRec, wageChangesExp,
 								  mm_bmat.rec, mm_bmat.exp, timenames=c("Recession","Expansion"),nsim=14700) 
@@ -272,9 +316,9 @@ dat_mm_swonly <- dat_mm_swonly %>%
 	mutate(pct2212 = d2212/d2211 ) %>%
 	mutate(pct1211 = as.numeric(ifelse(abs(pct1211) > 2,NA,pct1211)) ) %>%
 	mutate(pct2212 = as.numeric(ifelse(abs(pct2212) > 2,NA,pct2212)) )
-med.pct1211 <- quantile(dat_mm_swonly$pct1211,na.rm=T, probs=.5)
-ggD <- ggplot(dat_mm_swonly, aes(x=ytarget,y=pct1211) )	 + geom_smooth(size=2) +
-	labs(list(x="Wage Change",y="Switch coefficients' contribution",title="The change in distributions due to changed switching return"))
+med.pct1211 <- quantile(dat_mm_swonly$pct2212,na.rm=T, probs=.5)
+ggD <- ggplot(dat_mm_swonly, aes(x=ytarget,y=pct2212) )	 + geom_smooth(size=2) +
+	labs(list(x="Wage Change",y="Switch coefficients' contribution",title="The change in distributions due to changed switching probabilities"))
 #		geom_hline(aes(yintercept = med.pct1211), size=2)
 ggsave("./Figures/mm_pctswcoef.png",width = 5, height = 5)
 
