@@ -279,18 +279,18 @@ for(ki in 1:ncol(mm_bmat.exp)){
 }
 qr_coefs <-data.frame(qtl_delw,mm_bmat.exp,mm_bmat.rec)
 ggA <- ggplot( qr_coefs, aes(y = switchedOccTRUE, x = qtl_delw)) +
-	geom_line(size = 2) + geom_point() + geom_hline(aes(yintercept=mm_lm.expansion$coefficients[2]))
+	geom_line(size = 2) + geom_point() + geom_hline(aes(yintercept=mm_lm.expansion$coefficients[2]), size = 2)
 ggA <- ggA + geom_line( aes(y = switchedOccTRUE.1, x = qtl_delw), colour = "red", size = 2) +
-	geom_hline(aes(yintercept=mm_lm.recession$coefficients[2]), colour="red") +
+	geom_hline(aes(yintercept=mm_lm.recession$coefficients[2]), colour="red", size = 2) +
 	labs(list(x="Quantile", y="Wage Change Effect", title="Effect of Occupation Switching"))
-ggsave("./Figures/qtl_swocc.png",width = 5, height = 5)
+ggsave("./Figures/qtl_swocc.eps",width = 5, height = 5)
 
 ggB <- ggplot( qr_coefs, aes(y = UETRUE, x = qtl_delw)) +
 	geom_line( size = 2) + geom_point() + geom_hline(aes(yintercept=mm_lm.expansion$coefficients[3]))
 ggB <- ggB + geom_line( aes(y = UETRUE.1, x = qtl_delw), colour = "red", size = 2) +
 	geom_hline(aes(yintercept=mm_lm.recession$coefficients[3]), colour="red") +
 	labs(list(x="Quantile", y="Wage Change Effect", title="Effect of EUE"))
-ggsave("./Figures/qtl_eue.png",width = 5, height = 5)
+ggsave("./Figures/qtl_eue.eps",width = 5, height = 5)
 
 set.seed(941987)
 mm_wageChanges <- qregsim2(residWageChange ~ switchedOcc + UE , ~ switchedOcc + UE , wageChangesExp, wageChangesRec,
@@ -320,7 +320,9 @@ med.pct1211 <- quantile(dat_mm_swonly$pct2212,na.rm=T, probs=.5)
 ggD <- ggplot(dat_mm_swonly, aes(x=ytarget,y=pct2212) )	 + geom_smooth(size=2) +
 	labs(list(x="Wage Change",y="Switch coefficients' contribution",title="The change in distributions due to changed switching probabilities"))
 #		geom_hline(aes(yintercept = med.pct1211), size=2)
-ggsave("./Figures/mm_pctswcoef.png",width = 5, height = 5)
+ggD
+ggsave("./Figures/mm_pctswflows.png",width = 5, height = 5)
+ggsave("./Figures/mm_pctswflows.eps",width = 5, height = 5)
 
 #oaxaca decomp
 wageChanges_oa <-subset(wageChanges, (UE | EE) ) 
