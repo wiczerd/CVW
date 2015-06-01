@@ -30,7 +30,7 @@ haver <- haver %>%
 
 toKeep <- c("wpfinwgt", "switchedOcc", "EE", "UE",  
             "residWageChange", "residWageChange_wU", "lfStat", "date",
-            "residWageChange_q", "residWageChange_q_wU")
+            "residWageChange_q", "residWageChange_q_wU","logWage","logEarnm")
 
 detach("package:xlsx")
 detach("package:xlsxjars")
@@ -131,13 +131,24 @@ if(useSoc2d & useRegResid) {
 	saveRDS(wageChanges,"./Data/wageChanges.RData")   
 }
 
-# throw out all but job switches
-wageChanges <- wageChanges %>%
-        mutate(posChange = (residWageChange > 0)) %>%
-        mutate(negChange = (residWageChange < 0))
-
 # Summary statistics --------------------------------------------------------------
 
+if(useSoc2d & useRegResid) {
+	wageChanges<-readRDS("./Data/wageChangesSoc2dResid.RData")
+} else if(useSoc2d & !useRegResid){
+	wageChanges<-readRDS("./Data/wageChangesSoc2dRaw.RData")   
+} else if(!useSoc2d & useRegResid){
+	wageChanges<-readRDS("./Data/wageChangesResid.RData")   
+} else if(!useSoc2d & !useRegResid){
+	wageChanges<-readRDS("./Data/wageChangesRaw.RData")   
+} else{
+	wageChanges<-readRDS("./Data/wageChanges.RData")   
+}
+
+
+wageChanges <- wageChanges %>%
+	mutate(posChange = (residWageChange > 0)) %>%
+	mutate(negChange = (residWageChange < 0))
 
 wageChangesQrtile <-with(wageChanges, wtd.quantile(residWageChange[EE | UE], wpfinwgt[EE | UE], na.rm = TRUE,probs=c(.25,.5,.75,.9) ) )
 with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & residWageChange>wageChangesQrtile[3]], 

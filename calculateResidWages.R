@@ -53,8 +53,8 @@ genRegressors <- function(df) {
   # import PCE data
   df <- left_join(df,PCE, by="date")
   result <- df %>%
-  #  mutate(wage = wage/PCEPI*100) %>%
-  #  mutate(logWage = log(wage)) %>%
+    mutate(wage = wage/PCEPI*100) %>%
+    mutate(logWage = log(wage)) %>%
     mutate(earnm = earnm/PCEPI*100) %>%
     mutate(logEarnm = log(earnm)) %>%
     mutate(yearsSchool = as.integer(ifelse(educ == 1, 9, NA)),

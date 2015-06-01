@@ -284,14 +284,14 @@ ggA <- ggA + geom_line( aes(y = switchedOccTRUE.1, x = qtl_delw), colour = "red"
 	geom_hline(aes(yintercept=mm_lm.recession$coefficients[2]), colour="red", size = 2) +
 	labs(list(x="Quantile", y="Wage Change Effect", title="Effect of Occupation Switching"))
 ggsave("./Figures/qtl_swocc.eps",width = 5, height = 5)
-
+ggA
 ggB <- ggplot( qr_coefs, aes(y = UETRUE, x = qtl_delw)) +
-	geom_line( size = 2) + geom_point() + geom_hline(aes(yintercept=mm_lm.expansion$coefficients[3]))
+	geom_line( size = 2) + geom_point() + geom_hline(aes(yintercept=mm_lm.expansion$coefficients[3]), size = 2)
 ggB <- ggB + geom_line( aes(y = UETRUE.1, x = qtl_delw), colour = "red", size = 2) +
-	geom_hline(aes(yintercept=mm_lm.recession$coefficients[3]), colour="red") +
+	geom_hline(aes(yintercept=mm_lm.recession$coefficients[3]), colour="red", size = 2) +
 	labs(list(x="Quantile", y="Wage Change Effect", title="Effect of EUE"))
 ggsave("./Figures/qtl_eue.eps",width = 5, height = 5)
-
+ggB
 set.seed(941987)
 mm_wageChanges <- qregsim2(residWageChange ~ switchedOcc + UE , ~ switchedOcc + UE , wageChangesExp, wageChangesRec,
 						   mm_bmat.exp, mm_bmat.rec, timenames=c("Expansion","Recession"),nsim=14700) # sample size is ~ same as data size 
@@ -305,11 +305,13 @@ med.pct1211 <- quantile(dat_mm$pct2212,na.rm=T, probs=.5)
 ggC <- ggplot(dat_mm, aes(x=ytarget,y=pct2212) )	 + geom_smooth(size=2) +
 	labs(list(x="Wage Change",y="Flows' contribution",title="The change in distributions due to changed worker flows"))
 #		geom_hline(aes(yintercept = med.pct1211), size=2)
+ggC
 ggsave("./Figures/mm_pctflows.png",width = 5, height = 5)
 ggsave("./Figures/mm_pctflows.eps",width = 5, height = 5)
-
-mm_wageChanges_swonly <- qregsim2(residWageChange ~ switchedOcc + UE , ~ switchedOcc , wageChangesRec, wageChangesExp,
+for(ki in 1:7){
+	mm_wageChanges_swonly <- qregsim2(residWageChange ~ switchedOcc + UE , ~ switchedOcc , wageChangesRec, wageChangesExp,
 								  mm_bmat.rec, mm_bmat.exp, timenames=c("Recession","Expansion"),nsim=14700) 
+}
 dat_mm_swonly <- data.frame(mm_wageChanges_swonly)
 dat_mm_swonly <- dat_mm_swonly %>%
 	mutate(pct1211 = d1211/d2211 ) %>%
@@ -318,11 +320,11 @@ dat_mm_swonly <- dat_mm_swonly %>%
 	mutate(pct2212 = as.numeric(ifelse(abs(pct2212) > 2,NA,pct2212)) )
 med.pct1211 <- quantile(dat_mm_swonly$pct2212,na.rm=T, probs=.5)
 ggD <- ggplot(dat_mm_swonly, aes(x=ytarget,y=pct2212) )	 + geom_smooth(size=2) +
-	labs(list(x="Wage Change",y="Switch coefficients' contribution",title="The change in distributions due to changed switching probabilities"))
+	labs(list(x="Wage Change",y="Switch flows' contribution",title="Change in distributions due to changed switching probabilities"))
 #		geom_hline(aes(yintercept = med.pct1211), size=2)
 ggD
-ggsave("./Figures/mm_pctswflows.png",width = 5, height = 5)
-ggsave("./Figures/mm_pctswflows.eps",width = 5, height = 5)
+ggsave("./Figures/mm_pctswflows1.png",width = 5, height = 5)
+ggsave("./Figures/mm_pctswflows1.eps",width = 5, height = 5)
 
 #oaxaca decomp
 wageChanges_oa <-subset(wageChanges, (UE | EE) ) 
