@@ -29,8 +29,8 @@ haver <- haver %>%
         select(-year, -month)
 
 toKeep <- c("wpfinwgt", "switchedOcc", "EE", "UE",  
-            "residWageChange", "residWageChange_wU", "lfStat", "date",
-            "residWageChange_q", "residWageChange_q_wU","logWage","logEarnm")
+            "residWageChange", "residWageChange_wU", "residWageChange_stayer","lfStat", "date",
+            "residWageChange_q", "residWageChange_q_wU","resid")
 
 detach("package:xlsx")
 detach("package:xlsxjars")

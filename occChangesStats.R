@@ -10,13 +10,13 @@ library(dplyr)
 library(stats)
 library(ggplot2)
 library(xlsx)
+library(texreg)
 library(quantreg)
-
 
 setwd("~/workspace/CVW/R")
 
 # Use 2 digit occupations from mapped from SOC? (SOC 2d)
-useSoc2d <- F
+useSoc2d <- T
 
 # Read unemployment data
 haver <- read.xlsx("./Data/unrate.xlsx", sheetName = "data", 
@@ -150,6 +150,14 @@ prSwitching <-  group_by(processed08, date) %>%
 # Remove 2008 data from environment
 rm(processed08)
 
+# save prSwitching probit
+if(useSoc2d) {
+	saveRDS(prSwitching, "./Data/prSwitchingSoc2d.RData")	
+}else{
+	saveRDS(prSwitching, "./Data/prSwitching.RData")	
+}
+
+
 # Statistics --------------------------------------------------------------
 
 # Drop UE and pooled observations when the number of UE is too low 
@@ -164,6 +172,11 @@ prSwitching <- prSwitching %>%
                                         NA, prSwitchedOcc)) %>%
         select(-cutoffUE)
         
+
+# recession dates
+rec_dates   <- as.Date(c("2001-02-01", "2001-12-01","2007-11-01", "2009-07-01")) #as.Date(c("2001-03-01", "2001-11-01","2007-12-01", "2010-06-01")) 
+prSwitching$Rec <- ((prSwitching$date>rec_dates[1] & prSwitching$date<rec_dates[2] ) | 
+						(prSwitching$date>rec_dates[3] & prSwitching$date<rec_dates[4] ))
 
 # Mean over whole period
 with(prSwitching, weighted.mean(prSwitchedOcc, occObs, na.rm = TRUE))
@@ -181,6 +194,14 @@ with(prSwitchingAndUnemployment, wtd.cors(prSwitchedOccUE, unrateSA, weight=occU
 with(prSwitchingAndUnemployment, cor(prSwitchedOcc, unrateSA, , use = "complete.obs"))
 with(prSwitchingAndUnemployment, cor(prSwitchedOccEE, unrateSA, use = "complete.obs"))
 with(prSwitchingAndUnemployment, cor(prSwitchedOccUE, unrateSA, use = "complete.obs"))
+
+with(prSwitchingAndUnemployment, cor(prSwitchedOcc, as.numeric(date), , use = "complete.obs"))
+with(prSwitchingAndUnemployment, cor(prSwitchedOccEE, as.numeric(date), use = "complete.obs"))
+with(prSwitchingAndUnemployment, cor(prSwitchedOccUE, as.numeric(date), use = "complete.obs"))
+
+with(prSwitching, cor(prSwitchedOcc, as.numeric(Rec), , use = "complete.obs"))
+with(prSwitching, cor(prSwitchedOccEE, as.numeric(Rec), use = "complete.obs"))
+with(prSwitching, cor(prSwitchedOccUE, as.numeric(Rec), use = "complete.obs"))
 
 
 # Quantile regressions ----------------------------------------------------
@@ -213,17 +234,20 @@ demoProbit <- subset(demoProbit,!is.na(occ) & switchedJob) %>%
 	mutate(lths = as.integer(educ == 1)) %>%
 	select(-educ,-race)
 
-rec_dates   <- as.Date(c("2001-03-01", "2001-11-01","2007-12-01", "2009-06-01"))
+demoProbit <- mutate(demoProbit,unrateSA = unrateSA/100,
+					 unrateNSA = unrateNSA/100)
+
+rec_dates   <- as.Date(c("2001-02-01", "2001-12-01","2007-11-01", "2009-07-01"))
 demoProbit$Rec <- ((demoProbit$date>rec_dates[1] & demoProbit$date<rec_dates[2] ) | 
 						(demoProbit$date>rec_dates[3] & demoProbit$date<rec_dates[4] ))
 
 
-swDemo.EE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age , 
+swDemo.unrate.EE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age , 
 			  family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
-#swDemo.UE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age , 
-#				 family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
-#swDemo <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + UE + age , 
-#				 family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
+swDemo.unrate.UE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age , 
+				 family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
+swDemo.unrate <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + UE + age , 
+				 family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
 
 swDemo.EE <- glm(swOccJob ~ Rec + nwhite + univ + lths + female + age , 
 				 family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
@@ -231,6 +255,11 @@ swDemo.UE <- glm(swOccJob ~ Rec + nwhite + univ + lths + female + age ,
 				 family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
 swDemo <- glm(swOccJob ~ Rec + nwhite + univ + lths + female + UE + age , 
 			  family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
+
+swDemo.Mfx <- maBina(w=swDemo)
+swDemo.unrate.Mfx <- maBina(w=swDemo.unrate)
+
+texreg( list(swDemo,swDemo.unrate),label="tab:swDemo",caption="Probit for occupational switching",file="swDemo.tex")
 
 
 rm(list=c("demoProbit","haver"))

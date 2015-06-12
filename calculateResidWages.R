@@ -10,9 +10,9 @@ library(reshape2)
 
 setwd("~/workspace/CVW/R")
 
-useRegResid <-T
+useRegResid <- F
 # Use 1 digit occupations from CEPR? (soc2d)
-useSoc2d <- F
+useSoc2d <- T
 
 # import PCE deflator
 PCE <- read.csv("./Data/PCE.csv")
@@ -21,18 +21,25 @@ PCE$date <- as.Date(PCE$date)
 # Create function to calculate residuals
 # add a constant (previously was constant from regression, now is 1996 avg)
 calculateResiduals <- function(df, const = 0) {
-        # group data by year
-        df <- group_by(df, year)
-        # regression within each year
-         model <- lm(logEarnm ~ experience + I(experience^2) + factor(educ) + 
-                             female + black + hispanic + factor(soc2d), data = df,
-                     na.action = na.exclude, weights = wpfinwgt)
-        # calculate residuals
-        resid <- residuals(model) + const
-        # append residuals to df
-        result <- data.frame(df, resid)
-        # ungroup and remove regressions
-        result <- result %>% ungroup %>% select(-one_of(regressors))
+        if(useRegResid){
+			# group data by year
+	        df <- group_by(df, year)
+	        # regression within each year
+	         model <- lm(logEarnm ~ experience + I(experience^2) + factor(educ) + 
+	                             female + black + hispanic + factor(soc2d), data = df,
+	                     na.action = na.exclude, weights = wpfinwgt)
+	        # calculate residuals
+	        resid <- residuals(model) + const
+	        # append residuals to df
+	        result <- data.frame(df, resid)
+	        # ungroup and remove regressions
+	        result <- result %>% ungroup %>% select(-one_of(regressors))
+	        result <- mutate(result,nomresid = log(nomearnm))
+        }else{
+        	result <- df %>%
+        		mutate(resid = logEarnm) %>%
+        		mutate(nomresid = log(nomearnm))
+        }
         return(result)
 }
 
@@ -45,6 +52,11 @@ fillDownResidual <- function(df) {
                 mutate(lastResidWage = na.locf(lastResidWage, na.rm = FALSE)) %>%
                 mutate(lastResidWage_q = as.numeric(ifelse(switchedJob & job != 0, lag(resid_q, 3), NA))) %>%
                 mutate(lastResidWage_q = na.locf(lastResidWage_q, na.rm = FALSE))
+        result <- result %>%
+        	group_by(id) %>%
+        	arrange(id, date) %>%
+        	mutate(lastResidNomWage = as.numeric(ifelse(switchedJob & job != 0, lag(nomresid), NA))) %>%
+        	mutate(lastResidNomWage = na.locf(lastResidNomWage, na.rm = FALSE)) 
         return(result)
 }
 
@@ -53,8 +65,10 @@ genRegressors <- function(df) {
   # import PCE data
   df <- left_join(df,PCE, by="date")
   result <- df %>%
-    mutate(wage = wage/PCEPI*100) %>%
+    mutate(nomwage= wage) %>%
+  	mutate(wage = wage/PCEPI*100) %>%
     mutate(logWage = log(wage)) %>%
+  	mutate(nomearnm = earnm) %>%
     mutate(earnm = earnm/PCEPI*100) %>%
     mutate(logEarnm = log(earnm)) %>%
     mutate(yearsSchool = as.integer(ifelse(educ == 1, 9, NA)),
@@ -89,12 +103,9 @@ analytic96 <- genRegressors(processed96)
 
 # Find average log wage for 1996 panel
 avg1996 <- weighted.mean(analytic96$logEarnm, analytic96$wpfinwgt, na.rm = TRUE)
-if(useRegResid){
-  # Run regression within each year, remove regressors
-  analytic96 <- calculateResiduals(analytic96, avg1996)
-}else{
-  analytic96 <- mutate(analytic96,resid = logEarnm)
-}
+# Run regression within each year, remove regressors
+analytic96 <- calculateResiduals(analytic96, avg1996)
+
 
 analytic96 <- analytic96 %>%
         mutate(resid_lev = exp(resid)) %>%
@@ -114,12 +125,13 @@ analytic96 <- fillDownResidual(analytic96)
 # Calculate residual wage change
 analytic96 <- analytic96 %>%
         mutate(residWageChange = lead(resid) - lastResidWage) %>%
-        mutate(residWageChange_q = resid_q - lastResidWage_q)
+        mutate(residWageChange_q = resid_q - lastResidWage_q) %>%
+		mutate(residWageChange_stayer = as.numeric(ifelse(!switchedJob, lead(resid) - resid,NA) ))
 
 # job-job changes, including the separations. If separated,  pct change is -1
 analytic96 <- analytic96 %>%
         mutate(residWageChange_wU = as.numeric(ifelse(lfStat == 1 ,residWageChange , -1.))) %>%
-        mutate(residWageChange_q_wU = as.numeric(ifelse(lfStat_q == 1 ,residWageChange_q , -1.)))
+		mutate(residWageChange_q_wU = as.numeric(ifelse(lfStat_q == 1 ,residWageChange_q , -1.)))
 
 # Save data, remove from environment
 if(useSoc2d & useRegResid) {
@@ -146,12 +158,8 @@ if(useSoc2d) {
 # Generate regressor variables
 analytic01 <- genRegressors(processed01)
 
-if(useRegResid){
-  # Run regression within each year, remove regressors
-  analytic01 <- calculateResiduals(analytic01, avg1996)
-}else{
-  analytic01 <- mutate(analytic01,resid = logEarnm)
-}
+# Run regression within each year, remove regressors
+analytic01 <- calculateResiduals(analytic01, avg1996)
 
 analytic01 <- analytic01 %>%
         mutate(resid_lev = exp(resid)) %>%
@@ -171,7 +179,9 @@ analytic01 <- fillDownResidual(analytic01)
 # Calculate residual wage change
 analytic01 <- analytic01 %>%
         mutate(residWageChange = lead(resid) - lastResidWage) %>%
-        mutate(residWageChange_q = resid_q - lastResidWage_q)
+        mutate(residWageChange_q = resid_q - lastResidWage_q) %>%
+		mutate(residWageChange_stayer = as.numeric(ifelse(!switchedJob, lead(resid) - resid,NA) ))
+
 
 # job-job changes, including the separations. If separated,  pct change is -1
 analytic01 <- analytic01 %>%
@@ -204,12 +214,8 @@ if(useSoc2d) {
 # Generate regressor variables
 analytic04 <- genRegressors(processed04)
 
-if(useRegResid){
-  # Run regression within each year, remove regressors
-  analytic04 <- calculateResiduals(analytic04, avg1996)
-}else{
-  analytic04 <- mutate(analytic04,resid = logEarnm)
-}
+# Run regression within each year, remove regressors
+analytic04 <- calculateResiduals(analytic04, avg1996)
 
 analytic04 <- analytic04 %>%
         mutate(resid_lev = exp(resid)) %>%
@@ -229,7 +235,8 @@ analytic04 <- fillDownResidual(analytic04)
 # Calculate residual wage change
 analytic04 <- analytic04 %>%
         mutate(residWageChange = lead(resid) - lastResidWage) %>%
-        mutate(residWageChange_q = resid_q - lastResidWage_q)
+        mutate(residWageChange_q = resid_q - lastResidWage_q) %>%
+		mutate(residWageChange_stayer = as.numeric(ifelse(!switchedJob, lead(resid) - resid,NA) ))
 
 # job-job changes, including the separations. If separated,  pct change is -1
 analytic04 <- analytic04 %>%
@@ -261,12 +268,8 @@ if(useSoc2d) {
 # Generate regressor variables
 analytic08 <- genRegressors(processed08)
 
-if(useRegResid){
-  # Run regression within each year, remove regressors
-  analytic08 <- calculateResiduals(analytic08, avg1996)
-}else{
-  analytic08 <- mutate(analytic08,resid = logEarnm)
-}
+# Run regression within each year, remove regressors
+ analytic08 <- calculateResiduals(analytic08, avg1996)
 
 analytic08 <- analytic08 %>%
 		mutate(resid_lev = exp(resid)) %>%
@@ -286,7 +289,8 @@ analytic08 <- fillDownResidual(analytic08)
 # Calculate residual wage change
 analytic08 <- analytic08 %>%
         mutate(residWageChange = lead(resid) - lastResidWage) %>%
-        mutate(residWageChange_q = resid_q - lastResidWage_q)
+        mutate(residWageChange_q = resid_q - lastResidWage_q) %>%
+		mutate(residWageChange_stayer = as.numeric(ifelse(!switchedJob, lead(resid) - resid,NA) ))
 
 # job-job changes, including the separations. If separated,  pct change is -1
 analytic08 <- analytic08 %>%
