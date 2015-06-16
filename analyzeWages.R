@@ -13,7 +13,7 @@ setwd("~/workspace/CVW/R")
 
 # Use 1 digit occupations from CEPR? (soc2d)
 useSoc2d <- T
-useRegResid <- F
+useRegResid <- T
 
 # Function for weighted moving average
 # x, wts, and new.name are strings

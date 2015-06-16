@@ -10,7 +10,7 @@ library(reshape2)
 
 setwd("~/workspace/CVW/R")
 
-useRegResid <- F
+useRegResid <- T
 # Use 1 digit occupations from CEPR? (soc2d)
 useSoc2d <- T
 
