@@ -38,27 +38,24 @@ genLFStat <- function(df) {#
 
 # Correct occupation code
 fixOccCode <- function(df) {
-        
-        if(useSoc2d) {
-                # drop occ and replace with soc2d
-                df <- df %>%
-                        select(-occ) %>%
-                        rename(occ = soc2d)
-        }
-        
-        result <- df %>%
-                group_by(id) %>%
-                arrange(date) %>%
-                # replace occ with NA if unemployed or NILF
-                mutate(occ = as.integer(ifelse(lfStat == 2 | lfStat == 3, NA, occ))) %>%
-                # carry forward last observation of occ to fill NAs
-                mutate(occ = na.locf(occ, na.rm = FALSE)) %>%
-                # replace NA job codes with 0
-                mutate(job = as.integer(ifelse(is.na(job), 0, job))) %>%
-                # replace job code with 0 if unemployed or NILF 
-                mutate(job = as.integer(ifelse(lfStat == 2 | lfStat == 3, 0, job)))
-        
-        return(result)
+	if(useSoc2d) {
+		# drop occ and replace with soc2d
+		df <- df %>%
+			select(-occ) %>%
+			rename(occ = soc2d)
+	}
+	result <- df %>%
+		group_by(id) %>%
+		arrange(date) %>%
+		# replace occ with NA if unemployed or NILF
+		mutate(occ = as.integer(ifelse(lfStat == 2 | lfStat == 3, NA, occ))) %>%
+		# carry forward last observation of occ to fill NAs
+		mutate(occ = na.locf(occ, na.rm = FALSE)) %>%
+		# replace NA job codes with 0
+		mutate(job = as.integer(ifelse(is.na(job), 0, job))) %>%
+		# replace job code with 0 if unemployed or NILF 
+		mutate(job = as.integer(ifelse(lfStat == 2 | lfStat == 3, 0, job)))
+	return(result)
 }
 
 # Generate occupation switching and LF flow dummies

@@ -33,15 +33,29 @@ calculateResiduals <- function(df, const = 0) {
 	        # append residuals to df
 	        result <- data.frame(df, resid)
 	        # ungroup and remove regressions
-	        result <- result %>% ungroup %>% select(-one_of(regressors))
-	        result <- mutate(result,nomresid = log(nomearnm))
+	        result <- result %>% 
+	        	ungroup %>% 
+	        	select(-one_of(regressors))
         }else{
         	result <- df %>%
-        		mutate(resid = logEarnm) %>%
-        		mutate(nomresid = log(nomearnm))
+        		mutate(resid = logEarnm) 
         }
         return(result)
 }
+
+calculateOccWage <- function(df, const =0 ){
+	df <- group_by(df, occ)
+	model <- lm( logEarnm ~ experience + I(experience^2) + factor(educ) 
+				 + female + black + hispanic, 
+				 data= df, na.action = na.exclude, weights = wpfinwgt)
+	occWage <- fitted(model) + const
+	result <- data.frame(df,occWage)
+	result <- result %>% 
+		ungroup %>% 
+		select(-one_of(regressors))
+	
+}
+
 
 # Create function to calculate last residual observed wage
 fillDownResidual <- function(df) {
@@ -55,8 +69,8 @@ fillDownResidual <- function(df) {
         result <- result %>%
         	group_by(id) %>%
         	arrange(id, date) %>%
-        	mutate(lastResidNomWage = as.numeric(ifelse(switchedJob & job != 0, lag(nomresid), NA))) %>%
-        	mutate(lastResidNomWage = na.locf(lastResidNomWage, na.rm = FALSE)) 
+        	mutate(lastOcc = as.numeric(ifelse(switchedJob & job != 0, lag(occ), NA))) %>%
+        	mutate(lastOcc = na.locf(lastOcc, na.rm = FALSE)) 
         return(result)
 }
 
@@ -94,7 +108,7 @@ regressors <- c("age", "educ", "female", "race", "yearsSchool",
 
 if(useSoc2d) {
         processed96 <- readRDS("./Data/processed96soc2d.RData")
-} else {
+}else {
         processed96 <- readRDS("./Data/processed96.RData")
 }
 
