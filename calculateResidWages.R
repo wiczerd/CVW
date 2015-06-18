@@ -34,8 +34,7 @@ calculateResiduals <- function(df, const = 0) {
 	        result <- data.frame(df, resid)
 	        # ungroup and remove regressions
 	        result <- result %>% 
-	        	ungroup %>% 
-	        	select(-one_of(regressors))
+	        	ungroup
         }else{
         	result <- df %>%
         		mutate(resid = logEarnm) 
@@ -51,8 +50,7 @@ calculateOccWage <- function(df, const =0 ){
 	occWage <- fitted(model) + const
 	result <- data.frame(df,occWage)
 	result <- result %>% 
-		ungroup %>% 
-		select(-one_of(regressors))
+		ungroup
 	
 }
 
@@ -69,8 +67,10 @@ fillDownResidual <- function(df) {
         result <- result %>%
         	group_by(id) %>%
         	arrange(id, date) %>%
-        	mutate(lastOcc = as.numeric(ifelse(switchedJob & job != 0, lag(occ), NA))) %>%
+        	mutate(lastOcc = as.integer(ifelse(switchedJob & job != 0, lag(occ), NA))) %>%
         	mutate(lastOcc = na.locf(lastOcc, na.rm = FALSE)) 
+        	mutate(lastOccWage = as.numeric(ifelse(switchedJob & job != 0, lag(occWage), NA))) %>%
+        	mutate(lastOccWage = na.locf(lastOccWage, na.rm = FALSE)) 
         return(result)
 }
 
@@ -119,8 +119,8 @@ analytic96 <- genRegressors(processed96)
 avg1996 <- weighted.mean(analytic96$logEarnm, analytic96$wpfinwgt, na.rm = TRUE)
 # Run regression within each year, remove regressors
 analytic96 <- calculateResiduals(analytic96, avg1996)
-
-
+analytic96 <- calculateOccWage(analytic96,0.)
+analytic96 <- select(analytic96, -one_of(regressors))
 analytic96 <- analytic96 %>%
         mutate(resid_lev = exp(resid)) %>%
         mutate(resid_lev = as.numeric(ifelse(lfStat > 1 , 0. , resid_lev)))
@@ -174,6 +174,8 @@ analytic01 <- genRegressors(processed01)
 
 # Run regression within each year, remove regressors
 analytic01 <- calculateResiduals(analytic01, avg1996)
+analytic01 <- calculateOccWage(analytic01,0.)
+analytic01 <- select(analytic01, -one_of(regressors))
 
 analytic01 <- analytic01 %>%
         mutate(resid_lev = exp(resid)) %>%
@@ -230,6 +232,8 @@ analytic04 <- genRegressors(processed04)
 
 # Run regression within each year, remove regressors
 analytic04 <- calculateResiduals(analytic04, avg1996)
+analytic04 <- calculateOccWage(analytic04,0.)
+analytic04 <- select(analytic04, -one_of(regressors))
 
 analytic04 <- analytic04 %>%
         mutate(resid_lev = exp(resid)) %>%
@@ -283,7 +287,9 @@ if(useSoc2d) {
 analytic08 <- genRegressors(processed08)
 
 # Run regression within each year, remove regressors
- analytic08 <- calculateResiduals(analytic08, avg1996)
+analytic08 <- calculateResiduals(analytic08, avg1996)
+analytic08 <- calculateOccWage(analytic08,0.)
+analytic08 <- select(analytic08, -one_of(regressors))
 
 analytic08 <- analytic08 %>%
 		mutate(resid_lev = exp(resid)) %>%
