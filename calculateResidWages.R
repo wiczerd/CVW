@@ -68,7 +68,7 @@ fillDownResidual <- function(df) {
         	group_by(id) %>%
         	arrange(id, date) %>%
         	mutate(lastOcc = as.integer(ifelse(switchedJob & job != 0, lag(occ), NA))) %>%
-        	mutate(lastOcc = na.locf(lastOcc, na.rm = FALSE)) 
+        	mutate(lastOcc = na.locf(lastOcc, na.rm = FALSE)) %>%
         	mutate(lastOccWage = as.numeric(ifelse(switchedJob & job != 0, lag(occWage), NA))) %>%
         	mutate(lastOccWage = na.locf(lastOccWage, na.rm = FALSE)) 
         return(result)
@@ -140,6 +140,7 @@ analytic96 <- fillDownResidual(analytic96)
 analytic96 <- analytic96 %>%
         mutate(residWageChange = lead(resid) - lastResidWage) %>%
         mutate(residWageChange_q = resid_q - lastResidWage_q) %>%
+		mutate(occWageChange = lead(occWage) - lastOccWage) %>%
 		mutate(residWageChange_stayer = as.numeric(ifelse(!switchedJob, lead(resid) - resid,NA) ))
 
 # job-job changes, including the separations. If separated,  pct change is -1
@@ -196,6 +197,7 @@ analytic01 <- fillDownResidual(analytic01)
 analytic01 <- analytic01 %>%
         mutate(residWageChange = lead(resid) - lastResidWage) %>%
         mutate(residWageChange_q = resid_q - lastResidWage_q) %>%
+		mutate(occWageChange = lead(occWage) - lastOccWage) %>%
 		mutate(residWageChange_stayer = as.numeric(ifelse(!switchedJob, lead(resid) - resid,NA) ))
 
 
@@ -252,8 +254,9 @@ analytic04 <- fillDownResidual(analytic04)
 
 # Calculate residual wage change
 analytic04 <- analytic04 %>%
-        mutate(residWageChange = lead(resid) - lastResidWage) %>%
-        mutate(residWageChange_q = resid_q - lastResidWage_q) %>%
+		mutate(residWageChange = lead(resid) - lastResidWage) %>%
+		mutate(residWageChange_q = resid_q - lastResidWage_q) %>%
+		mutate(occWageChange = lead(occWage) - lastOccWage) %>%
 		mutate(residWageChange_stayer = as.numeric(ifelse(!switchedJob, lead(resid) - resid,NA) ))
 
 # job-job changes, including the separations. If separated,  pct change is -1
@@ -310,6 +313,7 @@ analytic08 <- fillDownResidual(analytic08)
 analytic08 <- analytic08 %>%
         mutate(residWageChange = lead(resid) - lastResidWage) %>%
         mutate(residWageChange_q = resid_q - lastResidWage_q) %>%
+		mutate(occWageChange = lead(occWage) - lastOccWage) %>%
 		mutate(residWageChange_stayer = as.numeric(ifelse(!switchedJob, lead(resid) - resid,NA) ))
 
 # job-job changes, including the separations. If separated,  pct change is -1

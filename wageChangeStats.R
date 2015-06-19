@@ -30,7 +30,8 @@ haver <- haver %>%
 
 toKeep <- c("wpfinwgt", "switchedOcc","soc2d", "EE", "UE",  
             "residWageChange", "residWageChange_wU", "residWageChange_stayer","lfStat", "date",
-            "residWageChange_q", "residWageChange_q_wU","resid")
+            "residWageChange_q", "residWageChange_q_wU","occWage","occWageChange","resid",
+			"lastResidWage","lastOccWage")
 
 detach("package:xlsx")
 detach("package:xlsxjars")

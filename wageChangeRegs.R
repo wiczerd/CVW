@@ -24,10 +24,6 @@ haver <- haver %>%
 		   date = as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")) %>%
 	select(-year, -month)
 
-toKeep <- c("wpfinwgt", "switchedOcc","soc2d", "EE", "UE",  
-			"residWageChange", "residWageChange_wU", "residWageChange_stayer","lfStat", "date",
-			"residWageChange_q", "residWageChange_q_wU","resid")
-
 detach("package:xlsx")
 detach("package:xlsxjars")
 detach("package:rJava")
@@ -57,7 +53,7 @@ EEqr.nSu <-summary(wageRegEE.nSu)
 EEqr.wSu <-summary(wageRegEE.wSu)
 quantreg::latex(EEqr.nSu,file="./Figures/EEqr_nSu",transpose=T,digits=3)
 quantreg::latex(EEqr.wSu,file="./Figures/EEqr_wSu",transpose=T,digits=3)
-# with occupation dummies
+# with occupation dummies for occupation origin
 wageOLSEE.nSu.odum <- lm(residWageChange ~ switchedOcc + unrateSA + factor(soc2d), weights= wpfinwgt, data = wageChangesEE)
 wageRegEE.nSu.odum <- rq(residWageChange ~ switchedOcc + unrateSA + factor(soc2d), tau =qtl_delw, weights= wpfinwgt, data = wageChangesEE)
 wageOLSEE.wSu.odum <- lm(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA + factor(soc2d), weights= wpfinwgt, data = wageChangesEE)
@@ -82,7 +78,7 @@ UEqr.nSu <-summary(wageRegUE.nSu)
 UEqr.wSu <-summary(wageRegUE.wSu)
 quantreg::latex(UEqr.nSu,file="./Figures/UEqr_nSu",transpose=T,digits=3)
 quantreg::latex(UEqr.wSu,file="./Figures/UEqr_wSu",transpose=T,digits=3)
-# with occupation dummies
+# with occupation dummies for occupation origin
 wageOLSUE.nSu.odum <- lm(residWageChange ~ switchedOcc + unrateSA + factor(soc2d), weights= wpfinwgt, data = wageChangesUE)
 wageRegUE.nSu.odum <- rq(residWageChange ~ switchedOcc + unrateSA + factor(soc2d), tau =qtl_delw, weights= wpfinwgt, data = wageChangesUE)
 wageOLSUE.wSu.odum <- lm(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA + factor(soc2d), weights= wpfinwgt, data = wageChangesUE)
@@ -96,8 +92,8 @@ quantreg::latex(UEqr.wSu.odum,file="./Figures/UEqr_wSu_odum",transpose=T,digits=
 
 
 wageChangesUEEE <- subset(wageChanges, UE | EE)
-wageOLS.nSu <- lm(residWageChange ~ switchedOcc + unrateSA + UE + resid, weights= wpfinwgt, data = wageChangesUEEE)
-wageReg.nSu <- rq(residWageChange ~ switchedOcc + unrateSA + UE + resid, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
+wageOLS.nSu <- lm(residWageChange ~ switchedOcc + unrateSA + UE, weights= wpfinwgt, data = wageChangesUEEE)
+wageReg.nSu <- rq(residWageChange ~ switchedOcc + unrateSA + UE, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
 wageOLS.wSu <- lm(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA + UE  + resid, weights= wpfinwgt, data = wageChangesUEEE)
 wageReg.wSu <- rq(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA + UE + resid, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
 ols.nSu <-summary(wageOLS.nSu)
@@ -106,7 +102,7 @@ qr.nSu <-summary(wageReg.nSu)
 qr.wSu <-summary(wageReg.wSu)
 quantreg::latex(qr.nSu,file="./Figures/qr_nSu",transpose=T,digits=3)
 quantreg::latex(qr.wSu,file="./Figures/qr_wSu",transpose=T,digits=3)
-# with occupation dummies
+# with occupation dummies for occupation origin
 wageOLS.nSu.odum <- lm(residWageChange ~ switchedOcc + unrateSA + UE + factor(soc2d), weights= wpfinwgt, data = wageChangesUEEE)
 wageReg.nSu.odum <- rq(residWageChange ~ switchedOcc + unrateSA + UE + factor(soc2d), tau =qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
 wageOLS.wSu.odum <- lm(residWageChange ~ switchedOcc + unrateSA + switchedOcc*unrateSA + UE + factor(soc2d), weights= wpfinwgt, data = wageChangesUEEE)
@@ -119,21 +115,35 @@ quantreg::latex(qr.nSu.odum,file="./Figures/qr_nSu_odum",transpose=T,digits=3)
 quantreg::latex(qr.wSu.odum,file="./Figures/qr_wSu_odum",transpose=T,digits=3)
 
 
+#############################################
+## run regs with lags rather than just differences
+
+
+wageChangesUEEE <- subset(wageChanges, (UE | EE))
+wageOLS.nSu <- lm(residWageChange ~ unrateSA + UE + switchedOcc + lastResidWage + lastOccWage + occWageChange, weights= wpfinwgt, data = wageChangesUEEE)
+wageReg.nSu <- rq(residWageChange ~ unrateSA + UE + switchedOcc + lastResidWage + lastOccWage + occWageChange, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
+wageOLS.wSu <- lm(residWageChange ~ unrateSA + UE + switchedOcc + switchedOcc*unrateSA + lastResidWage + lastOccWage + occWageChange, weights= wpfinwgt, data = wageChangesUEEE)
+wageReg.wSu <- rq(residWageChange ~ unrateSA + UE + switchedOcc + switchedOcc*unrateSA + lastResidWage + lastOccWage + occWageChange, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
+
+
 # with only-changers
 wageChangesUEEE_sw <- subset(wageChanges, (UE | EE) & switchedOcc)
-wageOLS.nSu.sw <- lm(residWageChange ~ unrateSA + UE + resid, weights= wpfinwgt, data = wageChangesUEEE_all)
-wageReg.nSu.sw <- rq(residWageChange ~ unrateSA + UE + resid, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE_all)
-wageOLS.wSu.sw <- lm(residWageChange ~ unrateSA + switchedOcc*unrateSA + UE  + resid, weights= wpfinwgt, data = wageChangesUEEE_all)
-wageReg.wSu.all <- rq(residWageChange ~ unrateSA + switchedOcc*unrateSA + UE + resid, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE_all)
-ols.nSu.all <-summary(wageOLS.nSu.all)
-ols.wSu.all <-summary(wageOLS.wSu.all)
-qr.nSu.all <-summary(wageReg.nSu.all)
-qr.wSu.all <-summary(wageReg.wSu.all)
+wageOLS.nSu.sw <- lm(residWageChange ~ unrateSA + UE + lastResidWage + lastOccWage + occWageChange, weights= wpfinwgt, data = wageChangesUEEE_sw)
+wageReg.nSu.sw <- rq(residWageChange ~ unrateSA + UE + lastResidWage + lastOccWage + occWageChange, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE_sw)
+wageOLS.wSu.sw <- lm(residWageChange ~ unrateSA + switchedOcc*unrateSA + UE  + rlastResidWage + lastOccWage + occWageChange, weights= wpfinwgt, data = wageChangesUEEE_sw)
+wageReg.wSu.sw <- rq(residWageChange ~ unrateSA + switchedOcc*unrateSA + UE + lastResidWage + lastOccWage + occWageChange, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE_sw)
+ols.nSu.sw <-summary(wageOLS.nSu.sw)
+ols.wSu.sw <-summary(wageOLS.wSu.sw)
+qr.nSu.sw <-summary(wageReg.nSu.sw)
+qr.wSu.sw <-summary(wageReg.wSu.sw)
 
 # only non-changer
 wageChangesUEEE_nsw <- subset(wageChanges, (UE | EE) & !switchedOcc)
-wageOLS.nSu.nsw <- lm(residWageChange ~ unrateSA + UE + resid, weights= wpfinwgt, data = wageChangesUEEE_nsw)
-wageReg.nSu.nsw <- rq(residWageChange ~ unrateSA + UE + resid, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE_nsw)
+wageOLS.nSu.nsw <- lm(residWageChange ~ unrateSA + UE + resid + occWage , weights= wpfinwgt, data = wageChangesUEEE_nsw)
+wageReg.nSu.nsw <- rq(residWageChange ~ unrateSA + UE + resid + occWage , tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE_nsw)
+wageOLS.wSu.nsw <- lm(residWageChange ~ unrateSA + switchedOcc*unrateSA + UE  + resid + occWage , weights= wpfinwgt, data = wageChangesUEEE_sw)
+wageReg.wSu.nsw <- rq(residWageChange ~ unrateSA + switchedOcc*unrateSA + UE + resid + occWage , tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE_sw)
+
 
 png("./Figures/qr_nSu.png")
 plot(qr.nSu, parm=c("switchedOccTRUE","unrateSA"),xlab="Quantile")
