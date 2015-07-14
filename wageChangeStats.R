@@ -152,6 +152,11 @@ wageChanges <- wageChanges %>%
 	mutate(negChange = (residWageChange < 0))
 
 wageChangesQrtile <-with(wageChanges, wtd.quantile(residWageChange[EE | UE], wpfinwgt[EE | UE], na.rm = TRUE,probs=c(.25,.5,.75,.9) ) )
+wageChangesQrtileUE <-with(wageChanges, wtd.quantile(residWageChange[UE], wpfinwgt[UE], na.rm = TRUE,probs=c(.25,.5,.75,.9) ) )
+wageChangesQrtile_sw <-with(wageChanges, wtd.quantile(residWageChange[switchedOcc & (EE | UE)], wpfinwgt[switchedOcc & (EE | UE)], na.rm = TRUE,probs=c(.25,.5,.75,.9) ) )
+wageChangesQrtileUE_sw <-with(wageChanges, wtd.quantile(residWageChange[switchedOcc & UE], wpfinwgt[switchedOcc & UE], na.rm = TRUE,probs=c(.25,.5,.75,.9) ) )
+
+
 with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & residWageChange>wageChangesQrtile[3]], 
 						   wpfinwgt[(EE | UE) & residWageChange>wageChangesQrtile[3]], na.rm = TRUE))
 with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & residWageChange>wageChangesQrtile[4]], 

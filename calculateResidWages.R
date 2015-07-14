@@ -22,8 +22,8 @@ PCE$date <- as.Date(PCE$date)
 # add a constant (previously was constant from regression, now is 1996 avg)
 calculateResiduals <- function(df, const = 0) {
         if(useRegResid){
-			# group data by year
-	        df <- group_by(df, year)
+			# group data by year - this doesn't make sense if we're doing business cycles
+	        # df <- group_by(df, year)
 	        # regression within each year
 	         model <- lm(logEarnm ~ experience + I(experience^2) + factor(educ) + 
 	                             female + black + hispanic + factor(soc2d), data = df,
