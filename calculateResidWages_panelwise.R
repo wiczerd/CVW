@@ -147,32 +147,23 @@ if(useSoc2d) {
         setwd("./occ")
 }
 
-processed9608 <- readRDS("processed96.RData")
-processed01  <- readRDS("processed01.RData")
-processed9608<-bind_rows(processed01,processed9608)
-rm(processed01)
-processed04  <- readRDS("processed04.RData")
-processed9608<-bind_rows(processed04,processed9608)
-rm(processed04)
-processed08  <- readRDS("processed08.RData")
-processed9608<-bind_rows(processed08,processed9608)
-rm(processed08)
+processed96 <- readRDS("processed96.RData")
 
 # Generate regressor variables
-analytic9608 <- genRegressors(processed9608)
-rm(processed9608)
+analytic96 <- genRegressors(processed96)
+
 # Find average log wage for 1996 panel
-avg19962008 <- weighted.mean(analytic9608$logEarnm, analytic9608$wpfinwgt, na.rm = TRUE)
+avg1996 <- weighted.mean(analytic96$logEarnm, analytic96$wpfinwgt, na.rm = TRUE)
 # Run regression within each year, remove regressors
-analytic9608 <- calculateUseWage(analytic9608, avg19962008)
-analytic9608 <- calculateOccWage(analytic9608, 0.)
-analytic9608 <- select(analytic9608, -one_of(regressors))
-analytic9608 <- analytic9608 %>%
+analytic96 <- calculateUseWage(analytic96, avg1996)
+analytic96 <- calculateOccWage(analytic96, 0.)
+analytic96 <- select(analytic96, -one_of(regressors))
+analytic96 <- analytic96 %>%
         mutate(useWageLevel = exp(useWage)) %>%
         mutate(useWageLevel = as.numeric(ifelse(lfStat > 1 , 0. , useWageLevel)))
 
 # Create quarterly residual wage and quarterly lfStat
-analytic9608 <- analytic9608 %>%
+analytic96 <- analytic96 %>%
         filter(!is.na(lfStat)) %>%
         group_by(id, qtrdate) %>%
         mutate(useWageQtr = sum(useWageLevel)) %>%
@@ -181,13 +172,13 @@ analytic9608 <- analytic9608 %>%
 
 # Calculate last residual wage, fill down
 #analytic96 <- fillDownWage(analytic96)
-analytic9608 <- fillUpWage(analytic9608)
+analytic96 <- fillUpWage(analytic96)
 
 # Calculate residual wage change
-analytic9608 <- calculateWageChange(analytic9608)
+analytic96 <- calculateWageChange(analytic96)
 
 # job-job changes, including the separations. If separated,  pct change is -1
-analytic9608 <- analytic9608 %>%
+analytic96 <- analytic96 %>%
         mutate(wageChange_wU = as.numeric(ifelse(lfStat == 1 , wageChange , -1.))) %>%
         mutate(wageChangeQtr_wU = as.numeric(ifelse(lfStatQtr == 1 , wageChangeQtr , -1.)))
 
@@ -198,8 +189,169 @@ if(useRegResid) {
         setwd("./Raw")
 }
 
-saveRDS(analytic9608, "analytic9608")
-rm(analytic9608)
+saveRDS(analytic96, "analytic96.RData")
+rm(list = c("processed96", "analytic96"))
 
 setwd("../../")
 
+# 2001 Panel --------------------------------------------------------------
+
+if(useSoc2d) {
+        setwd("./soc2d")
+}else {
+        setwd("./occ")
+}
+
+processed01 <- readRDS("processed01.RData")
+
+# Generate regressor variables
+analytic01 <- genRegressors(processed01)
+
+# Run regression within each year, remove regressors
+analytic01 <- calculateUseWage(analytic01, avg1996)
+analytic01 <- calculateOccWage(analytic01,0.)
+analytic01 <- select(analytic01, -one_of(regressors))
+
+analytic01 <- analytic01 %>%
+        mutate(useWageLevel = exp(useWage)) %>%
+        mutate(useWageLevel = as.numeric(ifelse(lfStat > 1 , 0. , useWageLevel)))
+
+# Create quarterly residual wage and quarterly lfStat
+analytic01 <- analytic01 %>%
+        filter(!is.na(lfStat)) %>%
+        group_by(id, qtrdate) %>%
+        mutate(useWageQtr = sum(useWageLevel)) %>%
+        mutate(lfStatQtr = as.integer(ifelse(useWageQtr > 0, 1, 2))) %>%
+        mutate(useWageQtr = log(useWageQtr))
+
+# Calculate last residual wage, fill down
+# analytic01 <- fillDownWage(analytic01)
+analytic01 <- fillUpWage(analytic01)
+
+# Calculate residual wage change
+analytic01 <- calculateWageChange(analytic01)
+
+# job-job changes, including the separations. If separated,  pct change is -1
+analytic01 <- analytic01 %>%
+        mutate(wageChange_wU = as.numeric(ifelse(lfStat == 1 ,wageChange , -1.))) %>%
+        mutate(wageChangeQtr_wU = as.numeric(ifelse(lfStatQtr == 1 ,wageChangeQtr , -1.)))
+
+# Save data, remove from environment
+if(useRegResid) {
+        setwd("./RegResid")
+} else {
+        setwd("./Raw")
+}
+
+saveRDS(analytic01, "analytic01.RData")
+rm(list = c("processed01", "analytic01"))
+
+setwd("../../")
+
+# 2004 Panel --------------------------------------------------------------
+
+if(useSoc2d) {
+        setwd("./soc2d")
+}else {
+        setwd("./occ")
+}
+
+processed04 <- readRDS("processed04.RData")
+
+# Generate regressor variables
+analytic04 <- genRegressors(processed04)
+
+# Run regression within each year, remove regressors
+analytic04 <- calculateUseWage(analytic04, avg1996)
+analytic04 <- calculateOccWage(analytic04,0.)
+analytic04 <- select(analytic04, -one_of(regressors))
+
+analytic04 <- analytic04 %>%
+        mutate(useWageLevel = exp(useWage)) %>%
+        mutate(useWageLevel = as.numeric(ifelse(lfStat > 1 , 0. , useWageLevel)))
+
+# Create quarterly residual wage and quarterly lfStat
+analytic04 <- analytic04 %>%
+        filter(!is.na(lfStat)) %>%
+        group_by(id, qtrdate) %>%
+        mutate(useWageQtr = sum(useWageLevel)) %>%
+        mutate(lfStatQtr = as.integer(ifelse(useWageQtr > 0, 1, 2))) %>%
+        mutate(useWageQtr = log(useWageQtr))
+
+# Calculate last residual wage, fill down
+# analytic04 <- fillDownWage(analytic04)
+analytic04 <- fillUpWage(analytic04)
+
+# Calculate residual wage change
+analytic04 <- calculateWageChange(analytic04)
+
+# job-job changes, including the separations. If separated,  pct change is -1
+analytic04 <- analytic04 %>%
+        mutate(wageChange_wU = as.numeric(ifelse(lfStat == 1 ,wageChange , -1.))) %>%
+        mutate(wageChangeQtr_wU = as.numeric(ifelse(lfStatQtr == 1 ,wageChangeQtr , -1.)))
+
+# Save data, remove from environment
+if(useRegResid) {
+        setwd("./RegResid")
+} else {
+        setwd("./Raw")
+}
+
+saveRDS(analytic04, "analytic04.RData")
+rm(list = c("processed04", "analytic04"))
+
+setwd("../../")
+
+# 2008 Panel --------------------------------------------------------------
+
+if(useSoc2d) {
+        setwd("./soc2d")
+}else {
+        setwd("./occ")
+}
+
+processed08 <- readRDS("processed08.RData")
+
+# Generate regressor variables
+analytic08 <- genRegressors(processed08)
+
+# Run regression within each year, remove regressors
+analytic08 <- calculateUseWage(analytic08, avg1996)
+analytic08 <- calculateOccWage(analytic08,0.)
+analytic08 <- select(analytic08, -one_of(regressors))
+
+analytic08 <- analytic08 %>%
+        mutate(useWageLevel = exp(useWage)) %>%
+        mutate(useWageLevel = as.numeric(ifelse(lfStat > 1 , 0. , useWageLevel)))
+
+# Create quarterly residual wage and quarterly lfStat
+analytic08 <- analytic08 %>%
+        filter(!is.na(lfStat)) %>%
+        group_by(id, qtrdate) %>%
+        mutate(useWageQtr = sum(useWageLevel)) %>%
+        mutate(lfStatQtr = as.integer(ifelse(useWageQtr > 0, 1, 2))) %>%
+        mutate(useWageQtr = log(useWageQtr))
+
+# Calculate last residual wage, fill down
+# analytic08 <- fillDownWage(analytic08)
+analytic08 <- fillUpWage(analytic08)
+
+# Calculate residual wage change
+analytic08 <- calculateWageChange(analytic08)
+
+# job-job changes, including the separations. If separated,  pct change is -1
+analytic08 <- analytic08 %>%
+        mutate(wageChange_wU = as.numeric(ifelse(lfStat == 1 ,wageChange , -1.))) %>%
+        mutate(wageChangeQtr_wU = as.numeric(ifelse(lfStatQtr == 1 ,wageChangeQtr , -1.)))
+
+# Save data, remove from environment
+if(useRegResid) {
+        setwd("./RegResid")
+} else {
+        setwd("./Raw")
+}
+
+saveRDS(analytic08, "analytic08.RData")
+rm(list = c("processed08", "analytic08"))
+
+setwd("../../")
