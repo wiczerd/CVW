@@ -57,8 +57,14 @@ if(useSoc2d & useRegResid) {
 
 # recession dates
 rec_dates   <- as.Date(c("2001-02-01", "2001-12-01","2007-11-01", "2009-07-01")) #as.Date(c("2001-03-01", "2001-11-01","2007-12-01", "2010-06-01")) 
-wageChanges$Rec <- ((wageChanges$date>rec_dates[1] & wageChanges$date<rec_dates[2] ) | 
-						(wageChanges$date>rec_dates[3] & wageChanges$date<rec_dates[4] ))
+for(it in seq(1:4)){
+	wageChanges$Rec <- ((wageChanges$date>rec_dates[1] & wageChanges$date<rec_dates[2] ) | 
+							(wageChanges$date>rec_dates[3] & wageChanges$date<rec_dates[4] ))
+}
+#df<-mutate(df,RecIndic =((date - max(sampMonth-it, 0))>rec_dates[1] & (date - max(sampMonth-it, 0))<rec_dates[2] ) | 
+#						 	((date - max(sampMonth-it, 0))>rec_dates[3] & (date - max(sampMonth-it, 0))<rec_dates[4] ) + RecIndic )
+
+
 # exclude outliers
 resChangeOutlier_rec <- quantile(wageChanges$residWageChange_wU[wageChanges$Rec == 1],probs=c(0.025,0.975),na.rm=T)
 resChangeOutlier_exp <- quantile(wageChanges$residWageChange_wU[wageChanges$Rec == 0],probs=c(0.025,0.975),na.rm=T)

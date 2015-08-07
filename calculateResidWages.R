@@ -23,9 +23,9 @@ PCE$date <- as.Date(PCE$date)
 calculateResiduals <- function(df, const = 0) {
         if(useRegResid){
 			# group data by year - this doesn't make sense if we're doing business cycles
-	        # df <- group_by(df, year)
+	        df <- ungroup(df)
 	        # regression within each year
-	         model <- lm(logEarnm ~ experience + I(experience^2) + factor(educ) + 
+	        model <- lm(logEarnm ~ experience + I(experience^2) + factor(educ) + 
 	                             female + black + hispanic + factor(soc2d), data = df,
 	                     na.action = na.exclude, weights = wpfinwgt)
 	        # calculate residuals
@@ -60,7 +60,7 @@ fillDownResidual <- function(df) {
         result <- df %>%
                 group_by(id) %>%
                 arrange(id, date) %>%
-                mutate(lastResidWage = as.numeric(ifelse(switchedJob & job != 0, lag(resid), NA))) %>%
+                mutate(lastResidWage = as.numeric(ifelse(switchedJob & job != 0 & lag(resid) != NA , lag(resid), NA))) %>%
                 mutate(lastResidWage = na.locf(lastResidWage, na.rm = FALSE)) %>%
                 mutate(lastResidWage_q = as.numeric(ifelse(switchedJob & job != 0, lag(resid_q, 3), NA))) %>%
                 mutate(lastResidWage_q = na.locf(lastResidWage_q, na.rm = FALSE))
