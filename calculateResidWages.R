@@ -7,6 +7,7 @@ library(dplyr)
 library(stats)
 library(zoo)
 library(reshape2)
+library(xlsx)
 
 setwd("~/workspace/CVW/R")
 
@@ -17,6 +18,16 @@ useSoc2d <- T
 # import PCE deflator
 PCE <- read.csv("./Data/PCE.csv")
 PCE$date <- as.Date(PCE$date)
+
+# Read unemployment data
+haver <- read.xlsx("./Data/unrate.xlsx", sheetName = "data", 
+				   startRow = 2, colIndex = 2:4)
+# Change date to first of the month for merging
+haver <- haver %>%
+	mutate(month = format(date, "%m"),
+		   year = format(date, "%Y"),
+		   date = as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")) %>%
+	select(-year, -month)
 
 setwd("./Data")
 
@@ -139,7 +150,31 @@ regressors <- c("age",
                 "earnm", 
                 "logEarnm")
 
-# 1996 Panel --------------------------------------------------------------
+
+toKeep <- c("id",
+			"wpfinwgt", 
+			"switchedOcc",
+			"soc2d", 
+			"EE", 
+			"UE",  
+			"wageChange", 
+			"wageChange_wU", 
+			"wageChange_stayer",
+			"lfStat", 
+			"date",
+			"wageChangeQtr", 
+			"wageChangeQtr_wU",
+			"occWage",
+			"occWageChange",
+			"useWage",
+			"nextWage",
+			"nextOccWage",
+			#             "lastWage",
+			#             "lastOccWage",
+			"recIndic",
+			"waveRec")
+
+# Combine panels  --------------------------------------------------------------
 
 if(useSoc2d) {
         setwd("./soc2d")
@@ -157,6 +192,9 @@ rm(processed04)
 processed08  <- readRDS("processed08.RData")
 processed9608<-bind_rows(processed08,processed9608)
 rm(processed08)
+
+
+# Do the regressions -------------------------------------------
 
 # Generate regressor variables
 analytic9608 <- genRegressors(processed9608)
@@ -198,8 +236,40 @@ if(useRegResid) {
         setwd("./Raw")
 }
 
-saveRDS(analytic9608, "analytic9608")
+saveRDS(analytic9608, "analytic9608.RData")
 rm(analytic9608)
 
 setwd("../../")
+
+# Set up wage changes data ----------------------------------------
+
+setwd("./Data")
+
+if(useSoc2d) {
+	setwd("./soc2d")
+} else {
+	setwd("./occ")
+}
+
+if(useRegResid) {
+	setwd("./RegResid")
+} else {
+	setwd("./Raw")
+}
+
+wageChanges <- analytic9608 %>%
+	select(one_of(toKeep))
+rm(analytic9608)
+
+#merge in unemployment
+wageChanges <- left_join(wageChanges, haver, by = "date")
+
+# throw out infinity and missing values
+wageChanges <- wageChanges %>%
+	# drop the ones with no wage change (i.e missing values)
+	filter(!is.infinite(wageChange) & !is.na(wageChange_wU) & !is.nan(wageChange_wU) )
+
+# store full set
+saveRDS(wageChanges, "wageChanges.RData")
+
 
