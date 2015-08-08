@@ -68,74 +68,85 @@ calculateOccWage <- function(df, const =0 ){
 
 # Create function to calculate last observed useWage
 fillDownWage <- function(df) {
-        result <- df %>%
-                group_by(id) %>%
-                arrange(id, date) %>%
-                mutate(lastWage = as.numeric(ifelse(switchedJob & job != 0, lag(useWage), NA))) %>%
-                mutate(lastWage = na.locf(lastWage, na.rm = FALSE)) %>%
-                mutate(lastWageQtr = as.numeric(ifelse(switchedJob & job != 0, lag(useWageQtr, 3), NA))) %>%
-                mutate(lastWageQtr = na.locf(lastWageQtr, na.rm = FALSE))
-        result <- result %>%
-                group_by(id) %>%
-                arrange(id, date) %>%
-                mutate(lastOcc = as.integer(ifelse(switchedJob & job != 0, lag(occ), NA))) %>%
-                mutate(lastOcc = na.locf(lastOcc, na.rm = FALSE)) %>%
-                mutate(lastOccWage = as.numeric(ifelse(switchedJob & job != 0, lag(occWage), NA))) %>%
-                mutate(lastOccWage = na.locf(lastOccWage, na.rm = FALSE))  %>%
-                ungroup
-        return(result)
+	result <- df %>%
+		group_by(id) %>%
+		arrange(id, date) %>%
+		mutate(lastWage = as.numeric(ifelse(switchedJob & job != 0, lag(useWage), NA))) %>%
+		mutate(lastWage = na.locf(lastWage, na.rm = FALSE)) %>%
+		mutate(lastWageQtr = as.numeric(ifelse(switchedJob & job != 0, lag(useWageQtr, 3), NA))) %>%
+		mutate(lastWageQtr = na.locf(lastWageQtr, na.rm = FALSE))
+	result <- result %>%
+		group_by(id) %>%
+		arrange(id, date) %>%
+		mutate(lastOcc = as.integer(ifelse(switchedJob & job != 0, lag(occ), NA))) %>%
+		mutate(lastOcc = na.locf(lastOcc, na.rm = FALSE)) %>%
+		mutate(lastOccWage = as.numeric(ifelse(switchedJob & job != 0, lag(occWage), NA))) %>%
+		mutate(lastOccWage = na.locf(lastOccWage, na.rm = FALSE))  %>%
+		ungroup
+	return(result)
 }
 
 fillUpWage <- function(df) {
-        result <- df %>%
-                group_by(id) %>%
-                arrange(id, date) %>%
-                mutate(nextWage = as.numeric(ifelse(switchedJob & job != 0, lead(useWage), NA))) %>%
-                mutate(nextWage = na.locf(nextWage, na.rm = FALSE, fromLast = TRUE)) %>%
-                mutate(nextWageQtr = as.numeric(ifelse(switchedJob & job != 0, lead(useWageQtr, 3), NA))) %>%
-                mutate(nextWageQtr = na.locf(nextWageQtr, na.rm = FALSE, fromLast = TRUE))
-        result <- result %>%
-                group_by(id) %>%
-                arrange(date) %>%
-                mutate(nextOccWage = as.numeric(ifelse(switchedJob & job != 0, lead(occWage), NA))) %>%
-                mutate(nextOccWage = na.locf(nextOccWage, na.rm = FALSE, fromLast = TRUE)) %>%
-                ungroup
-        return(result)
+	df <- df %>%
+		group_by(id) %>%
+		arrange(id, date)
+	df$nextWage <- ifelse(df$switchedJob & lead(df$job) !=0 , lead(df$useWage), NA) 
+	df$nextWage <- na.locf(df$nextWage, na.rm = FALSE, fromLast = TRUE)  
+	df$nextWageQtr <- ifelse(df$switchedJob & lead(df$job) != 0, lead(df$useWageQtr, 3), NA)
+	df$nextWageQtr <- na.locf(df$nextWageQtr, na.rm = FALSE, fromLast = TRUE)
+	df <- df %>%
+		group_by(id) %>%
+		arrange(date) 
+	df$nextOccWage = ifelse(df$switchedJob & lead(df$job) != 0, lead(df$occWage), NA)
+	df$nextOccWage = na.locf(df$nextOccWage, na.rm = FALSE, fromLast = TRUE)
+	ungroup(df)
+	return(df)
+}
+
+nextlastocc <- function(df){
+	df <- df %>%
+		group_by(id) %>%
+		arrange(id,date)
+	df$nextOcc = ifelse(df$switchedJob & lead(df$job) != 0, lead(df$occ), NA) 
+	df$nextOcc = na.locf(df$nextOcc, na.rm = FALSE)
+	df$lastOcc = ifelse(df$switchedJob & df$job != 0, lag(df$occ), NA)
+	df$lastOcc = na.locf(df$lastOcc, na.rm = FALSE) 
+	ungroup(df)
+	return(df)
 }
 
 # Create function to generate regressor variables and inflation adjusts
 genRegressors <- function(df) {
-        # import PCE data
-        df <- left_join(df,PCE, by="date")
-        result <- df %>%
-                mutate(nomearnm = earnm) %>%
-                mutate(earnm = earnm/PCEPI*100) %>%
-                mutate(logEarnm = log(earnm)) %>%
-                mutate(yearsSchool = as.integer(ifelse(educ == 1, 9, NA)),
-                       yearsSchool = as.integer(ifelse(educ == 2, 12, yearsSchool)),
-                       yearsSchool = as.integer(ifelse(educ == 3, 14, yearsSchool)),
-                       yearsSchool = as.integer(ifelse(educ == 4, 16, yearsSchool)),
-                       yearsSchool = as.integer(ifelse(educ == 5, 18, yearsSchool))) %>%
-                mutate(experience = age - yearsSchool) %>%
-                mutate(black = (race == 2)) %>%
-                mutate(hispanic = (race == 3)) %>%
-                mutate(year = as.numeric(format(date, "%Y")))
-        return(result)
+	# import PCE data
+	df <- left_join(df,PCE, by="date")
+	result <- df %>%
+		mutate(nomearnm = earnm) %>%
+		mutate(earnm = earnm/PCEPI*100) %>%
+		mutate(logEarnm = log(earnm)) %>%
+		mutate(yearsSchool = as.integer(ifelse(educ == 1, 9, NA)),
+			   yearsSchool = as.integer(ifelse(educ == 2, 12, yearsSchool)),
+			   yearsSchool = as.integer(ifelse(educ == 3, 14, yearsSchool)),
+			   yearsSchool = as.integer(ifelse(educ == 4, 16, yearsSchool)),
+			   yearsSchool = as.integer(ifelse(educ == 5, 18, yearsSchool))) %>%
+		mutate(experience = age - yearsSchool) %>%
+		mutate(black = (race == 2)) %>%
+		mutate(hispanic = (race == 3)) %>%
+		mutate(year = as.numeric(format(date, "%Y")))
+	return(result)
 }
 
 calculateWageChange <- function(df) {
-        result <- df %>%
-                mutate(wageChange = nextWage - lag(useWage)) %>%
-                mutate(wageChangeQtr = nextWageQtr - lag(useWageQtr)) %>%
-                mutate(occWageChange = nextOccWage - lag(occWage)) %>%
-                mutate(wageChange_stayer = as.numeric(ifelse(!switchedJob, nextWage - lag(useWage), NA) )) %>%
-                mutate(wageChange_all = as.numeric(ifelse(!switchedJob, wageChange_stayer, wageChange)))
-#                 mutate(wageChange = lead(useWage) - lastWage) %>%
-#                 mutate(wageChangeQtr = lead(useWageQtr) - lastWageQtr) %>%
-#                 mutate(occWageChange = lead(occWage) - lastOccWage)) %>%
-#                 mutate(wageChange_stayer = as.numeric(ifelse(!switchedJob, lead(useWage) - lastWage, NA) )) %>%
-#                 mutate(wageChange_all = as.numeric(ifelse(!switchedJob, wageChange_stayer, wageChange)))
-        return(result)
+	df$wageChange = df$nextWage - lag(df$useWage)
+	df$wageChangeQtr = df$nextWageQtr - lag(df$useWageQtr)
+	df$occWageChange = df$nextOccWage - lag(df$occWage)
+	df$wageChange_stayer = ifelse(!df$switchedJob, df$nextWage - lag(df$useWage), NA)
+	df$wageChange_all = ifelse(!df$switchedJob, df$wageChange_stayer, df$wageChange)
+	#	mutate(wageChange = lead(useWage) - lastWage) %>%
+	#	mutate(wageChangeQtr = lead(useWageQtr) - lastWageQtr) %>%
+	#	mutate(occWageChange = lead(occWage) - lastOccWage)) %>%
+	#	mutate(wageChange_stayer = as.numeric(ifelse(!switchedJob, lead(useWage) - lastWage, NA) )) %>%
+	#	mutate(wageChange_all = as.numeric(ifelse(!switchedJob, wageChange_stayer, wageChange)))
+	return(df)
 }
 
 regressors <- c("age", 
@@ -159,7 +170,7 @@ toKeep <- c("id",
 			"UE",  
 			"wageChange", 
 			"wageChange_wU", 
-			"wageChange_stayer",
+			"wageChange_all",
 			"lfStat", 
 			"date",
 			"wageChangeQtr", 
@@ -206,20 +217,21 @@ analytic9608 <- calculateUseWage(analytic9608, avg19962008)
 analytic9608 <- calculateOccWage(analytic9608, 0.)
 analytic9608 <- select(analytic9608, -one_of(regressors))
 analytic9608 <- analytic9608 %>%
-        mutate(useWageLevel = exp(useWage)) %>%
-        mutate(useWageLevel = as.numeric(ifelse(lfStat > 1 , 0. , useWageLevel)))
+	mutate(useWageLevel = exp(useWage)) %>%
+	mutate(useWageLevel = as.numeric(ifelse(lfStat > 1 , 0. , useWageLevel)))
 
 # Create quarterly residual wage and quarterly lfStat
 analytic9608 <- analytic9608 %>%
-        filter(!is.na(lfStat)) %>%
-        group_by(id, qtrdate) %>%
-        mutate(useWageQtr = sum(useWageLevel)) %>%
-        mutate(lfStatQtr = as.integer(ifelse(useWageQtr > 0, 1, 2))) %>%
-        mutate(useWageQtr = log(useWageQtr))
+	filter(!is.na(lfStat)) %>%
+	group_by(id, qtrdate) %>%
+	mutate(useWageQtr = sum(useWageLevel)) %>%
+	mutate(lfStatQtr = as.integer(ifelse(useWageQtr > 0, 1, 2))) %>%
+	mutate(useWageQtr = log(useWageQtr))
 
-# Calculate last residual wage, fill down
+# Calculate last residual wage, fill down or up
 #analytic96 <- fillDownWage(analytic96)
 analytic9608 <- fillUpWage(analytic9608)
+analytic9608 <- nextlastocc(analytic9608)
 
 # Calculate residual wage change
 analytic9608 <- calculateWageChange(analytic9608)
@@ -231,31 +243,15 @@ analytic9608 <- analytic9608 %>%
 
 # Save data, remove from environment
 if(useRegResid) {
-        setwd("./RegResid")
-} else {
-        setwd("./Raw")
+	setwd("./RegResid")
+}else{
+	setwd("./Raw")
 }
 
 saveRDS(analytic9608, "analytic9608.RData")
-rm(analytic9608)
-
-setwd("../../")
 
 # Set up wage changes data ----------------------------------------
 
-setwd("./Data")
-
-if(useSoc2d) {
-	setwd("./soc2d")
-} else {
-	setwd("./occ")
-}
-
-if(useRegResid) {
-	setwd("./RegResid")
-} else {
-	setwd("./Raw")
-}
 
 wageChanges <- analytic9608 %>%
 	select(one_of(toKeep))
