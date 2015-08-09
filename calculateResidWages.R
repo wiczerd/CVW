@@ -136,10 +136,10 @@ genRegressors <- function(df) {
 }
 
 calculateWageChange <- function(df) {
-	df$wageChange = df$nextWage - lag(df$useWage)
+	df$wageChange = ifelse( df$UE | df$EE  ,df$nextWage - lag(df$useWage),NA)
 	df$wageChangeQtr = df$nextWageQtr - lag(df$useWageQtr)
 	df$occWageChange = df$nextOccWage - lag(df$occWage)
-	df$wageChange_stayer = ifelse(!df$switchedJob, df$nextWage - lag(df$useWage), NA)
+	df$wageChange_stayer = ifelse(!df$switchedJob, lead(df$useWage) - lag(df$useWage), NA)
 	df$wageChange_all = ifelse(!df$switchedJob, df$wageChange_stayer, df$wageChange)
 	#	mutate(wageChange = lead(useWage) - lastWage) %>%
 	#	mutate(wageChangeQtr = lead(useWageQtr) - lastWageQtr) %>%

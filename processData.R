@@ -82,14 +82,12 @@ genFlowDummies <- function(df) {
 	result <- df %>%
 		group_by(id) %>%
 		arrange(date) %>%
-		mutate(switchedJob = job != lead(job)) %>%
+		mutate(switchedJob = (job != lead(job)) & !(is.na(job) | is.na(lead(job))) ) %>%
 		mutate(switchedOcc = (occ != lead(occ)) & switchedJob) %>%
 		mutate(switchedInd = (ind23 != lead(ind23)) & switchedJob) %>%        
 		mutate(EE = lfStat == 1 & lead(lfStat) == 1 & switchedJob) %>%
 		# now EUE
 		mutate(UE = lfStat == 1 & lead(lfStat) == 2 & switchedJob)
-	#                 mutate(UE = lfStat == 2 & lead(lfStat) == 1 & switchedJob &
-	#                                !is.na(occ) & !is.na(lead(occ)))
 	return(result)
 }
 
@@ -154,7 +152,9 @@ sampleSelect <- function(df) {
 #		filter(!is.na(esr)) %>%
 #		filter(!is.na(occ)) %>%
 		filter(!is.na(lfStat)) %>%
-		filter(lfStat != 3)
+		filter(lfStat != 3) %>%
+		filter(!(is.na(earnm) & lfStat==1)) %>%
+		filter(!(earnm <0 & lfStat==1))
 	return(result)
 }
 
