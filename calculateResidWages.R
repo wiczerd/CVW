@@ -102,18 +102,19 @@ fillUpWage <- function(df) {
 	ungroup(df)
 	return(df)
 }
-
+# push forward and pull backward occupation
 nextlastocc <- function(df){
 	df <- df %>%
 		group_by(id) %>%
 		arrange(id,date)
 	df$nextOcc = ifelse(df$switchedJob & lead(df$job) != 0, lead(df$occ), NA) 
-	df$nextOcc = na.locf(df$nextOcc, na.rm = FALSE)
+	df$nextOcc = na.locf(df$nextOcc, na.rm = FALSE, fromLast=TRUE)
 	df$lastOcc = ifelse(df$switchedJob & df$job != 0, lag(df$occ), NA)
 	df$lastOcc = na.locf(df$lastOcc, na.rm = FALSE) 
 	ungroup(df)
 	return(df)
 }
+
 
 # Create function to generate regressor variables and inflation adjusts
 genRegressors <- function(df) {
@@ -180,8 +181,8 @@ toKeep <- c("id",
 			"useWage",
 			"nextWage",
 			"nextOccWage",
-			#             "lastWage",
-			#             "lastOccWage",
+#			"lastWage",
+#			"lastOccWage",
 			"recIndic",
 			"waveRec")
 
@@ -232,6 +233,8 @@ analytic9608 <- analytic9608 %>%
 #analytic96 <- fillDownWage(analytic96)
 analytic9608 <- fillUpWage(analytic9608)
 analytic9608 <- nextlastocc(analytic9608)
+#fix SwitchedOcc for UE
+analytic9608$switchedOcc <- ifelse(analytic9608$UE, (analytic9608$occ != analytic9608$nextOcc), analytic9608$switchedOcc)
 
 # Calculate residual wage change
 analytic9608 <- calculateWageChange(analytic9608)

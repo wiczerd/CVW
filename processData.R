@@ -77,17 +77,18 @@ fixOccCode <- function(df) {
 	return(result)
 }
 
+
 # Generate occupation switching and LF flow dummies
 genFlowDummies <- function(df) {
 	result <- df %>%
 		group_by(id) %>%
 		arrange(date) %>%
 		mutate(switchedJob = (job != lead(job)) & !(is.na(job) | is.na(lead(job))) ) %>%
-		mutate(switchedOcc = (occ != lead(occ)) & switchedJob) %>%
-		mutate(switchedInd = (ind23 != lead(ind23)) & switchedJob) %>%        
 		mutate(EE = lfStat == 1 & lead(lfStat) == 1 & switchedJob) %>%
-		# now EUE
-		mutate(UE = lfStat == 1 & lead(lfStat) == 2 & switchedJob)
+		# now EU
+		mutate(UE = lfStat == 1 & lead(lfStat) == 2 & switchedJob) %>%
+		mutate(switchedOcc = (occ != lead(occ)) & switchedJob) %>%
+		mutate(switchedInd = (ind23 != lead(ind23)) & switchedJob)         
 	return(result)
 }
 

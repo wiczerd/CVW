@@ -8,6 +8,7 @@
 library(weights)
 library(dplyr)
 library(stats)
+library(zoo)
 library(ggplot2)
 library(xlsx)
 library(texreg)
@@ -28,19 +29,60 @@ haver <- haver %>%
                date = as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")) %>%
         select(-year, -month)
 
-# 1996 Panel --------------------------------------------------------------
-if(useSoc2d) {
-        processed96 <- readRDS("./Data/processed96soc2d.RData")
-} else {
-        processed96 <- readRDS("./Data/processed96.RData")
+# push forward and pull backward occupation
+nextlastocc <- function(df){
+	df <- df %>%
+		group_by(id) %>%
+		arrange(id,date)
+	df$nextOcc = ifelse(df$switchedJob & lead(df$job) != 0, lead(df$occ), NA) 
+	df$nextOcc = na.locf(df$nextOcc, na.rm = FALSE, fromLast=TRUE)
+	df$lastOcc = ifelse(df$switchedJob & df$job != 0, lag(df$occ), NA)
+	df$lastOcc = na.locf(df$lastOcc, na.rm = FALSE) 
+	ungroup(df)
+	return(df)
 }
 
+# 1996-2008 Panels --------------------------------------------------------------
+setwd("./Data")
+
+
+if(useSoc2d) {
+	setwd("./soc2d")
+}else {
+	setwd("./occ")
+}
+
+processed9608 <- readRDS("processed96.RData")
+processed01  <- readRDS("processed01.RData")
+processed9608<-bind_rows(processed01,processed9608)
+rm(processed01)
+processed04  <- readRDS("processed04.RData")
+processed9608<-bind_rows(processed04,processed9608)
+rm(processed04)
+processed08  <- readRDS("processed08.RData")
+processed9608<-bind_rows(processed08,processed9608)
+rm(processed08)
+
+
 # Extract data for the switching probit
-demoKeepVars <- c("wpfinwgt","race","educ","switchedJob"
+demoKeepVars <- c("wpfinwgt","id","race","educ","switchedJob"
 				  ,"switchedOcc","unempDur","date","lfStat"
-				  ,"age","female","occ","UE","EE")
-demoProbit <-  select(processed96,one_of(demoKeepVars))
-demoProbit <-  mutate(demoProbit,swOccJob = switchedOcc & switchedJob & !is.na(occ), na.rm =T)
+				  ,"age","female","occ","UE","EE","job","recIndic","waveRec")
+demoProbit <-  select(processed9608,one_of(demoKeepVars))
+demoProbit <-  nextlastocc(demoProbit)
+#fix SwitchedOcc 
+demoProbit$switchedOcc <- ifelse(demoProbit$UE, (demoProbit$occ != demoProbit$nextOcc), demoProbit$switchedOcc)
+demoProbit$switchedOcc <- ifelse(demoProbit$UE & (is.na(demoProbit$occ) | is.na(demoProbit$nextOcc)),
+								 NA, demoProbit$switchedOcc)
+demoProbit$switchedOcc <- ifelse(demoProbit$EE & (is.na(demoProbit$occ) ),
+								 NA, demoProbit$switchedOcc)
+
+
+demoProbit <-  mutate(demoProbit,swOccJob = switchedOcc & (UE|EE) & !is.na(occ), na.rm =T)
+# save demo probit
+saveRDS(demoProbit, "demoProbit.RData")	
+
+rm(list=c(demoProbit,processed9608))
 
 
 # Calculate probability of switching using raw code
@@ -126,14 +168,6 @@ demoProbit08 <-  mutate(demoProbit08,swOccJob = switchedOcc & switchedJob & !is.
 	bind_rows(demoProbit)
 demoProbit <- demoProbit08
 rm(demoProbit08)
-# save demo probit
-if(useSoc2d) {
-	saveRDS(demoProbit, "./Data/demoProbitSoc2d.RData")	
-}else{
-	saveRDS(demoProbit, "./Data/demoProbit.RData")	
-}
-
-rm(demoProbit)
 
 #Calculate probability of switching, add to prSwitching
 prSwitching <-  group_by(processed08, date) %>%
