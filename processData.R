@@ -100,7 +100,7 @@ genUnempDuration <- function(df) {
 		group_by(id) %>%
 		arrange(date) %>%
 		# generate dummy for unemployed
-		mutate(unemployed = lfStat == 2)
+		mutate(unemployed = lfStat >= 2)
 	result <- result %>%
 		# generate unique id for each period respondent enters unemployment
 		mutate(spellID = as.integer(ifelse(unemployed & !lag(unemployed), 1:n(), NA))) %>%
@@ -109,9 +109,10 @@ genUnempDuration <- function(df) {
 		group_by(id, spellID) %>%
 		# in each spell, calculate cumulative sum of unemployed
 		mutate(unempDur = as.integer(ifelse(unemployed & !is.na(spellID), cumsum(unemployed), 0))) %>%
-		# fill it so that this is in the period prior to a spell
-		mutate(unempDur = ifelse(UE, lead(unempDur), unempDur)) %>%
-		mutate(unempDur = as.integer(ifelse(lfStat == 1 & !UE, 0, unempDur))) %>%
+		mutate(unempDur = as.integer(ifelse(unemployed & !is.na(spellID), max(unempDur), 0))) %>%
+		# THIS SEEMS NOT TO WORK: fill it so that this is in the period prior to a spell
+		mutate(unempDur = as.integer(ifelse(lfStat == 1 & lead(unemployed), lead(unempDur), unempDur))) %>%
+		mutate(unempDur = as.integer(ifelse(lfStat == 1 & !lead(unemployed), 0., unempDur))) %>%
 		ungroup %>%
 		select(-spellID, -unemployed) %>%
 		ungroup
@@ -182,6 +183,12 @@ processed96 <- processed96 %>%
         genFlowDummies(.) %>%                           
         genUnempDuration(.) %>%
 		sampleSelect(.)
+processed96 <- processed96 %>%
+	group_by(id) %>%
+	arrange(id, date) %>%
+	mutate(unempDur = as.numeric( ifelse(UE, lead(unempDur), unempDur) ) )%>%
+	mutate(unempDur = as.numeric( ifelse(EE, 0., unempDur) )) %>%
+	ungroup
 
 if(useSoc2d) {
         setwd("./soc2d")
@@ -209,11 +216,17 @@ processed01 <- sipp01 %>%
 # generate variables for analysis
 processed01 <- processed01 %>%        
 	genRec(.) %>%
-        genLFStat(.) %>%
-        fixOccCode(.) %>%
-        genFlowDummies(.) %>%
-        genUnempDuration(.) %>%
+	genLFStat(.) %>%
+	fixOccCode(.) %>%
+	genFlowDummies(.) %>%
+	genUnempDuration(.) %>%
 	sampleSelect(.)
+processed01 <- processed01 %>%
+	group_by(id) %>%
+	arrange(id, date) %>%
+	mutate(unempDur = as.numeric( ifelse(UE, lead(unempDur), unempDur) ) )%>%
+	mutate(unempDur = as.numeric( ifelse(EE, 0., unempDur) )) %>%
+	ungroup
 
 if(useSoc2d) {
         setwd("./soc2d")
@@ -242,11 +255,17 @@ processed04 <- sipp04 %>%
 # generate variables for analysis
 processed04<- processed04 %>%
 	genRec(.) %>%
-        genLFStat(.) %>%
-        fixOccCode(.) %>%
-        genFlowDummies(.) %>%
-        genUnempDuration(.) %>%
+	genLFStat(.) %>%
+	fixOccCode(.) %>%
+	genFlowDummies(.) %>%
+	genUnempDuration(.) %>%
 	sampleSelect(.)
+processed04 <- processed04 %>%
+	group_by(id) %>%
+	arrange(id, date) %>%
+	mutate(unempDur = as.numeric( ifelse(UE, lead(unempDur), unempDur) ) )%>%
+	mutate(unempDur = as.numeric( ifelse(EE, 0., unempDur) )) %>%
+	ungroup
 
 if(useSoc2d) {
         setwd("./soc2d")
@@ -280,6 +299,12 @@ processed08 <- processed08 %>%
 	genFlowDummies(.) %>%
 	genUnempDuration(.) %>%
 	sampleSelect(.)
+processed08 <- processed08 %>%
+	group_by(id) %>%
+	arrange(id, date) %>%
+	mutate(unempDur = as.numeric( ifelse(UE, lead(unempDur), unempDur) ) )%>%
+	mutate(unempDur = as.numeric( ifelse(EE, 0., unempDur) )) %>%
+	ungroup
 
 if(useSoc2d) {
 	setwd("./soc2d")

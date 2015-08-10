@@ -42,7 +42,6 @@ nextlastocc <- function(df){
 	return(df)
 }
 
-# 1996-2008 Panels --------------------------------------------------------------
 setwd("./Data")
 
 
@@ -51,6 +50,8 @@ if(useSoc2d) {
 }else {
 	setwd("./occ")
 }
+
+# Extract data for the switching probit ---------------------------
 
 processed9608 <- readRDS("processed96.RData")
 processed01  <- readRDS("processed01.RData")
@@ -84,6 +85,46 @@ saveRDS(demoProbit, "demoProbit.RData")
 
 rm(list=c("demoProbit","processed9608"))
 
+# Probit switching estimation ----------------------------------------------
+
+demoProbit <- readRDS("./demoProbit.RData")
+
+demoProbit <- subset(demoProbit,!is.na(occ) & (UE|EE)) %>%
+	left_join(haver) %>%
+	mutate(nwhite = as.integer(race > 1)) %>%
+	mutate(univ = as.integer(educ >= 4)) %>%
+	mutate(lths = as.integer(educ == 1)) %>%
+	select(-educ,-race)
+
+demoProbit <- mutate(demoProbit,unrateSA = unrateSA/100,
+					 unrateNSA = unrateNSA/100)
+
+
+swDemo.unrate.EE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age + I(age^2), 
+						family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
+swDemo.unrate.UE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age + I(age^2) + unempDur, 
+						family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
+swDemo.unrate <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + UE + age + I(age^2) + unempDur, 
+					 family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
+
+swDemo.EE <- glm(swOccJob ~ recIndic + nwhite + univ + lths + female + age  + I(age^2), 
+				 family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
+swDemo.UE <- glm(swOccJob ~ recIndic + nwhite + univ + lths + female + age  + I(age^2) + unempDur, 
+				 family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
+swDemo <- glm(swOccJob ~ recIndic + nwhite + univ + lths + female + UE + age  + I(age^2) + unempDur, 
+			  family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
+
+swDemo.Mfx <- maBina(w=swDemo)
+swDemo.unrate.Mfx <- maBina(w=swDemo.unrate)
+
+texreg( list(swDemo,swDemo.unrate),label="tab:swDemo",caption="Probit for occupational switching",file="swDemo.tex")
+
+
+
+# Scroll through 1996-2008 Panels for switching TS---------------------
+
+
+processed96 <- readRDS("processed96.RData")
 
 # Calculate probability of switching using raw code
 prSwitching <-  group_by(processed96, date) %>%
@@ -100,17 +141,8 @@ prSwitching <-  group_by(processed96, date) %>%
 rm(processed96)
 
 # 2001 Panel --------------------------------------------------------------
-if(useSoc2d) {
-        processed01 <- readRDS("./Data/processed01soc2d.RData")
-} else {
-        processed01 <- readRDS("./Data/processed01.RData")
-}
+processed01 <- readRDS("./processed01.RData")
 
-demoProbit01 <-  select(processed01,one_of(demoKeepVars))
-demoProbit01 <-  mutate(demoProbit01,swOccJob = switchedOcc & switchedJob & !is.na(occ), na.rm =T) %>%
-	bind_rows(demoProbit)
-demoProbit <- demoProbit01
-rm(demoProbit01)
 
 # Calculate probability of switching, add to prSwitching
 prSwitching <-  group_by(processed01, date) %>%
@@ -128,17 +160,8 @@ prSwitching <-  group_by(processed01, date) %>%
 rm(processed01)
 
 # 2004 Panel --------------------------------------------------------------
-if(useSoc2d) {
-        processed04 <- readRDS("./Data/processed04soc2d.RData")
-} else {
-        processed04 <- readRDS("./Data/processed04.RData")
-}
+processed04 <- readRDS("./processed04.RData")
 
-demoProbit04 <-  select(processed04,one_of(demoKeepVars))
-demoProbit04 <-  mutate(demoProbit04,swOccJob = switchedOcc & switchedJob & !is.na(occ), na.rm =T) %>%
-	bind_rows(demoProbit)
-demoProbit <- demoProbit04
-rm(demoProbit04)
 
 #Calculate probability of switching, add to prSwitching
 prSwitching <-  group_by(processed04, date) %>%
@@ -156,18 +179,9 @@ prSwitching <-  group_by(processed04, date) %>%
 rm(processed04)
 
 # 2008 Panel --------------------------------------------------------------
-if(useSoc2d) {
-  processed08 <- readRDS("./Data/processed08soc2d.RData")
-} else {
-  processed08 <- readRDS("./Data/processed08.RData")
-}
-processed08 <- mutate(processed08, switchedOcc = as.logical(ifelse( is.na(occ),NA,switchedOcc ) ) )
+processed08 <- readRDS("./processed08.RData")
 
-demoProbit08 <-  select(processed08,one_of(demoKeepVars))
-demoProbit08 <-  mutate(demoProbit08,swOccJob = switchedOcc & switchedJob & !is.na(occ), na.rm =T) %>%
-	bind_rows(demoProbit)
-demoProbit <- demoProbit08
-rm(demoProbit08)
+  processed08 <- mutate(processed08, switchedOcc = as.logical(ifelse( is.na(occ),NA,switchedOcc ) ) )
 
 #Calculate probability of switching, add to prSwitching
 prSwitching <-  group_by(processed08, date) %>%
@@ -184,13 +198,8 @@ prSwitching <-  group_by(processed08, date) %>%
 # Remove 2008 data from environment
 rm(processed08)
 
-# save prSwitching probit
-if(useSoc2d) {
-	saveRDS(prSwitching, "./Data/prSwitchingSoc2d.RData")	
-}else{
-	saveRDS(prSwitching, "./Data/prSwitching.RData")	
-}
-
+# save prSwitching TS
+saveRDS(prSwitching, "./prSwitching.RData")
 
 # Statistics --------------------------------------------------------------
 
@@ -238,58 +247,4 @@ with(prSwitching, cor(prSwitchedOccEE, as.numeric(Rec), use = "complete.obs"))
 with(prSwitching, cor(prSwitchedOccUE, as.numeric(Rec), use = "complete.obs"))
 
 
-# Quantile regressions ----------------------------------------------------
-
-# Pooled
-pooledReg <- rq(unrateNSA ~ prSwitchedOcc, tau = c(0.25, 0.50, 0.75), 
-                data = prSwitchingAndUnemployment)
-
-# EE
-EEReg <- rq(unrateNSA ~ prSwitchedOccEE, tau = c(0.25, 0.50, 0.75), 
-            data = prSwitchingAndUnemployment)
-
-# UE
-UEReg <- rq(unrateNSA ~ prSwitchedOccUE, tau = c(0.25, 0.50, 0.75), 
-            data = prSwitchingAndUnemployment)
-
-# All together
-together <- rq(unrateNSA ~ prSwitchedOcc + prSwitchedOccEE + prSwitchedOccUE,
-                 tau = c(0.25, 0.50, 0.75), data = prSwitchingAndUnemployment)
-
-rm(list=c("prSwitchingAndUnemployment","prSwitching"))
-
-# Probit switching ----------------------------------------------------------
-
-demoProbit <- readRDS("./demoProbit.RData")
-demoProbit <- subset(demoProbit,!is.na(occ) & (UE|EE)) %>%
-	left_join(haver) %>%
-	mutate(nwhite = as.integer(race > 1)) %>%
-	mutate(univ = as.integer(educ >= 4)) %>%
-	mutate(lths = as.integer(educ == 1)) %>%
-	select(-educ,-race)
-
-demoProbit <- mutate(demoProbit,unrateSA = unrateSA/100,
-					 unrateNSA = unrateNSA/100)
-
-
-swDemo.unrate.EE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age + I(age^2) , 
-			  family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
-swDemo.unrate.UE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age + I(age^2), 
-				 family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
-swDemo.unrate <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + UE + age + I(age^2), 
-				 family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
-
-swDemo.EE <- glm(swOccJob ~ waveRec + nwhite + univ + lths + female + age  + I(age^2), 
-				 family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
-swDemo.UE <- glm(swOccJob ~ waveRec + nwhite + univ + lths + female + age  + I(age^2), 
-				 family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
-swDemo <- glm(swOccJob ~ waveRec + nwhite + univ + lths + female + UE + age  + I(age^2) + unempDur, 
-			  family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
-
-swDemo.Mfx <- maBina(w=swDemo)
-swDemo.unrate.Mfx <- maBina(w=swDemo.unrate)
-
-texreg( list(swDemo,swDemo.unrate),label="tab:swDemo",caption="Probit for occupational switching",file="swDemo.tex")
-
-
-rm(list=c("demoProbit","haver"))
+rm(list=c("prSwitchingAndUnemployment","prSwitching","haver"))
