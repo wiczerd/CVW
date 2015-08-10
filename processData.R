@@ -108,7 +108,10 @@ genUnempDuration <- function(df) {
 		mutate(spellID = na.locf(spellID, na.rm = FALSE)) %>%
 		group_by(id, spellID) %>%
 		# in each spell, calculate cumulative sum of unemployed
-		mutate(unempDur = as.integer(ifelse(unemployed & !is.na(spellID), cumsum(unemployed), NA))) %>%
+		mutate(unempDur = as.integer(ifelse(unemployed & !is.na(spellID), cumsum(unemployed), 0))) %>%
+		# fill it so that this is in the period prior to a spell
+		mutate(unempDur = ifelse(UE, lead(unempDur), unempDur)) %>%
+		mutate(unempDur = as.integer(ifelse(lfStat == 1 & !UE, 0, unempDur))) %>%
 		ungroup %>%
 		select(-spellID, -unemployed) %>%
 		ungroup

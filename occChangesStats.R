@@ -82,7 +82,7 @@ demoProbit <-  mutate(demoProbit,swOccJob = switchedOcc & (UE|EE) & !is.na(occ),
 # save demo probit
 saveRDS(demoProbit, "demoProbit.RData")	
 
-rm(list=c(demoProbit,processed9608))
+rm(list=c("demoProbit","processed9608"))
 
 
 # Calculate probability of switching using raw code
@@ -260,8 +260,8 @@ rm(list=c("prSwitchingAndUnemployment","prSwitching"))
 
 # Probit switching ----------------------------------------------------------
 
-demoProbit <- readRDS("./Data/demoProbit.RData")
-demoProbit <- subset(demoProbit,!is.na(occ) & switchedJob) %>%
+demoProbit <- readRDS("./demoProbit.RData")
+demoProbit <- subset(demoProbit,!is.na(occ) & (UE|EE)) %>%
 	left_join(haver) %>%
 	mutate(nwhite = as.integer(race > 1)) %>%
 	mutate(univ = as.integer(educ >= 4)) %>%
@@ -271,23 +271,19 @@ demoProbit <- subset(demoProbit,!is.na(occ) & switchedJob) %>%
 demoProbit <- mutate(demoProbit,unrateSA = unrateSA/100,
 					 unrateNSA = unrateNSA/100)
 
-rec_dates   <- as.Date(c("2001-02-01", "2001-12-01","2007-11-01", "2009-07-01"))
-demoProbit$Rec <- ((demoProbit$date>rec_dates[1] & demoProbit$date<rec_dates[2] ) | 
-						(demoProbit$date>rec_dates[3] & demoProbit$date<rec_dates[4] ))
 
-
-swDemo.unrate.EE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age , 
+swDemo.unrate.EE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age + I(age^2) , 
 			  family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
-swDemo.unrate.UE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age , 
+swDemo.unrate.UE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age + I(age^2), 
 				 family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
-swDemo.unrate <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + UE + age , 
+swDemo.unrate <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + UE + age + I(age^2), 
 				 family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
 
-swDemo.EE <- glm(swOccJob ~ Rec + nwhite + univ + lths + female + age , 
+swDemo.EE <- glm(swOccJob ~ waveRec + nwhite + univ + lths + female + age  + I(age^2), 
 				 family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
-swDemo.UE <- glm(swOccJob ~ Rec + nwhite + univ + lths + female + age , 
+swDemo.UE <- glm(swOccJob ~ waveRec + nwhite + univ + lths + female + age  + I(age^2), 
 				 family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
-swDemo <- glm(swOccJob ~ Rec + nwhite + univ + lths + female + UE + age , 
+swDemo <- glm(swOccJob ~ waveRec + nwhite + univ + lths + female + UE + age  + I(age^2) + unempDur, 
 			  family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
 
 swDemo.Mfx <- maBina(w=swDemo)
