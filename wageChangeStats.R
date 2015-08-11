@@ -8,9 +8,9 @@
 library(Hmisc)
 library(dplyr)
 library(ggplot2)
-library(xlsx)
 library(quantreg)
 library(reshape2)
+library(xtable)
 
 setwd("~/workspace/CVW/R")
 
@@ -18,208 +18,143 @@ setwd("~/workspace/CVW/R")
 useSoc2d <- T
 useRegResid <- T
 
-# Read unemployment data
-haver <- read.xlsx("./Data/unrate.xlsx", sheetName = "data", 
-                   startRow = 2, colIndex = 2:4)
-# Change date to first of the month for merging
-haver <- haver %>%
-        mutate(month = format(date, "%m"),
-               year = format(date, "%Y"),
-               date = as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")) %>%
-        select(-year, -month)
-
-toKeep <- c("wpfinwgt", "switchedOcc","soc2d", "EE", "UE",  
-            "residWageChange", "residWageChange_wU", "residWageChange_stayer","lfStat", "date",
-            "residWageChange_q", "residWageChange_q_wU","occWage","occWageChange","resid",
-			"lastResidWage","lastOccWage")
-
-detach("package:xlsx")
-detach("package:xlsxjars")
-detach("package:rJava")
 
 # Load data --------------------------------------------------------------
 
-if(useSoc2d & useRegResid) {
-	analytic96 <- readRDS( "./Data/analytic96soc2dResid.RData")
-} else if(useSoc2d & !useRegResid){
-	analytic96 <- readRDS("./Data/analytic96soc2dRaw.RData")   
-} else if(!useSoc2d & useRegResid){
-	analytic96 <- readRDS("./Data/analytic96Resid.RData")   
-} else if(!useSoc2d & !useRegResid){
-	analytic96 <- readRDS("./Data/analytic96Raw.RData")   
-} else{
-	analytic96 <- readRDS("./Data/analytic96.RData")   
+
+if(useSoc2d) {
+	if(useRegResid){
+		setwd("./Data/soc2d/RegResid/")
+	}else{
+		setwd("./Data/soc2d/Raw/")
+	}
+} else {
+	if(useRegResid){
+		setwd("./Data/occ/RegResid/")
+	}else{
+		setwd("./Data/occ/Raw/")
+	}
 }
+analytic9608<-readRDS( "analytic9608.RData")
+
+wageChanges <- readRDS("wageChanges.RData")
+attach(wageChanges)
+
+# summarize changes changes --------------------------------------------
+wageChangesQrtileAll <- wtd.quantile(analytic9608$wageChange_all, analytic9608$wpfinwgt, na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) 
+wageChangesQrtileAll_rec <- with(analytic9608, wtd.quantile(wageChange_all[recIndic], wpfinwgt[recIndic], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) )
+wageChangesQrtileAll_exp <- with(analytic9608, wtd.quantile(wageChange_all[!recIndic], wpfinwgt[!recIndic], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) )
+rm(analytic9608)
+wageChangesQrtile <- wtd.quantile(wageChange[EE | UE], wpfinwgt[EE | UE], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) 
+wageChangesQrtileUE <-wtd.quantile(wageChange[UE], wpfinwgt[UE], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) 
+wageChangesQrtileEE <-wtd.quantile(wageChange[EE], wpfinwgt[EE], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) 
+wageChangesQrtile_sw <-wtd.quantile(wageChange[switchedOcc & (EE | UE)], wpfinwgt[switchedOcc & (EE | UE)], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9) ) 
+wageChangesQrtile_sty <-wtd.quantile(wageChange[!switchedOcc & (EE | UE)], wpfinwgt[!switchedOcc & (EE | UE)], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9) ) 
+wageChangesQrtileUE_sw <-wtd.quantile(wageChange[switchedOcc & UE], wpfinwgt[switchedOcc & UE], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9) ) 
+wageChangesQrtileEE_sw <-wtd.quantile(wageChange[switchedOcc & EE], wpfinwgt[switchedOcc & EE], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9) ) 
 
 
-wageChanges <- analytic96 %>%
-        select(one_of(toKeep))
-rm(analytic96)
+wageChangesQrtile_rec <- wtd.quantile(wageChange[(EE | UE) & recIndic], wpfinwgt[(EE | UE) & recIndic], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) 
+wageChangesQrtileUE_rec <-wtd.quantile(wageChange[UE & recIndic], wpfinwgt[UE & recIndic], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) 
+wageChangesQrtileEE_rec <-wtd.quantile(wageChange[EE & recIndic], wpfinwgt[EE & recIndic], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) 
+wageChangesQrtile_sw_rec <-wtd.quantile(wageChange[switchedOcc & (EE | UE) & recIndic], wpfinwgt[switchedOcc & (EE | UE) & recIndic], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9) ) 
+wageChangesQrtileUE_sw_rec <-wtd.quantile(wageChange[switchedOcc & UE & recIndic], wpfinwgt[switchedOcc & UE & recIndic], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9) ) 
+
+wageChangesQrtile_exp <- wtd.quantile(wageChange[(EE | UE) & !recIndic], wpfinwgt[(EE | UE) & !recIndic], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) 
+wageChangesQrtileUE_exp <-wtd.quantile(wageChange[UE  & !recIndic], wpfinwgt[UE & !recIndic], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) 
+wageChangesQrtile_sw_exp <-wtd.quantile(wageChange[switchedOcc & (EE | UE) & !recIndic], wpfinwgt[switchedOcc & (EE | UE) & !recIndic], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9) ) 
+wageChangesQrtileUE_sw_exp <-wtd.quantile(wageChange[switchedOcc & UE & !recIndic], wpfinwgt[switchedOcc & UE & !recIndic], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9) ) 
+
+setwd("../../../")
+if(useSoc2d) {
+	setwd("./Figures/soc2d")
+}else{
+	setwd("./Figures/occ")
+	}
+wgCh <- rbind(wageChangesQrtileAll,wageChangesQrtile,wageChangesQrtile_sty,wageChangesQrtile_sw)
+rownames(wgCh) <- c("Full sample","Job Changers", "Occupation Stayers", "Occuption Switchers")
+wgCh.xt <- xtable(wgCh,label="tab:wgCh",digits=3,caption="Month-to-Month Earnings Changes")
+print(wgCh.xt,file="wgCh.tex",hline.after=c(-1,-1,0,2,nrow(wgCh.xt)) )
+
+wgCh_recexp <- rbind(wageChangesQrtileAll_rec,wageChangesQrtileAll_exp,wageChangesQrtile_rec,wageChangesQrtile_exp,wageChangesQrtile_sw_rec,wageChangesQrtile_sw_exp)
+rownames(wgCh_recexp) <- c("Full sample, Rec","Full sample, Exp","Job Changers, Rec","Job Changers, Exp", "Occupation Switchers, Exp", "Occuption Switchers, Rec")
+wgCh_recexp.xt <- xtable(wgCh_recexp,label="tab:wgCh_recexp",digits=3,caption="Month-to-Month Earnings Changes Over the Cycle")
+print(wgCh_recexp.xt,file="wgCh_recexp.tex",hline.after=c(-1,-1,0,2,4,nrow(wgCh_recexp.xt)) )
+
+wgCh_UE <- rbind(wageChangesQrtileEE,wageChangesQrtileUE,wageChangesQrtileEE_sw,wageChangesQrtileUE_sw,wageChangesQrtileEE_rec,wageChangesQrtileUE_rec)
+rownames(wgCh_UE) <- c("E->E","E->U->E, Exp","E->E, Occupation Switchers","E->U->E, Occupation Switchers", "E->E, Rec", "E->U->E, Rec")
+wgCh_UE.xt <- xtable(wgCh_UE,label="tab:wgCh_UE",digits=3,caption="Month-to-Month Earnings Changes, by Empoyment Status")
+print(wgCh_UE.xt,file="wgCh_UE.tex",hline.after=c(-1,-1,0,2,4,nrow(wgCh_UE.xt)) )
 
 
-if(useSoc2d & useRegResid) {
-	analytic01 <- readRDS( "./Data/analytic01soc2dResid.RData")
-} else if(useSoc2d & !useRegResid){
-	analytic01 <- readRDS("./Data/analytic01soc2dRaw.RData")   
-} else if(!useSoc2d & useRegResid){
-	analytic01 <- readRDS("./Data/analytic01Resid.RData")   
-} else if(!useSoc2d & !useRegResid){
-	analytic01 <- readRDS("./Data/analytic01Raw.RData")   
-} else{
-	analytic01 <- readRDS("./Data/analytic01.RData")   
-}
-
-wageChanges <- analytic01 %>%
-        select(one_of(toKeep)) %>%
-        bind_rows(wageChanges)
-rm(analytic01)
-
-
-if(useSoc2d & useRegResid) {
-	analytic04 <- readRDS( "./Data/analytic04soc2dResid.RData")
-} else if(useSoc2d & !useRegResid){
-	analytic04 <- readRDS("./Data/analytic04soc2dRaw.RData")   
-} else if(!useSoc2d & useRegResid){
-	analytic04 <- readRDS("./Data/analytic04Resid.RData")   
-} else if(!useSoc2d & !useRegResid){
-	analytic04 <- readRDS("./Data/analytic04Raw.RData")   
-} else{
-	analytic04 <- readRDS("./Data/analytic04.RData")   
-}
-
-wageChanges <- analytic04 %>%
-        select(one_of(toKeep)) %>%
-        bind_rows(wageChanges)
-rm(analytic04)
-
-
-if(useSoc2d & useRegResid) {
-	analytic08 <- readRDS("./Data/analytic08soc2dResid.RData")
-} else if(useSoc2d & !useRegResid){
-	analytic08 <- readRDS("./Data/analytic08soc2dRaw.RData")   
-} else if(!useSoc2d & useRegResid){
-	analytic08 <- readRDS("./Data/analytic08Resid.RData")   
-} else if(!useSoc2d & !useRegResid){
-	analytic08 <- readRDS("./Data/analytic08Raw.RData")   
-} else{
-	analytic08 <- readRDS("./Data/analytic08.RData")   
-}
-
-wageChanges <- analytic08 %>%
-        select(one_of(toKeep)) %>%
-        bind_rows(wageChanges)
-rm(analytic08)
-
-#merge in unemployment
-wageChanges <- left_join(wageChanges,haver, by="date")
-
-# throw out infinity and missing values
-wageChanges <- wageChanges %>%
-	# drop the ones with no wage change (i.e missing values)
-	filter(!is.infinite(residWageChange) & !is.na(residWageChange_wU) & !is.nan(residWageChange_wU) )
-
-
-# store full set
-if(useSoc2d & useRegResid) {
-	saveRDS(wageChanges,"./Data/wageChangesSoc2dResid.RData")
-} else if(useSoc2d & !useRegResid){
-	saveRDS(wageChanges,"./Data/wageChangesSoc2dRaw.RData")   
-} else if(!useSoc2d & useRegResid){
-	saveRDS(wageChanges,"./Data/wageChangesResid.RData")   
-} else if(!useSoc2d & !useRegResid){
-	saveRDS(wageChanges,"./Data/wageChangesRaw.RData")   
-} else{
-	saveRDS(wageChanges,"./Data/wageChanges.RData")   
-}
-
-# Summary statistics --------------------------------------------------------------
-
-if(useSoc2d & useRegResid) {
-	wageChanges<-readRDS("./Data/wageChangesSoc2dResid.RData")
-} else if(useSoc2d & !useRegResid){
-	wageChanges<-readRDS("./Data/wageChangesSoc2dRaw.RData")   
-} else if(!useSoc2d & useRegResid){
-	wageChanges<-readRDS("./Data/wageChangesResid.RData")   
-} else if(!useSoc2d & !useRegResid){
-	wageChanges<-readRDS("./Data/wageChangesRaw.RData")   
-} else{
-	wageChanges<-readRDS("./Data/wageChanges.RData")   
-}
-
-
-wageChanges <- wageChanges %>%
-	mutate(posChange = (residWageChange > 0)) %>%
-	mutate(negChange = (residWageChange < 0))
-
-wageChangesQrtile <-with(wageChanges, wtd.quantile(residWageChange[EE | UE], wpfinwgt[EE | UE], na.rm = TRUE,probs=c(.25,.5,.75,.9) ) )
-wageChangesQrtileUE <-with(wageChanges, wtd.quantile(residWageChange[UE], wpfinwgt[UE], na.rm = TRUE,probs=c(.25,.5,.75,.9) ) )
-wageChangesQrtile_sw <-with(wageChanges, wtd.quantile(residWageChange[switchedOcc & (EE | UE)], wpfinwgt[switchedOcc & (EE | UE)], na.rm = TRUE,probs=c(.25,.5,.75,.9) ) )
-wageChangesQrtileUE_sw <-with(wageChanges, wtd.quantile(residWageChange[switchedOcc & UE], wpfinwgt[switchedOcc & UE], na.rm = TRUE,probs=c(.25,.5,.75,.9) ) )
-
-
-with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & residWageChange>wageChangesQrtile[3]], 
-						   wpfinwgt[(EE | UE) & residWageChange>wageChangesQrtile[3]], na.rm = TRUE))
-with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & residWageChange>wageChangesQrtile[4]], 
-						   wpfinwgt[(EE | UE) & residWageChange>wageChangesQrtile[4]], na.rm = TRUE))
-with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & residWageChange<wageChangesQrtile[1]], 
-						   wpfinwgt[(EE | UE) & residWageChange<wageChangesQrtile[1]], na.rm = TRUE))
+#with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & wageChange>wageChangesQrtile[3]], 
+#						   wpfinwgt[(EE | UE) & wageChange>wageChangesQrtile[3]], na.rm = TRUE))
+#with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & wageChange>wageChangesQrtile[4]], 
+#						   wpfinwgt[(EE | UE) & wageChange>wageChangesQrtile[4]], na.rm = TRUE))
+#with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & wageChange<wageChangesQrtile[1]], 
+#						   wpfinwgt[(EE | UE) & wageChange<wageChangesQrtile[1]], na.rm = TRUE))
 
 
 
 # Mean wage changes
-with(wageChanges, wtd.mean(residWageChange[switchedOcc & (EE | UE)], 
+with(wageChanges, wtd.mean(wageChange[switchedOcc & (EE | UE)], 
                            wpfinwgt[switchedOcc & (EE | UE)], na.rm = TRUE))
-with(wageChanges, wtd.mean(residWageChange[switchedOcc & EE], 
+with(wageChanges, wtd.mean(wageChange[switchedOcc & EE], 
                            wpfinwgt[switchedOcc & EE], na.rm = TRUE))
-with(wageChanges, wtd.mean(residWageChange[switchedOcc & UE], 
+with(wageChanges, wtd.mean(wageChange[switchedOcc & UE], 
                            wpfinwgt[switchedOcc & UE], na.rm = TRUE))
 # no change
-with(wageChanges, wtd.mean(residWageChange[!switchedOcc & (EE | UE)], 
+with(wageChanges, wtd.mean(wageChange[!switchedOcc & (EE | UE)], 
 						   wpfinwgt[!switchedOcc & (EE | UE)], na.rm = TRUE))
-with(wageChanges, wtd.mean(residWageChange[!switchedOcc & EE], 
+with(wageChanges, wtd.mean(wageChange[!switchedOcc & EE], 
 						   wpfinwgt[!switchedOcc & EE], na.rm = TRUE))
-with(wageChanges, wtd.mean(residWageChange[!switchedOcc & UE], 
+with(wageChanges, wtd.mean(wageChange[!switchedOcc & UE], 
 						   wpfinwgt[!switchedOcc & UE], na.rm = TRUE))
 # tot
-with(wageChanges, wtd.mean(residWageChange[ (EE | UE)], 
+with(wageChanges, wtd.mean(wageChange[ (EE | UE)], 
 						   wpfinwgt[ (EE | UE)], na.rm = TRUE))
-with(wageChanges, wtd.mean(residWageChange[ EE], 
+with(wageChanges, wtd.mean(wageChange[ EE], 
 						   wpfinwgt[ EE], na.rm = TRUE))
-with(wageChanges, wtd.mean(residWageChange[ UE], 
+with(wageChanges, wtd.mean(wageChange[ UE], 
 						   wpfinwgt[ UE], na.rm = TRUE))
 
 
 # Standard deviation of wage changes
-with(wageChanges, sqrt(wtd.var(residWageChange[switchedOcc & (EE | UE)], 
+with(wageChanges, sqrt(wtd.var(wageChange[switchedOcc & (EE | UE)], 
                                wpfinwgt[switchedOcc & (EE | UE)], na.rm = TRUE)))
-with(wageChanges, sqrt(wtd.var(residWageChange[switchedOcc & EE], 
+with(wageChanges, sqrt(wtd.var(wageChange[switchedOcc & EE], 
                                wpfinwgt[switchedOcc & EE], na.rm = TRUE)))
-with(wageChanges, sqrt(wtd.var(residWageChange[switchedOcc & UE], 
+with(wageChanges, sqrt(wtd.var(wageChange[switchedOcc & UE], 
                                wpfinwgt[switchedOcc & UE], na.rm = TRUE)))
 
 # Median of wage changes
-with(wageChanges, wtd.quantile(residWageChange[switchedOcc & (EE | UE)], 
+with(wageChanges, wtd.quantile(wageChange[switchedOcc & (EE | UE)], 
                                wpfinwgt[switchedOcc & (EE | UE)], probs = c(.25,.5,0.75 ) ) )
-with(wageChanges, wtd.quantile(residWageChange[switchedOcc & EE], 
+with(wageChanges, wtd.quantile(wageChange[switchedOcc & EE], 
                                wpfinwgt[switchedOcc & EE], probs = c(.25,.5,0.75 ) ))
-with(wageChanges, wtd.quantile(residWageChange[switchedOcc & UE], 
+with(wageChanges, wtd.quantile(wageChange[switchedOcc & UE], 
                                wpfinwgt[switchedOcc & UE], probs = c(.25,.5,0.75 ) ))
 #no switch
-with(wageChanges, wtd.quantile(residWageChange[!switchedOcc & (EE | UE)], 
+with(wageChanges, wtd.quantile(wageChange[!switchedOcc & (EE | UE)], 
 							   wpfinwgt[!switchedOcc & (EE | UE)], probs = c(.25,.5,0.75 ) ) )
-with(wageChanges, wtd.quantile(residWageChange[!switchedOcc & EE], 
+with(wageChanges, wtd.quantile(wageChange[!switchedOcc & EE], 
 							   wpfinwgt[!switchedOcc & EE], probs = c(.25,.5,0.75 ) ))
-with(wageChanges, wtd.quantile(residWageChange[!switchedOcc & UE], 
+with(wageChanges, wtd.quantile(wageChange[!switchedOcc & UE], 
 							   wpfinwgt[!switchedOcc & UE], probs = c(.25,.5,0.75 ) ))
 #tot
-with(wageChanges, wtd.quantile(residWageChange[ (EE | UE)], 
+with(wageChanges, wtd.quantile(wageChange[ (EE | UE)], 
 							   wpfinwgt[ (EE | UE)], probs = c(.25,.5,0.75 ) ) )
-with(wageChanges, wtd.quantile(residWageChange[ EE], 
+with(wageChanges, wtd.quantile(wageChange[ EE], 
 							   wpfinwgt[ EE], probs = c(.25,.5,0.75 ) ))
-with(wageChanges, wtd.quantile(residWageChange[ UE], 
+with(wageChanges, wtd.quantile(wageChange[ UE], 
 							   wpfinwgt[ UE], probs = c(.25,.5,0.75 ) ))
 
-# Fraction of workers with positive and negative wage changes
+# Positive and negative wage changes -------------------
+wageChanges <- wageChanges %>%
+	mutate(posChange = (wageChange > 0)) %>%
+	mutate(negChange = (wageChange < 0))
+
+
 # explicitly calculate negative
 with(wageChanges, wtd.mean(posChange[switchedOcc & (EE | UE)], 
                            wpfinwgt[switchedOcc & (EE | UE)], na.rm = TRUE))
@@ -245,14 +180,14 @@ with(wageChanges, wtd.mean(posChange[ UE],
 
 # Correlation
 dirWageChanges <- wageChanges %>%
-        group_by(date) %>%
-        summarize(pctPos = wtd.mean(posChange[switchedOcc & (EE | UE)], 
-                                    wpfinwgt[switchedOcc & (EE | UE)], na.rm = TRUE),
-                  pctPosEE = wtd.mean(posChange[switchedOcc & EE], 
-                                     wpfinwgt[switchedOcc & EE], na.rm = TRUE),
-                  pctPosUE = wtd.mean(posChange[switchedOcc & UE], 
-                                      wpfinwgt[switchedOcc & UE], na.rm = TRUE),
-                  unrateNSA = first(unrateNSA))
+	group_by(date) %>%
+	summarize(pctPos = wtd.mean(posChange[switchedOcc & (EE | UE)], 
+								wpfinwgt[switchedOcc & (EE | UE)], na.rm = TRUE),
+			  pctPosEE = wtd.mean(posChange[switchedOcc & EE], 
+			  					wpfinwgt[switchedOcc & EE], na.rm = TRUE),
+			  pctPosUE = wtd.mean(posChange[switchedOcc & UE], 
+			  					wpfinwgt[switchedOcc & UE], na.rm = TRUE),
+			  unrateNSA = first(unrateNSA))
 
 with(dirWageChanges, cor(pctPos, unrateNSA, use = "complete.obs"))
 with(dirWageChanges, cor(pctPosEE, unrateNSA, use = "complete.obs"))

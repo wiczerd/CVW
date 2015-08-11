@@ -56,6 +56,8 @@ fixOccCode <- function(df) {
 	if(useSoc2d) {
 		# drop occ and replace with soc2d
 		df <- df %>%
+			# this is to fill soc2d if the occupation merge didn't work
+			mutate(soc2d = ifelse( is.na(soc2d) & !is.na(occ) & (occ>0 & occ<=900), 99, soc2d ) ) %>%
 			select(-occ) %>%
 			mutate(occ = soc2d)
 	}
@@ -72,8 +74,12 @@ fixOccCode <- function(df) {
 		mutate(job = as.integer(ifelse(lfStat == 2 | lfStat == 3, 0, job))) %>%
 		# replace ind23 with NA if unemployed or NILF
 		mutate(ind23 = as.integer(ifelse(lfStat == 2 | lfStat == 3, NA, ind23))) %>%
-		# carry forward last observation of ind23 to fill NAs
-		mutate(ind23 = na.locf(ind23, na.rm = FALSE, fromLast = TRUE))
+		# carry backward last observation of ind23 to fill NAs
+		mutate(ind23 = na.locf(ind23, na.rm = FALSE, fromLast = TRUE)) %>%
+		# replace occupation codes with NA if unemp or NILF	
+		mutate(occ = as.integer(ifelse(lfStat == 2 | lfStat == 3, NA, occ))) %>%
+		# carry backward last observation of ind23 to fill NAs
+		mutate(occ = na.locf(occ, na.rm = FALSE, fromLast = TRUE))
 	return(result)
 }
 

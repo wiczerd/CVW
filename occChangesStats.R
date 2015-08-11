@@ -70,15 +70,13 @@ demoKeepVars <- c("wpfinwgt","id","race","educ","switchedJob"
 				  ,"switchedOcc","unempDur","date","lfStat"
 				  ,"age","female","occ","UE","EE","job","recIndic","waveRec")
 demoProbit <-  select(processed9608,one_of(demoKeepVars))
-demoProbit <-  nextlastocc(demoProbit)
-#fix SwitchedOcc 
-demoProbit$switchedOcc <- ifelse(demoProbit$UE, (demoProbit$occ != demoProbit$nextOcc), demoProbit$switchedOcc)
-demoProbit$switchedOcc <- ifelse(demoProbit$UE & (is.na(demoProbit$occ) | is.na(demoProbit$nextOcc)),
-								 NA, demoProbit$switchedOcc)
-demoProbit$switchedOcc <- ifelse(demoProbit$EE & (is.na(demoProbit$occ) ),
-								 NA, demoProbit$switchedOcc)
-
-
+#demoProbit <-  nextlastocc(demoProbit)
+#fix SwitchedOcc ?
+#demoProbit$switchedOcc <- ifelse(demoProbit$UE, (demoProbit$occ != demoProbit$nextOcc), demoProbit$switchedOcc)
+#demoProbit$switchedOcc <- ifelse(demoProbit$UE & (is.na(demoProbit$occ) | is.na(demoProbit$nextOcc)),
+#								 NA, demoProbit$switchedOcc)
+#demoProbit$switchedOcc <- ifelse(demoProbit$EE & (is.na(demoProbit$occ) ),
+#								 NA, demoProbit$switchedOcc)
 demoProbit <-  mutate(demoProbit,swOccJob = switchedOcc & (UE|EE) & !is.na(occ), na.rm =T)
 # save demo probit
 saveRDS(demoProbit, "demoProbit.RData")	

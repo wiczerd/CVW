@@ -119,6 +119,13 @@ ggPr<-ggplot(incomePercentiles, aes(percentile, prSwitchingEE)) + geom_point() +
 	ylab("P(Switching)") + xlab("Wage percentile within two-digit SOC occupation")
 ggsave("prSwitchingEE.eps", width = 6, height = 4)
 
+
+ggPr<-ggplot(incomePercentiles, aes(percentile, prSwitchingUE)) + geom_point() + geom_smooth() +
+	ggtitle("P(Switching| EUE job change) by Wage Percentile") + 
+	ylab("P(Switching)") + xlab("Wage percentile within two-digit SOC occupation")
+ggsave("prSwitchingUE.eps", width = 6, height = 4)
+
+
 ggPr<-ggplot(incomePercentiles, aes(percentile, prSwitchingRec)) + geom_point() + geom_smooth() +
 	ggtitle("P(Switching|Job change & Rec) by Earnings Percentile") + 
 	ylab("P(Switching)") + xlab("Earnings percentile within two-digit SOC occupation")
