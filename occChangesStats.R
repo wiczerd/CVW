@@ -7,11 +7,12 @@
 # Precondition: processData.R has been run.
 library(weights)
 library(dplyr)
+library(erer)
 library(stats)
 library(zoo)
 library(ggplot2)
 library(xlsx)
-library(texreg)
+library(stargazer)
 library(quantreg)
 
 setwd("~/workspace/CVW/R")
@@ -98,12 +99,12 @@ demoProbit <- mutate(demoProbit,unrateSA = unrateSA/100,
 					 unrateNSA = unrateNSA/100)
 
 
-swDemo.unrate.EE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age + I(age^2), 
-						family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
-swDemo.unrate.UE <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + age + I(age^2) + unempDur, 
-						family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit)
-swDemo.unrate <- glm(swOccJob ~ unrateSA + nwhite + univ + lths + female + UE + age + I(age^2) + unempDur, 
-					 family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
+swDemo.unrate.EE <- glm(swOccJob ~ unrateSA + age + I(age^2)  + nwhite + univ + lths + female, 
+						family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit, x=T)
+swDemo.unrate.UE <- glm(swOccJob ~ unrateSA + age + I(age^2) + unempDur + nwhite + univ + lths + female, 
+						family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit, x=T)
+swDemo.unrate <- glm(swOccJob ~ unrateSA  + age + I(age^2) + unempDur + UE + nwhite + univ + lths + female, 
+					 family=binomial(link="probit"), data= demoProbit, na.action=na.omit, x=T)
 
 swDemo.EE <- glm(swOccJob ~ recIndic + nwhite + univ + lths + female + age  + I(age^2), 
 				 family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit)
@@ -112,11 +113,31 @@ swDemo.UE <- glm(swOccJob ~ recIndic + nwhite + univ + lths + female + age  + I(
 swDemo <- glm(swOccJob ~ recIndic + nwhite + univ + lths + female + UE + age  + I(age^2) + unempDur, 
 			  family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
 
-swDemo.Mfx <- maBina(w=swDemo)
+names(swDemo.unrate$coefficients)<-c("Const","Unemp Rate","Age","Age^2","Unemp Duration","Unemp Indic", "Non-white","Univ","LT HS","Female")
+names(swDemo.unrate.EE$coefficients)<-c("Const","Unemp Rate","Age","Age^2", "Non-white","Univ","LT HS","Female")
+names(swDemo.unrate.UE$coefficients)<-c("Const","Unemp Rate","Age","Age^2","Unemp Duration", "Non-white","Univ","LT HS","Female")
+
+#swDemo.Mfx <- maBina(w=swDemo)
 swDemo.unrate.Mfx <- maBina(w=swDemo.unrate)
+swDemo.unrate.EE.Mfx <- maBina(w=swDemo.unrate.EE)
+swDemo.unrate.UE.Mfx <- maBina(w=swDemo.unrate.UE)
 
-texreg( list(swDemo,swDemo.unrate),label="tab:swDemo",caption="Probit for occupational switching",file="swDemo.tex")
+setwd("../../")
+if(useSoc2d) {
+	setwd("./Figures//soc2d")
+}else {
+	setwd("./Figures/occ")
+}
 
+stargazer(swDemo.unrate.Mfx,swDemo.unrate.EE.Mfx,swDemo.unrate.UE.Mfx, title="Probit for occupational switching",out="swDemounrate.tex",colnames=T,digits=3)
+#texreg( list(swDemo.unrate,swDemo.unrate,swDemo.unrate),label="tab:swDemo",caption="Probit for occupational switching",file="swDemo.tex")
+setwd("../../")
+
+if(useSoc2d) {
+	setwd("./Data/soc2d")
+}else {
+	setwd("./Data/occ")
+}
 
 
 # Scroll through 1996-2008 Panels for switching TS---------------------

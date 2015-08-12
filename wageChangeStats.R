@@ -19,6 +19,16 @@ useSoc2d <- T
 useRegResid <- T
 
 
+calculateCumulUse <- function(df) {
+	cumulFunc <- ecdf(df$useWage)
+	usepctile <- round(cumulFunc(df$useWage)*100)
+	data.frame(df, usepctile)
+}
+calculateCumulNext <- function(df) {
+	cumulFunc <- ecdf(df$nextWage)
+	nextpctile <- round(cumulFunc(df$nextWage)*100)
+	data.frame(df, nextpctile)
+}
 # Load data --------------------------------------------------------------
 
 
@@ -37,14 +47,17 @@ if(useSoc2d) {
 }
 analytic9608<-readRDS( "analytic9608.RData")
 
-wageChanges <- readRDS("wageChanges.RData")
-attach(wageChanges)
-
-# summarize changes changes --------------------------------------------
 wageChangesQrtileAll <- wtd.quantile(analytic9608$wageChange_all, analytic9608$wpfinwgt, na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) 
 wageChangesQrtileAll_rec <- with(analytic9608, wtd.quantile(wageChange_all[recIndic], wpfinwgt[recIndic], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) )
 wageChangesQrtileAll_exp <- with(analytic9608, wtd.quantile(wageChange_all[!recIndic], wpfinwgt[!recIndic], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) )
 rm(analytic9608)
+
+
+
+# summarize changes changes of changers --------------------------------------------
+
+wageChanges <- readRDS("wageChanges.RData")
+attach(wageChanges)
 wageChangesQrtile <- wtd.quantile(wageChange[EE | UE], wpfinwgt[EE | UE], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) 
 wageChangesQrtileUE <-wtd.quantile(wageChange[UE], wpfinwgt[UE], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) 
 wageChangesQrtileEE <-wtd.quantile(wageChange[EE], wpfinwgt[EE], na.rm = TRUE,probs=c(.1,.25,.5,.75,.9)) 
@@ -87,15 +100,63 @@ wgCh_UE.xt <- xtable(wgCh_UE,label="tab:wgCh_UE",digits=3,caption="Month-to-Mont
 print(wgCh_UE.xt,file="wgCh_UE.tex",hline.after=c(-1,-1,0,2,4,nrow(wgCh_UE.xt)) )
 
 
-#with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & wageChange>wageChangesQrtile[3]], 
-#						   wpfinwgt[(EE | UE) & wageChange>wageChangesQrtile[3]], na.rm = TRUE))
-#with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & wageChange>wageChangesQrtile[4]], 
-#						   wpfinwgt[(EE | UE) & wageChange>wageChangesQrtile[4]], na.rm = TRUE))
-#with(wageChanges, wtd.mean(switchedOcc[(EE | UE) & wageChange<wageChangesQrtile[1]], 
-#						   wpfinwgt[(EE | UE) & wageChange<wageChangesQrtile[1]], na.rm = TRUE))
+# Wage change ladder -----------------------------------------------
+
+wageChanges <- wageChanges %>%
+	filter(!is.na(soc2d) & lfStat==1) %>%
+	group_by(soc2d) %>%
+	do(calculateCumulUse(.)) %>%
+	ungroup()
+if(useSoc2d){
+	wageChanges <- wageChanges %>%
+		group_by(id) %>%
+		arrange(id,date) %>%
+		mutate(nextOcc = lead(soc2d)) %>%
+		ungroup() %>%
+		group_by(nextOcc) %>%
+		do(calculateCumulNext(.)) 
+}
 
 
+ggPr<-ggplot(wageChanges, aes(usepctile, nextpctile)) + geom_smooth() +
+	ggtitle("Dynamics of Earnings") + 
+	ylab("Earnings percentile within next occupation") + xlab("Earnings percentile within two-digit SOC occupation")
+ggsave("DynPctile.eps", width = 6, height = 4)
+ggsave("DynPctile.png", width = 6, height = 4)
 
+ggPr<-ggplot(subset(wageChanges,UE), aes(usepctile, nextpctile)) + geom_smooth() +
+	ggtitle("Dynamics of Earnings, Through Unemployment") + 
+	ylab("Earnings percentile within next occupation") + xlab("Earnings percentile within two-digit SOC occupation")
+ggsave("DynPctileUE.eps", width = 6, height = 4)
+ggsave("DynPctileUE.png", width = 6, height = 4)
+
+ggPr<-ggplot(subset(wageChanges,EE), aes(usepctile, nextpctile)) + geom_smooth() +
+	ggtitle("Dynamics of Earnings, Job-Job") + 
+	ylab("Earnings percentile within next occupation") + xlab("Earnings percentile within two-digit SOC occupation")
+ggsave("DynPctileEE.eps", width = 6, height = 4)
+ggsave("DynPctileEE.png", width = 6, height = 4)
+
+ggPr<-ggplot(subset(wageChanges,recIndic), aes(usepctile, nextpctile)) + geom_smooth() +
+	ggtitle("Dynamics of Earnings, Recession") + 
+	ylab("Earnings percentile within next occupation") + xlab("Earnings percentile within two-digit SOC occupation")
+ggsave("DynPctileRec.eps", width = 6, height = 4)
+ggsave("DynPctileRec.png", width = 6, height = 4)
+
+ggPr<-ggplot(subset(wageChanges,!recIndic), aes(usepctile, nextpctile)) + geom_smooth() +
+	ggtitle("Dynamics of Earnings, Expansion") + 
+	ylab("Earnings percentile within next occupation") + xlab("Earnings percentile within two-digit SOC occupation")
+ggsave("DynPctileExp.eps", width = 6, height = 4)
+ggsave("DynPctileExp.png", width = 6, height = 4)
+
+
+ggPr<-ggplot(subset(wageChanges,switchedOcc), aes(usepctile, nextpctile)) + geom_smooth() +
+	ggtitle("Dynamics of Earnings, Occupation Switchers") + 
+	ylab("Earnings percentile within next occupation") + xlab("Earnings percentile within two-digit SOC occupation")
+ggsave("DynPctileSw.eps", width = 6, height = 4)
+ggsave("DynPctileSw.png", width = 6, height = 4)
+
+
+# OTHER MOMENTS -----------------------------------------------------
 # Mean wage changes
 with(wageChanges, wtd.mean(wageChange[switchedOcc & (EE | UE)], 
                            wpfinwgt[switchedOcc & (EE | UE)], na.rm = TRUE))

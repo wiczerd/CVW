@@ -58,7 +58,7 @@ incomePercentiles <- analytic9608 %>%
         filter(!is.na(soc2d) & lfStat==1) %>%
         group_by(soc2d) %>%
         do(calculateCumul(.)) %>%
-        select(wpfinwgt, switchedOcc,switchedJob, percentile, EE, UE, recIndic, waveRec , date)
+        select(wpfinwgt, switchedOcc,switchedJob, percentile, wageChange, EE, UE, recIndic, waveRec , date)
 
 saveRDS(incomePercentiles,"incomePercentiles.RData")
 rm(incomePercentiles)
@@ -88,7 +88,6 @@ if(useSoc2d) {
 	}
     setwd("./Figures/occ")
 }
-
 
 incomePercentiles <- incomePercentiles %>%
 	filter(!is.na(percentile)) %>%
@@ -137,7 +136,6 @@ ggPr<-ggplot(incomePercentiles, aes(percentile, prSwitchingExp)) + geom_point() 
 ggsave("prSwitchingExp.eps", width = 6, height = 4)
 
 
-
 ggPr<-ggplot(incomePercentiles, aes(percentile, prSwitchingUnc)) + geom_point() + geom_smooth() +
 	ggtitle("Unconditional P(Switching) by Wage Percentile") + 
 	ylab("P(Switching)") + xlab("Wage percentile within two-digit SOC occupation")
@@ -151,6 +149,11 @@ ggPr<-ggplot(incomePercentiles, aes(percentile, prSwitching, color = Rec)) +
 dev.off()
 
 setwd("../../")
+
+# Income changes in a switch by percentile:
+
+
+
 
 # Income changes by date -------------------------------
 # Calculate mean residual income changes by labor force flow
