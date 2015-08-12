@@ -6,6 +6,7 @@ library(dplyr)
 library(ggplot2)
 library(xlsx)
 library(quantreg)
+library(stargazer)
 library(reshape2)
 
 setwd("~/workspace/CVW/R")
@@ -31,59 +32,72 @@ detach("package:rJava")
 ## Load data ----------------------------------------------------
 
 if(useSoc2d & useRegResid) {
-	wageChanges<-readRDS("./Data/wageChangesSoc2dResid.RData")
+	setwd("soc2d/RegResid")
 } else if(useSoc2d & !useRegResid){
-	wageChanges<-readRDS("./Data/wageChangesSoc2dRaw.RData")   
+	setwd("soc2d/Raw")
 } else if(!useSoc2d & useRegResid){
-	wageChanges<-readRDS("./Data/wageChangesResid.RData")   
+	setwd("occ/RegResid")
 } else if(!useSoc2d & !useRegResid){
-	wageChanges<-readRDS("./Data/wageChangesRaw.RData")   
-} else{
-	wageChanges<-readRDS("./Data/wageChanges.RData")   
+	setwd("occ/Raw")
 }
+
+wageChanges<-readRDS("./Data/wageChanges.RData")   
 qtl_delw <- c(0.1, 0.25, .5, .75, 0.9)
 
 ## Regs on diffs ---------------------------------
 wageChangesEE <- subset(wageChanges, EE)
-delwageOLSEE <- lm(residWageChange ~ switchedOcc + unrateSA , weights= wpfinwgt, data = wageChangesEE)
-delwageQREE <- rq(residWageChange ~ switchedOcc + unrateSA, tau =qtl_delw, weights= wpfinwgt, data = wageChangesEE)
+delwageOLSEE <- lm(wageChange ~ switchedOcc + unrateSA , weights= wpfinwgt, data = wageChangesEE)
+for(ti in seq(1:length(qtl_delw))){
+	delwageQREE <- rq(wageChange ~ switchedOcc + unrateSA, tau =qtl_delw[ti], weights= wpfinwgt, data = wageChangesEE)
+}
 EEdelols<-summary(delwageOLSEE)
 EEdelqr <-summary(delwageQREE)
 quantreg::latex(EEdelqr,file="./Figures/EEqr_nSu",transpose=T,digits=3)
 # with occupation dummies for occupation origin
-delwageOLSEE.odum <- lm(residWageChange ~ switchedOcc + unrateSA + factor(soc2d), weights= wpfinwgt, data = wageChangesEE)
-delwageQREE.odum <- rq(residWageChange ~ switchedOcc + unrateSA + factor(soc2d), tau =qtl_delw, weights= wpfinwgt, data = wageChangesEE)
+delwageOLSEE.odum <- lm(wageChange ~ switchedOcc + unrateSA + factor(soc2d), weights= wpfinwgt, data = wageChangesEE)
+delwageQREE.odum <- rq(wageChange ~ switchedOcc + unrateSA + factor(soc2d), tau =qtl_delw, weights= wpfinwgt, data = wageChangesEE)
 EEdelols.odum<-summary(delwageOLSEE.odum)
 EEdelqr.odum <-summary(delwageQREE.odum)
+quantreg::latex(EEdelqr.odum,file="./Figures/EEqr_nSu_odum",transpose=T,digits=3)
+# with occupation dummies for occupation dest
+delwageOLSEE.ndum <- lm(wageChange ~ switchedOcc + unrateSA + factor(nextOcc), weights= wpfinwgt, data = wageChangesEE)
+delwageQREE.ndum <- rq(wageChange ~ switchedOcc + unrateSA + factor(nextOcc), tau =qtl_delw, weights= wpfinwgt, data = wageChangesEE)
+EEdelols.ndum<-summary(delwageOLSEE.ndum)
+EEdelqr.ndum <-summary(delwageQREE.ndum)
 quantreg::latex(EEdelqr.odum,file="./Figures/EEqr_nSu_odum",transpose=T,digits=3)
 
 
 
 wageChangesUE <- subset(wageChanges, UE)
-delwageOLSUE <- lm(residWageChange ~ switchedOcc + unrateSA, weights= wpfinwgt, data = wageChangesUE)
-delwageQRUE <- rq(residWageChange ~ switchedOcc + unrateSA, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUE)
+delwageOLSUE <- lm(wageChange ~ switchedOcc + unrateSA, weights= wpfinwgt, data = wageChangesUE)
+delwageQRUE <- rq(wageChange ~ switchedOcc + unrateSA, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUE)
 UEdelols <-summary(delwageOLSUE)
 UEdelqr <-summary(delwageQRUE)
 quantreg::latex(UEdelqr,file="./Figures/UEqr_nSu",transpose=T,digits=3)
 # with occupation dummies for occupation origin
-delwageOLSUE.odum <- lm(residWageChange ~ switchedOcc + unrateSA + factor(soc2d), weights= wpfinwgt, data = wageChangesUE)
-delwageQRUE.odum <- rq(residWageChange ~ switchedOcc + unrateSA + factor(soc2d), tau =qtl_delw, weights= wpfinwgt, data = wageChangesUE)
+delwageOLSUE.odum <- lm(wageChange ~ switchedOcc + unrateSA + factor(soc2d), weights= wpfinwgt, data = wageChangesUE)
+delwageQRUE.odum <- rq(wageChange ~ switchedOcc + unrateSA + factor(soc2d), tau =qtl_delw, weights= wpfinwgt, data = wageChangesUE)
 UEdelols.odum<-summary(delwageOLSUE.odum)
 UEdelqr.odum <-summary(delwageQRUE.odum)
 quantreg::latex(UEdelqr.odum,file="./Figures/UEqr_nSu_odum",transpose=T,digits=3)
 
 
 wageChangesUEEE <- subset(wageChanges, UE | EE)
-delwageOLS <- lm(residWageChange ~ switchedOcc + unrateSA + UE, weights= wpfinwgt, data = wageChangesUEEE)
-delwageQR <- rq(residWageChange ~ switchedOcc + unrateSA + UE, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
+delwageOLS <- lm(wageChange ~ switchedOcc + unrateSA + UE, weights= wpfinwgt, data = wageChangesUEEE)
+delwageQR <- rq(wageChange ~ switchedOcc + unrateSA + UE, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
 delols <-summary(delwageOLS)
 delqr <-summary(delwageQR)
 quantreg::latex(delqr,file="./Figures/qr_nSu",transpose=T,digits=3)
 # with occupation dummies for occupation origin
-delwageOLS.odum <- lm(residWageChange ~ switchedOcc + unrateSA + UE + factor(soc2d), weights= wpfinwgt, data = wageChangesUEEE)
-delwageQR.odum <- rq(residWageChange ~ switchedOcc + unrateSA + UE + factor(soc2d), tau =qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
+delwageOLS.odum <- lm(wageChange ~ switchedOcc + unrateSA + UE + factor(soc2d), weights= wpfinwgt, data = wageChangesUEEE)
+delwageQR.odum <- rq(wageChange ~ switchedOcc + unrateSA + UE + factor(soc2d), tau =qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
 delols.odum<-summary(delwageOLS.odum)
 delqr.odum <-summary(delwageQR.odum)
+# with occupation dummies for occupation destination
+delwageOLS.ndum <- lm(wageChange ~ switchedOcc + unrateSA + UE + factor(nextOcc), weights= wpfinwgt, data = wageChangesUEEE)
+delwageQR.ndum <- rq(wageChange ~ switchedOcc + unrateSA + UE + factor(nextOcc), tau =qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
+delols.ndum<-summary(delwageOLS.ndum)
+delqr.ndum <-summary(delwageQR.ndum)
 quantreg::latex(delqr.odum,file="./Figures/qr_nSu_odum",transpose=T,digits=3)
 
 
@@ -92,21 +106,21 @@ quantreg::latex(delqr.odum,file="./Figures/qr_nSu_odum",transpose=T,digits=3)
 
 
 wageChangesUEEE <- subset(wageChanges, (UE | EE))
-wageOLS <- lm(residWageChange ~ unrateSA + UE + switchedOcc + lastResidWage + lastOccWage + occWageChange, weights= wpfinwgt, data = wageChangesUEEE)
-wageReg <- rq(residWageChange ~ unrateSA + UE + switchedOcc + lastResidWage + lastOccWage + occWageChange, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
+wageOLS <- lm(wageChange ~ unrateSA + UE + switchedOcc + lastResidWage + lastOccWage + occWageChange, weights= wpfinwgt, data = wageChangesUEEE)
+wageReg <- rq(wageChange ~ unrateSA + UE + switchedOcc + lastResidWage + lastOccWage + occWageChange, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
 
 
 # with only-changers
 wageChangesUEEE_sw <- subset(wageChanges, (UE | EE) & switchedOcc)
-wageOLS.sw <- lm(residWageChange ~ unrateSA + UE + lastResidWage + lastOccWage + occWageChange, weights= wpfinwgt, data = wageChangesUEEE_sw)
-wageReg.sw <- rq(residWageChange ~ unrateSA + UE + lastResidWage + lastOccWage + occWageChange, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE_sw)
+wageOLS.sw <- lm(wageChange ~ unrateSA + UE + lastResidWage + lastOccWage + occWageChange, weights= wpfinwgt, data = wageChangesUEEE_sw)
+wageReg.sw <- rq(wageChange ~ unrateSA + UE + lastResidWage + lastOccWage + occWageChange, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE_sw)
 ols.sw <-summary(wageOLS.sw)
 qr.sw <-summary(wageReg.sw)
 
 # only non-changer
 wageChangesUEEE_nsw <- subset(wageChanges, (UE | EE) & !switchedOcc)
-wageOLS.nsw <- lm(residWageChange ~ unrateSA + UE + lastResidWage + lastOccWage + occWageChange, weights= wpfinwgt, data = wageChangesUEEE_nsw)
-wageReg.nsw <- rq(residWageChange ~ unrateSA + UE + lastResidWage + lastOccWage + occWageChange, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE_nsw)
+wageOLS.nsw <- lm(wageChange ~ unrateSA + UE + lastResidWage + lastOccWage + occWageChange, weights= wpfinwgt, data = wageChangesUEEE_nsw)
+wageReg.nsw <- rq(wageChange ~ unrateSA + UE + lastResidWage + lastOccWage + occWageChange, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE_nsw)
 
 png("./Figures/qr_nSu.png")
 plot(qr, parm=c("switchedOccTRUE","unrateSA"),xlab="Quantile")
