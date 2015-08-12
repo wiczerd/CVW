@@ -40,66 +40,109 @@ if(useSoc2d & useRegResid) {
 } else if(!useSoc2d & !useRegResid){
 	setwd("occ/Raw")
 }
+wageChanges<-readRDS("wageChanges.RData")   
 
-wageChanges<-readRDS("./Data/wageChanges.RData")   
 qtl_delw <- c(0.1, 0.25, .5, .75, 0.9)
-
+Nqtl = length(qtl_delw)
 ## Regs on diffs ---------------------------------
 wageChangesEE <- subset(wageChanges, EE)
+
 delwageOLSEE <- lm(wageChange ~ switchedOcc + unrateSA , weights= wpfinwgt, data = wageChangesEE)
-for(ti in seq(1:length(qtl_delw))){
-	delwageQREE <- rq(wageChange ~ switchedOcc + unrateSA, tau =qtl_delw[ti], weights= wpfinwgt, data = wageChangesEE)
+delwageQREE <- list()
+for(ti in seq(1:Nqtl)){
+	delwageQREE[[ti]] <- rq(wageChange ~ switchedOcc + unrateSA, tau =qtl_delw[ti], weights= wpfinwgt, data = wageChangesEE)
 }
-EEdelols<-summary(delwageOLSEE)
-EEdelqr <-summary(delwageQREE)
-quantreg::latex(EEdelqr,file="./Figures/EEqr_nSu",transpose=T,digits=3)
 # with occupation dummies for occupation origin
-delwageOLSEE.odum <- lm(wageChange ~ switchedOcc + unrateSA + factor(soc2d), weights= wpfinwgt, data = wageChangesEE)
-delwageQREE.odum <- rq(wageChange ~ switchedOcc + unrateSA + factor(soc2d), tau =qtl_delw, weights= wpfinwgt, data = wageChangesEE)
-EEdelols.odum<-summary(delwageOLSEE.odum)
-EEdelqr.odum <-summary(delwageQREE.odum)
-quantreg::latex(EEdelqr.odum,file="./Figures/EEqr_nSu_odum",transpose=T,digits=3)
-# with occupation dummies for occupation dest
-delwageOLSEE.ndum <- lm(wageChange ~ switchedOcc + unrateSA + factor(nextOcc), weights= wpfinwgt, data = wageChangesEE)
-delwageQREE.ndum <- rq(wageChange ~ switchedOcc + unrateSA + factor(nextOcc), tau =qtl_delw, weights= wpfinwgt, data = wageChangesEE)
-EEdelols.ndum<-summary(delwageOLSEE.ndum)
-EEdelqr.ndum <-summary(delwageQREE.ndum)
-quantreg::latex(EEdelqr.odum,file="./Figures/EEqr_nSu_odum",transpose=T,digits=3)
-
-
+delwageOLSEE.odum <- lm(wageChange ~ switchedOcc + unrateSA + factor(soc2d) + factor(nextOcc), weights= wpfinwgt, data = wageChangesEE)
+delwageQREE.odum <- list()
+for(ti in seq(1:Nqtl)){
+	delwageQREE.odum[[ti]]  <- rq(wageChange ~ switchedOcc + unrateSA + factor(soc2d) + factor(nextOcc), tau =qtl_delw[ti], weights= wpfinwgt, data = wageChangesEE)
+}
 
 wageChangesUE <- subset(wageChanges, UE)
 delwageOLSUE <- lm(wageChange ~ switchedOcc + unrateSA, weights= wpfinwgt, data = wageChangesUE)
-delwageQRUE <- rq(wageChange ~ switchedOcc + unrateSA, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUE)
-UEdelols <-summary(delwageOLSUE)
-UEdelqr <-summary(delwageQRUE)
-quantreg::latex(UEdelqr,file="./Figures/UEqr_nSu",transpose=T,digits=3)
+delwageQRUE <- list()
+for(ti in seq(1:Nqtl)){
+	delwageQRUE[[ti]] <- rq(wageChange ~ switchedOcc + unrateSA, tau = qtl_delw[ti], weights= wpfinwgt, data = wageChangesUE)
+}
 # with occupation dummies for occupation origin
-delwageOLSUE.odum <- lm(wageChange ~ switchedOcc + unrateSA + factor(soc2d), weights= wpfinwgt, data = wageChangesUE)
-delwageQRUE.odum <- rq(wageChange ~ switchedOcc + unrateSA + factor(soc2d), tau =qtl_delw, weights= wpfinwgt, data = wageChangesUE)
-UEdelols.odum<-summary(delwageOLSUE.odum)
-UEdelqr.odum <-summary(delwageQRUE.odum)
-quantreg::latex(UEdelqr.odum,file="./Figures/UEqr_nSu_odum",transpose=T,digits=3)
+delwageOLSUE.odum <- lm(wageChange ~ switchedOcc + unrateSA + factor(soc2d)  + factor(nextOcc), weights= wpfinwgt, data = wageChangesUE)
+delwageQRUE.odum <- list()
+for(ti in seq(1:Nqtl)){
+	delwageQRUE.odum[[ti]] <- rq(wageChange ~ switchedOcc + unrateSA + factor(soc2d) + factor(nextOcc), tau =qtl_delw[ti], weights= wpfinwgt, data = wageChangesUE)
+}
 
 
 wageChangesUEEE <- subset(wageChanges, UE | EE)
 delwageOLS <- lm(wageChange ~ switchedOcc + unrateSA + UE, weights= wpfinwgt, data = wageChangesUEEE)
-delwageQR <- rq(wageChange ~ switchedOcc + unrateSA + UE, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
-delols <-summary(delwageOLS)
-delqr <-summary(delwageQR)
-quantreg::latex(delqr,file="./Figures/qr_nSu",transpose=T,digits=3)
-# with occupation dummies for occupation origin
-delwageOLS.odum <- lm(wageChange ~ switchedOcc + unrateSA + UE + factor(soc2d), weights= wpfinwgt, data = wageChangesUEEE)
-delwageQR.odum <- rq(wageChange ~ switchedOcc + unrateSA + UE + factor(soc2d), tau =qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
-delols.odum<-summary(delwageOLS.odum)
-delqr.odum <-summary(delwageQR.odum)
-# with occupation dummies for occupation destination
-delwageOLS.ndum <- lm(wageChange ~ switchedOcc + unrateSA + UE + factor(nextOcc), weights= wpfinwgt, data = wageChangesUEEE)
-delwageQR.ndum <- rq(wageChange ~ switchedOcc + unrateSA + UE + factor(nextOcc), tau =qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
-delols.ndum<-summary(delwageOLS.ndum)
-delqr.ndum <-summary(delwageQR.ndum)
-quantreg::latex(delqr.odum,file="./Figures/qr_nSu_odum",transpose=T,digits=3)
+delwageQR <- list()
+for(ti in seq(1:Nqtl)){
+	delwageQR[[ti]] <- rq(wageChange ~ switchedOcc + unrateSA + UE, tau = qtl_delw[ti], weights= wpfinwgt, data = wageChangesUEEE)
+}
+# with occupation dummies for occupation origin/destination
+delwageOLS.odum <- lm(wageChange ~ switchedOcc + unrateSA + UE + factor(soc2d) + factor(nextOcc), weights= wpfinwgt, data = wageChangesUEEE)
+delwageQR.odum <- list()
+for(ti in seq(1:Nqtl)){
+	delwageQR.odum[[ti]] <- rq(wageChange ~ switchedOcc + unrateSA + UE + factor(soc2d)  + factor(nextOcc), tau =qtl_delw[ti], weights= wpfinwgt, data = wageChangesUEEE)
+}
 
+setwd("../../../")
+setwd("./Figures")
+if(useSoc2d & useRegResid) {
+	setwd("soc2d/")
+} else if(useSoc2d & !useRegResid){
+	setwd("soc2d/")
+} else if(!useSoc2d & useRegResid){
+	setwd("occ/")
+} else if(!useSoc2d & !useRegResid){
+	setwd("occ/")
+}
+
+# make tables for combined
+tab<-stargazer(delwageOLS, delwageQR[1:Nqtl] ,  out="qr_nSu.tex",
+			   dep.var.labels.include = FALSE, no.space=T,  omit.stat=c("rsq","f","adj.rsq"),
+			   title            = "Earnings change quantile regression",
+			   digits=2, column.sep.width= "1pt",df=F,
+			   covariate.labels = c("Occup Sw", "Unemp Rate","Unep Indic","Const"))
+
+tabodum<-stargazer(delwageOLS.odum, delwageQR.odum[1:Nqtl] ,  out="qr_nSu_odum.tex",
+				   dep.var.labels.include = FALSE, no.space=T, omit.stat=c("rsq","f","adj.rsq"), omit="factor",
+				   omit.labels = "Next/Last Occupation Dummies",
+				   digits=2, column.sep.width= "1pt",df=F,
+				   title            = "Earnings change quantile regression",
+				   covariate.labels = c("Occup Sw", "Unemp Rate","Unep Indic","Const"))
+
+#make tables for EE
+stargazer(delwageOLSEE, delwageQREE[1:Nqtl] ,  out="EEqr_nSu.tex",
+		  dep.var.labels.include = FALSE, no.space=T, omit.stat=c("rsq","f","adj.rsq"),
+		  title            = "Earnings change quantile regression, Job-job",
+		  digits=2, column.sep.width= "1pt",df=F,
+		  covariate.labels = c("Occup Sw", "Unemp Rate","Const"))
+
+stargazer(delwageOLSEE.odum, delwageQREE.odum[1:Nqtl] ,  out="EEqr_nSu_odum.tex",
+		  dep.var.labels.include = FALSE, no.space=T, omit.stat=c("rsq","f","adj.rsq"), omit="factor",
+		  omit.labels = "Next/Last Occupation Dummies",
+		  digits=2, column.sep.width= "1pt",df=F,
+		  title            = "Earnings change quantile regression, Job-job",
+		  covariate.labels = c("Occup Sw", "Unemp Rate","Const"))
+
+
+# make tables for UE
+tabUE<-stargazer(delwageOLSUE, delwageQRUE[1:Nqtl] ,  out="UEqr_nSu.tex",
+				 dep.var.labels.include = FALSE, no.space=T,  omit.stat=c("rsq","f","adj.rsq"),
+				 title            = "Earnings change quantile regression, through unemp",
+				 digits=2, column.sep.width= "1pt",df=F,
+				 covariate.labels = c("Occup Sw", "Unemp Rate","Const"))
+
+tabUEodum<-stargazer(delwageOLSUE.odum, delwageQRUE.odum[1:Nqtl] ,  out="UEqr_nSu_odum.tex",
+					 dep.var.labels.include = FALSE, no.space=T, omit.stat=c("rsq","f","adj.rsq"), omit="factor",
+					 omit.labels = "Next/Last Occupation Dummies",
+					 digits=2, column.sep.width= "1pt",df=F,
+					 title            = "Earnings change quantile regression, through unemp",
+					 covariate.labels = c("Occup Sw", "Unemp Rate","Const"))
+
+
+setwd("../../")
 
 # Regs on lags -----------------------------------
 ## run regs with lags rather than just differences

@@ -99,11 +99,11 @@ demoProbit <- mutate(demoProbit,unrateSA = unrateSA/100,
 					 unrateNSA = unrateNSA/100)
 
 
-swDemo.unrate.EE <- glm(swOccJob ~ unrateSA + age + I(age^2)  + nwhite + univ + lths + female, 
+swDemo.unrate.EE <- glm(swOccJob ~ unrateSA + age + I(100*age^2)  + nwhite + univ + lths + female, 
 						family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit, x=T)
-swDemo.unrate.UE <- glm(swOccJob ~ unrateSA + age + I(age^2) + unempDur + nwhite + univ + lths + female, 
+swDemo.unrate.UE <- glm(swOccJob ~ unrateSA + age + I(100*age^2) + unempDur + nwhite + univ + lths + female, 
 						family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit, x=T)
-swDemo.unrate <- glm(swOccJob ~ unrateSA  + age + I(age^2) + unempDur + UE + nwhite + univ + lths + female, 
+swDemo.unrate <- glm(swOccJob ~ unrateSA  + age + I(100*age^2) +  UE + nwhite + univ + lths + female, 
 					 family=binomial(link="probit"), data= demoProbit, na.action=na.omit, x=T)
 
 swDemo.EE <- glm(swOccJob ~ recIndic + nwhite + univ + lths + female + age  + I(age^2), 
@@ -113,7 +113,7 @@ swDemo.UE <- glm(swOccJob ~ recIndic + nwhite + univ + lths + female + age  + I(
 swDemo <- glm(swOccJob ~ recIndic + nwhite + univ + lths + female + UE + age  + I(age^2) + unempDur, 
 			  family=binomial(link="probit"), data= demoProbit, na.action=na.omit)
 
-names(swDemo.unrate$coefficients)<-c("Const","Unemp Rate","Age","Age^2","Unemp Duration","Unemp Indic", "Non-white","Univ","LT HS","Female")
+names(swDemo.unrate$coefficients)<-c("Const","Unemp Rate","Age","Age^2","Unemp Indic", "Non-white","Univ","LT HS","Female")
 names(swDemo.unrate.EE$coefficients)<-c("Const","Unemp Rate","Age","Age^2", "Non-white","Univ","LT HS","Female")
 names(swDemo.unrate.UE$coefficients)<-c("Const","Unemp Rate","Age","Age^2","Unemp Duration", "Non-white","Univ","LT HS","Female")
 
@@ -129,7 +129,9 @@ if(useSoc2d) {
 	setwd("./Figures/occ")
 }
 
-stargazer(swDemo.unrate.Mfx,swDemo.unrate.EE.Mfx,swDemo.unrate.UE.Mfx, title="Probit for occupational switching",out="swDemounrate.tex",colnames=T,digits=3)
+stargazer(swDemo.unrate.Mfx,swDemo.unrate.EE.Mfx,swDemo.unrate.UE.Mfx, 
+		  title="Probit for occupational switching",out="swDemounrate.tex",
+		  colnames=T,digits=3)
 #texreg( list(swDemo.unrate,swDemo.unrate,swDemo.unrate),label="tab:swDemo",caption="Probit for occupational switching",file="swDemo.tex")
 setwd("../../")
 
