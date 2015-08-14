@@ -118,27 +118,34 @@ if(useSoc2d){
 }
 
 
-ggPr<-ggplot(wageChanges, aes(usepctile, nextpctile)) + geom_smooth() +
+ggPr<-ggplot(wageChanges, aes(usepctile, nextpctile)) + geom_smooth(size=2) +
 	ggtitle("Dynamics of Earnings") + 
 	ylab("Earnings percentile within next occupation") + xlab("Earnings percentile within two-digit SOC occupation")
+ggPr <- ggPr + geom_line( aes(y=usepctile,x=usepctile), size=1, linetype="dotted")
 ggsave("DynPctile.eps", width = 6, height = 4)
 ggsave("DynPctile.png", width = 6, height = 4)
 
-ggPr<-ggplot(subset(wageChanges,UE), aes(usepctile, nextpctile)) + geom_smooth() +
+ggPr<-ggplot(subset(wageChanges,UE), aes(usepctile, nextpctile)) + geom_smooth(size=2) +
 	ggtitle("Dynamics of Earnings, Through Unemployment") + 
 	ylab("Earnings percentile within next occupation") + xlab("Earnings percentile within two-digit SOC occupation")
+ggPr <- ggPr + geom_line( aes(y=usepctile,x=usepctile), size=1, linetype="dotted")
+ggPr <- ggPr + geom_smooth(data = wageChanges, aes(usepctile, nextpctile),size=1, colour="coral", linetype="dashed")
 ggsave("DynPctileUE.eps", width = 6, height = 4)
 ggsave("DynPctileUE.png", width = 6, height = 4)
 
-ggPr<-ggplot(subset(wageChanges,EE), aes(usepctile, nextpctile)) + geom_smooth() +
+ggPr<-ggplot(subset(wageChanges,EE), aes(usepctile, nextpctile)) + geom_smooth(size=2) +
 	ggtitle("Dynamics of Earnings, Job-Job") + 
 	ylab("Earnings percentile within next occupation") + xlab("Earnings percentile within two-digit SOC occupation")
+ggPr <- ggPr + geom_line( aes(y=usepctile,x=usepctile), size=1, linetype="dotted")
+ggPr <- ggPr + geom_smooth(data = wageChanges, aes(usepctile, nextpctile),size=1, colour="coral", linetype="dashed")
 ggsave("DynPctileEE.eps", width = 6, height = 4)
 ggsave("DynPctileEE.png", width = 6, height = 4)
 
-ggPr<-ggplot(subset(wageChanges,recIndic), aes(usepctile, nextpctile)) + geom_smooth() +
+ggPr<-ggplot(subset(wageChanges,recIndic), aes(usepctile, nextpctile)) + geom_smooth(size=2) +
 	ggtitle("Dynamics of Earnings, Recession") + 
 	ylab("Earnings percentile within next occupation") + xlab("Earnings percentile within two-digit SOC occupation")
+ggPr <- ggPr + geom_line( aes(y=usepctile,x=usepctile), size=1, linetype="dotted")
+ggPr <- ggPr + geom_smooth(data = wageChanges, aes(usepctile, nextpctile),size=1, colour="coral", linetype="dashed")
 ggsave("DynPctileRec.eps", width = 6, height = 4)
 ggsave("DynPctileRec.png", width = 6, height = 4)
 
@@ -152,6 +159,8 @@ ggsave("DynPctileExp.png", width = 6, height = 4)
 ggPr<-ggplot(subset(wageChanges,switchedOcc), aes(usepctile, nextpctile)) + geom_smooth() +
 	ggtitle("Dynamics of Earnings, Occupation Switchers") + 
 	ylab("Earnings percentile within next occupation") + xlab("Earnings percentile within two-digit SOC occupation")
+ggPr <- ggPr + geom_line( aes(y=usepctile,x=usepctile), size=1, linetype="dotted")
+ggPr <- ggPr + geom_smooth(data = wageChanges, aes(usepctile, nextpctile),size=1, colour="coral", linetype="dashed")
 ggsave("DynPctileSw.eps", width = 6, height = 4)
 ggsave("DynPctileSw.png", width = 6, height = 4)
 

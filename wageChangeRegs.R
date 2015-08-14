@@ -30,7 +30,7 @@ detach("package:xlsxjars")
 detach("package:rJava")
 
 ## Load data ----------------------------------------------------
-
+setwd("./Data")
 if(useSoc2d & useRegResid) {
 	setwd("soc2d/RegResid")
 } else if(useSoc2d & !useRegResid){
@@ -149,14 +149,14 @@ setwd("../../")
 
 
 wageChangesUEEE <- subset(wageChanges, (UE | EE))
-wageOLS <- lm(wageChange ~ unrateSA + UE + switchedOcc + lastResidWage + lastOccWage + occWageChange, weights= wpfinwgt, data = wageChangesUEEE)
-wageReg <- rq(wageChange ~ unrateSA + UE + switchedOcc + lastResidWage + lastOccWage + occWageChange, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
+wageOLS <- lm(wageChange ~ unrateSA + UE + switchedOcc + useWage + occWage + occWageChange, weights= wpfinwgt, data = wageChangesUEEE)
+wageReg <- rq(wageChange ~ unrateSA + UE + switchedOcc + useWage + occWage + occWageChange, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE)
 
 
 # with only-changers
 wageChangesUEEE_sw <- subset(wageChanges, (UE | EE) & switchedOcc)
-wageOLS.sw <- lm(wageChange ~ unrateSA + UE + lastResidWage + lastOccWage + occWageChange, weights= wpfinwgt, data = wageChangesUEEE_sw)
-wageReg.sw <- rq(wageChange ~ unrateSA + UE + lastResidWage + lastOccWage + occWageChange, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE_sw)
+wageOLS.sw <- lm(wageChange ~ UE + useWage + occWage + occWageChange, weights= wpfinwgt, data = wageChangesUEEE_sw)
+wageReg.sw <- rq(wageChange ~ UE + useWage + occWage + occWageChange, tau = qtl_delw, weights= wpfinwgt, data = wageChangesUEEE_sw)
 ols.sw <-summary(wageOLS.sw)
 qr.sw <-summary(wageReg.sw)
 

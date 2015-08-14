@@ -99,11 +99,11 @@ demoProbit <- mutate(demoProbit,unrateSA = unrateSA/100,
 					 unrateNSA = unrateNSA/100)
 
 
-swDemo.unrate.EE <- glm(swOccJob ~ unrateSA + age + I(100*age^2)  + nwhite + univ + lths + female, 
+swDemo.unrate.EE <- glm(swOccJob ~ unrateSA + age + I(age^2/100)  + nwhite + univ + lths + female, 
 						family=binomial(link="probit"), subset=(EE==1), data= demoProbit, na.action=na.omit, x=T)
-swDemo.unrate.UE <- glm(swOccJob ~ unrateSA + age + I(100*age^2) + unempDur + nwhite + univ + lths + female, 
+swDemo.unrate.UE <- glm(swOccJob ~ unrateSA + age + I(age^2/100) + unempDur + nwhite + univ + lths + female, 
 						family=binomial(link="probit"), subset=(UE==1), data= demoProbit, na.action=na.omit, x=T)
-swDemo.unrate <- glm(swOccJob ~ unrateSA  + age + I(100*age^2) +  UE + nwhite + univ + lths + female, 
+swDemo.unrate <- glm(swOccJob ~ unrateSA  + age + I(age^2/100) +  UE + nwhite + univ + lths + female, 
 					 family=binomial(link="probit"), data= demoProbit, na.action=na.omit, x=T)
 
 swDemo.EE <- glm(swOccJob ~ recIndic + nwhite + univ + lths + female + age  + I(age^2), 
@@ -124,14 +124,15 @@ swDemo.unrate.UE.Mfx <- maBina(w=swDemo.unrate.UE)
 
 setwd("../../")
 if(useSoc2d) {
-	setwd("./Figures//soc2d")
+	setwd("./Figures/soc2d")
 }else {
 	setwd("./Figures/occ")
 }
 
 stargazer(swDemo.unrate.Mfx,swDemo.unrate.EE.Mfx,swDemo.unrate.UE.Mfx, 
 		  title="Probit for occupational switching",out="swDemounrate.tex",
-		  colnames=T,digits=3)
+		  colnames=T,digits=3, column.sep.width= "1pt",df=F,no.space=T,
+		  dep.var.labels.include = F)
 #texreg( list(swDemo.unrate,swDemo.unrate,swDemo.unrate),label="tab:swDemo",caption="Probit for occupational switching",file="swDemo.tex")
 setwd("../../")
 
