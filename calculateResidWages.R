@@ -137,16 +137,20 @@ genRegressors <- function(df) {
 }
 
 calculateWageChange <- function(df) {
-	df$wageChange = ifelse( df$UE | df$EE  ,df$nextWage - lag(df$useWage),NA)
-	df$wageChangeQtr = df$nextWageQtr - lag(df$useWageQtr)
-	df$occWageChange = df$nextOccWage - lag(df$occWage)
+	tuw <- log(exp(lag(df$useWage))+(exp(lag(df$useWage)*2)+1)^(1/2))
+	tnw <- log(exp(df$nextWage)+(exp(df$nextWage*2) +1)^(1/2))
+	df$wageChange_EUE = ifelse( df$EU , tnw - tuw  ,NA)
+	df$wageChange = ifelse( df$EE , tnw - tuw  ,NA)
+	df$wageChange = ifelse( df$EU , log(1) - tuw ,df$wageChange)
+	df$wageChange = ifelse( df$UE , tnw - log(1) ,df$wageChange)
+
 	df$wageChange_stayer = ifelse(!df$switchedJob, lead(df$useWage) - lag(df$useWage), NA)
 	df$wageChange_all = ifelse(!df$switchedJob, df$wageChange_stayer, df$wageChange)
-	#	mutate(wageChange = lead(useWage) - lastWage) %>%
-	#	mutate(wageChangeQtr = lead(useWageQtr) - lastWageQtr) %>%
-	#	mutate(occWageChange = lead(occWage) - lastOccWage)) %>%
-	#	mutate(wageChange_stayer = as.numeric(ifelse(!switchedJob, lead(useWage) - lastWage, NA) )) %>%
-	#	mutate(wageChange_all = as.numeric(ifelse(!switchedJob, wageChange_stayer, wageChange)))
+
+	tuwQ <- log(exp(lag(df$useWageQtr))+(exp(lag(df$useWageQtr)*2)+1)^(1/2))
+	tnwQ <- log(exp(lag(df$nextWageQtr))+(exp(lag(df$nextWageQtr)*2)+1)^(1/2))
+	df$wageChangeQtr = tnwQ - tuwQ
+	df$occWageChange = df$nextOccWage - lag(df$occWage)
 	return(df)
 }
 
@@ -164,30 +168,27 @@ regressors <- c("age",
 
 
 toKeep <- c("id",
-			"wpfinwgt", 
-			"switchedOcc",
-			"soc2d", 
-			"occ",
-			"nextOcc",
-#			"lastOcc",
-			"EE", 
-			"UE",  
-			"wageChange", 
-			"wageChange_wU", 
-			"wageChange_all",
-			"lfStat", 
-			"date",
-#			"wageChangeQtr", 
-#			"wageChangeQtr_wU",
-			"occWage",
-			"occWageChange",
-			"useWage",
-			"nextWage",
-			"nextOccWage",
-#			"lastWage",
-#			"lastOccWage",
-			"recIndic",
-			"waveRec")
+		"wpfinwgt", 
+		"switchedOcc",
+		"soc2d", 
+		"occ",
+		"nextOcc",
+		"EE", 
+		"UE",
+		"EU",
+		"wageChange", 
+		"wageChange_EUE", 
+		"wageChange_wU", 
+		"wageChange_all",
+		"lfStat", 
+		"date",
+		"occWage",
+		"occWageChange",
+		"useWage",
+		"nextWage",
+		"nextOccWage",
+		"recIndic",
+		"waveRec")
 
 # Combine panels  --------------------------------------------------------------
 
@@ -238,6 +239,8 @@ analytic9608 <- fillUpWage(analytic9608)
 analytic9608 <- nextlastocc(analytic9608)
 #fix SwitchedOcc for UE
 analytic9608$switchedOcc <- ifelse(analytic9608$UE, (analytic9608$occ != analytic9608$nextOcc), analytic9608$switchedOcc)
+analytic9608$switchedOcc <- ifelse(analytic9608$EU, (analytic9608$occ != analytic9608$nextOcc), analytic9608$switchedOcc)
+
 
 # Calculate residual wage change
 analytic9608 <- calculateWageChange(analytic9608)

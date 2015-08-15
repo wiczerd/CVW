@@ -91,8 +91,8 @@ genFlowDummies <- function(df) {
 		arrange(date) %>%
 		mutate(switchedJob = (job != lead(job)) & !(is.na(job) | is.na(lead(job))) ) %>%
 		mutate(EE = lfStat == 1 & lead(lfStat) == 1 & switchedJob) %>%
-		# now EU
-		mutate(UE = lfStat == 1 & lead(lfStat) == 2 & switchedJob) %>%
+		mutate(EU = lfStat == 1 & lead(lfStat) == 2 & switchedJob) %>%
+		mutate(UE = lfStat == 2 & lead(lfStat) == 1 & switchedJob) %>%
 		mutate(switchedOcc = (occ != lead(occ)) & switchedJob) %>%
 		mutate(switchedInd = (ind23 != lead(ind23)) & switchedJob)         
 	return(result)
