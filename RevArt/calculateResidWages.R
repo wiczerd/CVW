@@ -123,8 +123,8 @@ analytic9608$HSCol <- ifelse(is.na(analytic9608$educ),NA,analytic9608$HSCol)
 analytic9608 <- select(analytic9608, -one_of(regressors))
 analytic9608 <- analytic9608 %>%
 	mutate(useWageLevel = 0.5*(exp(useWage) - exp(-useWage))) %>%
-	mutate(useWageLevel = as.numeric(ifelse(lfStat > 1 , 0. , useWageLevel))) %>% #wage if not working is 0 in levels
-	mutate(useWage  = as.numeric(ifelse(lfStat > 1 , 1. , useWage))) #wage if not working is inv hyperbolic sine(0)
+	mutate(useWageLevel = ifelse(lfStat > 1 , 0. , useWageLevel)) #wage if not working is 0 in levels
+	# mutate(useWage  = ifelse(lfStat > 1 , 1. , useWage)) #wage if not working is inv hyperbolic sine(0)
 
 # Create quarterly residual wage and quarterly lfStat
 analytic9608 <- analytic9608 %>%

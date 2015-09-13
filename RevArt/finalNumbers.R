@@ -5,7 +5,7 @@ library(zoo)
 library(xtable)
 
 #setwd("G:/Research_Analyst/Eubanks/Occupation Switching Lab/Data/")
-setwd('~/workspace/CVW/R')
+setwd('~/workspace/CVW/R/Data')
 
 useSoc2d <- TRUE
 useRegResid <- TRUE
@@ -17,24 +17,29 @@ if(useSoc2d) {
 }
 
 if(useRegResid) {
-	setwd("./regResid")
+	setwd("./RegResid")
 } else {
-	setwd("./raw")
+	setwd("./Raw")
 }
 
 wageChanges <- readRDS("wageChanges.RData")
 
-attach(wageChanges)
+wageChanges$wtchng <- ifelse(wageChanges$EU | wageChanges$UE, wageChanges$wpfinwgt/2,wageChanges$wpfinwgt)
 
-# Remove EU switches that don't involve a later UE switch
+# Make sure EU and UE switches balance
 wageChanges <- wageChanges %>%
 	group_by(id) %>%
-	mutate(beenEmployed = ifelse(lfStat == 1, TRUE, NA)) %>%
-	mutate(beenEmployed = na.locf(beenEmployed, na.rm = FALSE))
+	arrange(id,date) %>%
+	mutate(beenEU = ifelse(EU, -1, 0)) %>%
+	mutate(willUE = ifelse(UE, 1 , 0)) %>%
+	mutate(matchEUUE = cumsum(beenEU + willUE)) %>%
+	arrange(id,desc(date)) %>%
+	mutate(matchUEEU = cumsum(beenEU + willUE)) %>%
+	ungroup
 
 wageChanges <- wageChanges %>%
-	mutate(wageChange = ifelse(EU & is.na(wageChange_EUE), NA, wageChange)) %>%
-	mutate(wageChange = ifelse(UE & is.na(beenEmployed), NA, wageChange))
+	mutate(wageChange = ifelse(matchEUUE != 0 & UE , as.numeric(NA), wageChange)) %>%
+	mutate(wageChange = ifelse(matchUEEU != 0 & EU , as.numeric(NA), wageChange))
 
 # Dictionary --------------------------------------------------------------
 
@@ -55,16 +60,18 @@ wageChanges <- wageChanges %>%
 
 # All job changes ---------------------------------------------------------
 
+
+attach(wageChanges)
 # Central tendency
-fullMean <- wtd.mean(wageChange, wpfinwgt)
-fullMed <- wtd.quantile(wageChange, wpfinwgt, probs = 0.5)
+fullMean <- wtd.mean(wageChange, wtchng)
+fullMed <- wtd.quantile(wageChange, wtchng, probs = 0.5)
 p50 <- fullMed
 
 # Dispersion
-fullVar <- wtd.var(wageChange, wpfinwgt)
-fullIQR <- wtd.quantile(wageChange, wpfinwgt, probs = 0.75) - wtd.quantile(wageChange, wpfinwgt, probs = 0.25)
-p90 <- wtd.quantile(wageChange, wpfinwgt, probs = 0.90)
-p10 <- wtd.quantile(wageChange, wpfinwgt, probs = 0.10)
+fullVar <- wtd.var(wageChange, wtchng)
+fullIQR <- wtd.quantile(wageChange, wtchng, probs = 0.75) - wtd.quantile(wageChange, wtchng, probs = 0.25)
+p90 <- wtd.quantile(wageChange, wtchng, probs = 0.90)
+p10 <- wtd.quantile(wageChange, wtchng, probs = 0.10)
 full9010 <- p90 - p10
 
 # Skewness
@@ -105,8 +112,8 @@ EE9010 <- p90 - p10
 EEKelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
 
 
-# Put all of this into 1 table
-
+# Put all of the central tendency into 1 table
+cent_tend <- c(fullMean)
 
 ggplot(wageChanges, aes(wageChange)) +
 	geom_density()

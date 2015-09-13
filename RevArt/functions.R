@@ -216,15 +216,15 @@ fillDownWage <- function(df) {
 	result <- df %>%
 		group_by(id) %>%
 		arrange(id, date) %>%
-		mutate(lastWage = as.numeric(ifelse(switchedJob & job != 0, lag(useWage), NA))) %>%
+		mutate(lastWage = ifelse(switchedJob & job != 0, lag(useWage), as.numeric(NA))) %>%
 		mutate(lastWage = na.locf(lastWage, na.rm = FALSE))
 	result <- result %>%
-		mutate(lastWageQtr = as.numeric(ifelse(switchedJob & job != 0, lag(useWageQtr, 3), NA))) %>%
+		mutate(lastWageQtr = ifelse(switchedJob & job != 0, lag(useWageQtr, 3), as.numeric(NA))) %>%
 		mutate(lastWageQtr = na.locf(lastWageQtr, na.rm = FALSE))
 	result <- result %>%
 		group_by(id) %>%
 		arrange(id, date) %>%
-		mutate(lastOccWage = as.numeric(ifelse(switchedJob & job != 0, lag(occWage), NA))) %>%
+		mutate(lastOccWage = ifelse(switchedJob & job != 0, lag(occWage), as.numeric(NA))) %>%
 		mutate(lastOccWage = na.locf(lastOccWage, na.rm = FALSE)) %>%
 		ungroup
 	return(result)
@@ -239,14 +239,14 @@ fillUpWage <- function(df) {
 	result <- df %>%
 		group_by(id) %>%
 		arrange(id, date) 
-	result$nextWage = as.numeric(ifelse(result$switchedJob & result$job != 0, lead(result$useWage), NA))
+	result$nextWage = ifelse(result$switchedJob & result$job != 0, lead(result$useWage), as.numeric(NA))
 	result$nextWage = na.locf(result$nextWage, na.rm = FALSE, fromLast = TRUE)
-	result$nextWageQtr = as.numeric(ifelse(result$switchedJob & result$job != 0, lead(result$useWageQtr, 3), NA) )
+	result$nextWageQtr = ifelse( result$switchedJob & result$job != 0, lead(result$useWageQtr, 3), as.numeric(NA) )
 	result$nextWageQtr = na.locf(result$nextWageQtr, na.rm = FALSE, fromLast = TRUE) 
 	result <- result %>%
 		group_by(id) %>%
 		arrange(date)
-	result$nextOccWage = as.numeric(ifelse(result$switchedJob & result$job != 0, lead(result$occWage), NA))
+	result$nextOccWage = ifelse(result$switchedJob & result$job != 0, lead(result$occWage), as.numeric(NA))
 	result$nextOccWage = na.locf(result$nextOccWage, na.rm = FALSE, fromLast = TRUE)
 	ungroup(result)
 	return(result)
@@ -272,17 +272,19 @@ fillUpWage <- function(df) {
 calculateWageChange <- function(df) {
 	tuw <- lag(df$useWage)
 	tnw <- df$nextWage
+	tnw <- ifelse(is.na(tnw) & !is.na(lead(df$useWage)) & lead(df$lfStat)==1,lead(df$useWage),tnw)
 	df$wageChange_EUE = ifelse( df$EU , tnw - tuw  ,NA)
 	df$wageChange = ifelse( df$EE , tnw - tuw  ,NA)
-	df$wageChange = ifelse( df$EU , log(1) - tuw ,df$wageChange)
-	df$wageChange = ifelse( df$UE , tnw - log(1) ,df$wageChange)
+	df$wageChange = ifelse( df$EU , log(1.) - tuw ,df$wageChange)
+	df$wageChange = ifelse( df$UE , tnw - log(1.) ,df$wageChange)
 	
-	df$wageChange_stayer = ifelse(!df$switchedJob, lead(df$useWage) - lag(df$useWage), NA)
+	df$wageChange_stayer = ifelse(!df$switchedJob & !lag(df$switchedJob), lead(df$useWage) - lag(df$useWage), NA)
 	df$wageChange_all = ifelse(!df$switchedJob, df$wageChange_stayer, df$wageChange)
 	
 	tuwQ <- lag(df$useWageQtr)
 	tnwQ <- df$nextWageQtr
 	df$wageChangeQtr = tnwQ - tuwQ
-	df$occWageChange = df$nextOccWage - lag(df$occWage)
+	df$occWageChange = ifelse(df$switchedOcc & !lag(df$switchedOcc),df$nextOccWage - lag(df$occWage),0.)
+	df$occWageChange = ifelse(df$switchedOcc & lag(df$switchedOcc),df$nextOccWage - df$occWage,0.)
 	return(df)
 }    
