@@ -62,58 +62,86 @@ wageChanges <- wageChanges %>%
 
 
 attach(wageChanges)
+qtls <- c(0.1,0.25,0.5,0.75,0.9)
 # Central tendency
-fullMean <- wtd.mean(wageChange, wtchng)
-fullMed <- wtd.quantile(wageChange, wtchng, probs = 0.5)
-p50 <- fullMed
+full.Mean <- wtd.mean(wageChange, wtchng)
+full.Qs <- wtd.quantile(wageChange, wtchng, probs = qtls)
+full.Med <- full.Qs[3]
+p50 <- full.Qs[3]
 
 # Dispersion
-fullVar <- wtd.var(wageChange, wtchng)
-fullIQR <- wtd.quantile(wageChange, wtchng, probs = 0.75) - wtd.quantile(wageChange, wtchng, probs = 0.25)
-p90 <- wtd.quantile(wageChange, wtchng, probs = 0.90)
-p10 <- wtd.quantile(wageChange, wtchng, probs = 0.10)
-full9010 <- p90 - p10
+full.Var <- wtd.var(wageChange, wtchng)
+full.IQR <- full.Qs[4] - full.Qs[2]
+p90 <- full.Qs[5]
+p10 <- full.Qs[1]
+full.9010 <- p90 - p10
 
 # Skewness
-fullKelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
+full.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
+full.PearsonSkew <- mean( wtchng*(wageChange - full.Mean)^3 ,na.rm=T)/full.Var^(3/2)/mean(wtchng,na.rm=T)
 
 # EUE changes -------------------------------------------------------------
 
 # Central tendency
-EUEMean <- wtd.mean(wageChange_EUE, wpfinwgt)
-EUEMed <- wtd.quantile(wageChange_EUE, wpfinwgt, probs = 0.5)
-p50 <- EUEMed
+EUE.Mean <- wtd.mean(wageChange_EUE, wpfinwgt)
+EUE.Qs <- wtd.quantile(wageChange_EUE, wpfinwgt, probs = qtls)
+EUE.Med <- EUE.Qs[3]
+p50 <- EUE.Qs[3]
 
 # Dispersion
-EUEVar <- wtd.var(wageChange_EUE, wpfinwgt)
-EUEIQR <- wtd.quantile(wageChange_EUE, wpfinwgt, probs = 0.75) - wtd.quantile(wageChange_EUE, wpfinwgt, probs = 0.25)
-p90 <- wtd.quantile(wageChange_EUE, wpfinwgt, probs = 0.90)
-p10 <- wtd.quantile(wageChange_EUE, wpfinwgt, probs = 0.10)
-EUE9010 <- p90 - p10
+EUE.Var <- wtd.var(wageChange_EUE, wpfinwgt)
+EUE.IQR <- EUE.Qs[4]-EUE.Qs[2]
+p90 <- EUE.Qs[5]
+p10 <- EUE.Qs[1]
+EUE.9010 <- p90 - p10
 
 # Skewness
-EUEKelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
+EUE.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
+EUE.PearsonSkew <- mean(wpfinwgt*(wageChange_EUE-EUE.Mean)^3 ,na.rm=T)/EUE.Var^(3/2)/mean(wpfinwgt ,na.rm=T)
 
 # EE distribution --------------------------------------------------------
 
 # Central tendency
-EEMean <- wtd.mean(wageChange[EE], wpfinwgt[EE])
-EEMed <- wtd.quantile(wageChange[EE], wpfinwgt[EE], probs = 0.5)
-p50 <- EEMed
+EE.Mean <- wtd.mean(wageChange[EE], wpfinwgt[EE])
+EE.Qs <- wtd.quantile(wageChange[EE], wpfinwgt[EE], probs = qtls)
+EE.Med <- EE.Qs[3]
+p50 <- EE.Med
 
 # Dispersion
-EEVar <- wtd.var(wageChange[EE], wpfinwgt[EE])
-EEIQR <- wtd.quantile(wageChange[EE], wpfinwgt[EE], probs = 0.75) - wtd.quantile(wageChange[EE], wpfinwgt[EE], probs = 0.25)
-p90 <- wtd.quantile(wageChange[EE], wpfinwgt[EE], probs = 0.90)
-p10 <- wtd.quantile(wageChange[EE], wpfinwgt[EE], probs = 0.10)
-EE9010 <- p90 - p10
+EE.Var <- wtd.var(wageChange[EE], wpfinwgt[EE])
+EE.IQR <- EE.Qs[4]-EE.Q[2]
+p90 <- EE.Qs[5]
+p10 <- EE.Qs[1]
+EE.9010 <- p90 - p10
 
 # Skewness
-EEKelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
+EE.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
+EE.PearsonSkew <- mean(wpfinwgt[EE]*(wageChange[EE]-EE.Mean)^3 ,na.rm=T)/EE.Var^(3/2)/mean(wpfinwgt[EE] ,na.rm=T)
 
 
 # Put all of the central tendency into 1 table
-cent_tend <- c(fullMean)
+cent <- rbind(c(full.Mean,EE.Mean,EUE.Mean),
+				   c(full.Med,EE.Med,EUE.Med))
+rownames(cent) <- c("Mean","Median")
+colnames(cent) <- c("All","E->E","E->U->E")
+cent.xt <- xtable(cent,label="tab:cent",digits=3,caption="Month-to-Month Earnings Changes Among Job Movers, Central Tendency")
+print(cent.xt,file="cent.tex",hline.after=c(-1,-1,0,nrow(cent)))
+
+disp <- rbind(c(full.Var,EE.Var,EUE.Var),
+			  c(full.IQR,EE.IQR,EUE.IQR),
+			  c(full.9010,EE.9010,EE.9010))
+rownames(disp) <- c("Variance","IQR","90-10 range")
+colnames(disp) <- c("All","E->E","E->U->E")
+disp.xt <- xtable(disp,label="tab:disp",digits=3,caption="Average Month-to-Month Earnings Changes Among Job Movers, Dispersion")
+print(disp.xt,file="disp.tex",hline.after=c(-1,-1,0,nrow(disp)))
+
+skew <- rbind(c(full.PearsonSkew,EE.PearsonSkew,EUE.PearsonSkew),
+			  c(full.Kelly,EE.Kelly,EUE.Kelly))
+rownames(skew) <- c("Pearson","Kelly")
+colnames(skew) <- c("All","E->E","E->U->E")
+skew.xt <- xtable(skew,label="tab:skew",digits=3,caption="Average Month-to-Month Earnings Changes Among Job Movers, Skewness")
+print(skew.xt,file="skew.tex",hline.after=c(-1,-1,0,nrow(skew)))
+
 
 ggplot(wageChanges, aes(wageChange)) +
 	geom_density()

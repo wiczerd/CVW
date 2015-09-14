@@ -37,11 +37,11 @@ genRec <- function(df) {
 # Precondition:         - df contains variable esr
 # Postcondition:        - new variable lfStat {1: employed, 2: unemployed, 3: NILF}
 genLFStat <- function(df) {
-        result <- df %>%
-                mutate(lfStat = ifelse(esr >= 1 & esr <= 5, 1, 0)) %>%
-                mutate(lfStat = ifelse(esr == 6 | esr == 7, 2, lfStat)) %>%
-                mutate(lfStat = ifelse(esr == 8, 3, lfStat))
-        return(result)
+	result <- df %>%
+		mutate(lfStat = ifelse(esr >= 1 & esr <= 5, 1, 0)) %>%
+		mutate(lfStat = ifelse(esr == 6 | esr == 7, 2, lfStat)) %>%
+		mutate(lfStat = ifelse(esr == 8, 3, lfStat))
+	return(result)
 }
 
 # Impose conditions on occupation, job, and industry codes
@@ -53,15 +53,15 @@ genLFStat <- function(df) {
 #                       - ind23 is replaced with last ind23 while employed if
 #                       R is unemployed or NILF
 fixOccCode <- function(df) {
-        result <- df %>%
-                group_by(id) %>%
-                arrange(date) %>%
-                mutate(occ = as.integer(ifelse(lfStat == 2 | lfStat == 3, NA, occ))) %>%
-                mutate(occ = na.locf(occ, na.rm = FALSE, fromLast = TRUE)) %>%
-                mutate(job = as.integer(ifelse(is.na(job), 0, job))) %>%
-                mutate(job = as.integer(ifelse(lfStat == 2 | lfStat == 3, 0, job))) %>%
-                ungroup
-        return(result)
+	result <- df %>%
+		group_by(id) %>%
+		arrange(date) %>%
+		mutate(occ = as.integer(ifelse(lfStat == 2 | lfStat == 3, NA, occ))) %>%
+		mutate(occ = na.locf(occ, na.rm = FALSE, fromLast = TRUE)) %>%
+		mutate(job = as.integer(ifelse(is.na(job), 0, job))) %>%
+		mutate(job = as.integer(ifelse(lfStat == 2 | lfStat == 3, 0, job))) %>%
+		ungroup
+	return(result)
 }
 
 # Generate dummy variables to indicate labor flows
@@ -73,7 +73,7 @@ fixOccCode <- function(df) {
 genFlowDummies <- function(df) {
 	df <- df %>%
 		group_by(id) %>%
-		arrange(date)
+		arrange(id,date)
 	df$switchedJob = (df$job != lead(df$job))
 	df$switchedOcc = (df$occ != lead(df$occ)) & df$switchedJob
 	df$switchedInd = (df$ind23 != lead(df$ind23)) & df$switchedJob
@@ -81,7 +81,8 @@ genFlowDummies <- function(df) {
 	df$EU = df$lfStat == 1 & lead(df$lfStat) == 2 & df$switchedJob
 	df$UE = df$lfStat == 2 & lead(df$lfStat) == 1 & df$switchedJob
 	ungroup(df)
-	return(df)
+	result <- df
+	return(result)
 }
 
 # Generate variables to store previous occupation and next occupation
@@ -107,13 +108,30 @@ nextLastOcc <- function(df){
 sampleSelect <- function(df) {
         result <- df %>%
                 filter(age >= 18 & age <= 65) %>%
-                filter(!is.na(esr))
+                filter(!is.na(esr)) 
                 #filter(esr != 8) %>%
-                #filter(!is.na(occ)) %>%
+                #filter(!is.na(occ)) 
                 #filter(!is.na(job))
         return(result)
 }
 
+# drops earnings below 40 hrs per month @min wage = 6.55*40 and topcoded earnings
+cleanEarn <- function(df){
+	df$nomearn <- df$earnm
+	df$earnm <- df$earnm/df$PCEPI*100
+	minearn = 6.55*40
+	maxnomearn = 12500 #come back to this to better take out top coded (follow CEPR lit, should not be more than 12,500 nominal)
+	df$earnm <- ifelse(df$earnm < minearn, as.numeric(NA), df$earnm)
+	df$lfStat <- ifelse(df$earnm < minearn, as.integer(NA), df$lfStat)
+	df$job <- ifelse(df$earnm < minearn, as.integer(NA), df$job)
+	#df$earnm <- ifelse(df$nomearnm > maxnomearn, as.numeric(NA), df$earnm)
+	#df$lfStat <- ifelse(df$nomearnm > maxnomearn, as.integer(NA), df$lfStat)
+	#df$job <- ifelse(df$nomearnm > maxnomearn, as.integer(NA), df$job)
+	result <- df %>%
+		select(-nomearn) #%>%
+#		filter(!is.na(earnm))
+	return(result)
+}
 # TEST FUNCTION
 # Remove people who are out of the labor force at any point in the panel
 removeNILFS <- function(df) {
@@ -133,9 +151,9 @@ removeNILFS <- function(df) {
 processWrapper <- function(df) {
 	result <- df %>%
 		sampleSelect %>%
-		#removeNILFS %>%
 		genRec %>%
 		genLFStat %>%
+		cleanEarn %>%
 		fixOccCode %>%
 		genFlowDummies %>%
 		nextLastOcc
@@ -154,11 +172,7 @@ processWrapper <- function(df) {
 #                       - new variable hispanic
 #                       - new variable year
 genRegressors <- function(df) {
-	result <- df %>%
-		mutate(nomEarnm = earnm) %>%
-		mutate(earnm = earnm/PCEPI*100)
-	#mutate(logEarnm = log(earnm)) %>%
-	result<- result %>%
+	result<- df %>%
 		mutate(logEarnm = log(earnm + sqrt(earnm^2 + 1))) %>%
 		mutate(yearsSchool = as.integer(ifelse(educ == 1, 9, NA)),
 			   yearsSchool = as.integer(ifelse(educ == 2, 12, yearsSchool)),

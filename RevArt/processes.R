@@ -9,6 +9,11 @@ source("./RevArt/functions.R")
 
 useSoc2d <- TRUE
 
+# import PCE deflator
+PCE <- read.csv("./Data/PCE.csv")
+PCE$date <- as.Date(PCE$date)
+
+
 # Read crosswalk files
 coc2000_to_occ1990 <- read.dta("./Crosswalks/coc2000_2_occ1990.dta")
 occ1990_to_SOC2d <- read.dta("./Crosswalks/occ90_2_soc2d.dta", convert.underscore = TRUE) %>%
@@ -20,11 +25,13 @@ setwd("./Data")
 
 sipp96 <- readRDS("sipp96.RData")
 
-# add soc2d codes
+# add soc2d codes & PCE
 processed96 <- sipp96 %>%
         mutate(occDiv = as.integer(ifelse(occ >= 1000,  occ/10, occ))) %>%
         left_join(occ1990_to_SOC2d, by = c("occDiv" = "occ1990")) %>%
         select(-occDiv, -occ2000)
+
+processed96 <- left_join(processed96, PCE, by = "date")
 
 processed96 <- processWrapper(processed96)
 
@@ -50,6 +57,8 @@ processed01 <- sipp01 %>%
         left_join(occ1990_to_SOC2d, 
                   by = c("occDiv" = "occ1990")) %>%
         select(-occDiv, -occ2000)
+
+processed01 <- left_join(processed01, PCE, by = "date")
 
 processed01 <- processWrapper(processed01)
 
@@ -77,6 +86,8 @@ processed04 <- sipp04 %>%
         left_join(occ1990_to_SOC2d, by = "occ1990") %>%
         select(-occDiv, -occ2000, -occ1990)
 
+processed04 <- left_join(processed04, PCE, by = "date")
+
 processed04<- processWrapper(processed04)
 
 if(useSoc2d) {
@@ -102,6 +113,8 @@ processed08 <- sipp08 %>%
                   by = c("occDiv" = "coc2000")) %>%
         left_join(occ1990_to_SOC2d, by = "occ1990") %>%
         select(-occDiv, -occ2000, -occ1990)
+
+processed08 <- left_join(processed08, PCE, by = "date")
 
 processed08 <- processWrapper(processed08)
 

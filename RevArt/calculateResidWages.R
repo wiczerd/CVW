@@ -17,10 +17,6 @@ useRegResid <- TRUE
 # Use 1 digit occupations from CEPR? (soc2d)
 useSoc2d <- TRUE
 
-# import PCE deflator
-PCE <- read.csv("./Data/PCE.csv")
-PCE$date <- as.Date(PCE$date)
-
 # Read unemployment data
 haver <- read.xlsx("./Data/unrate.xlsx", sheetName = "data", 
 				   startRow = 2, colIndex = 2:4)
@@ -96,9 +92,6 @@ rm(processed04)
 processed08  <- readRDS("processed08.RData")
 processed9608 <- bind_rows(processed08, processed9608)
 rm(processed08)
-
-processed9608 <- left_join(processed9608, PCE, by = "date")
-rm(PCE)
 
 # Do the regressions -------------------------------------------
 
