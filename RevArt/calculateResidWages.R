@@ -43,8 +43,8 @@ regressors <- c("age",
                 "black", 
                 "hispanic", 
                 "year", 
-                "earnm", 
-                "logEarnm")
+		"earnm", 
+		"logEarnm")
 
 
 toKeep <- c("id",
@@ -63,7 +63,8 @@ toKeep <- c("id",
 	    "wageChange_all",
 	    "lfStat", 
 	    "date",
-	    "occWage",
+		"unempDur",
+		"occWage",
 	    "occWageChange",
 	    "useWage",
 	    "nextWage",
@@ -137,6 +138,8 @@ analytic9608 <- fillUpWage(analytic9608)
 
 # Calculate residual wage change
 analytic9608 <- calculateWageChange(analytic9608)
+#generate unemployment duration
+analytic9608<-genUnempDuration(analytic9608)
 
 # Save data, remove from environment
 if(useRegResid) {
@@ -144,10 +147,12 @@ if(useRegResid) {
 }else{
 	setwd("./Raw")
 }
-
+#analytic9608<-readRDS("analytic9608.RData")
 saveRDS(analytic9608, "analytic9608.RData")
 
 # Set up wage changes data ----------------------------------------
+
+analytic9608$earnm <- analytic9608$nomEarnm/analytic9608$PCEPI*100
 
 wageChanges <- analytic9608 %>%
 	select(one_of(toKeep))

@@ -80,7 +80,7 @@ genFlowDummies <- function(df) {
 	df$EE = df$lfStat == 1 & lead(df$lfStat) == 1 & df$switchedJob
 	df$EU = df$lfStat == 1 & lead(df$lfStat) == 2 & df$switchedJob
 	df$UE = df$lfStat == 2 & lead(df$lfStat) == 1 & df$switchedJob
-	ungroup(df)
+	df <- ungroup(df)
 	result <- df
 	return(result)
 }
@@ -97,7 +97,7 @@ nextLastOcc <- function(df){
 	df$nextOcc = na.locf(df$nextOcc, na.rm = FALSE, fromLast=TRUE)
 	df$lastOcc = ifelse( df$switchedJob & df$job != 0, lag(df$occ), NA)
 	df$lastOcc = na.locf(df$lastOcc, na.rm = FALSE) 
-	ungroup(df)
+	df <- ungroup(df)
 	return(df)
 }
 
@@ -119,11 +119,11 @@ sampleSelect <- function(df) {
 cleanEarn <- function(df){
 	df$nomearn <- df$earnm
 	df$earnm <- df$earnm/df$PCEPI*100
-	minearn = 6.55*40
-	maxnomearn = 12500 #come back to this to better take out top coded (follow CEPR lit, should not be more than 12,500 nominal)
-	df$earnm <- ifelse(df$earnm < minearn, as.numeric(NA), df$earnm)
-	df$lfStat <- ifelse(df$earnm < minearn, as.integer(NA), df$lfStat)
-	df$job <- ifelse(df$earnm < minearn, as.integer(NA), df$job)
+# 	minearn = 6.55*40
+# 	maxnomearn = 12500 #come back to this to better take out top coded (follow CEPR lit, should not be more than 12,500 nominal)
+# 	df$earnm <- ifelse(df$earnm < minearn, as.numeric(NA), df$earnm)
+# 	df$lfStat <- ifelse(df$earnm < minearn, as.integer(NA), df$lfStat)
+# 	df$job <- ifelse(df$earnm < minearn, as.integer(NA), df$job)
 	#df$earnm <- ifelse(df$nomearnm > maxnomearn, as.numeric(NA), df$earnm)
 	#df$lfStat <- ifelse(df$nomearnm > maxnomearn, as.integer(NA), df$lfStat)
 	#df$job <- ifelse(df$nomearnm > maxnomearn, as.integer(NA), df$job)
@@ -146,6 +146,31 @@ removeNILFS <- function(df) {
 	ungroup
 	return(result)
 }
+
+genUnempDuration <- function(df) {
+	result <- df %>%
+		group_by(id) %>%
+		arrange(date) 
+			# generate unique id for each period respondent enters unemployment
+	result$newspell <- as.integer(ifelse(result$lfStat == 2  & !(lag(result$lfStat)== 2) , 1,0))
+	result <- result %>%
+		mutate(spellID = as.integer(ifelse( newspell==1, 1:n(), NA)))
+		# carryforward unique id
+	result$spellID <- na.locf(result$spellID, na.rm = FALSE)
+	result <- result %>%
+		group_by(id, spellID)
+		# in each spell, calculate cumulative sum of unemployed
+	result$unempDur <- ifelse(result$lfStat == 2 & !is.na(result$spellID), cumsum(result$lfStat == 2), 0)
+	result$unempDur <- ifelse(result$lfStat == 2 & !is.na(result$spellID), max(result$unempDur), 0)
+		# THIS SEEMS NOT TO WORK: fill it so that this is in the period prior to a spell
+	result$unempDur <- ifelse(result$lfStat == 1 & lead(result$lfStat)==2, lead(result$unempDur), result$unempDur)
+	result$unempDur <- ifelse(result$lfStat == 1 & !lead(result$lfStat)==2, 0, result$unempDur)
+	result <- result %>%
+		select(-spellID, -newspell) %>%
+		ungroup
+	return(result)
+}
+
 
 # Wrapper function: runs all processing functions in correct order
 processWrapper <- function(df) {
