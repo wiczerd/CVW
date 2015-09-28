@@ -48,29 +48,29 @@ regressors <- c("age",
 
 
 toKeep <- c("id",
-	    "wpfinwgt", 
-	    "switchedOcc",
-	    "soc2d", 
-	    "occ",
-	    "nextOcc",
-	    "EE", 
-	    "UE",
-	    "EU",
+		"wpfinwgt", 
+		"switchedOcc",
+		"soc2d", 
+		"occ",
+		"nextOcc",
+		"EE", 
+		"UE",
+		"EU",
 		"Young",
 		"HSCol",
-	    "wageChange", 
-	    "wageChange_EUE", 
-	    "wageChange_all",
-	    "lfStat", 
-	    "date",
-	#	"unempDur",
+		"wageChange", 
+		"wageChange_EUE", 
+		"wageChange_all",
+		"lfStat", 
+		"date",
+		"unempDur",
 		"occWage",
-	    "occWageChange",
-	    "useWage",
-	    "nextWage",
-	    "nextOccWage",
-	    "recIndic",
-	    "waveRec")
+		"occWageChange",
+		"useWage",
+		"nextWage",
+		"nextOccWage",
+		"recIndic",
+		"waveRec")
 
 # Combine panels  --------------------------------------------------------------
 
@@ -139,7 +139,7 @@ analytic9608 <- fillUpWage(analytic9608)
 # Calculate residual wage change
 analytic9608 <- calculateWageChange(analytic9608)
 #generate unemployment duration
-#analytic9608<-genUnempDuration(analytic9608)
+analytic9608<-genUnempDuration(analytic9608)
 
 # Save data, remove from environment
 if(useRegResid) {

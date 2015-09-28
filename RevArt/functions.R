@@ -155,11 +155,10 @@ removeNILFS <- function(df) {
 genUnempDuration <- function(df) {
 	result <- df %>%
 		group_by(id) %>%
-		arrange(date) 
+		arrange(id,date) 
 			# generate unique id for each period respondent enters unemployment
-	result$newspell <- as.integer(ifelse(result$lfStat == 2  & !(lag(result$lfStat)== 2) , 1,0))
-	nspell = sum(result$newspell)
-	result$spellID = as.integer(ifelse( result$newspell==1, 1:nspell, NA))
+	nspell = sum(result$EU,na.rm=T)
+	result$spellID = as.integer(ifelse( lag(result$EU), 1:nspell, NA))
 	result$spellID = as.integer(ifelse( result$lfStat==1, 0, result$spellID))
 	# carryforward unique id
 	result$spellID <- na.locf(result$spellID, na.rm = FALSE)
@@ -167,13 +166,14 @@ genUnempDuration <- function(df) {
 	
 	result <- result %>%
 		group_by(id, spellID) %>%
-		mutate(poolUnempDur = ifelse(lfStat == 2 & !is.na(spellID), as.numeric(cumsum(lfStat == 2)), 0.)) %>%
-		mutate(unempDur = ifelse(lfStat == 2 & !is.na(spellID), as.numeric(max(unempDur)), 0.))
+		arrange(id,date) %>%
+		mutate(poolUnempDur = ifelse(lfStat == 2, as.numeric(cumsum(lfStat == 2)), 0.)) %>%
+		mutate(unempDur = ifelse(lfStat == 2 , as.numeric(max(poolUnempDur)), 0.))
 		# THIS SEEMS NOT TO WORK: fill it so that this is in the period prior to a spell
 	result$unempDur <- ifelse(result$lfStat == 1 & lead(result$lfStat)==2, lead(result$unempDur), result$unempDur)
-	result$unempDur <- ifelse(result$lfStat == 1 & !lead(result$lfStat)==2, 0, result$unempDur)
+	result$unempDur <- ifelse(result$lfStat == 1 & !(lead(result$lfStat)==2), 0, result$unempDur)
 	result <- result %>%
-		select(-spellID, -newspell) %>%
+		select(-spellID) %>%
 		ungroup
 	return(result)
 }
@@ -286,15 +286,16 @@ fillUpWage <- function(df) {
 		group_by(id) %>%
 		arrange(id, date) 
 	#UEs are the next wage and EUs are NA
-	result$nextWage = ifelse(result$switchedJob & lead(result$job) != 0, lead(result$useWage), as.numeric(NA))
+	result$EmpTmrw <- (result$EE | result$UE) & lead(id) == id
+	result$nextWage <- ifelse(result$EmpTmrw , lead(result$useWage), NA_real_)
 	result$nextWage = na.locf(result$nextWage, na.rm = FALSE, fromLast = TRUE)
-	result$nextWageQtr = ifelse( result$switchedJob & lead(result$job,3) != 0, lead(result$useWageQtr, 3), as.numeric(NA) )
-	result$nextWageQtr = na.locf(result$nextWageQtr, na.rm = FALSE, fromLast = TRUE) 
-	result <- result %>%
-		group_by(id) %>%
-		arrange(date)
-	result$nextOccWage = ifelse(result$switchedJob & lead(result$job) != 0, lead(result$occWage), as.numeric(NA))
+	result$nextOccWage = ifelse(result$EmpTmrw, lead(result$occWage), NA_real_)
 	result$nextOccWage = na.locf(result$nextOccWage, na.rm = FALSE, fromLast = TRUE)
+	
+	result$EmpNQtr<- result$switchedJob & lead(result$job,3) != 0 &  lead(result$id,3) == result$id
+	result$nextWageQtr = ifelse( result$EmpNQtr, lead(result$useWageQtr, 3), NA_real_)
+	result$nextWageQtr = na.locf(result$nextWageQtr, na.rm = FALSE, fromLast = TRUE) 
+
 	ungroup(result)
 	return(result)
 }
