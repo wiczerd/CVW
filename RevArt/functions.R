@@ -328,8 +328,8 @@ calculateWageChange <- function(df) {
 	df$wageChange = ifelse( df$EU , log(1.) - tuw ,df$wageChange)
 	df$wageChange = ifelse( df$UE , tnw - log(1.) ,df$wageChange)
 	
-	df$wageChange_stayer = ifelse(!df$switchedJob & !lag(df$switchedJob), lead(df$useWage) - lag(df$useWage), NA)
-	df$wageChange_all = ifelse(!df$switchedJob, df$wageChange_stayer, df$wageChange)
+	df$wageChange_stayer = ifelse(df$job == lead(df$job) & df$job == lag(df$job), lead(df$useWage) - lag(df$useWage), NA)
+	df$wageChange_all = ifelse(df$job == lead(df$job) & df$job>0, df$wageChange_stayer, df$wageChange)
 	
 	tuwQ <- lag(df$useWageQtr)
 	tnwQ <- df$nextWageQtr
