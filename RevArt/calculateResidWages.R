@@ -139,7 +139,7 @@ analytic9608 <- fillUpWage(analytic9608)
 # Calculate residual wage change
 analytic9608 <- calculateWageChange(analytic9608)
 #generate unemployment duration
-analytic9608<-genUnempDuration(analytic9608)
+#analytic9608<-genUnempDuration(analytic9608)
 
 # Save data, remove from environment
 if(useRegResid) {

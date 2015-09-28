@@ -74,7 +74,12 @@ genFlowDummies <- function(df) {
 	df <- df %>%
 		group_by(id) %>%
 		arrange(id,date)
-	df$switchedJob = (df$job != lead(df$job))
+	df$switchedJob = (df$job != lead(df$job) & !(lead(df$job) == lag(df$job))  &
+					!(lead(df$job) == lag(df$job,n=2)) &
+					!(lead(df$job) == lag(df$job,n=3)) &
+					!(lead(df$job) == lag(df$job,n=4)) )
+	#all of the unemployment-involving transitions should stay
+	df$switchedJob = ifelse( df$job != lead(df$job) & (df$job==0 | lead(df$job==0)), TRUE, df$switchedJob )
 	df$switchedOcc = (df$occ != lead(df$occ)) & df$switchedJob
 	df$switchedInd = (df$ind23 != lead(df$ind23)) & df$switchedJob
 	df$EE = df$lfStat == 1 & lead(df$lfStat) == 1 & df$switchedJob
@@ -153,15 +158,17 @@ genUnempDuration <- function(df) {
 		arrange(date) 
 			# generate unique id for each period respondent enters unemployment
 	result$newspell <- as.integer(ifelse(result$lfStat == 2  & !(lag(result$lfStat)== 2) , 1,0))
-	result <- result %>%
-		mutate(spellID = as.integer(ifelse( newspell==1, 1:n(), NA)))
-		# carryforward unique id
+	nspell = sum(result$newspell)
+	result$spellID = as.integer(ifelse( result$newspell==1, 1:nspell, NA))
+	result$spellID = as.integer(ifelse( result$lfStat==1, 0, result$spellID))
+	# carryforward unique id
 	result$spellID <- na.locf(result$spellID, na.rm = FALSE)
+	# in each spell, calculate cumulative sum of unemployed
+	
 	result <- result %>%
-		group_by(id, spellID)
-		# in each spell, calculate cumulative sum of unemployed
-	result$unempDur <- ifelse(result$lfStat == 2 & !is.na(result$spellID), cumsum(result$lfStat == 2), 0)
-	result$unempDur <- ifelse(result$lfStat == 2 & !is.na(result$spellID), max(result$unempDur), 0)
+		group_by(id, spellID) %>%
+		mutate(poolUnempDur = ifelse(lfStat == 2 & !is.na(spellID), as.numeric(cumsum(lfStat == 2)), 0.)) %>%
+		mutate(unempDur = ifelse(lfStat == 2 & !is.na(spellID), as.numeric(max(unempDur)), 0.))
 		# THIS SEEMS NOT TO WORK: fill it so that this is in the period prior to a spell
 	result$unempDur <- ifelse(result$lfStat == 1 & lead(result$lfStat)==2, lead(result$unempDur), result$unempDur)
 	result$unempDur <- ifelse(result$lfStat == 1 & !lead(result$lfStat)==2, 0, result$unempDur)
@@ -278,14 +285,15 @@ fillUpWage <- function(df) {
 	result <- df %>%
 		group_by(id) %>%
 		arrange(id, date) 
-	result$nextWage = ifelse(result$switchedJob & result$job != 0, lead(result$useWage), as.numeric(NA))
+	#UEs are the next wage and EUs are NA
+	result$nextWage = ifelse(result$switchedJob & lead(result$job) != 0, lead(result$useWage), as.numeric(NA))
 	result$nextWage = na.locf(result$nextWage, na.rm = FALSE, fromLast = TRUE)
-	result$nextWageQtr = ifelse( result$switchedJob & result$job != 0, lead(result$useWageQtr, 3), as.numeric(NA) )
+	result$nextWageQtr = ifelse( result$switchedJob & lead(result$job,3) != 0, lead(result$useWageQtr, 3), as.numeric(NA) )
 	result$nextWageQtr = na.locf(result$nextWageQtr, na.rm = FALSE, fromLast = TRUE) 
 	result <- result %>%
 		group_by(id) %>%
 		arrange(date)
-	result$nextOccWage = ifelse(result$switchedJob & result$job != 0, lead(result$occWage), as.numeric(NA))
+	result$nextOccWage = ifelse(result$switchedJob & lead(result$job) != 0, lead(result$occWage), as.numeric(NA))
 	result$nextOccWage = na.locf(result$nextOccWage, na.rm = FALSE, fromLast = TRUE)
 	ungroup(result)
 	return(result)
@@ -309,9 +317,12 @@ fillUpWage <- function(df) {
 
 
 calculateWageChange <- function(df) {
+	df <- group_by(df,id)
+	df <- arrange(df,id,date)
 	tuw <- lag(df$useWage)
 	tnw <- df$nextWage
-	tnw <- ifelse(is.na(tnw) & !is.na(lead(df$useWage)) & lead(df$lfStat)==1,lead(df$useWage),tnw)
+	tnw <- ifelse(!is.finite(tnw) & is.finite(lead(df$useWage)) & lead(df$lfStat)==1,lead(df$useWage),tnw)
+	tuw <- ifelse(!is.finite(tuw) & is.finite(df$useWage) & df$lfStat==1,df$useWage,tuw)
 	df$wageChange_EUE = ifelse( df$EU , tnw - tuw  ,NA)
 	df$wageChange = ifelse( df$EE , tnw - tuw  ,NA)
 	df$wageChange = ifelse( df$EU , log(1.) - tuw ,df$wageChange)
@@ -325,5 +336,6 @@ calculateWageChange <- function(df) {
 	df$wageChangeQtr = tnwQ - tuwQ
 	df$occWageChange = ifelse(df$switchedOcc & !lag(df$switchedOcc),df$nextOccWage - lag(df$occWage),0.)
 	df$occWageChange = ifelse(df$switchedOcc & lag(df$switchedOcc),df$nextOccWage - df$occWage,0.)
+	ungroup(df)
 	return(df)
 }    

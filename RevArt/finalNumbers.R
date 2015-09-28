@@ -22,7 +22,15 @@ if(useRegResid) {
 	setwd("./Raw")
 }
 
-wageChangesFull <- readRDS("wageChanges.RData")
+wageChangesRead <- readRDS("wageChanges.RData")
+UEreadweight <- with(wageChangesRead, sum(newwt[UE & !is.na(wageChange)], na.rm = TRUE))
+EUreadweight <- with(wageChangesRead, sum(newwt[EU & !is.na(wageChange)], na.rm = TRUE))
+EEreadweight <- with(wageChangesRead, sum(newwt[EE & !is.na(wageChange)], na.rm = TRUE))
+UEreadcount <- with(wageChangesRead,sum(UE & !is.na(wageChange)) )
+EUreadcount <- with(wageChangesRead,sum(EU & !is.na(wageChange)) )
+EEreadcount <- with(wageChangesRead,sum(EE & !is.na(wageChange)) )
+
+wageChangesFull <- wageChangesRead
 
 # Only count EEs and balanced EUs and UEs
 wageChangesFull <- wageChangesFull %>%
