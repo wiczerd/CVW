@@ -63,7 +63,7 @@ toKeep <- c("id",
 	    "wageChange_all",
 	    "lfStat", 
 	    "date",
-		"unempDur",
+	#	"unempDur",
 		"occWage",
 	    "occWageChange",
 	    "useWage",
@@ -152,7 +152,7 @@ saveRDS(analytic9608, "analytic9608.RData")
 
 # Set up wage changes data ----------------------------------------
 
-analytic9608$earnm <- analytic9608$nomEarnm/analytic9608$PCEPI*100
+#analytic9608$earnm <- analytic9608$useWageLevel
 
 wageChanges <- analytic9608 %>%
 	select(one_of(toKeep))
