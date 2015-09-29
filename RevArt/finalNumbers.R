@@ -312,3 +312,24 @@ rm(wageChanges)
 
 analytic9608<-readRDS("analytic9608.RData")
 
+analytic9608$EE_fac <- ifelse(analytic9608$EE,1,0)
+analytic9608$EUUE_fac <- ifelse(analytic9608$EU|analytic9608$UE,1,0)
+analytic9608$swEE_fac <- ifelse(analytic9608$EE & analytic9608$switchedOcc,1,0)
+analytic9608$swEUUE_fac <- ifelse((analytic9608$EU|analytic9608$UE) & analytic9608$switchedOcc,1,0)
+analytic9608$stay <- ifelse(analytic9608$EE | analytic9608$EU | analytic9608$UE, 0 ,1)
+wageChangeMean = wtd.mean(analytic9608$wageChange_all, analytic9608$wpfinwgt, na.rm=T)
+wageChangeSS   = sum( (analytic9608$wageChange_all- wageChangeMean)^2*analytic9608$wpfinwgt ,na.rm=T)
+wageChangeSS_stay = sum( analytic9608$stay*(analytic9608$wageChange_all- wageChangeMean)^2*analytic9608$wpfinwgt ,na.rm=T)
+wageChangeSS_EE = sum( analytic9608$EE_fac*(analytic9608$wageChange_all- wageChangeMean)^2*analytic9608$wpfinwgt ,na.rm=T)
+wageChangeSS_EUUE = sum( analytic9608$EUUE_fac*(analytic9608$wageChange_all- wageChangeMean)^2*analytic9608$wpfinwgt ,na.rm=T)
+
+wageChangeSS_swEE = sum( analytic9608$swEE_fac*(analytic9608$wageChange_all- wageChangeMean)^2*analytic9608$wpfinwgt ,na.rm=T)
+wageChangeSS_swEUUE = sum( analytic9608$swEUUE_fac*(analytic9608$wageChange_all- wageChangeMean)^2*analytic9608$wpfinwgt ,na.rm=T)
+wageChangeSS_nswEE = sum( (1.-analytic9608$swEE_fac)*(analytic9608$EE_fac)*
+						  	(analytic9608$wageChange_all- wageChangeMean)^2*analytic9608$wpfinwgt ,na.rm=T)
+wageChangeSS_nswEUUE = sum( (1.-analytic9608$swEUUE_fac)*analytic9608$EUUE_fac*
+								(analytic9608$wageChange_all- wageChangeMean)^2*analytic9608$wpfinwgt ,na.rm=T)
+
+
+varempchange <- aov(wageChange_all ~ EE_fac + EUUE_fac + stay, data=analytic9608)
+varswempchange <- aov(wageChange_all ~ EE_fac*switchedOcc + EUUE_fac*switchedOcc, data=analytic9608)
