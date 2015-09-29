@@ -305,3 +305,10 @@ HSCol$Young <- NULL
 
 YoungOld <- reshape(YoungOld, timevar = "Distrbution", idvar = c("Switched", "Young"), direction = "wide")
 HSCol <- reshape(HSCol, timevar = "Distribution", idvar = c("Switched", "HSCol"), direction = "wide")
+
+
+rm(wageChanges)
+#! Analysis of variance of wage changes between EE, EUE and stayers
+
+analytic9608<-readRDS("analytic9608.RData")
+

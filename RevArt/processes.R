@@ -9,6 +9,19 @@ source("./RevArt/functions.R")
 
 useSoc2d <- TRUE
 
+# Wrapper function: runs all processing functions in correct order
+processWrapper <- function(df) {
+	result <- df %>%
+		sampleSelect %>%
+		genRec %>%
+		genLFStat %>%
+		cleanEarn %>%
+		fixOccCode %>%
+		genFlowDummies %>%
+		nextLastOcc
+	return(result)
+}
+
 # import PCE deflator
 PCE <- read.csv("./Data/PCE.csv")
 PCE$date <- as.Date(PCE$date)

@@ -55,7 +55,7 @@ genLFStat <- function(df) {
 fixOccCode <- function(df) {
 	result <- df %>%
 		group_by(id) %>%
-		arrange(date) %>%
+		arrange(id,date) %>%
 		mutate(occ = as.integer(ifelse(lfStat == 2 | lfStat == 3, NA, occ))) %>%
 		mutate(occ = na.locf(occ, na.rm = FALSE, fromLast = TRUE)) %>%
 		mutate(job = as.integer(ifelse(is.na(job), 0, job))) %>%
@@ -77,7 +77,7 @@ genFlowDummies <- function(df) {
 	df$switchedJob = (df$job != lead(df$job) & !(lead(df$job) == lag(df$job))  &
 					!(lead(df$job) == lag(df$job,n=2)) &
 					!(lead(df$job) == lag(df$job,n=3)) &
-					!(lead(df$job) == lag(df$job,n=4)) )
+					!(lead(df$job) == lag(df$job,n=4)) ) & lead(df$id) == df$id
 	#all of the unemployment-involving transitions should stay
 	df$switchedJob = ifelse( df$job != lead(df$job) & (df$job==0 | lead(df$job==0)), TRUE, df$switchedJob )
 	df$switchedOcc = (df$occ != lead(df$occ)) & df$switchedJob
@@ -114,9 +114,6 @@ sampleSelect <- function(df) {
         result <- df %>%
                 filter(age >= 18 & age <= 65) %>%
                 filter(!is.na(esr)) 
-                #filter(esr != 8) %>%
-                #filter(!is.na(occ)) 
-                #filter(!is.na(job))
         return(result)
 }
 
@@ -178,19 +175,6 @@ genUnempDuration <- function(df) {
 	return(result)
 }
 
-
-# Wrapper function: runs all processing functions in correct order
-processWrapper <- function(df) {
-	result <- df %>%
-		sampleSelect %>%
-		genRec %>%
-		genLFStat %>%
-		cleanEarn %>%
-		fixOccCode %>%
-		genFlowDummies %>%
-		nextLastOcc
-	return(result)
-}
 
 # Wage functions ----------------------------------------------------------
 
@@ -283,15 +267,15 @@ fillDownWage <- function(df) {
 #                       - new variable nextOccWage
 fillUpWage <- function(df) {
 	result <- df %>%
-		group_by(id) %>%
+#		group_by(id) %>%
 		arrange(id, date) 
 	#UEs are the next wage and EUs are NA
-	result$EmpTmrw <- (result$EE | result$UE) & lead(id) == id
+	result$EmpTmrw <- (result$EE | result$UE) & lead(result$id) == result$id
 	result$nextWage <- ifelse(result$EmpTmrw , lead(result$useWage), NA_real_)
 	result$nextWage = na.locf(result$nextWage, na.rm = FALSE, fromLast = TRUE)
 	result$nextOccWage = ifelse(result$EmpTmrw, lead(result$occWage), NA_real_)
 	result$nextOccWage = na.locf(result$nextOccWage, na.rm = FALSE, fromLast = TRUE)
-	
+
 	result$EmpNQtr<- result$switchedJob & lead(result$job,3) != 0 &  lead(result$id,3) == result$id
 	result$nextWageQtr = ifelse( result$EmpNQtr, lead(result$useWageQtr, 3), NA_real_)
 	result$nextWageQtr = na.locf(result$nextWageQtr, na.rm = FALSE, fromLast = TRUE) 
@@ -329,8 +313,11 @@ calculateWageChange <- function(df) {
 	df$wageChange = ifelse( df$EU , log(1.) - tuw ,df$wageChange)
 	df$wageChange = ifelse( df$UE , tnw - log(1.) ,df$wageChange)
 	
-	df$wageChange_stayer = ifelse(df$job == lead(df$job) & df$job == lag(df$job), lead(df$useWage) - lag(df$useWage), NA)
-	df$wageChange_all = ifelse(df$job == lead(df$job) & df$job>0, df$wageChange_stayer, df$wageChange)
+	df$wageChange_stayer = ifelse(df$job == lead(df$job) & df$job == lag(df$job) & df$id == lead(df$id) & df$id==lag(df$id)
+								  , lead(df$useWage) - lag(df$useWage), NA)
+	df$wageChange_all = ifelse(df$job == lead(df$job) & df$job>0  & df$id == lead(df$id)
+							   , df$wageChange_stayer, df$wageChange)
+	df$wageChange_all = ifelse(df$EE | df$UE | df$EU, df$wageChange,df$wageChange_all)
 	
 	tuwQ <- lag(df$useWageQtr)
 	tnwQ <- df$nextWageQtr
