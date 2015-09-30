@@ -75,12 +75,15 @@ genFlowDummies <- function(df) {
 		group_by(id) %>%
 		arrange(id,date)
 	df$switchedJob = (df$job != lead(df$job) & !(lead(df$job) == lag(df$job))  &
-					!(lead(df$job) == lag(df$job,n=2)) &
-					!(lead(df$job) == lag(df$job,n=3)) &
-					!(lead(df$job) == lag(df$job,n=4)) ) & lead(df$id) == df$id
+				#	!(lead(df$job) == lag(df$job,n=2)) &
+				#	!(lead(df$job) == lag(df$job,n=3)) &
+				#	!(lead(df$job) == lag(df$job,n=4)) ) & 
+					lead(df$id) == df$id
 	#all of the unemployment-involving transitions should stay
 	df$switchedJob = ifelse( df$job != lead(df$job) & (df$job==0 | lead(df$job==0)), TRUE, df$switchedJob )
-	df$switchedOcc = (df$occ != lead(df$occ)) & df$switchedJob
+	df$switchedOcc = (df$occ != lead(df$occ)) &
+				& !(lead(df$occ) == lag(df$occ))
+				& df$switchedJob
 	df$switchedInd = (df$ind23 != lead(df$ind23)) & df$switchedJob
 	df$EE = df$lfStat == 1 & lead(df$lfStat) == 1 & df$switchedJob
 	df$EU = df$lfStat == 1 & lead(df$lfStat) == 2 & df$switchedJob
@@ -314,6 +317,7 @@ calculateWageChange <- function(df) {
 	
 	df$wageChange_stayer = ifelse(df$job == lead(df$job) & df$job == lag(df$job) & df$id == lead(df$id) & df$id==lag(df$id)
 								  , lead(df$useWage) - lag(df$useWage), NA)
+	df$wageChange_stayer = ifelse(df$job == 0 & lead(df$job) == 0 & df$id==lag(df$id), 0., df$wageChange_stayer)
 	df$wageChange_EUE = ifelse(!df$EU & !df$EE, df$wageChange_stayer, df$wageChange_EUE)
 	df$wageChange_all = ifelse(df$job == lead(df$job) & df$job>0  & df$id == lead(df$id)
 							   , df$wageChange_stayer, df$wageChange)

@@ -338,10 +338,10 @@ ratio <- UEprob/EEprob
 
 
 analytic9608$EE_fac <- ifelse(analytic9608$EE,1,0)
-analytic9608$EUUE_fac <- ifelse(analytic9608$EU|analytic9608$UE,1,0)
+analytic9608$EUUE_fac <- ifelse(analytic9608$EU | analytic9608$UE | analytic9608$lfStat == 2,1,0)
 analytic9608$EUE_fac <- ifelse(analytic9608$EU,1,0)
 analytic9608$swEE_fac <- ifelse(analytic9608$EE & analytic9608$switchedOcc,1,0)
-analytic9608$swEUUE_fac <- ifelse((analytic9608$EU|analytic9608$UE) & analytic9608$switchedOcc,1,0)
+analytic9608$swEUUE_fac <- ifelse((analytic9608$EU|analytic9608$UE|analytic9608$lfStat == 2) & analytic9608$switchedOcc,1,0)
 analytic9608$swEUE_fac <- ifelse(analytic9608$EU & analytic9608$switchedOcc,1,0)
 analytic9608$stay <- ifelse(analytic9608$EE | analytic9608$EU | analytic9608$UE, 0 ,1)
 
