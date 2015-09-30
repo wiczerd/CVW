@@ -97,10 +97,10 @@ genFlowDummies <- function(df) {
 nextLastOcc <- function(df){
 	df <- df %>%
 		group_by(id) %>%
-		arrange(date)
-	df$nextOcc = ifelse( df$switchedJob & lead(df$job) != 0, lead(df$occ), NA) 
+		arrange(id,date)
+	df$nextOcc = ifelse( df$switchedJob & lead(df$job) != 0 & df$id == lead(df$id), lead(df$occ), NA) 
 	df$nextOcc = na.locf(df$nextOcc, na.rm = FALSE, fromLast=TRUE)
-	df$lastOcc = ifelse( df$switchedJob & df$job != 0, lag(df$occ), NA)
+	df$lastOcc = ifelse( df$switchedJob & df$job != 0  & df$id == lag(df$id), lag(df$occ), NA)
 	df$lastOcc = na.locf(df$lastOcc, na.rm = FALSE) 
 	df <- ungroup(df)
 	return(df)
@@ -155,12 +155,11 @@ genUnempDuration <- function(df) {
 		arrange(id,date) 
 			# generate unique id for each period respondent enters unemployment
 	nspell = sum(result$EU,na.rm=T)
-	result$spellID = as.integer(ifelse( lag(result$EU), 1:nspell, NA))
+	result$spellID = as.integer(ifelse( lag(result$EU) & result$id == lag(result$id), 1:nspell, NA))
 	result$spellID = as.integer(ifelse( result$lfStat==1, 0, result$spellID))
 	# carryforward unique id
 	result$spellID <- na.locf(result$spellID, na.rm = FALSE)
 	# in each spell, calculate cumulative sum of unemployed
-	
 	result <- result %>%
 		group_by(id, spellID) %>%
 		arrange(id,date) %>%
@@ -306,15 +305,16 @@ calculateWageChange <- function(df) {
 	df <- arrange(df,id,date)
 	tuw <- lag(df$useWage)
 	tnw <- df$nextWage
-	tnw <- ifelse(!is.finite(tnw) & is.finite(lead(df$useWage)) & lead(df$lfStat)==1,lead(df$useWage),tnw)
+	#tnw <- ifelse(!is.finite(tnw) & is.finite(lead(df$useWage)) & lead(df$lfStat)==1 & df$id == lead(df$id),lead(df$useWage),tnw)
 	tuw <- ifelse(!is.finite(tuw) & is.finite(df$useWage) & df$lfStat==1,df$useWage,tuw)
-	df$wageChange_EUE = ifelse( df$EU , tnw - tuw  ,NA)
+	df$wageChange_EUE = ifelse( df$EU | df$EE, tnw - tuw  ,NA)
 	df$wageChange = ifelse( df$EE , tnw - tuw  ,NA)
 	df$wageChange = ifelse( df$EU , log(1.) - tuw ,df$wageChange)
 	df$wageChange = ifelse( df$UE , tnw - log(1.) ,df$wageChange)
 	
 	df$wageChange_stayer = ifelse(df$job == lead(df$job) & df$job == lag(df$job) & df$id == lead(df$id) & df$id==lag(df$id)
 								  , lead(df$useWage) - lag(df$useWage), NA)
+	df$wageChange_EUE = ifelse(!df$EU & !df$EE, df$wageChange_stayer, df$wageChange_EUE)
 	df$wageChange_all = ifelse(df$job == lead(df$job) & df$job>0  & df$id == lead(df$id)
 							   , df$wageChange_stayer, df$wageChange)
 	df$wageChange_all = ifelse(df$EE | df$UE | df$EU, df$wageChange,df$wageChange_all)
