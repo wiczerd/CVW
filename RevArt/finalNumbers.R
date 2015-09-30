@@ -351,9 +351,13 @@ wageChangeSS_stay = with(analytic9608, sum(  stay*( wageChange_all- wageChangeMe
 wageChangeSS_EE = with(analytic9608, sum(  EE_fac*( wageChange_all- wageChangeMean)^2* newwt ,na.rm=T))
 wageChangeSS_EUUE = with(analytic9608, sum(  EUUE_fac*( wageChange_all- wageChangeMean)^2* newwt ,na.rm=T))
 
-pct_stay = with(analytic9608, sum(  stay*( wageChange_all- wageChangeMean)^2* newwt ,na.rm=T))
-pct_EE = with(analytic9608, sum(  EE_fac*( wageChange_all- wageChangeMean)^2* newwt ,na.rm=T))
-pct_EUE = with(analytic9608, sum(  EUUE_fac*( wageChange_all- wageChangeMean)^2* newwt ,na.rm=T))
+tot = with(analytic9608, sum(  newwt ,na.rm=T))
+pct_stay = with(analytic9608, sum(  stay*newwt ,na.rm=T))
+pct_EE = with(analytic9608, sum(  EE_fac* newwt ,na.rm=T))
+pct_EUE = with(analytic9608, sum(  EUUE_fac*newwt ,na.rm=T))
+pct_swEE = with(analytic9608, sum(  swEE_fac* newwt ,na.rm=T))
+pct_swEUE = with(analytic9608, sum(  swEUE_fac* newwt ,na.rm=T))
+
 
 wageChangeSS_swEE = with(analytic9608, sum(  swEE_fac*( wageChange_all- wageChangeMean)^2* newwt ,na.rm=T))
 wageChangeSS_swEUUE =with(analytic9608,  sum(  swEUUE_fac*( wageChange_all- wageChangeMean)^2* newwt ,na.rm=T))
@@ -375,6 +379,7 @@ wageChangeEUESS_nswEUE = with(analytic9608, sum( (1.-swEUE_fac)*swEUE_fac*( wage
 
 wCh_vardec <- rbind(c(wageChangeEUESS_stay/wageChangeEUESS,wageChangeEUESS_EE/wageChangeEUESS,wageChangeEUESS_EUE /wageChangeEUESS, NA),
 					c(wageChangeSS_stay/wageChangeSS,wageChangeSS_EE/wageChangeSS,NA, wageChangeSS_EUUE /wageChangeSS),
-					c(wageChangeSS_stay/wageChangeSS,wageChangeSS_EE/wageChangeSS,NA, wageChangeSS_EUUE /wageChangeSS),)
+					c(pct_stay/tot,pct_EE/tot,pct_EUE/tot, pct_EUE/tot))
 
-wChsw_vardec <-
+wChsw_vardec <-rbind(c(wageChangeEUESS_swEE/wageChangeEUESS_EE,wageChangeEUESS_swEUE/wageChangeEUESS_EUE,,wageChangeEUESS_nswEUE/wageChangeEUESS_EUE),
+					 c(pct_swEE/pct_EE,1.-pct_swEE/pct_EE,pct_swEUE/pct_EUE, 1-pct_swEUE/pct_EUE))
