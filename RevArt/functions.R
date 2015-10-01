@@ -124,6 +124,9 @@ sampleSelect <- function(df) {
 cleanEarn <- function(df){
 	df$nomearn <- df$earnm
 	df$earnm <- df$earnm/df$PCEPI*100
+	df$badearn <- with(df, abs(log(lead(earnm)/earnm))>2. & abs(log(lead(earnm)/lag(earnm)))<.1 )
+	df$badearn <- ifelse(df$id !=lead(df$id) | df$UE | df$EU, F, df$badearn)
+	df$earnm <- ifelse(df$badearn, NA_real_ ,df$earnm)
 # 	minearn = 6.55*40
 # 	maxnomearn = 12500 #come back to this to better take out top coded (follow CEPR lit, should not be more than 12,500 nominal)
 # 	df$earnm <- ifelse(df$earnm < minearn, as.numeric(NA), df$earnm)
@@ -133,7 +136,7 @@ cleanEarn <- function(df){
 	#df$lfStat <- ifelse(df$nomearnm > maxnomearn, as.integer(NA), df$lfStat)
 	#df$job <- ifelse(df$nomearnm > maxnomearn, as.integer(NA), df$job)
 	result <- df %>%
-		select(-nomearn) #%>%
+		select(-nomearn,-badearn) #%>%
 #		filter(!is.na(earnm))
 	return(result)
 }

@@ -15,9 +15,9 @@ processWrapper <- function(df) {
 		sampleSelect %>%
 		genRec %>%
 		genLFStat %>%
-		cleanEarn %>%
 		fixOccCode %>%
 		genFlowDummies %>%
+		cleanEarn %>%
 		nextLastOcc
 	return(result)
 }
