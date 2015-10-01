@@ -78,12 +78,12 @@ genFlowDummies <- function(df) {
 				#	!(lead(df$job) == lag(df$job,n=2)) &
 				#	!(lead(df$job) == lag(df$job,n=3)) &
 				#	!(lead(df$job) == lag(df$job,n=4)) ) & 
-					lead(df$id) == df$id
+					lead(df$id) == df$id )
 	#all of the unemployment-involving transitions should stay
 	df$switchedJob = ifelse( df$job != lead(df$job) & (df$job==0 | lead(df$job==0)), TRUE, df$switchedJob )
-	df$switchedOcc = (df$occ != lead(df$occ)) &
-				& !(lead(df$occ) == lag(df$occ))
-				& df$switchedJob
+	df$switchedOcc = ((df$occ != lead(df$occ)) &
+				!(lead(df$occ) == lag(df$occ)) &
+				df$switchedJob)
 	df$switchedInd = (df$ind23 != lead(df$ind23)) & df$switchedJob
 	df$EE = df$lfStat == 1 & lead(df$lfStat) == 1 & df$switchedJob
 	df$EU = df$lfStat == 1 & lead(df$lfStat) == 2 & df$switchedJob
