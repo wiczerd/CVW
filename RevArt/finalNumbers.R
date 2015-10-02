@@ -35,7 +35,7 @@ wageChangesFull <- wageChangesRead
 # Only count EEs and balanced EUs and UEs
 wageChangesFull <- wageChangesFull %>%
 	group_by(id) %>%
-	arrange(date) %>%
+	arrange(id, date) %>%
 	mutate(balancedEU = EU & lead(UE)) %>%
 	mutate(balancedUE = UE & lag(EU)) %>%
 	filter(EE | balancedEU | balancedUE) %>%
@@ -61,9 +61,13 @@ wageChangesFull <- wageChangesFull %>%
 	ungroup
 
 # Fallick/Fleischman numbers
-EEprob <- 1.3
+EEpop <- 1.3630541872/100
 # halfway between EU and UE prob
-UEprob <- 0.85
+UEpop <- 0.5*(0.9201970443 + 0.8162561576)/100
+SNpop <- (31.5270935961 + 0.8527093596+1.5384236453+0.8620689655+1.6463054187)/100 #includes transtions to and from N
+# probability conditional on bein in the labor force both periods
+EEprob <-EEpop/(1.-SNpop)
+UEprob <-UEpop/(1.-SNpop)
 ratio <- UEprob/EEprob
 
 # re-weight for total distribution
@@ -380,6 +384,12 @@ wpfinUE = with(analytic9608, sum(perwt[UE & is.finite(wageChange_all)]))
 tot = with(analytic9608, sum(perwt[is.finite(wageChange_all)]))
 wpfinStay = (1. - wpfinEE/tot-wpfinEU/tot-wpfinUE/tot)
 
+wpfinEE_EUE = with(analytic9608, sum(perwt[EE & is.finite(wageChange_EUE)]))
+wpfinEU_EUE = with(analytic9608, sum(perwt[EU & is.finite(wageChange_EUE)]))
+wpfinUE_EUE = wpfinEU_EUE
+tot_EUE = with(analytic9608, sum(perwt[is.finite(wageChange_EUE)]))
+wpfinStay_EUE = (1. - wpfinEE_EUE/tot_EUE-wpfinEU_EUE/tot_EUE-wpfinUE_EUE/tot_EUE)
+
 analytic9608$balwt <- analytic9608$perwt
 analytic9608$balwt[analytic9608$EE] <- analytic9608$perwt[analytic9608$EE]*EEprob/(wpfinEE/tot)
 analytic9608$balwt[analytic9608$EU] <- analytic9608$perwt[analytic9608$EU]*UEprob/(wpfinEU/tot)
@@ -387,6 +397,13 @@ analytic9608$balwt[analytic9608$UE] <- analytic9608$perwt[analytic9608$UE]*UEpro
 analytic9608$balwt[!analytic9608$UE & !analytic9608$EU & !analytic9608$EE] <- 
 	analytic9608$perwt[!analytic9608$UE & !analytic9608$EU & !analytic9608$EE]/wpfinStay*(1.- EEprob - 2*UEprob)
 
+
+analytic9608$balEUEwt <- analytic9608$perwt
+analytic9608$balEUEwt[analytic9608$EE] <- analytic9608$perwt[analytic9608$EE]*EEprob/(wpfinEE_EUE/tot_EUE)
+analytic9608$balEUEwt[analytic9608$EU] <- analytic9608$perwt[analytic9608$EU]*UEprob/(wpfinEU_EUE/tot_EUE)
+analytic9608$balEUEwt[analytic9608$UE] <- analytic9608$perwt[analytic9608$UE]*UEprob/(wpfinUE_EUE/tot_EUE)
+analytic9608$balEUEwt[!analytic9608$UE & !analytic9608$EU & !analytic9608$EE] <- 
+	analytic9608$perwt[!analytic9608$UE & !analytic9608$EU & !analytic9608$EE]/wpfinStay_EUE*(1.- EEprob - 2*UEprob)
 
 analytic9608$EE_fac <- ifelse(analytic9608$EE,1,0)
 analytic9608$EUUE_fac <- ifelse(analytic9608$EU | analytic9608$UE | analytic9608$lfStat == 2,1,0)
@@ -414,36 +431,42 @@ pct_swEUE = with(analytic9608, sum(  swEUE_fac* balwt* as.integer(is.finite(wage
 pct_swEUUE = with(analytic9608, sum(  swEUUE_fac* balwt* as.integer(is.finite(wageChange_all)) ,na.rm=T))
 
 
-wageChangeSS_swEE = with(analytic9608, sum(  swEE_fac*( wageChange_all- wageChangeMean)^2* perwt ,na.rm=T))
-wageChangeSS_swEUUE =with(analytic9608,  sum(  swEUUE_fac*( wageChange_all- wageChangeMean)^2* perwt ,na.rm=T))
+wageChangeSS_swEE = with(analytic9608, sum(  swEE_fac*( wageChange_all- wageChangeMean)^2* balwt ,na.rm=T))
+wageChangeSS_swEUUE =with(analytic9608,  sum(  swEUUE_fac*( wageChange_all- wageChangeMean)^2* balwt ,na.rm=T))
 wageChangeSS_nswEE = with(analytic9608, sum( (1.- swEE_fac)*( EE_fac)*
-						  	( wageChange_all- wageChangeMean)^2* perwt ,na.rm=T))
+						  	( wageChange_all- wageChangeMean)^2* balwt ,na.rm=T))
 wageChangeSS_nswEUUE =with(analytic9608,  sum( (1.- swEUUE_fac)* EUUE_fac*
-								( wageChange_all- wageChangeMean)^2* perwt ,na.rm=T))
+								( wageChange_all- wageChangeMean)^2* balwt ,na.rm=T))
 
 # not including the U stints
-wageChangeEUEMean = wtd.mean(analytic9608$wageChange_EUE, analytic9608$perwt,na.rm=T)
-wageChangeEUESS   = with(analytic9608, sum( (wageChange_EUE- wageChangeEUEMean)^2*perwt ,na.rm=T))
-wageChangeEUESS_stay = with(analytic9608, sum(  stay*(wageChange_EUE- wageChangeEUEMean)^2* perwt ,na.rm=T))
-wageChangeEUESS_EE = with(analytic9608, sum(  EE_fac*(wageChange_EUE- wageChangeEUEMean)^2* perwt ,na.rm=T))
-wageChangeEUESS_EUE = with(analytic9608, sum( EUE_fac*(wageChange_EUE- wageChangeEUEMean)^2* perwt ,na.rm=T))
-wageChangeEUESS_swEE = with(analytic9608, sum( swEE_fac*(wageChange_EUE- wageChangeEUEMean)^2* perwt ,na.rm=T))
-wageChangeEUESS_swEUE = with(analytic9608, sum( swEUE_fac*(wageChange_EUE- wageChangeEUEMean)^2* perwt ,na.rm=T))
-wageChangeEUESS_nswEE = with(analytic9608, sum( (1.-swEE_fac)*swEE_fac*( wageChange_EUE- wageChangeEUEMean)^2* perwt ,na.rm=T))
-wageChangeEUESS_nswEUE = with(analytic9608, sum( (1.-swEUE_fac)*swEUE_fac*( wageChange_EUE- wageChangeEUEMean)^2* perwt ,na.rm=T))
+wageChangeEUEMean = wtd.mean(analytic9608$wageChange_EUE, analytic9608$balEUEwt,na.rm=T)
+wageChangeEUESS   = with(analytic9608, sum( (wageChange_EUE- wageChangeEUEMean)^2*balEUEwt ,na.rm=T))
+wageChangeEUESS_stay = with(analytic9608, sum(  stay*(wageChange_EUE- wageChangeEUEMean)^2* balEUEwt ,na.rm=T))
+wageChangeEUESS_EE = with(analytic9608, sum(  EE_fac*(wageChange_EUE- wageChangeEUEMean)^2* balEUEwt ,na.rm=T))
+wageChangeEUESS_EUE = with(analytic9608, sum( EUE_fac*(wageChange_EUE- wageChangeEUEMean)^2* balEUEwt ,na.rm=T))
+wageChangeEUESS_swEE = with(analytic9608, sum( swEE_fac*(wageChange_EUE- wageChangeEUEMean)^2* balEUEwt ,na.rm=T))
+wageChangeEUESS_swEUE = with(analytic9608, sum( swEUE_fac*(wageChange_EUE- wageChangeEUEMean)^2* balEUEwt ,na.rm=T))
+wageChangeEUESS_nswEE = with(analytic9608, sum( (1.-swEE_fac)*swEE_fac*( wageChange_EUE- wageChangeEUEMean)^2* balEUEwt ,na.rm=T))
+wageChangeEUESS_nswEUE = with(analytic9608, sum( (1.-swEUE_fac)*swEUE_fac*( wageChange_EUE- wageChangeEUEMean)^2* balEUEwt ,na.rm=T))
 
-totEUE = with(analytic9608, sum(  perwt*is.finite(wageChange_EUE) ,na.rm=T))
-pctEUE_stay = with(analytic9608, sum(  stay*perwt*is.finite(wageChange_EUE) ,na.rm=T))
-pctEUE_EE = with(analytic9608, sum(  EE_fac* perwt*is.finite(wageChange_EUE) ,na.rm=T))
-pctEUE_EUE = with(analytic9608, sum(  EUE_fac*perwt*is.finite(wageChange_EUE) ,na.rm=T))
-pctEUE_swEE = with(analytic9608, sum(  swEE_fac* perwt*is.finite(wageChange_EUE) ,na.rm=T))
-pctEUE_swEUE = with(analytic9608, sum(  swEUE_fac* perwt*is.finite(wageChange_EUE) ,na.rm=T))
+totEUE = with(analytic9608, sum(  balEUEwt*is.finite(wageChange_EUE) ,na.rm=T))
+pctEUE_stay = with(analytic9608, sum(  stay*balEUEwt*is.finite(wageChange_EUE) ,na.rm=T))
+pctEUE_EE = with(analytic9608, sum(  EE_fac* balEUEwt*is.finite(wageChange_EUE) ,na.rm=T))
+pctEUE_EUE = with(analytic9608, sum(  EUE_fac*balEUEwt*is.finite(wageChange_EUE) ,na.rm=T))
+pctEUE_swEE = with(analytic9608, sum(  swEE_fac* balEUEwt*is.finite(wageChange_EUE) ,na.rm=T))
+pctEUE_swEUE = with(analytic9608, sum(  swEUE_fac* balEUEwt*is.finite(wageChange_EUE) ,na.rm=T))
 
 
 wCh_vardec <- rbind(c(wageChangeEUESS_stay/wageChangeEUESS,wageChangeEUESS_EE/wageChangeEUESS,wageChangeEUESS_EUE /wageChangeEUESS, NA),
 					c(pctEUE_stay/totEUE,pctEUE_EE/totEUE,pctEUE_EUE/totEUE, NA),
 					c(wageChangeSS_stay/wageChangeSS,wageChangeSS_EE/wageChangeSS,NA, wageChangeSS_EUUE /wageChangeSS),
 					c(pct_stay/tot,pct_EE/tot, NA,pct_EUUE/tot))
+wCh_vardec <- wCh_vardec*100
+rownames(wCh_vardec) <- c("Contrib Pct, Employed", "Population Pct, Employed", "Contrib Pct, Labor Force", "Population Pct, Labor Force")
+colnames(wCh_vardec) <- c("Continuing", "EE", "EUE", "EU,UE")
+wCh_vardec.xt <- xtable(wCh_vardec, digits = 1, caption = "Contribution to Variance of Month-to-Month Earnings Changes", label="tab:wCh_vardec")
+print(wCh_vardec.xt,file="wCh_vardec.tex",table.placement="htb", hline.after=c(-1,-1,0,nrow(wCh_vardec)/2,nrow(wCh_vardec)))
+
 
 wChsw_vardec <-rbind(c(wageChangeEUESS_swEE/wageChangeEUESS_EE,wageChangeEUESS_swEUE/wageChangeEUESS_EUE,,wageChangeEUESS_nswEUE/wageChangeEUESS_EUE),
 					 c(pct_swEE/pct_EE,1.-pct_swEE/pct_EE,pct_swEUE/pct_EUE, 1-pct_swEUE/pct_EUE))
