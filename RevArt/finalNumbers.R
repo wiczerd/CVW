@@ -117,7 +117,97 @@ with(wageChangesFull, sum(reweight[UE & switchedOcc], na.rm = TRUE)) ==
 # 		If not moved, used wageChange_stayer.
 
 
-# Loop --------------------------------------------------------------------
+dataTable <- c()
+# Full Sample --------------------
+for(switchIndic in c(TRUE, FALSE)) {
+	
+	wageChanges <- subset(wageChangesFull, switchedOcc == switchIndic)
+	
+	# All job changes ---------------------------------------------------------
+	
+	# avoid attaching until all changes to dataframe are finished. attached dataframe does not update!
+	attach(wageChanges)
+	
+	qtls <- c(0.1,0.25,0.5,0.75,0.9)
+	# Central tendency
+	full.Mean <- wtd.mean(wageChange, reweight)
+	full.Qs <- wtd.quantile(wageChange, reweight, probs = qtls)
+	full.Med <- full.Qs[3]
+	p50 <- full.Qs[3]
+	
+	# Dispersion
+	full.Var <- wtd.var(wageChange, reweight)
+	full.IQR <- full.Qs[4] - full.Qs[2]
+	p90 <- full.Qs[5]
+	p10 <- full.Qs[1]
+	full.9010 <- p90 - p10
+	
+	# Skewness
+	full.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
+	full.PearsonSkew <- mean( reweight*(wageChange - full.Mean)^3 ,na.rm=T)/full.Var^(3/2)/mean(reweight,na.rm=T)
+	
+	fullRow <- c("full", switchIndic, round(c(full.Mean, full.Med, full.Var, full.IQR, 
+															  full.9010, full.Kelly, full.PearsonSkew), 4))
+	
+	# EUE changes -------------------------------------------------------------
+	
+	# Central tendency
+	EUE.Mean <- wtd.mean(wageChange_EUE, wpfinwgt)
+	EUE.Qs <- wtd.quantile(wageChange_EUE, wpfinwgt, probs = qtls)
+	EUE.Med <- EUE.Qs[3]
+	p50 <- EUE.Qs[3]
+	
+	# Dispersion
+	EUE.Var <- wtd.var(wageChange_EUE, wpfinwgt)
+	EUE.IQR <- EUE.Qs[4]-EUE.Qs[2]
+	p90 <- EUE.Qs[5]
+	p10 <- EUE.Qs[1]
+	EUE.9010 <- p90 - p10
+	
+	# Skewness
+	EUE.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
+	EUE.PearsonSkew <- mean(wpfinwgt*(wageChange_EUE-EUE.Mean)^3 ,na.rm=T)/EUE.Var^(3/2)/mean(wpfinwgt ,na.rm=T)
+	
+	EUERow <- c("EUE", switchIndic, round(c(EUE.Mean, EUE.Med, EUE.Var, EUE.IQR, 
+															EUE.9010, EUE.Kelly, EUE.PearsonSkew), 4))
+	
+	# EE distribution --------------------------------------------------------
+	
+	# Central tendency
+	EE.Mean <- wtd.mean(wageChange[EE], wpfinwgt[EE])
+	EE.Qs <- wtd.quantile(wageChange[EE], wpfinwgt[EE], probs = qtls)
+	EE.Med <- EE.Qs[3]
+	p50 <- EE.Med
+	
+	# Dispersion
+	EE.Var <- wtd.var(wageChange[EE], wpfinwgt[EE])
+	EE.IQR <- EE.Qs[4]-EE.Qs[2]
+	p90 <- EE.Qs[5]
+	p10 <- EE.Qs[1]
+	EE.9010 <- p90 - p10
+	
+	# Skewness
+	EE.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
+	EE.PearsonSkew <- mean(wpfinwgt[EE]*(wageChange[EE]-EE.Mean)^3 ,na.rm=T)/EE.Var^(3/2)/mean(wpfinwgt[EE] ,na.rm=T)
+	
+	EERow <- c("EE", switchIndic, round(c(EE.Mean, EE.Med, EE.Var, EE.IQR, 
+														  EE.9010, EE.Kelly, EE.PearsonSkew), 4))
+	
+	dataTable <- rbind(dataTable, fullRow, EUERow, EERow)
+	
+	detach(wageChanges)
+}
+dataTable <- data.frame(dataTable)
+labs <-  c( NA, NA,NA,NA,NA,NA,NA)
+names(dataTable) <- c("Distribution", "Switched", "Mean", "Median", "Variance", "IQR", "90-10", "Kelly", "Pearson")
+levels(dataTable$Switched) <- c("No Switch", "Switch")
+levels(dataTable$Distribution) <- c("EE", "EUE", "Full Labor Force")
+xt.dataTable <- xtable(cbind(dataTable[c(-2,-9)]), digits = 1, caption = "Month-to-Month Earnings Changes Among Job Changers", label="tab:wCh_dist")
+print(xt.dataTable,file="wCh_dist.tex",table.placement="htb",
+	  align = "ll|rr|rrr|r",
+	  hline.after=c(-1,-1,0,nrow(xt.dataTable)/2,nrow(xt.dataTable)))
+
+# Young/Old --------------------------------------------------------------------
 
 dataTable <- c()
 
@@ -203,11 +293,12 @@ for(youngIndic in c(TRUE, FALSE)){
 		dataTable <- rbind(dataTable, fullRow, EUERow, EERow)
 		
 		detach(wageChanges)
-	}
 	
 }
 
-# HS/College loop
+
+
+# HS/College loop --------------------------
 for(HSColIndic in c(0, 1, 2)){
 	
 	wageChangesHSCol <- subset(wageChangesFull, HSCol == HSColIndic)
@@ -341,7 +432,9 @@ print(YoungOld.xt,file="YoungOld.tex",hline.after=c(-1,-1,0,nrow(YoungOld2)))
 
 HSCol.xt <- xtable(HSCol2, digits = 3, caption = "Month-to-Month Earnings Changes Among Job Movers by Education")
 print(HSCol.xt,file="HSCol.tex",hline.after=c(-1,-1,0,nrow(HSCol2)))
-	
+
+# ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Var decomp of wage changes btwn EE, EUE, stayers---------------
 
 analytic9608<-readRDS("analytic9608.RData")
@@ -465,8 +558,10 @@ wCh_vardec <- wCh_vardec*100
 rownames(wCh_vardec) <- c("Contrib Pct, Employed", "Population Pct, Employed", "Contrib Pct, Labor Force", "Population Pct, Labor Force")
 colnames(wCh_vardec) <- c("Continuing", "EE", "EUE", "EU,UE")
 wCh_vardec.xt <- xtable(wCh_vardec, digits = 1, caption = "Contribution to Variance of Month-to-Month Earnings Changes", label="tab:wCh_vardec")
-print(wCh_vardec.xt,file="wCh_vardec.tex",table.placement="htb", hline.after=c(-1,-1,0,nrow(wCh_vardec)/2,nrow(wCh_vardec)))
+print(wCh_vardec.xt,file="wCh_vardec.tex",table.placement="htb",
+	  align = "l|rrrr"
+	  hline.after=c(-1,-1,0,nrow(wCh_vardec)/2,nrow(wCh_vardec)))
 
 
-wChsw_vardec <-rbind(c(wageChangeEUESS_swEE/wageChangeEUESS_EE,wageChangeEUESS_swEUE/wageChangeEUESS_EUE,,wageChangeEUESS_nswEUE/wageChangeEUESS_EUE),
+wChsw_vardec <-rbind(c(wageChangeEUESS_swEE/wageChangeEUESS_EE,wageChangeEUESS_swEUE/wageChangeEUESS_EUE,wageChangeEUESS_nswEUE/wageChangeEUESS_EUE),
 					 c(pct_swEE/pct_EE,1.-pct_swEE/pct_EE,pct_swEUE/pct_EUE, 1-pct_swEUE/pct_EUE))
