@@ -79,6 +79,7 @@ genFlowDummies <- function(df) {
 				#	!(lead(df$job) == lag(df$job,n=3)) &
 				#	!(lead(df$job) == lag(df$job,n=4)) ) & 
 					lead(df$id) == df$id )
+	df$switchedJob = ifelse(lead(df$id) == df$id, df$switchedJob, NA)
 	#all of the unemployment-involving transitions should stay
 	df$switchedJob = ifelse( df$job != lead(df$job) & (df$job==0 | lead(df$job==0)), TRUE, df$switchedJob )
 	df$switchedOcc = ((df$occ != lead(df$occ)) &
@@ -86,8 +87,11 @@ genFlowDummies <- function(df) {
 				df$switchedJob)
 	df$switchedInd = (df$ind23 != lead(df$ind23)) & df$switchedJob
 	df$EE = df$lfStat == 1 & lead(df$lfStat) == 1 & df$switchedJob
+	df$EE = ifelse(lead(df$id) == df$id, df$EE, NA)
 	df$EU = df$lfStat == 1 & lead(df$lfStat) == 2 & df$switchedJob
+	df$EU = ifelse(lead(df$id) == df$id, df$EU, NA)
 	df$UE = df$lfStat == 2 & lead(df$lfStat) == 1 & df$switchedJob
+	df$UE = ifelse(lead(df$id) == df$id, df$UE, NA)
 	df <- ungroup(df)
 	result <- df
 	return(result)
@@ -100,11 +104,21 @@ genFlowDummies <- function(df) {
 nextLastOcc <- function(df){
 	df <- df %>%
 		group_by(id) %>%
-		arrange(id,date)
-	df$nextOcc = ifelse( df$switchedJob & lead(df$job) != 0 & df$id == lead(df$id), lead(df$occ), NA) 
-	df$nextOcc = na.locf(df$nextOcc, na.rm = FALSE, fromLast=TRUE)
-	df$lastOcc = ifelse( df$switchedJob & df$job != 0  & df$id == lag(df$id), lag(df$occ), NA)
-	df$lastOcc = na.locf(df$lastOcc, na.rm = FALSE) 
+		arrange(id,date) %>%
+		mutate(leadocc = lead(occ)) %>%
+		mutate(leademp = (lead(job) != 0) ) %>%
+		mutate(nextOcc = as.integer(ifelse( switchedJob & leademp, leadocc, NA_integer_)) ) %>%
+		mutate(nextOcc = na.locf(nextOcc, na.rm = FALSE, fromLast=TRUE)) %>%
+		select(-leadocc,-leademp) %>%
+		mutate(lagocc = lag(occ)) %>%
+		mutate(lagemp = (lag(job)!=0) ) %>%
+		mutate(lastOcc = as.integer(ifelse( switchedJob & lagemp, lagocc, NA_integer_))) %>%
+		mutate(lastOcc = na.locf(lastOcc, na.rm = FALSE) ) %>%
+		select(-lagocc,-lagemp)
+	#df$nextOcc = ifelse( df$switchedJob & lead(df$job) != 0 & df$id == lead(df$id), lead(df$occ), NA) 
+	#df$nextOcc = na.locf(df$nextOcc, na.rm = FALSE, fromLast=TRUE)
+	#df$lastOcc = ifelse( df$switchedJob & df$job != 0  & df$id == lag(df$id), lag(df$occ), NA)
+	#df$lastOcc = na.locf(df$lastOcc, na.rm = FALSE) 
 	df <- ungroup(df)
 	return(df)
 }
@@ -270,21 +284,55 @@ fillDownWage <- function(df) {
 # Postcondition:        - new variable nextWage
 #                       - new variable nextWageQtr
 #                       - new variable nextOccWage
+
+fillUpWageDPLYR <- function(df) {
+	#this crashes my machine on Linux
+	result <- df %>%
+		group_by(id) %>%
+		arrange(id, date) %>%
+	#UEs are the next wage and EUs are NA
+		mutate(EmpTmrw = (EE | UE) ) %>%
+		mutate(wTmrw = lead(useWage)) %>%
+		mutate(occWTmrw = lead(occWage))
+	result <- result %>%	
+		mutate(nextWage = as.numeric(ifelse(EmpTmrw , wTmrw, NA_real_)) ) %>%
+		mutate(nextWage = na.locf(nextWage, na.rm = FALSE, fromLast = TRUE))
+	result <- result %>%
+		mutate(nextOccWage = as.numeric(ifelse(EmpTmrw, occWTmrw, NA_real_))) %>%
+		mutate(nextOccWage = na.locf(nextOccWage, na.rm = FALSE, fromLast = TRUE)) %>%
+		select(-EmpTmrw,-wTmrw)
+	#result <- result %>%
+	#	mutate(EmpNQtr = switchedJob & lead(job,3) != 0) %>%
+	#	mutate(wNQtr = lead(useWageQtr,3)) %>%
+	#	mutate(nextWageQtr = ifelse( EmpNQtr, wNQtr, NA_real_)) %>%
+	#	nextWageQtr = na.locf(nextWageQtr, na.rm = FALSE, fromLast = TRUE) %>%
+	#	select(-wNQtr,-EmpNQtr)
+	
+	ungroup(result)
+	return(result)
+}
 fillUpWage <- function(df) {
 	result <- df %>%
-#		group_by(id) %>%
+		#		group_by(id) %>%
 		arrange(id, date) 
 	#UEs are the next wage and EUs are NA
 	result$EmpTmrw <- (result$EE | result$UE) & lead(result$id) == result$id
 	result$nextWage <- ifelse(result$EmpTmrw , lead(result$useWage), NA_real_)
+	result$nextWage <- ifelse(result$id != lag(result$id) & result$lfStat ==2
+							  , 0., result$nextWage) #force the fill back to respect ID barriers
 	result$nextWage = na.locf(result$nextWage, na.rm = FALSE, fromLast = TRUE)
+	result$nextWage <- ifelse(result$id != lag(result$id) & result$lfStat ==2
+							  , NA_real_, result$nextWage)
 	result$nextOccWage = ifelse(result$EmpTmrw, lead(result$occWage), NA_real_)
+	result$nextOccWage <- ifelse(result$id != lag(result$id) & result$lfStat ==2
+								 , 0., result$nextOccWage) #force the fill back to respect ID barriers
 	result$nextOccWage = na.locf(result$nextOccWage, na.rm = FALSE, fromLast = TRUE)
-
+	result$nextOccWage <- ifelse(result$id != lag(result$id) & result$lfStat ==2
+							  , NA_real_, result$nextOccWage)
 	result$EmpNQtr<- result$switchedJob & lead(result$job,3) != 0 &  lead(result$id,3) == result$id
 	result$nextWageQtr = ifelse( result$EmpNQtr, lead(result$useWageQtr, 3), NA_real_)
 	result$nextWageQtr = na.locf(result$nextWageQtr, na.rm = FALSE, fromLast = TRUE) 
-
+	
 	ungroup(result)
 	return(result)
 }
@@ -309,7 +357,7 @@ fillUpWage <- function(df) {
 calculateWageChange <- function(df) {
 	df <- group_by(df,id)
 	df <- arrange(df,id,date)
-	tuw <- lag(df$useWage)
+	tuw <- ifelse(lag(df$id)==df$id,lag(df$useWage), NA)
 	tnw <- df$nextWage
 	#tnw <- ifelse(!is.finite(tnw) & is.finite(lead(df$useWage)) & lead(df$lfStat)==1 & df$id == lead(df$id),lead(df$useWage),tnw)
 	tuw <- ifelse(!is.finite(tuw) & is.finite(df$useWage) & df$lfStat==1,df$useWage,tuw)

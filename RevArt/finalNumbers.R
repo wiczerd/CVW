@@ -293,6 +293,7 @@ for(youngIndic in c(TRUE, FALSE)){
 		dataTable <- rbind(dataTable, fullRow, EUERow, EERow)
 		
 		detach(wageChanges)
+	}
 	
 }
 
@@ -356,7 +357,7 @@ for(HSColIndic in c(0, 1, 2)){
 			    EUE.9010, EUE.Kelly, EUE.PearsonSkew), 4))
 		
 		# EE distribution --------------------------------------------------------
-		
+
 		# Central tendency
 		EE.Mean <- wtd.mean(wageChange[EE], wpfinwgt[EE])
 		EE.Qs <- wtd.quantile(wageChange[EE], wpfinwgt[EE], probs = qtls)
@@ -565,3 +566,4 @@ print(wCh_vardec.xt,file="wCh_vardec.tex",table.placement="htb",
 
 wChsw_vardec <-rbind(c(wageChangeEUESS_swEE/wageChangeEUESS_EE,wageChangeEUESS_swEUE/wageChangeEUESS_EUE,wageChangeEUESS_nswEUE/wageChangeEUESS_EUE),
 					 c(pct_swEE/pct_EE,1.-pct_swEE/pct_EE,pct_swEUE/pct_EUE, 1-pct_swEUE/pct_EUE))
+
