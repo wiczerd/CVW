@@ -78,25 +78,25 @@ EEweight <- with(wageChangesFull, sum(perwt[EE & !is.na(wageChange)], na.rm = TR
 # Force weights to match ratio
 multiple <- ratio*EEweight/EUweight
 wageChangesFull <- wageChangesFull %>%
-	mutate(reweight = ifelse(EU | UE, perwt*multiple*0.5, perwt))
+	mutate(balanceWeight = ifelse(EU | UE, perwt*multiple*0.5, perwt))
 
 # Scale weights back to original total
-weightMultiple <- with(wageChangesFull, sum(reweight, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE))
+weightMultiple <- with(wageChangesFull, sum(balanceWeight, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE))
 wageChangesFull <- wageChangesFull %>%
-	mutate(reweight = reweight/weightMultiple)
+	mutate(balanceWeight = balanceWeight/weightMultiple)
 
 # check weights
-UEweight <- with(wageChangesFull, sum(reweight[UE & !is.na(wageChange)], na.rm = TRUE))
-EUweight <- with(wageChangesFull, sum(reweight[EU & !is.na(wageChange)], na.rm = TRUE))
-EEweight <- with(wageChangesFull, sum(reweight[EE & !is.na(wageChange)], na.rm = TRUE))
+UEweight <- with(wageChangesFull, sum(balanceWeight[UE & !is.na(wageChange)], na.rm = TRUE))
+EUweight <- with(wageChangesFull, sum(balanceWeight[EU & !is.na(wageChange)], na.rm = TRUE))
+EEweight <- with(wageChangesFull, sum(balanceWeight[EE & !is.na(wageChange)], na.rm = TRUE))
 
 # new weight ratio == Fallick Fleischmann UE/EE ratio
 round((UEweight + EUweight)/EEweight, 10) == round(ratio, 10)
 # new weights sum to original weights
-with(wageChangesFull, sum(wpfinwgt, na.rm = TRUE) == sum(reweight, na.rm = TRUE))
+with(wageChangesFull, sum(wpfinwgt, na.rm = TRUE) == sum(balanceWeight, na.rm = TRUE))
 # EU and UE balance
-with(wageChangesFull, sum(reweight[UE & switchedOcc], na.rm = TRUE)) == 
-	with(wageChangesFull, sum(reweight[EU & switchedOcc], na.rm = TRUE))
+with(wageChangesFull, sum(balanceWeight[UE & switchedOcc], na.rm = TRUE)) == 
+	with(wageChangesFull, sum(balanceWeight[EU & switchedOcc], na.rm = TRUE))
 
 # Dictionary --------------------------------------------------------------
 
@@ -130,13 +130,13 @@ for(switchIndic in c(TRUE, FALSE)) {
 	
 	qtls <- c(0.1,0.25,0.5,0.75,0.9)
 	# Central tendency
-	full.Mean <- wtd.mean(wageChange, reweight)
-	full.Qs <- wtd.quantile(wageChange, reweight, probs = qtls)
+	full.Mean <- wtd.mean(wageChange, balanceWeight)
+	full.Qs <- wtd.quantile(wageChange, balanceWeight, probs = qtls)
 	full.Med <- full.Qs[3]
 	p50 <- full.Qs[3]
 	
 	# Dispersion
-	full.Var <- wtd.var(wageChange, reweight)
+	full.Var <- wtd.var(wageChange, balanceWeight)
 	full.IQR <- full.Qs[4] - full.Qs[2]
 	p90 <- full.Qs[5]
 	p10 <- full.Qs[1]
@@ -144,21 +144,21 @@ for(switchIndic in c(TRUE, FALSE)) {
 	
 	# Skewness
 	full.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
-	full.PearsonSkew <- mean( reweight*(wageChange - full.Mean)^3 ,na.rm=T)/full.Var^(3/2)/mean(reweight,na.rm=T)
+	full.PearsonSkew <- mean( balanceWeight*(wageChange - full.Mean)^3 ,na.rm=T)/full.Var^(3/2)/mean(balanceWeight,na.rm=T)
 	
 	fullRow <- c("full", switchIndic, round(c(full.Mean, full.Med, full.Var, full.IQR, 
-															  full.9010, full.Kelly, full.PearsonSkew), 4))
+						  full.9010, full.Kelly, full.PearsonSkew), 4))
 	
 	# EUE changes -------------------------------------------------------------
 	
 	# Central tendency
-	EUE.Mean <- wtd.mean(wageChange_EUE, wpfinwgt)
-	EUE.Qs <- wtd.quantile(wageChange_EUE, wpfinwgt, probs = qtls)
+	EUE.Mean <- wtd.mean(wageChange_EUE, balanceWeight)
+	EUE.Qs <- wtd.quantile(wageChange_EUE, balanceWeight, probs = qtls)
 	EUE.Med <- EUE.Qs[3]
 	p50 <- EUE.Qs[3]
 	
 	# Dispersion
-	EUE.Var <- wtd.var(wageChange_EUE, wpfinwgt)
+	EUE.Var <- wtd.var(wageChange_EUE, balanceWeight)
 	EUE.IQR <- EUE.Qs[4]-EUE.Qs[2]
 	p90 <- EUE.Qs[5]
 	p10 <- EUE.Qs[1]
@@ -166,21 +166,21 @@ for(switchIndic in c(TRUE, FALSE)) {
 	
 	# Skewness
 	EUE.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
-	EUE.PearsonSkew <- mean(wpfinwgt*(wageChange_EUE-EUE.Mean)^3 ,na.rm=T)/EUE.Var^(3/2)/mean(wpfinwgt ,na.rm=T)
+	EUE.PearsonSkew <- mean(balanceWeight*(wageChange_EUE-EUE.Mean)^3 ,na.rm=T)/EUE.Var^(3/2)/mean(balanceWeight ,na.rm=T)
 	
 	EUERow <- c("EUE", switchIndic, round(c(EUE.Mean, EUE.Med, EUE.Var, EUE.IQR, 
-															EUE.9010, EUE.Kelly, EUE.PearsonSkew), 4))
+						EUE.9010, EUE.Kelly, EUE.PearsonSkew), 4))
 	
 	# EE distribution --------------------------------------------------------
 	
 	# Central tendency
-	EE.Mean <- wtd.mean(wageChange[EE], wpfinwgt[EE])
-	EE.Qs <- wtd.quantile(wageChange[EE], wpfinwgt[EE], probs = qtls)
+	EE.Mean <- wtd.mean(wageChange[EE], balanceWeight[EE])
+	EE.Qs <- wtd.quantile(wageChange[EE], balanceWeight[EE], probs = qtls)
 	EE.Med <- EE.Qs[3]
 	p50 <- EE.Med
 	
 	# Dispersion
-	EE.Var <- wtd.var(wageChange[EE], wpfinwgt[EE])
+	EE.Var <- wtd.var(wageChange[EE], balanceWeight[EE])
 	EE.IQR <- EE.Qs[4]-EE.Qs[2]
 	p90 <- EE.Qs[5]
 	p10 <- EE.Qs[1]
@@ -188,15 +188,16 @@ for(switchIndic in c(TRUE, FALSE)) {
 	
 	# Skewness
 	EE.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
-	EE.PearsonSkew <- mean(wpfinwgt[EE]*(wageChange[EE]-EE.Mean)^3 ,na.rm=T)/EE.Var^(3/2)/mean(wpfinwgt[EE] ,na.rm=T)
+	EE.PearsonSkew <- mean(balanceWeight[EE]*(wageChange[EE]-EE.Mean)^3 ,na.rm=T)/EE.Var^(3/2)/mean(balanceWeight[EE] ,na.rm=T)
 	
 	EERow <- c("EE", switchIndic, round(c(EE.Mean, EE.Med, EE.Var, EE.IQR, 
-														  EE.9010, EE.Kelly, EE.PearsonSkew), 4))
+					      EE.9010, EE.Kelly, EE.PearsonSkew), 4))
 	
 	dataTable <- rbind(dataTable, fullRow, EUERow, EERow)
 	
 	detach(wageChanges)
 }
+
 dataTable <- data.frame(dataTable)
 labs <-  c( NA, NA,NA,NA,NA,NA,NA)
 names(dataTable) <- c("Distribution", "Switched", "Mean", "Median", "Variance", "IQR", "90-10", "Kelly", "Pearson")
@@ -227,13 +228,13 @@ for(youngIndic in c(TRUE, FALSE)){
 		
 		qtls <- c(0.1,0.25,0.5,0.75,0.9)
 		# Central tendency
-		full.Mean <- wtd.mean(wageChange, reweight)
-		full.Qs <- wtd.quantile(wageChange, reweight, probs = qtls)
+		full.Mean <- wtd.mean(wageChange, balanceWeight)
+		full.Qs <- wtd.quantile(wageChange, balanceWeight, probs = qtls)
 		full.Med <- full.Qs[3]
 		p50 <- full.Qs[3]
 		
 		# Dispersion
-		full.Var <- wtd.var(wageChange, reweight)
+		full.Var <- wtd.var(wageChange, balanceWeight)
 		full.IQR <- full.Qs[4] - full.Qs[2]
 		p90 <- full.Qs[5]
 		p10 <- full.Qs[1]
@@ -241,7 +242,7 @@ for(youngIndic in c(TRUE, FALSE)){
 		
 		# Skewness
 		full.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
-		full.PearsonSkew <- mean( reweight*(wageChange - full.Mean)^3 ,na.rm=T)/full.Var^(3/2)/mean(reweight,na.rm=T)
+		full.PearsonSkew <- mean( balanceWeight*(wageChange - full.Mean)^3 ,na.rm=T)/full.Var^(3/2)/mean(balanceWeight,na.rm=T)
 		
 		fullRow <- c("full", NA, switchIndic, youngIndic, round(c(full.Mean, full.Med, full.Var, full.IQR, 
 			     full.9010, full.Kelly, full.PearsonSkew), 4))
@@ -249,13 +250,13 @@ for(youngIndic in c(TRUE, FALSE)){
 		# EUE changes -------------------------------------------------------------
 		
 		# Central tendency
-		EUE.Mean <- wtd.mean(wageChange_EUE, wpfinwgt)
-		EUE.Qs <- wtd.quantile(wageChange_EUE, wpfinwgt, probs = qtls)
+		EUE.Mean <- wtd.mean(wageChange_EUE, balanceWeight)
+		EUE.Qs <- wtd.quantile(wageChange_EUE, balanceWeight, probs = qtls)
 		EUE.Med <- EUE.Qs[3]
 		p50 <- EUE.Qs[3]
 		
 		# Dispersion
-		EUE.Var <- wtd.var(wageChange_EUE, wpfinwgt)
+		EUE.Var <- wtd.var(wageChange_EUE, balanceWeight)
 		EUE.IQR <- EUE.Qs[4]-EUE.Qs[2]
 		p90 <- EUE.Qs[5]
 		p10 <- EUE.Qs[1]
@@ -263,7 +264,7 @@ for(youngIndic in c(TRUE, FALSE)){
 		
 		# Skewness
 		EUE.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
-		EUE.PearsonSkew <- mean(wpfinwgt*(wageChange_EUE-EUE.Mean)^3 ,na.rm=T)/EUE.Var^(3/2)/mean(wpfinwgt ,na.rm=T)
+		EUE.PearsonSkew <- mean(balanceWeight*(wageChange_EUE-EUE.Mean)^3 ,na.rm=T)/EUE.Var^(3/2)/mean(balanceWeight ,na.rm=T)
 		
 		EUERow <- c("EUE", NA, switchIndic, youngIndic, round(c(EUE.Mean, EUE.Med, EUE.Var, EUE.IQR, 
 			    EUE.9010, EUE.Kelly, EUE.PearsonSkew), 4))
@@ -271,13 +272,13 @@ for(youngIndic in c(TRUE, FALSE)){
 		# EE distribution --------------------------------------------------------
 		
 		# Central tendency
-		EE.Mean <- wtd.mean(wageChange[EE], wpfinwgt[EE])
-		EE.Qs <- wtd.quantile(wageChange[EE], wpfinwgt[EE], probs = qtls)
+		EE.Mean <- wtd.mean(wageChange[EE], balanceWeight[EE])
+		EE.Qs <- wtd.quantile(wageChange[EE], balanceWeight[EE], probs = qtls)
 		EE.Med <- EE.Qs[3]
 		p50 <- EE.Med
 		
 		# Dispersion
-		EE.Var <- wtd.var(wageChange[EE], wpfinwgt[EE])
+		EE.Var <- wtd.var(wageChange[EE], balanceWeight[EE])
 		EE.IQR <- EE.Qs[4]-EE.Qs[2]
 		p90 <- EE.Qs[5]
 		p10 <- EE.Qs[1]
@@ -285,7 +286,7 @@ for(youngIndic in c(TRUE, FALSE)){
 		
 		# Skewness
 		EE.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
-		EE.PearsonSkew <- mean(wpfinwgt[EE]*(wageChange[EE]-EE.Mean)^3 ,na.rm=T)/EE.Var^(3/2)/mean(wpfinwgt[EE] ,na.rm=T)
+		EE.PearsonSkew <- mean(balanceWeight[EE]*(wageChange[EE]-EE.Mean)^3 ,na.rm=T)/EE.Var^(3/2)/mean(balanceWeight[EE] ,na.rm=T)
 		
 		EERow <- c("EE", NA, switchIndic, youngIndic, round(c(EE.Mean, EE.Med, EE.Var, EE.IQR, 
 			   EE.9010, EE.Kelly, EE.PearsonSkew), 4))
@@ -315,13 +316,13 @@ for(HSColIndic in c(0, 1, 2)){
 		
 		qtls <- c(0.1,0.25,0.5,0.75,0.9)
 		# Central tendency
-		full.Mean <- wtd.mean(wageChange, reweight)
-		full.Qs <- wtd.quantile(wageChange, reweight, probs = qtls)
+		full.Mean <- wtd.mean(wageChange, balanceWeight)
+		full.Qs <- wtd.quantile(wageChange, balanceWeight, probs = qtls)
 		full.Med <- full.Qs[3]
 		p50 <- full.Qs[3]
 		
 		# Dispersion
-		full.Var <- wtd.var(wageChange, reweight)
+		full.Var <- wtd.var(wageChange, balanceWeight)
 		full.IQR <- full.Qs[4] - full.Qs[2]
 		p90 <- full.Qs[5]
 		p10 <- full.Qs[1]
@@ -329,7 +330,7 @@ for(HSColIndic in c(0, 1, 2)){
 		
 		# Skewness
 		full.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
-		full.PearsonSkew <- mean( reweight*(wageChange - full.Mean)^3 ,na.rm=T)/full.Var^(3/2)/mean(reweight,na.rm=T)
+		full.PearsonSkew <- mean( balanceWeight*(wageChange - full.Mean)^3 ,na.rm=T)/full.Var^(3/2)/mean(balanceWeight,na.rm=T)
 		
 		fullRow <- c("full", HSColIndic, switchIndic, NA, round(c(full.Mean, full.Med, full.Var, full.IQR, 
 			     full.9010, full.Kelly, full.PearsonSkew), 4))
@@ -337,13 +338,13 @@ for(HSColIndic in c(0, 1, 2)){
 		# EUE changes -------------------------------------------------------------
 		
 		# Central tendency
-		EUE.Mean <- wtd.mean(wageChange_EUE, wpfinwgt)
-		EUE.Qs <- wtd.quantile(wageChange_EUE, wpfinwgt, probs = qtls)
+		EUE.Mean <- wtd.mean(wageChange_EUE, balanceWeight)
+		EUE.Qs <- wtd.quantile(wageChange_EUE, balanceWeight, probs = qtls)
 		EUE.Med <- EUE.Qs[3]
 		p50 <- EUE.Qs[3]
 		
 		# Dispersion
-		EUE.Var <- wtd.var(wageChange_EUE, wpfinwgt)
+		EUE.Var <- wtd.var(wageChange_EUE, balanceWeight)
 		EUE.IQR <- EUE.Qs[4]-EUE.Qs[2]
 		p90 <- EUE.Qs[5]
 		p10 <- EUE.Qs[1]
@@ -351,7 +352,7 @@ for(HSColIndic in c(0, 1, 2)){
 		
 		# Skewness
 		EUE.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
-		EUE.PearsonSkew <- mean(wpfinwgt*(wageChange_EUE-EUE.Mean)^3 ,na.rm=T)/EUE.Var^(3/2)/mean(wpfinwgt ,na.rm=T)
+		EUE.PearsonSkew <- mean(balanceWeight*(wageChange_EUE-EUE.Mean)^3 ,na.rm=T)/EUE.Var^(3/2)/mean(balanceWeight ,na.rm=T)
 		
 		EUERow <- c("EUE", HSColIndic, switchIndic, NA, round(c(EUE.Mean, EUE.Med, EUE.Var, EUE.IQR, 
 			    EUE.9010, EUE.Kelly, EUE.PearsonSkew), 4))
@@ -359,13 +360,13 @@ for(HSColIndic in c(0, 1, 2)){
 		# EE distribution --------------------------------------------------------
 
 		# Central tendency
-		EE.Mean <- wtd.mean(wageChange[EE], wpfinwgt[EE])
-		EE.Qs <- wtd.quantile(wageChange[EE], wpfinwgt[EE], probs = qtls)
+		EE.Mean <- wtd.mean(wageChange[EE], balanceWeight[EE])
+		EE.Qs <- wtd.quantile(wageChange[EE], balanceWeight[EE], probs = qtls)
 		EE.Med <- EE.Qs[3]
 		p50 <- EE.Med
 		
 		# Dispersion
-		EE.Var <- wtd.var(wageChange[EE], wpfinwgt[EE])
+		EE.Var <- wtd.var(wageChange[EE], balanceWeight[EE])
 		EE.IQR <- EE.Qs[4]-EE.Qs[2]
 		p90 <- EE.Qs[5]
 		p10 <- EE.Qs[1]
@@ -373,7 +374,7 @@ for(HSColIndic in c(0, 1, 2)){
 		
 		# Skewness
 		EE.Kelly <- ((p90 - p50) - (p50 - p10))/(p90 - p10)
-		EE.PearsonSkew <- mean(wpfinwgt[EE]*(wageChange[EE]-EE.Mean)^3 ,na.rm=T)/EE.Var^(3/2)/mean(wpfinwgt[EE] ,na.rm=T)
+		EE.PearsonSkew <- mean(balanceWeight[EE]*(wageChange[EE]-EE.Mean)^3 ,na.rm=T)/EE.Var^(3/2)/mean(balanceWeight[EE] ,na.rm=T)
 		
 		EERow <- c("EE", HSColIndic, switchIndic, NA, round(c(EE.Mean, EE.Med, EE.Var, EE.IQR, 
 			   EE.9010, EE.Kelly, EE.PearsonSkew), 4))
@@ -433,10 +434,9 @@ print(YoungOld.xt,file="YoungOld.tex",hline.after=c(-1,-1,0,nrow(YoungOld2)))
 
 HSCol.xt <- xtable(HSCol2, digits = 3, caption = "Month-to-Month Earnings Changes Among Job Movers by Education")
 print(HSCol.xt,file="HSCol.tex",hline.after=c(-1,-1,0,nrow(HSCol2)))
+	
 
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-# Var decomp of wage changes btwn EE, EUE, stayers---------------
+# Var decomp of wage changes btwn EE, EUE, stayers ------------------------
 
 analytic9608<-readRDS("analytic9608.RData")
 
