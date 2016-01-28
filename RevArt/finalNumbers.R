@@ -570,9 +570,9 @@ wChsw_vardec <-rbind(c(wageChangeEUESS_swEE/wageChangeEUESS_EE,wageChangeEUESS_s
 					 c(pct_swEE/pct_EE,NA,2*pct_swEUUE/pct_EUUE))
 wChsw_vardec <- wChsw_vardec*100
 
-rownames(wChsw_vardec) <- c("Contrib Pct, Employed", "Population Pct, Employed", "Contrib Pct, Labor Force", "Population Pct, Labor Force")
+rownames(wChsw_vardec) <- c("Switchers Contrib Pct, Employed", "Switchers Pct, Employed", "Switchers Contrib Pct, Labor Force", "Switchers Pct, Labor Force")
 colnames(wChsw_vardec) <- c("EE", "EUE", "EU,UE")
-wChsw_vardec.xt <- xtable(wChsw_vardec, digits = 3, caption = "Switchers Contribution to Variance of Month-to-Month Earnings Changes", label="tab:wCh_vardec")
+wChsw_vardec.xt <- xtable(wChsw_vardec, digits = 3, caption = "Among Job Changers, Occupation Switchers Contribution to Variance of Month-to-Month Earnings Changes", label="tab:wCh_vardec")
 print(wChsw_vardec.xt,file="wChsw_vardec.tex",table.placement="htb",
 	  align = "l|rrr", 
 	  hline.after=c(-1,-1,0,nrow(wChsw_vardec)/2,nrow(wChsw_vardec)))
