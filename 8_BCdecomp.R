@@ -12,9 +12,11 @@ setwd(wd0)
 
 NS = 6 #number of subgroups
 
+DHLdecomp <- function(wcDF, recname,wcname,wtname){
 
-DHLdecomp <- function(wcDF, rec,wc,wt){
-
+	wcDF$wc <- wcDF[[wcname]]
+	wcDF$wt <- wcDF[[wtname]]
+	wcDF$rec <- wcDF[[recname]]
 	wcRec <- subset(wcDF, rec==T)
 	wcExp <- subset(wcDF, rec==F)
 	
@@ -107,11 +109,12 @@ DHLdecomp <- function(wcDF, rec,wc,wt){
 		qi = qi+1
 	}
 	
-	shift_share <-list(shift,Share)
+	shift_share <-list(shift,share)
 	return(shift_share)
 }
 
 
 wagechangesfull <- readRDS("./Data/balancedwagechanges.RData")
 
-shift_share <- DHLdecomp(wagechangesfull,wagechangesfull$recIndic,wagechangesfull4wagechange,wagechangesfull$balanceweight)
+shift_share <- DHLdecomp(wagechangesfull,"recIndic","wagechange","balanceweight")
+shift_share_EUE <- DHLdecomp(wagechangesfull,"recIndic","wagechange_EUE","balanceweight")
