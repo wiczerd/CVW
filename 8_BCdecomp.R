@@ -4,6 +4,7 @@ library(data.table)
 library(zoo)
 library(Hmisc)
 library(reshape2)
+library(quantreg)
 
 #setwd("G:/Research_Analyst/Eubanks/Occupation Switching")
 wd0 = "~/workspace/CVW/R"
@@ -121,6 +122,72 @@ DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
 	}
 	shift_share <-list(wchng,shift,share)
 	return(shift_share)
+}
+
+MMdecomp <- function(wcDF,NS,wcname,wtname){
+	# wcDF : data set
+	# NS   : Number of subgroups
+	# recname	: name of recession indicator
+	# wcname	: name of earnings change variable
+	# wtname	: name of weighting variable
+	
+	wcDF$wc  <- wcDF[[wcname]]
+	wcDF$wt  <- wcDF[[wtname]]
+	wcDF$rec <- wcDF[[recname]]
+	wcDF$s   <- 0
+	
+	# setup subgroup indices
+	if(NS ==6){
+		# 6 subgroups, Sw X (EE UE EU), sets up conditional distributions.
+		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F, s := 1]
+		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F, s := 2]
+		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T, s := 3]
+		wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F, s := 4]
+		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F, s := 5]
+		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T, s := 6]
+		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]
+		wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]		
+	}else if(NS==4){
+		# 4 subgroups, Sw X (EE EU), sets up conditional distributions.
+		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$EU ==F, s := 1]
+		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$EU ==T, s := 2]
+		wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$EU ==F, s := 3]
+		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$EU ==T, s := 4]
+		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+	}
+	wcRec <- subset(wcDF, rec==T)
+	wcExp <- subset(wcDF, rec==F)
+	
+	qtlgrid <- seq(0.2,0.98,0.02)
+	nsamp = floor(nrow(wcExp)/length(qtlgrid))
+	betaR <- matrix(0.,nrow = length(qtrlgrid),ncol=NS+1)
+	betaE <- matrix(0.,nrow = length(qtrlgrid),ncol=NS+1)
+	qi = 1
+	wc_cf <- array(NA, dim=nsamp*nrow(wcExp)) #storing the counter-factual distribution
+	for(q in qtlgrid){
+		rhere <- rq( wc ~ factor(s) ,tau= q, data=wcRec, weights = wt)
+		betaR[qi,] = rhere$coefficients
+		rhere <- rq( wc ~ factor(s) ,tau= q, data=wcExp, weights = wt)
+		betaE[qi,] = rhere$coefficients
+		
+		if(NS == 6){
+			wc_cf[ (qi-1)*nsamp+1:qi*nsamp ] <- wcExp[sample(nrow(wcExp), nsamp ,replace =T, prob=wt), betaR[qi,1] + 
+				  	betaR[qi,2]*s1 + betaR[qi,3]*s2 + betaR[qi,4]*s3 + 
+				  	betaR[qi,5]*s4 + betaR[qi,6]*s5 + betaR[qi,7]*s6]
+		}else if(NS==4){
+			wc_cf[ (qi-1)*nsamp+1:qi*nsamp ] <- wcExp[sample(nrow(wcExp), nsamp ,replace =T, prob=wt), betaR[qi,1] + 
+				  	betaR[qi,2]*s1 + betaR[qi,3]*s2 + betaR[qi,4]*s3 + 
+				  	betaR[qi,5]*s4]
+		}
+		qi = qi+1
+	}
 }
 
 shift_share <- DHLdecomp(wagechangesfull,6,"recIndic","wagechange","balanceweight")
