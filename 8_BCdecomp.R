@@ -65,19 +65,11 @@ DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
 		distptsExpS[,si] <- with(subset(wcExp,wcExp$s == si),
 								wtd.quantile(wc, wt, probs = seq(0.01,0.99,by=0.005)))
 	}
-	if(NS == 6){
-		# create list of interp functions to make conditional distributions
-		distRecS <-list(distExp,distExp,distExp,distExp,distExp,distExp)
-		invdistRecS <-list(invdistExp,invdistExp,invdistExp,invdistExp,invdistExp,invdistExp)
-		distExpS <-list(distExp,distExp,distExp,distExp,distExp,distExp)
-		invdistExpS <-list(invdistExp,invdistExp,invdistExp,invdistExp,invdistExp,invdistExp)
-	}else if(NS ==4){
-		# create list of interp functions to make conditional distributions
-		distRecS <-list(distExp,distExp,distExp,distExp)
-		invdistRecS <-list(invdistExp,invdistExp,invdistExp,invdistExp)
-		distExpS <-list(distExp,distExp,distExp,distExp)
-		invdistExpS <-list(invdistExp,invdistExp,invdistExp,invdistExp)
-	}
+	# allocate lists, and will grow them later
+	distRecS <-list(distExp) 
+	invdistRecS <-list(invdistExp)
+	distExpS <-list(distExp)
+	invdistExpS <-list(invdistExp)
 	
 	
 	for (si in seq(1,NS)){
@@ -124,7 +116,7 @@ DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
 	return(shift_share)
 }
 
-MMdecomp <- function(wcDF,NS,wcname,wtname){
+MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	# wcDF : data set
 	# NS   : Number of subgroups
 	# recname	: name of recession indicator
@@ -165,29 +157,43 @@ MMdecomp <- function(wcDF,NS,wcname,wtname){
 	wcRec <- subset(wcDF, rec==T)
 	wcExp <- subset(wcDF, rec==F)
 	
-	qtlgrid <- seq(0.2,0.98,0.02)
+	# run quantile regressions on a relatively coarse grid (have to run 8 regressions)
+	qtlgrid <- seq(0.02,0.98,.12)
+	betaptsR <- matrix(0.,nrow = length(qtlgrid),ncol=NS)
+	betaptsE <- matrix(0.,nrow = length(qtlgrid),ncol=NS)
+	qi  = 1
+	for( q in qtlgrid){
+		rhere <- rq( wc ~ factor(s)+0 ,tau= q, data=wcRec, weights = wt)
+		betaptsR[qi,] = rhere$coefficients
+		rhere <- rq( wc ~ factor(s)+0,tau= q, data=wcExp, weights = wt)
+		betaptsE[qi,] = rhere$coefficients	
+		qi = qi+1
+	}
+
+	betaE <- list(approxfun(qtlgrid,betaptsE[,1]))
+	betaR <- list(approxfun(qtlgrid,betaptsR[,1]))
+	for(si in seq(2,NS)){
+		betaE[[si]] <-approxfun(qtlgrid,betaptsE[,si]) 
+		betaR[[si]] <-approxfun(qtlgrid,betaptsR[,si]) 
+	}
+	
+	qtlgrid <- seq(0.02,0.98,0.01)
 	nsamp = floor(nrow(wcExp)/length(qtlgrid))
-	betaR <- matrix(0.,nrow = length(qtrlgrid),ncol=NS+1)
-	betaE <- matrix(0.,nrow = length(qtrlgrid),ncol=NS+1)
 	qi = 1
-	wc_cf <- array(NA, dim=nsamp*nrow(wcExp)) #storing the counter-factual distribution
+	wc_cf <- matrix(NA, nrow=nsamp*nrow(wcExp),ncol=1) #storing the counter-factual distribution
 	for(q in qtlgrid){
-		rhere <- rq( wc ~ factor(s) ,tau= q, data=wcRec, weights = wt)
-		betaR[qi,] = rhere$coefficients
-		rhere <- rq( wc ~ factor(s) ,tau= q, data=wcExp, weights = wt)
-		betaE[qi,] = rhere$coefficients
-		
 		if(NS == 6){
-			wc_cf[ (qi-1)*nsamp+1:qi*nsamp ] <- wcExp[sample(nrow(wcExp), nsamp ,replace =T, prob=wt), betaR[qi,1] + 
-				  	betaR[qi,2]*s1 + betaR[qi,3]*s2 + betaR[qi,4]*s3 + 
-				  	betaR[qi,5]*s4 + betaR[qi,6]*s5 + betaR[qi,7]*s6]
+			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcExp[sample(nrow(wcExp), nsamp ,replace =T, prob=wt),
+				  	betaR[[1]](q)*s1 + betaR[[2]](q)*s2 + betaR[[3]](q)*s3 + 
+				  	betaR[[4]](q)*s4 + betaR[[5]](q)*s5 + betaR[[6]](q)*s6] 
 		}else if(NS==4){
-			wc_cf[ (qi-1)*nsamp+1:qi*nsamp ] <- wcExp[sample(nrow(wcExp), nsamp ,replace =T, prob=wt), betaR[qi,1] + 
-				  	betaR[qi,2]*s1 + betaR[qi,3]*s2 + betaR[qi,4]*s3 + 
-				  	betaR[qi,5]*s4]
+			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcExp[sample(nrow(wcExp), nsamp ,replace =T, prob=wt), 
+				  	betaR[[1]](q)*s1 + betaR[[2]](q)*s2 + betaR[[3]](q)*s3 + betaR[[4]](q)*s4]
 		}
 		qi = qi+1
 	}
+	
+	return(list(betaptsE,betaptsR,wc_cf))
 }
 
 shift_share <- DHLdecomp(wagechangesfull,6,"recIndic","wagechange","balanceweight")
@@ -198,3 +204,4 @@ shift_share_EUE <- DHLdecomp(wagechangesfull,4,"recIndic","wagechange_EUE","bala
 pct_share_EUE <- shift_share_EUE[[3]]/shift_share_EUE[[1]]
 pct_shift_EUE <- shift_share_EUE[[2]]/matrix(shift_share_EUE[[1]],nrow=9,ncol=4 )
 
+MM_betaE_betaR_cf <- MMdecomp(wagechangesfull,6,"recIndic","wagechange","balanceweight")
