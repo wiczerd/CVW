@@ -2,6 +2,7 @@
 # Make occupation switching tables, calculate summary statistics
 library(data.table)
 library(zoo)
+library(xtable)
 library(Hmisc)
 library(reshape2)
 library(quantreg)
@@ -183,12 +184,12 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	wc_cf <- matrix(NA, nrow=nsamp*nrow(wcExp),ncol=1) #storing the counter-factual distribution
 	for(q in qtlgrid){
 		if(NS == 6){
-			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcExp[sample(nrow(wcExp), nsamp ,replace =T, prob=wt),
-				  	betaR[[1]](q)*s1 + betaR[[2]](q)*s2 + betaR[[3]](q)*s3 + 
-				  	betaR[[4]](q)*s4 + betaR[[5]](q)*s5 + betaR[[6]](q)*s6] 
+			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
+				  	betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + 
+				  	betaE[[4]](q)*s4 + betaE[[5]](q)*s5 + betaE[[6]](q)*s6] 
 		}else if(NS==4){
-			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcExp[sample(nrow(wcExp), nsamp ,replace =T, prob=wt), 
-				  	betaR[[1]](q)*s1 + betaR[[2]](q)*s2 + betaR[[3]](q)*s3 + betaR[[4]](q)*s4]
+			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
+					betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + betaE[[4]](q)*s4]
 		}
 		qi = qi+1
 	}
@@ -205,3 +206,22 @@ pct_share_EUE <- shift_share_EUE[[3]]/shift_share_EUE[[1]]
 pct_shift_EUE <- shift_share_EUE[[2]]/matrix(shift_share_EUE[[1]],nrow=9,ncol=4 )
 
 MM_betaE_betaR_cf <- MMdecomp(wagechangesfull,6,"recIndic","wagechange","balanceweight")
+
+
+#-- spit these out into tables
+
+# EE, EU, UE
+pct_share_shift <- data.table(cbind(seq(0.1,0.9,0.1),pct_share,pct_shift))
+names(pct_share_shift) <- c("Decile","Share","EE","UE","EU","EE","UE","EU")
+addswitched <-list(pos = list(-1),command="\\hline\\hline& & \\multicolumn{3}{c}{Switched Occ} & \\multicolumn{3}{c}{Not Switched Occ} \\\\ ")
+pct_share_shift <- xtable(pct_share_shift, label="tab:pct_share_shift", digits=2, 
+						  align="ll|l|lll|lll", caption="Shift-Share (DHL) decomposition, including unemployment")
+print(pct_share_shift,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="pct_share_shift.tex")
+
+# EE, EUE
+pct_share_shift <- data.table(cbind(seq(0.1,0.9,0.1),pct_share_EUE,pct_shift_EUE))
+names(pct_share_shift) <- c("Decile","Share","EE","EUE","EE","EUE")
+addswitched <-list(pos = list(-1),command="\\hline\\hline& & \\multicolumn{2}{c}{Switched Occ} & \\multicolumn{2}{c}{Not Switched Occ} \\\\ ")
+pct_share_shift <- xtable(pct_share_shift, label="tab:pct_share_shift", digits=2, 
+						  align="ll|l|ll|ll", caption="Shift-Share (DHL) decomposition, connecting across unemployment")
+print(pct_share_shift,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="pct_share_shift_EUE.tex")
