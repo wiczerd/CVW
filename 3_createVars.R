@@ -34,7 +34,10 @@ DTall[, EU := lfstat == 1 & shift(lfstat, 1, type = "lead") == 2 & switchedJob, 
 DTall[, UE := lfstat == 2 & shift(lfstat, 1, type = "lead") == 1 & switchedJob, by = id]
 
 # create unemployment duration variable
-# FILL IN LATER
+DTall$uid <- as.integer(factor(DTall$id))
+DTall[ lfstat==2 & shift(lfstat,1,type="lag" )==1 , unstint:= uid*10+shift(job,1,type="lag"), by=id]
+DTall[ lfstat==1 , unstint=0, by=id]
+DTall[ , unstint := na.locf(unstint, na.rm=F),by=id]
 
 # drop bad earnings data
 # Q: Why is this not in step 2?
