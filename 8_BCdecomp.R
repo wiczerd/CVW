@@ -214,10 +214,14 @@ distEUE_rec <- wtd.quantile(wcRec$wagechange_EUE,probs=seq(0.1,0.9,0.1),weights=
 distEUE_cf  <- quantile(MMEUE_betaE_betaR_cf$wc_cf,probs=seq(0.1,0.9,0.1), na.rm=T)
 distEUE_pct <- (distEUE_cf - distEUE_exp)/(distEUE_rec - distEUE_exp)
 
+dist_exp <- wtd.quantile(wcExp$wagechange,probs=seq(0.1,0.9,0.1),weights=wcExp$balanceweight, na.rm=T)
+dist_rec <- wtd.quantile(wcRec$wagechange,probs=seq(0.1,0.9,0.1),weights=wcRec$balanceweight, na.rm=T)
+dist_cf  <- quantile(MM_betaE_betaR_cf$wc_cf,probs=seq(0.1,0.9,0.1), na.rm=T)
+dist_pct <- (dist_cf - dist_exp)/(dist_rec - dist_exp)
 
 #-- spit these out into tables
 
-# EE, EU, UE
+#DHW: EE, EU, UE
 pct_share_shift <- data.table(cbind(seq(0.1,0.9,0.1),pct_share,pct_shift))
 names(pct_share_shift) <- c("Decile","Share","EE","UE","EU","EE","UE","EU")
 addswitched <-list(pos = list(-1),command="\\hline\\hline& & \\multicolumn{3}{c}{Switched Occ} & \\multicolumn{3}{c}{Not Switched Occ} \\\\ ")
@@ -225,10 +229,28 @@ pct_share_shift <- xtable(pct_share_shift, label="tab:pct_share_shift", digits=2
 						  align="ll|l|lll|lll", caption="Shift-Share (DHL) decomposition, including unemployment")
 print(pct_share_shift,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="pct_share_shift.tex")
 
-# EE, EUE
+#DHW: EE, EUE
 pct_share_shift <- data.table(cbind(seq(0.1,0.9,0.1),pct_share_EUE,pct_shift_EUE))
 names(pct_share_shift) <- c("Decile","Share","EE","EUE","EE","EUE")
 addswitched <-list(pos = list(-1),command="\\hline\\hline& & \\multicolumn{2}{c}{Switched Occ} & \\multicolumn{2}{c}{Not Switched Occ} \\\\ ")
 pct_share_shift <- xtable(pct_share_shift, label="tab:pct_share_shift", digits=2, 
 						  align="ll|l|ll|ll", caption="Shift-Share (DHL) decomposition, connecting across unemployment")
 print(pct_share_shift,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="pct_share_shift_EUE.tex")
+
+#MM : EE, EU, UE
+MM_tab <- data.table(cbind( seq(0.1,0.9,0.1),(dist_cf),dist_rec,dist_exp,dist_rec- dist_exp, (dist_pct)))
+names(MM_tab) <- c("Decile","CF~Rec","Rec","Exp","Rec-Exp","Pct~CF")
+MM_tab <- xtable(MM_tab, label="tab:MMEUE_tab", digits=2, 
+					align="ll|lll|l|l", caption="Machado-Mata, including unemployment")
+print(MM_tab,include.rownames=F, hline.after= c(0,nrow(MM_tab)), file="MM.tex")
+
+
+
+#MM : EE,EUE
+MMEUE_tab <- data.table(cbind( seq(0.1,0.9,0.1),(distEUE_cf),distEUE_rec,distEUE_exp,distEUE_rec- distEUE_exp, (distEUE_pct)))
+names(MMEUE_tab) <- c("Decile","CF~Rec","Rec","Exp","Rec-Exp","Pct~CF")
+MMEUE_tab <- xtable(MMEUE_tab, label="tab:MMEUE_tab", digits=2, 
+						  align="ll|lll|l|l", caption="Machado-Mata, connecting across unemployment")
+print(MMEUE_tab,include.rownames=F, hline.after= c(0,nrow(MMEUE_tab)), file="MMEUE.tex")
+
+
