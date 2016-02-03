@@ -127,7 +127,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	wcDF$wc  <- wcDF[[wcname]]
 	wcDF$wt  <- wcDF[[wtname]]
 	wcDF$rec <- wcDF[[recname]]
-	wcDF$s   <- 0
+	wcDF$s   <- NA_integer_
 	
 	# setup subgroup indices
 	if(NS ==6){
@@ -194,7 +194,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 		qi = qi+1
 	}
 	
-	return(list(betaptsE,betaptsR,wc_cf))
+	return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_cf = wc_cf))
 }
 
 shift_share <- DHLdecomp(wagechangesfull,6,"recIndic","wagechange","balanceweight")
@@ -206,6 +206,13 @@ pct_share_EUE <- shift_share_EUE[[3]]/shift_share_EUE[[1]]
 pct_shift_EUE <- shift_share_EUE[[2]]/matrix(shift_share_EUE[[1]],nrow=9,ncol=4 )
 
 MM_betaE_betaR_cf <- MMdecomp(wagechangesfull,6,"recIndic","wagechange","balanceweight")
+
+MMEUE_betaE_betaR_cf <- MMdecomp(wagechangesfull,4,"recIndic","wagechange_EUE","balanceweight")
+
+distEUE_exp <- wtd.quantile(wcExp$wagechange_EUE,probs=seq(0.1,0.9,0.1),weights=wcExp$balanceweight, na.rm=T)
+distEUE_rec <- wtd.quantile(wcRec$wagechange_EUE,probs=seq(0.1,0.9,0.1),weights=wcRec$balanceweight, na.rm=T)
+distEUE_cf  <- quantile(MMEUE_betaE_betaR_cf$wc_cf,probs=seq(0.1,0.9,0.1), na.rm=T)
+distEUE_pct <- (distEUE_cf - distEUE_exp)/(distEUE_rec - distEUE_exp)
 
 
 #-- spit these out into tables

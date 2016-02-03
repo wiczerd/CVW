@@ -51,12 +51,12 @@ UEprob <-UEpop/(1.-SNpop)
 ratio <- UEprob/EEprob
 
 # re-weight for total distribution
-UEweight <- wagechanges[UE & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
-EUweight <- wagechanges[EU & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
-EEweight <- wagechanges[EE & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
+UEweight.SIPP <- wagechanges[UE & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
+EUweight.SIPP <- wagechanges[EU & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
+EEweight.SIPP <- wagechanges[EE & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
 
 # force weights to match Fallick/Fleischman ratio
-multiplier <- ratio*EEweight/EUweight
+multiplier <- ratio*EEweight.SIPP/EUweight.SIPP
 wagechanges[, balanceweight := ifelse(EU | UE, perwt*multiplier*0.5, perwt)]
 
 # scale weights back to original total
