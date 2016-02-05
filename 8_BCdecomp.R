@@ -209,6 +209,9 @@ MM_betaE_betaR_cf <- MMdecomp(wagechangesfull,6,"recIndic","wagechange","balance
 
 MMEUE_betaE_betaR_cf <- MMdecomp(wagechangesfull,4,"recIndic","wagechange_EUE","balanceweight")
 
+
+wcExp <- subset(wagechangesfull,recIndic==F)
+wcRec <- subset(wagechangesfull,recIndic==T)
 distEUE_exp <- wtd.quantile(wcExp$wagechange_EUE,probs=seq(0.1,0.9,0.1),weights=wcExp$balanceweight, na.rm=T)
 distEUE_rec <- wtd.quantile(wcRec$wagechange_EUE,probs=seq(0.1,0.9,0.1),weights=wcRec$balanceweight, na.rm=T)
 distEUE_cf  <- quantile(MMEUE_betaE_betaR_cf$wc_cf,probs=seq(0.1,0.9,0.1), na.rm=T)
@@ -243,8 +246,9 @@ names(MM_tab) <- c("Decile","CF~Rec","Rec","Exp","Rec-Exp","Pct~CF")
 MM_tab <- xtable(MM_tab, label="tab:MMEUE_tab", digits=2, 
 					align="ll|lll|l|l", caption="Machado-Mata, including unemployment")
 print(MM_tab,include.rownames=F, hline.after= c(0,nrow(MM_tab)), file="MM.tex")
-
-
+ks.test(wcRec$wagechange,wcExp$wagechange,alternative = "greater")
+# plot the coefficients
+data.table(cbind( seq(0.1,0.9,0.1),(dist_cf),dist_rec,dist_exp,dist_rec- dist_exp, (dist_pct)))
 
 #MM : EE,EUE
 MMEUE_tab <- data.table(cbind( seq(0.1,0.9,0.1),(distEUE_cf),distEUE_rec,distEUE_exp,distEUE_rec- distEUE_exp, (distEUE_pct)))
@@ -253,4 +257,4 @@ MMEUE_tab <- xtable(MMEUE_tab, label="tab:MMEUE_tab", digits=2,
 						  align="ll|lll|l|l", caption="Machado-Mata, connecting across unemployment")
 print(MMEUE_tab,include.rownames=F, hline.after= c(0,nrow(MMEUE_tab)), file="MMEUE.tex")
 
-
+ks.test(wcRec$wagechange_EUE,wcExp$wagechange_EUE,alternative = "greater")

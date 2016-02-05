@@ -34,12 +34,8 @@ DTall[, EU := lfstat == 1 & shift(lfstat, 1, type = "lead") == 2 & switchedJob, 
 DTall[, UE := lfstat == 2 & shift(lfstat, 1, type = "lead") == 1 & switchedJob, by = id]
 
 # create unemployment duration variable
-DTall[ shift(EU,1,type="lag" )==1 , unstint:= shift(job,1,type="lag"), by=id] #stint id with job id before separation
-DTall[ lfstat==1 , unstint:= as.integer(0), by=id]
-DTall[ , unstint := na.locf(unstint, na.rm=F), by=id]
-DTall[ lfstat==2 | lfstat==3, someUE := max(UE), by="id,unstint"] #check the stint has an end (not just nonparticipation)
-#DTall[ (lfstat==2 | lfstat==3) & someUE != 1, unstint := NA]
-DTall[ lfstat==2 | lfstat==3, durunemp := length( unstint ), by="id,unstint"]
+DTall[, unempdur := seq_len(.N), by = list(id, stintid)]
+DTall[is.na(stintid), unempdur := NA]
 
 # drop bad earnings data
 # Q: Why is this not in step 2?

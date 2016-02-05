@@ -27,7 +27,7 @@ Mode <- function(x) {
 
 # 1996 panel --------------------------------------------------------------
 
-DT96 <- readRDS("./Data/DT96.RData")
+DT96 <- readRDS("./Data/DT96_1.RData")
 
 # restrict sample by age
 DT96 <- DT96[age >= 18 & age <= 65,]
@@ -41,16 +41,28 @@ DT96[esr == 6 | esr == 7, lfstat := 2]
 DT96[esr == 8, lfstat := 3]
 DT96[, esr := NULL]
 
-# fix occupation code to consistent with employment status, replace soc2d with occ
+# replace soc2d with occ and make sure DT is sorted
 DT96[, occ := soc2d]
 DT96[, soc2d := NULL]
 setkey(DT96, id, date)
-DT96[lfstat == 1 , occ := Mode(occ), by="id,job"]
-DT96[lfstat == 1 & is.na(occ), occ := 0]
+
+# replace occ with most common observed occ over employment spell
+DT96[lfstat == 1, occ := Mode(occ), by = list(id, job)]
+
+# fix occupation code to be consistent with employment status
 DT96[lfstat == 2 | lfstat == 3, occ := NA_integer_]
-DT96[, occ := na.locf(occ, na.rm = FALSE, fromLast = TRUE), by = id]
-DT96[occ== 0 , occ := NA_integer_]
-#DT96 <- DT96[!is.na(occ),]
+
+# create unemployment spell id
+DT96[, newstint := lfstat == 2 & shift(lfstat, 1, type = "lag") == 1, by = id]
+DT96[(newstint), stintid := cumsum(newstint), by = id]
+DT96[lfstat == 2 | lfstat == 3, stintid := na.locf(stintid, na.rm = FALSE), by = id]
+
+# fill in occupation with next occupation in unemployment stints
+DT96[, leadocc := shift(occ, 1, type = "lead"), by = id]
+DT96[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)] 
+DT96[, c("leadocc", "newstint") := NULL]
+
+DT96 <- DT96[!is.na(occ),]
 
 # fix job code to be consistent with employment status
 DT96[is.na(job), job := 0]
@@ -67,7 +79,7 @@ rm(DT96)
 
 # 2001 panel --------------------------------------------------------------
 
-DT01 <- readRDS("./Data/DT01.RData")
+DT01 <- readRDS("./Data/DT01_1.RData")
 
 # restrict sample by age
 DT01 <- DT01[age >= 18 & age <= 65,]
@@ -81,16 +93,28 @@ DT01[esr == 6 | esr == 7, lfstat := 2]
 DT01[esr == 8, lfstat := 3]
 DT01[, esr := NULL]
 
-# fix occupation code to consistent with employment status, replace soc2d with occ
+# replace soc2d with occ and make sure DT is sorted
 DT01[, occ := soc2d]
 DT01[, soc2d := NULL]
 setkey(DT01, id, date)
-DT01[lfstat == 1 , occ := Mode(occ), by="id,job"]
-DT01[lfstat == 1 & is.na(occ), occ := 0]
+
+# replace occ with most common observed occ over employment spell
+DT01[lfstat == 1, occ := Mode(occ), by = list(id, job)]
+
+# fix occupation code to be consistent with employment status
 DT01[lfstat == 2 | lfstat == 3, occ := NA_integer_]
-DT01[, occ := na.locf(occ, na.rm = FALSE, fromLast = TRUE), by = id]
-DT01[occ== 0 , occ := NA_integer_]
-#DT01 <- DT01[!is.na(occ),]
+
+# create unemployment spell id
+DT01[, newstint := lfstat == 2 & shift(lfstat, 1, type = "lag") == 1, by = id]
+DT01[(newstint), stintid := cumsum(newstint), by = id]
+DT01[lfstat == 2 | lfstat == 3, stintid := na.locf(stintid, na.rm = FALSE), by = id]
+
+# fill in occupation with next occupation in unemployment stints
+DT01[, leadocc := shift(occ, 1, type = "lead"), by = id]
+DT01[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
+DT01[, c("leadocc", "newstint") := NULL]
+
+DT01 <- DT01[!is.na(occ),]
 
 # fix job code to be consistent with employment status
 DT01[is.na(job), job := 0]
@@ -106,7 +130,7 @@ rm(DT01)
 
 # 2004 panel --------------------------------------------------------------
 
-DT04 <- readRDS("./Data/DT04.RData")
+DT04 <- readRDS("./Data/DT04_1.RData")
 
 # restrict sample by age
 DT04 <- DT04[age >= 18 & age <= 65,]
@@ -120,16 +144,28 @@ DT04[esr == 6 | esr == 7, lfstat := 2]
 DT04[esr == 8, lfstat := 3]
 DT04[, esr := NULL]
 
-# fix occupation code to consistent with employment status, replace soc2d with occ
+# replace soc2d with occ and make sure DT is sorted
 DT04[, occ := soc2d]
 DT04[, soc2d := NULL]
 setkey(DT04, id, date)
-DT04[lfstat == 1 , occ := Mode(occ), by="id,job"]
-DT04[lfstat == 1 & is.na(occ), occ := 0]
+
+# replace occ with most common observed occ over employment spell
+DT04[lfstat == 1, occ := Mode(occ), by = list(id, job)]
+
+# fix occupation code to be consistent with employment status
 DT04[lfstat == 2 | lfstat == 3, occ := NA_integer_]
-DT04[, occ := na.locf(occ, na.rm = FALSE, fromLast = TRUE), by = id]
-DT04[occ== 0 , occ := NA_integer_]
-#DT04 <- DT04[!is.na(occ),]
+
+# create unemployment spell id
+DT04[, newstint := lfstat == 2 & shift(lfstat, 1, type = "lag") == 1, by = id]
+DT04[(newstint), stintid := cumsum(newstint), by = id]
+DT04[lfstat == 2 | lfstat == 3, stintid := na.locf(stintid, na.rm = FALSE), by = id]
+
+# fill in occupation with next occupation in unemployment stints
+DT04[, leadocc := shift(occ, 1, type = "lead"), by = id]
+DT04[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
+DT04[, c("leadocc", "newstint") := NULL]
+
+DT04 <- DT04[!is.na(occ),]
 
 # fix job code to be consistent with employment status
 DT04[is.na(job), job := 0]
@@ -147,7 +183,7 @@ rm(DT04)
 
 # 2008 panel --------------------------------------------------------------
 
-DT08 <- readRDS("./Data/DT08.RData")
+DT08 <- readRDS("./Data/DT08_1.RData")
 
 # restrict sample by age
 DT08 <- DT08[age >= 18 & age <= 65,]
@@ -161,16 +197,28 @@ DT08[esr == 6 | esr == 7, lfstat := 2]
 DT08[esr == 8, lfstat := 3]
 DT08[, esr := NULL]
 
-# fix occupation code to consistent with employment status, replace soc2d with occ
+# replace soc2d with occ and make sure DT is sorted
 DT08[, occ := soc2d]
 DT08[, soc2d := NULL]
 setkey(DT08, id, date)
-DT08[lfstat == 1 , occ := Mode(occ), by="id,job"]
-DT08[lfstat == 1 & is.na(occ), occ := 0]
+
+# replace occ with most common observed occ over employment spell
+DT08[lfstat == 1, occ := Mode(occ), by = list(id, job)]
+
+# fix occupation code to be consistent with employment status
 DT08[lfstat == 2 | lfstat == 3, occ := NA_integer_]
-DT08[, occ := na.locf(occ, na.rm = FALSE, fromLast = TRUE), by = id]
-DT08[occ== 0 , occ := NA_integer_]
-#DT08 <- DT08[!is.na(occ),]
+
+# create unemployment spell id
+DT08[, newstint := lfstat == 2 & shift(lfstat, 1, type = "lag") == 1, by = id]
+DT08[(newstint), stintid := cumsum(newstint), by = id]
+DT08[lfstat == 2 | lfstat == 3, stintid := na.locf(stintid, na.rm = FALSE), by = id]
+
+# fill in occupation with next occupation in unemployment stints
+DT08[, leadocc := shift(occ, 1, type = "lead"), by = id]
+DT08[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
+DT08[, c("leadocc", "newstint") := NULL]
+
+DT08 <- DT08[!is.na(occ),]
 
 # fix job code to be consistent with employment status
 DT08[is.na(job), job := 0]

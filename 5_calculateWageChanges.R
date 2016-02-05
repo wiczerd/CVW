@@ -18,24 +18,23 @@ DTall <- readRDS("./Data/DTall_4.RData")
 setkey(DTall, id, date)
 
 # fill wages upwards to fill in missing observations
-DTall[, EmpTmrw := EE | UE]
-DTall[(EmpTmrw), nextwage := shift(usewage, 1, type = "lead"), by = id]
-DTall[(EmpTmrw) & is.na(nextwage), nextwage := -9e16, by = id]
+DTall[, EmpTmrw := EE | UE, by = id]
+DTall[EmpTmrw == T, nextwage := shift(usewage, 1, type = "lead"), by = id]
+DTall[EmpTmrw == T & is.na(nextwage), nextwage := -9e16, by = id]
 DTall[, nextwage := na.locf(nextwage, na.rm = FALSE, fromLast = TRUE), by = id]
-DTall[nextwage <=-8e16, nextwage:=NA_real_]
-DTall[(EmpTmrw), nextoccwage := shift(occwage, 1, type = "lead"), by = id]
-DTall[(EmpTmrw) & is.na(nextoccwage), nextoccwage := -9e16, by = id]
+DTall[EmpTmrw == T, nextoccwage := shift(occwage, 1, type = "lead"), by = id]
+DTall[EmpTmrw == T & is.na(nextoccwage), nextoccwage := -9e16, by = id]
 DTall[, nextoccwage := na.locf(nextoccwage, na.rm = FALSE, fromLast = TRUE), by = id]
+DTall[nextwage <=-8e16, nextwage:=NA_real_]
 DTall[nextoccwage <=-8e16, nextoccwage:=NA_real_]
-
 
 DTall[, tuw := shift(usewage, 1, type = "lag"), by = id]
 DTall[!is.finite(tuw) & is.finite(usewage) & lfstat == 1, tuw := usewage]
 
 # create wagechange variable
-DTall[(EE), wagechange := nextwage - tuw]
-DTall[(EU), wagechange := log(1.0) - tuw]
-DTall[(UE), wagechange := nextwage - log(1.0)]
+DTall[EE == T, wagechange := nextwage - tuw]
+DTall[EU == T, wagechange := log(1.0) - tuw]
+DTall[UE == T, wagechange := nextwage - log(1.0)]
 
 # create wagechange_stayer variable
 DTall[job == shift(job, 1, type = "lead") & job == shift(job, 1, type = "lag"),
