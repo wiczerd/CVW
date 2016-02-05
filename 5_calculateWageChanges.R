@@ -11,7 +11,10 @@ library(stats)
 wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
 setwd(wd0)
-
+Mode <- function(x) {
+	ux <- unique(x[!is.na(x)])
+	ux[which.max(tabulate(match(x, ux)))]
+}
 
 DTall <- readRDS("./Data/DTall_4.RData")
 
@@ -20,13 +23,14 @@ setkey(DTall, id, date)
 # fill wages upwards to fill in missing observations
 DTall[, EmpTmrw := EE | UE, by = id]
 DTall[EmpTmrw == T, nextwage := shift(usewage, 1, type = "lead"), by = id]
-DTall[EmpTmrw == T & is.na(nextwage), nextwage := -9e16, by = id]
-DTall[, nextwage := na.locf(nextwage, na.rm = FALSE, fromLast = TRUE), by = id]
+DTall[EmpTmrw == F & lfstat==2 | lfstat==3, nextwage := NA_real_, by = id]
+DTall[lfstat==2 | lfstat==3, nextwage := Mode(nextwage), by = list(id,stintid)] #replace if it's UE
+DTall[lfstat==1, nextwage := Mode(nextwage), by = list(id,job)] #replace if it's EE
 DTall[EmpTmrw == T, nextoccwage := shift(occwage, 1, type = "lead"), by = id]
-DTall[EmpTmrw == T & is.na(nextoccwage), nextoccwage := -9e16, by = id]
-DTall[, nextoccwage := na.locf(nextoccwage, na.rm = FALSE, fromLast = TRUE), by = id]
-DTall[nextwage <=-8e16, nextwage:=NA_real_]
-DTall[nextoccwage <=-8e16, nextoccwage:=NA_real_]
+DTall[EmpTmrw == F & lfstat==2 | lfstat==3, nextoccwage := NA_real_, by = id]
+DTall[lfstat==2 | lfstat==3, nextoccwage := Mode(nextoccwage), by = list(id,stintid)] #replace if it's UE
+DTall[lfstat==1, nextoccwage := Mode(nextoccwage), by = list(id,job)] #replace if it's EE
+
 
 DTall[, tuw := shift(usewage, 1, type = "lag"), by = id]
 DTall[!is.finite(tuw) & is.finite(usewage) & lfstat == 1, tuw := usewage]
