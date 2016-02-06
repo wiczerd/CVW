@@ -23,10 +23,12 @@ setkey(DTall, id, date)
 # fill wages upwards to fill in missing observations
 DTall[, EmpTmrw := EE | UE, by = id]
 DTall[EmpTmrw == T, nextwage := shift(usewage, 1, type = "lead"), by = id]
+DTall[EmpTmrw == T & is.na(nextwage), nextwage := shift(usewage, 2, type = "lead"), by = id]
 DTall[EmpTmrw == F & lfstat==2 | lfstat==3, nextwage := NA_real_, by = id]
 DTall[lfstat==2 | lfstat==3, nextwage := Mode(nextwage), by = list(id,stintid)] #replace if it's UE
 DTall[lfstat==1, nextwage := Mode(nextwage), by = list(id,job)] #replace if it's EE
 DTall[EmpTmrw == T, nextoccwage := shift(occwage, 1, type = "lead"), by = id]
+DTall[EmpTmrw == T & is.na(nextoccwage), nextoccwage := shift(occwage, 2, type = "lead"), by = id]
 DTall[EmpTmrw == F & lfstat==2 | lfstat==3, nextoccwage := NA_real_, by = id]
 DTall[lfstat==2 | lfstat==3, nextoccwage := Mode(nextoccwage), by = list(id,stintid)] #replace if it's UE
 DTall[lfstat==1, nextoccwage := Mode(nextoccwage), by = list(id,job)] #replace if it's EE
