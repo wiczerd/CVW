@@ -15,27 +15,35 @@ wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
 setwd(wd0)
 
+
 DTall <- readRDS("./Data/DTall_2.RData")
 
 setkey(DTall, id, date)
 
 # create switchedJob dummy
-DTall[, switchedJob := (job != shift(job, 1, type = "lead")) &
-     	(shift(job, 1, type = "lag") != shift(job, 1, type = "lead")), by = id]
+#DTall[, switchedJob := (job != shift(job, 1, type = "lead")) &
+#    	(shift(job, 1, type = "lag") != shift(job, 1, type = "lead")), by = id]
+DTall[, switchedJob := job != shift(job, 1, type = "lead") , by = id]
 
 # create switchedOcc dummy
 DTall[, switchedOcc := (occ != shift(occ, 1, type = "lead")) &
      	(shift(occ, 1, type = "lag") != shift(occ, 1, type = "lead")) &
+	  	(occ != shift(occ, 2, type = "lead")) &
      	switchedJob, by = id]
-
-# create EE, EU, and UE dummies
-DTall[, EE := lfstat == 1 & shift(lfstat, 1, type = "lead") == 1 & switchedJob, by = id]
-DTall[, EU := lfstat == 1 & shift(lfstat, 1, type = "lead") == 2 & switchedJob, by = id]
-DTall[, UE := lfstat == 2 & shift(lfstat, 1, type = "lead") == 1 & switchedJob, by = id]
+# create a switchedState dummy
+DTall[, switchedAddress := (shhadid != shift(shhadid, 1, type = "lead")) &
+	  	(shift(shhadid, 1, type = "lag") != shift(shhadid, 1, type = "lead")) &
+	  	(shhadid != shift(shhadid, 2, type = "lead")) &
+	  	switchedJob, by = id]
 
 # create unemployment duration variable
 DTall[, unempdur := seq_len(.N), by = list(id, stintid)]
 DTall[is.na(stintid), unempdur := NA]
+
+# create EE, EU, and UE dummies
+DTall[, EE := lfstat == 1 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T, by = id]
+DTall[, EU := lfstat == 1 & shift(lfstat, 1, type = "lead") == 2 & switchedJob==T, by = id]
+DTall[, UE := lfstat == 2 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T, by = id]
 
 # drop bad earnings data
 # Q: Why is this not in step 2?
@@ -51,6 +59,23 @@ DTall[, c("badearn", "nomearnm") := NULL]
 # create Young and HScol variables
 DTall[, Young := age < 30]
 DTall[, HSCol := (educ >= 4) + (educ >= 2)]
+
+#some diagnostics
+sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
+sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
+sum(DTall$wpfinwgt[DTall$UE], na.rm=T)
+
+sum(DTall$wpfinwgt[DTall$EE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
+sum(DTall$wpfinwgt[DTall$EU], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
+sum(DTall$wpfinwgt[DTall$UE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==2], na.rm=T)
+
+
+sum(DTall$wpfinwgt[DTall$EE & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
+sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
+
+
+
+
 
 saveRDS(DTall, "./Data/DTall_3.RData")
 rm(list=ls())

@@ -16,21 +16,24 @@ setwd(wd0)
 
 # specify which variables to keep from CEPR sets A, B, and D
 keepVars <- c("age", 
-	      "educ", 
-	      "female", 
-	      "id",
-	      "race", 
-	      "month", 
-	      "wpfinwgt", 
-	      "year", 
-	      "earnm",
-	      "occ", 
-	      "job", 
-	      "esr",
-	      #"occ14", 
-	      #"ind23", 
-	      #"srefmon", 
-	      "wave")
+			  "educ", 
+			  "female", 
+			  "id",
+			  "race", 
+			  "month",
+			  "srefmon",
+			  "wpfinwgt", 
+			  "year", 
+			  "earnm",
+			  "occ", 
+			  "job", 
+			  "esr",
+			  "union",
+			  "shhadid",
+			  #"occ14", 
+			  #"ind23", 
+			  #"state", 
+			  "wave")
 
 # create vector of recession dates
 recDates <- as.Date(c("2001-02-01", "2001-12-01","2007-11-01", "2009-07-01"))

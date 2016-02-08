@@ -24,6 +24,26 @@ Mode <- function(x) {
 	ux <- unique(x[!is.na(x)])
 	ux[which.max(tabulate(match(x, ux)))]
 }
+esrRecode <- function(DF){
+	# recode esr into lfstat
+	DF[esr == 1 | esr == 2 | esr == 4, lfstat := as.integer(1)] #altenrative esr>=1 & esr<=5
+	DF[esr == 3 | esr == 5 | esr == 6 | esr == 7, lfstat := as.integer(2)] #alternative: esr>=6 & esr<=7
+	#DF[esr >= 1 & esr <= 5, lfstat := as.integer(1)] #altenrative esr>=1 & esr<=5
+	#DF[esr == 6 | esr == 7, lfstat := as.integer(2)] #alternative: esr>=6 & esr<=7
+	DF[esr == 8, lfstat := as.integer(3)]
+}
+estint <- function(DF){
+	#sometimes job is not a unique identifier, i.e. if there's been a long nonemployment stint
+	DF[lfstat == 1, newemp := id != shift(id)]
+	DF[is.na(newemp), newemp := F ]
+	DF[, newemp := (lfstat == 1 & (shift(lfstat,1,type="lag") >=2)) | newemp ==T, by = id]
+	DF[lfstat == 1, newemp := ((shift(job,1,type="lead") != job) | newemp==T) , by = id]
+	DF[lfstat == 1 & is.na(newemp), newemp:= F ]
+	DF[newemp==T, estintid := cumsum(newemp), by = id]
+	DF[lfstat == 1, estintid := na.locf(estintid, na.rm = FALSE), by = id]
+	DF[, newemp := NULL]
+}
+
 
 # 1996 panel --------------------------------------------------------------
 
@@ -36,18 +56,18 @@ DT96 <- DT96[age >= 18 & age <= 65,]
 DT96 <- DT96[!is.na(esr),]
 
 # recode esr into lfstat
-DT96[esr >= 1 & esr <= 5, lfstat := 1]
-DT96[esr == 6 | esr == 7, lfstat := 2]
-DT96[esr == 8, lfstat := 3]
-DT96[, esr := NULL]
+esrRecode(DT96)
 
 # replace soc2d with occ and make sure DT is sorted
 DT96[, occ := soc2d]
 DT96[, soc2d := NULL]
 setkey(DT96, id, date)
 
+#sometimes job is not a unique identifier, i.e. if there's been a long nonemployment stint
+estint(DT96)
+
 # replace occ with most common observed occ over employment spell
-DT96[lfstat == 1, occ := Mode(occ), by = list(id, job)]
+DT96[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 
 # fix occupation code to be consistent with employment status
 DT96[lfstat == 2 | lfstat == 3, occ := NA_integer_]
@@ -59,7 +79,9 @@ DT96[lfstat == 2 | lfstat == 3, stintid := na.locf(stintid, na.rm = FALSE), by =
 
 # fill in occupation with next occupation in unemployment stints
 DT96[, leadocc := shift(occ, 1, type = "lead"), by = id]
-DT96[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)] 
+DT96[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
+DT96[, lagocc := shift(occ), by = id]
+DT96[lfstat==2|lfstat==3, lagocc := Mode(lagocc), by = list(id, stintid)] 
 DT96[, c("leadocc", "newstint") := NULL]
 
 DT96 <- DT96[!is.na(occ),]
@@ -67,12 +89,6 @@ DT96 <- DT96[!is.na(occ),]
 # fix job code to be consistent with employment status
 DT96[is.na(job), job := 0]
 DT96[lfstat == 2 | lfstat == 3, job := 0]
-
-#clean out call-backs, where job-id is the same, replace them with NA lfstat
-DT96[lfstat==1, jobcheck:= job, by = id]
-DT96[ , jobcheck := na.locf( jobcheck, na.rm=F), by = id]
-#DT96[ lfstat!= 1 & jobcheck== shift(jobcheck,1,type="lead"), lfstat := NA_real_ , by = id]
-
 
 saveRDS(DT96, "./Data/DT96_2.RData")
 rm(DT96)
@@ -88,18 +104,18 @@ DT01 <- DT01[age >= 18 & age <= 65,]
 DT01 <- DT01[!is.na(esr),]
 
 # recode esr into lfstat
-DT01[esr >= 1 & esr <= 5, lfstat := 1]
-DT01[esr == 6 | esr == 7, lfstat := 2]
-DT01[esr == 8, lfstat := 3]
-DT01[, esr := NULL]
+esrRecode(DT01)
 
 # replace soc2d with occ and make sure DT is sorted
 DT01[, occ := soc2d]
 DT01[, soc2d := NULL]
 setkey(DT01, id, date)
 
+#sometimes job is not a unique identifier, i.e. if there's been a long nonemployment stint
+estint(DT01)
+
 # replace occ with most common observed occ over employment spell
-DT01[lfstat == 1, occ := Mode(occ), by = list(id, job)]
+DT01[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 
 # fix occupation code to be consistent with employment status
 DT01[lfstat == 2 | lfstat == 3, occ := NA_integer_]
@@ -112,6 +128,8 @@ DT01[lfstat == 2 | lfstat == 3, stintid := na.locf(stintid, na.rm = FALSE), by =
 # fill in occupation with next occupation in unemployment stints
 DT01[, leadocc := shift(occ, 1, type = "lead"), by = id]
 DT01[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
+DT01[, lagocc := shift(occ), by = id]
+DT01[lfstat==2|lfstat==3, lagocc := Mode(lagocc), by = list(id, stintid)] 
 DT01[, c("leadocc", "newstint") := NULL]
 
 DT01 <- DT01[!is.na(occ),]
@@ -120,10 +138,6 @@ DT01 <- DT01[!is.na(occ),]
 DT01[is.na(job), job := 0]
 DT01[lfstat == 2 | lfstat == 3, job := 0]
 
-#clean out call-backs, where job-id is the same, replace them with NA lfstat
-DT01[lfstat==1, jobcheck:= job, by = id]
-DT01[ , jobcheck := na.locf( jobcheck, na.rm=F), by = id]
-#DT01[ lfstat!= 1 & jobcheck== shift(jobcheck,1,type="lead"), lfstat := NA_real_ , by = id]
 
 saveRDS(DT01, "./Data/DT01_2.RData")
 rm(DT01)
@@ -139,18 +153,18 @@ DT04 <- DT04[age >= 18 & age <= 65,]
 DT04 <- DT04[!is.na(esr),]
 
 # recode esr into lfstat
-DT04[esr >= 1 & esr <= 5, lfstat := 1]
-DT04[esr == 6 | esr == 7, lfstat := 2]
-DT04[esr == 8, lfstat := 3]
-DT04[, esr := NULL]
+esrRecode(DT04)
 
 # replace soc2d with occ and make sure DT is sorted
 DT04[, occ := soc2d]
 DT04[, soc2d := NULL]
 setkey(DT04, id, date)
 
+#sometimes job is not a unique identifier, i.e. if there's been a long nonemployment stint
+estint(DT04)
+
 # replace occ with most common observed occ over employment spell
-DT04[lfstat == 1, occ := Mode(occ), by = list(id, job)]
+DT04[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 
 # fix occupation code to be consistent with employment status
 DT04[lfstat == 2 | lfstat == 3, occ := NA_integer_]
@@ -163,6 +177,8 @@ DT04[lfstat == 2 | lfstat == 3, stintid := na.locf(stintid, na.rm = FALSE), by =
 # fill in occupation with next occupation in unemployment stints
 DT04[, leadocc := shift(occ, 1, type = "lead"), by = id]
 DT04[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
+DT04[, lagocc := shift(occ), by = id]
+DT04[lfstat==2|lfstat==3, lagocc := Mode(lagocc), by = list(id, stintid)] 
 DT04[, c("leadocc", "newstint") := NULL]
 
 DT04 <- DT04[!is.na(occ),]
@@ -170,13 +186,6 @@ DT04 <- DT04[!is.na(occ),]
 # fix job code to be consistent with employment status
 DT04[is.na(job), job := 0]
 DT04[lfstat == 2 | lfstat == 3, job := 0]
-
-
-#clean out call-backs, where job-id is the same, replace them with NA lfstat
-DT04[lfstat==1, jobcheck:= job, by = id]
-DT04[ , jobcheck := na.locf( jobcheck, na.rm=F), by = id]
-#DT04[ lfstat!= 1 & jobcheck== shift(jobcheck,1,type="lead"), lfstat := NA_real_ , by = id]
-
 
 saveRDS(DT04, "./Data/DT04_2.RData")
 rm(DT04)
@@ -192,18 +201,18 @@ DT08 <- DT08[age >= 18 & age <= 65,]
 DT08 <- DT08[!is.na(esr),]
 
 # recode esr into lfstat
-DT08[esr >= 1 & esr <= 5, lfstat := 1]
-DT08[esr == 6 | esr == 7, lfstat := 2]
-DT08[esr == 8, lfstat := 3]
-DT08[, esr := NULL]
+esrRecode(DT08)
 
 # replace soc2d with occ and make sure DT is sorted
 DT08[, occ := soc2d]
 DT08[, soc2d := NULL]
 setkey(DT08, id, date)
 
+#sometimes job is not a unique identifier, i.e. if there's been a long nonemployment stint
+estint(DT08)
+
 # replace occ with most common observed occ over employment spell
-DT08[lfstat == 1, occ := Mode(occ), by = list(id, job)]
+DT08[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 
 # fix occupation code to be consistent with employment status
 DT08[lfstat == 2 | lfstat == 3, occ := NA_integer_]
@@ -216,7 +225,10 @@ DT08[lfstat == 2 | lfstat == 3, stintid := na.locf(stintid, na.rm = FALSE), by =
 # fill in occupation with next occupation in unemployment stints
 DT08[, leadocc := shift(occ, 1, type = "lead"), by = id]
 DT08[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
+DT08[, lagocc := shift(occ), by = id]
+DT08[lfstat==2|lfstat==3, lagocc := Mode(lagocc), by = list(id, stintid)] 
 DT08[, c("leadocc", "newstint") := NULL]
+
 
 DT08 <- DT08[!is.na(occ),]
 
@@ -224,10 +236,6 @@ DT08 <- DT08[!is.na(occ),]
 DT08[is.na(job), job := 0]
 DT08[lfstat == 2 | lfstat == 3, job := 0]
 
-#clean out call-backs, where job-id is the same, replace them with NA lfstat
-DT08[lfstat==1, jobcheck:= job, by = id]
-DT08[ , jobcheck := na.locf( jobcheck, na.rm=F), by = id]
-#DT08[ lfstat!= 1 & jobcheck== shift(jobcheck,1,type="lead"), lfstat := NA_real_ , by = id]
 
 saveRDS(DT08, "./Data/DT08_2.RData")
 rm(DT08)
