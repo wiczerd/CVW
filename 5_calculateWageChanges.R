@@ -20,7 +20,7 @@ DTall <- readRDS("./Data/DTall_4.RData")
 
 setkey(DTall, id, date)
 
-# fill wages upwards to fill in missing observations
+# fill wages upwards to fill in unemployment spells
 DTall[, EmpTmrw := EE | UE, by = id]
 DTall[EmpTmrw == T, nextwage := shift(usewage, 1, type = "lead"), by = id]
 DTall[EmpTmrw == T & is.na(nextwage), nextwage := shift(usewage, 2, type = "lead"), by = id]
@@ -49,8 +49,11 @@ DTall[job == 0 & shift(job, 1, type = "lead") == 0,
       wagechange_stayer := 0.0, by = id]
 
 # create wagechange_EUE variable
-DTall[EU | EE, wagechange_EUE := nextwage - tuw]
-DTall[!(EU | EE | UE), wagechange_EUE := wagechange_stayer]
+DTall[EU==T | EE==T, wagechange_EUE := nextwage - tuw]
+DTall[ EU==T|lfstat==2, wagechange_EUE:=ifelse(lfstat==2,
+							shift(wagechange_EUE,1,type="lag"),wagechange_EUE),by=id]
+DTall[lfstat==2, wagechange_EUE := Mode(wagechange_EUE), by=list(id,stintid)]
+DTall[!(EU==T | EE==T | UE==T), wagechange_EUE := wagechange_stayer]
 
 # create wagechange_all variable
 # if ifelse() condition is NA, end result is NA.
