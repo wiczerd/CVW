@@ -37,7 +37,7 @@ estint <- function(DF){
 	DF[lfstat == 1, newemp := id != shift(id)]
 	DF[is.na(newemp), newemp := F ]
 	DF[, newemp := (lfstat == 1 & (shift(lfstat,1,type="lag") >=2)) | newemp ==T, by = id]
-	DF[lfstat == 1, newemp := ((shift(job,1,type="lead") != job) | newemp==T) , by = id]
+	DF[lfstat == 1, newemp := ((shift(job,1,type="lag") != job) | newemp==T) , by = id]
 	DF[lfstat == 1 & is.na(newemp), newemp:= F ]
 	DF[newemp==T, estintid := cumsum(newemp), by = id]
 	DF[lfstat == 1, estintid := na.locf(estintid, na.rm = FALSE), by = id]

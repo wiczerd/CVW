@@ -32,20 +32,23 @@ recallRecodeShorTerm <- function(DF){
 	DF[ , recalled:= ifelse( ENEwseam & unempdur==2 & 
 					((shift(job,1,type="lead") == shift(job,2,type="lag"))| (shift(job,2,type="lead") == shift(job,1,type="lag")))
 					, 1,recalled ),  by= id]
+	DF[lfstat>=2 | EU, recalled := max(recalled,na.rm=T), by=list(id,stintid)]
 	DF[ , EU:= ifelse( shift(recalled,1,type="lead") > 0.75,F,EU), by=id]
-	#DF[ , EU:= ifelse( shift(recalled,1,type="lead") > 0.25 & shift(recalled,1,type="lead")<=0.75,NA,EU), by=id]
 	DF[ , UE:= ifelse( recalled > 0.75,F,UE), by=id]
-	#DF[ , UE:= ifelse( recalled > 0.25 & recalled<=0.75,NA,UE), by=id]
 }
 
 DTall <- readRDS("./Data/DTall_5.RData")
 
 # sum weights for UE, EU, and EE
-UEreadweight <- wagechanges[UE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
-EUreadweight <- wagechanges[EU & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
-EEreadweight <- wagechanges[EE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+UEreadweight <- DTall[UE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+EUreadweight <- DTall[EU & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+EEreadweight <- DTall[EE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 
 recallRecodeShorTerm(DTall)
+
+UEnorecallweight <- DTall[UE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+EUnorecallweight <- DTall[EU & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+EEnorecallweight <- DTall[EE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 
 # create data set with defined wage changes only
 wagechanges <- DTall[!is.infinite(wagechange) & !is.na(wagechange),]

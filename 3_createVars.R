@@ -44,6 +44,10 @@ DTall[is.na(stintid), unempdur := NA]
 DTall[, EE := lfstat == 1 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T, by = id]
 DTall[, EU := lfstat == 1 & shift(lfstat, 1, type = "lead") == 2 & switchedJob==T, by = id]
 DTall[, UE := lfstat == 2 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T, by = id]
+# take stint ID into EU:
+DTall[, fstintid:= shift(stintid, 1, type = "lead"), by = id]
+DTall[EU==T, stintid := fstintid, by=id]
+DTall[, fstintid := NULL]
 
 # drop bad earnings data
 # Q: Why is this not in step 2?
@@ -69,12 +73,8 @@ sum(DTall$wpfinwgt[DTall$EE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.
 sum(DTall$wpfinwgt[DTall$EU], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
 sum(DTall$wpfinwgt[DTall$UE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==2], na.rm=T)
 
-
 sum(DTall$wpfinwgt[DTall$EE & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
-
-
-
 
 
 saveRDS(DTall, "./Data/DTall_3.RData")
