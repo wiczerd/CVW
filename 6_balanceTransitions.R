@@ -12,27 +12,30 @@ setwd(wd0)
 
 recallRecodeShorTerm <- function(DF){
 	# will convert all recall stints as lfstat == NA_integer_
-	DF[ , ENEnoseam := lfstat >=2 & ( shift(lfstat,1,type="lead")==1 & shift(lfstat,1,type="lag")==1
+	DF[ , ENEnoseam := lfstat ==2 & ( shift(lfstat,1,type="lead")==1 & shift(lfstat,1,type="lag")==1
 	   |  (sum(lfstat ==1, na.rm=T)==2 & (shift(lfstat,1,type="lead")==2 |shift(lfstat)==2)) )
-	   ,by=list(id,wave)]
-	DF[ , recalled := as.numeric(ifelse( ENEnoseam==T & ( shift(job)==shift(job,1,type="lead")  | ( unempdur>1 & length(unique(job))<=2 ))
-							  , 1.,0. )),  by= list(id,wave) ]
+	   , by=list(id,wave)]
+	DF[ is.na(ENEnoseam)==T, ENEnoseam:=F ]
+	DF[ , recalled := as.numeric( ENEnoseam==T & ( (shift(job)==shift(job,1,type="lead") & maxunempdur==1)    
+												   | ( maxunempdur>1 & length(unique(job))==2 )) ),  by = list( id,wave ) ]
 	#impute recalls if there is a seam
-	DF[ , ENEwseam := ( unempdur<=2 & lfstat ==2 ) &
+	DF[ , ENEwseam := ( maxunempdur<=2 & lfstat ==2 ) &
 	   	(wave != shift(wave) | wave != shift(wave,1,type="lead")) ,by=id]
+	DF[is.na(ENEwseam), ENEwseam:=F]
 	predrecall <- glm( recalled ~ wagechange_EUE + I(wagechange_EUE^2) + recIndic + factor(esr) + union + 
 					   	factor(HSCol) + factor(Young)  + I(wagechange_EUE>-.5) + I(wagechange_EUE<.5 & wagechange_EUE>-.5)
 					   + switchedOcc + switchedAddress, 
 					   na.action = na.exclude, data= subset(DF,ENEnoseam),family=binomial(link="probit"))
 	DF[ (ENEwseam | ENEnoseam), 
-		fitted_recall := predict(predrecall, type= "response", newdata=subset(DF,(ENEwseam | ENEnoseam) ))]
-	DF[ ENEwseam==T, recalled:= fitted_recall ]
+		fitted_recall := predict(predrecall, type= "response", newdata=subset(DF,(ENEwseam==T | ENEnoseam==T) ))]
+	DF[ ENEwseam==T & !is.na(fitted_recall), recalled:= fitted_recall ]
 	DF[ , recalled:= ifelse( ENEwseam & (shift(job,1,type="lead") == shift(job,1,type="lag"))
 							 , 1,recalled ),  by= id]
-	DF[ , recalled:= ifelse( ENEwseam & unempdur==2 & 
+	DF[ , recalled:= ifelse( ENEwseam & maxunempdur==2 & 
 					((shift(job,1,type="lead") == shift(job,2,type="lag")) | (shift(job,2,type="lead") == shift(job,1,type="lag")))
 					, 1,recalled ),  by= id]
-	DF[lfstat>=2 | EU, recalled := max(recalled,na.rm=T), by=list(id,stintid)]
+	DF[is.na(recalled), recalled := 0.]
+	DF[(lfstat>=2 | EU) & !is.na(stintid), recalled := max(recalled,na.rm=T), by=list(id,stintid)]
 	DF[ , EU:= ifelse( recalled > 0.75,F,EU), by=id]
 	DF[ , UE:= ifelse( recalled > 0.75,F,UE), by=id]
 }
@@ -44,6 +47,7 @@ UEreadweight <- DTall[UE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 EUreadweight <- DTall[EU & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 EEreadweight <- DTall[EE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 
+DTall[lfstat==2, recalled:= 0 ]
 recallRecodeShorTerm(DTall)
 
 UEnorecallweight <- DTall[UE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
