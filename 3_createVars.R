@@ -36,10 +36,6 @@ DTall[, switchedAddress := (shhadid != shift(shhadid, 1, type = "lead")) &
 	  	(shhadid != shift(shhadid, 2, type = "lead")) &
 	  	switchedJob, by = id]
 
-# create unemployment duration variable
-DTall[, unempdur := seq_len(.N), by = list(id, stintid)]
-DTall[is.na(stintid), unempdur := NA]
-
 # create EE, EU, and UE dummies
 DTall[, EE := lfstat == 1 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T, by = id]
 DTall[, EU := lfstat == 1 & shift(lfstat, 1, type = "lead") == 2 & switchedJob==T, by = id]
@@ -48,6 +44,11 @@ DTall[, UE := lfstat == 2 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==
 DTall[, fstintid:= shift(stintid, 1, type = "lead"), by = id]
 DTall[EU==T, stintid := fstintid, by=id]
 DTall[, fstintid := NULL]
+
+
+# create unemployment duration variable
+DTall[, unempdur := seq_len(.N)-1, by = list(id, stintid)]
+DTall[is.na(stintid), unempdur := NA]
 
 # drop bad earnings data
 # Q: Why is this not in step 2?
@@ -75,7 +76,7 @@ sum(DTall$wpfinwgt[DTall$UE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==2], na.
 
 sum(DTall$wpfinwgt[DTall$EE & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
-
+sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)],na.rm=T)/sum(DTall$wpfinwgt[!is.na(DTall$unempdur)],na.rm=T)
 
 saveRDS(DTall, "./Data/DTall_3.RData")
 rm(list=ls())

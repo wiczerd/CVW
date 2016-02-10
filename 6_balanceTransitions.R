@@ -30,10 +30,10 @@ recallRecodeShorTerm <- function(DF){
 	DF[ , recalled:= ifelse( ENEwseam & (shift(job,1,type="lead") == shift(job,1,type="lag"))
 							 , 1,recalled ),  by= id]
 	DF[ , recalled:= ifelse( ENEwseam & unempdur==2 & 
-					((shift(job,1,type="lead") == shift(job,2,type="lag"))| (shift(job,2,type="lead") == shift(job,1,type="lag")))
+					((shift(job,1,type="lead") == shift(job,2,type="lag")) | (shift(job,2,type="lead") == shift(job,1,type="lag")))
 					, 1,recalled ),  by= id]
 	DF[lfstat>=2 | EU, recalled := max(recalled,na.rm=T), by=list(id,stintid)]
-	DF[ , EU:= ifelse( shift(recalled,1,type="lead") > 0.75,F,EU), by=id]
+	DF[ , EU:= ifelse( recalled > 0.75,F,EU), by=id]
 	DF[ , UE:= ifelse( recalled > 0.75,F,UE), by=id]
 }
 

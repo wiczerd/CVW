@@ -34,7 +34,7 @@ esrRecode <- function(DF){
 }
 estint <- function(DF){
 	#sometimes job is not a unique identifier, i.e. if there's been a long nonemployment stint
-	DF[lfstat == 1, newemp := id != shift(id)]
+	DF[lfstat == 1, newemp := mis==1, by=id]
 	DF[is.na(newemp), newemp := F ]
 	DF[, newemp := (lfstat == 1 & (shift(lfstat,1,type="lag") >=2)) | newemp ==T, by = id]
 	DF[lfstat == 1, newemp := ((shift(job,1,type="lag") != job) | newemp==T) , by = id]
@@ -57,6 +57,8 @@ DT96 <- DT96[!is.na(esr),]
 
 # recode esr into lfstat
 esrRecode(DT96)
+# create time w/in id (month in sample)
+DT96[, mis := seq_len(.N), by=id]
 
 # replace soc2d with occ and make sure DT is sorted
 DT96[, occ := soc2d]
@@ -73,9 +75,11 @@ DT96[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 DT96[lfstat == 2 | lfstat == 3, occ := NA_integer_]
 
 # create unemployment spell id
-DT96[, newstint := lfstat == 2 & shift(lfstat, 1, type = "lag") == 1, by = id]
-DT96[(newstint), stintid := cumsum(newstint), by = id]
-DT96[lfstat == 2 | lfstat == 3, stintid := na.locf(stintid, na.rm = FALSE), by = id]
+DT96[, newstint := lfstat == 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1), by = id]
+DT96[newstint == T, stintid := cumsum(newstint), by = id]
+DT96[lfstat == 1, stintid := 0] #now only NA's are 2,3 that are connected to each other
+DT96[, stintid := na.locf(stintid, na.rm = FALSE), by = id]
+DT96[lfstat == 1, stintid := NA_integer_]
 
 # fill in occupation with next occupation in unemployment stints
 DT96[, leadocc := shift(occ, 1, type = "lead"), by = id]
@@ -105,6 +109,8 @@ DT01 <- DT01[!is.na(esr),]
 
 # recode esr into lfstat
 esrRecode(DT01)
+# create time w/in id (month in sample)
+DT01[, mis := seq_len(.N), by=id]
 
 # replace soc2d with occ and make sure DT is sorted
 DT01[, occ := soc2d]
@@ -121,9 +127,11 @@ DT01[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 DT01[lfstat == 2 | lfstat == 3, occ := NA_integer_]
 
 # create unemployment spell id
-DT01[, newstint := lfstat == 2 & shift(lfstat, 1, type = "lag") == 1, by = id]
+DT01[, newstint := lfstat == 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1), by = id]
 DT01[(newstint), stintid := cumsum(newstint), by = id]
-DT01[lfstat == 2 | lfstat == 3, stintid := na.locf(stintid, na.rm = FALSE), by = id]
+DT01[lfstat == 1, stintid := 0] #now only NA's are 2,3 that are connected to each other
+DT01[, stintid := na.locf(stintid, na.rm = FALSE), by = id]
+DT01[lfstat == 1, stintid := NA_integer_]
 
 # fill in occupation with next occupation in unemployment stints
 DT01[, leadocc := shift(occ, 1, type = "lead"), by = id]
@@ -154,6 +162,8 @@ DT04 <- DT04[!is.na(esr),]
 
 # recode esr into lfstat
 esrRecode(DT04)
+# create time w/in id (month in sample)
+DT04[, mis := seq_len(.N), by=id]
 
 # replace soc2d with occ and make sure DT is sorted
 DT04[, occ := soc2d]
@@ -170,9 +180,11 @@ DT04[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 DT04[lfstat == 2 | lfstat == 3, occ := NA_integer_]
 
 # create unemployment spell id
-DT04[, newstint := lfstat == 2 & shift(lfstat, 1, type = "lag") == 1, by = id]
+DT04[, newstint := lfstat == 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1), by = id]
 DT04[(newstint), stintid := cumsum(newstint), by = id]
-DT04[lfstat == 2 | lfstat == 3, stintid := na.locf(stintid, na.rm = FALSE), by = id]
+DT04[lfstat == 1, stintid := 0] #now only NA's are 2,3 that are connected to each other
+DT04[, stintid := na.locf(stintid, na.rm = FALSE), by = id]
+DT04[lfstat == 1, stintid := NA_integer_]
 
 # fill in occupation with next occupation in unemployment stints
 DT04[, leadocc := shift(occ, 1, type = "lead"), by = id]
@@ -202,6 +214,8 @@ DT08 <- DT08[!is.na(esr),]
 
 # recode esr into lfstat
 esrRecode(DT08)
+# create time w/in id (month in sample)
+DT08[, mis := seq_len(.N), by=id]
 
 # replace soc2d with occ and make sure DT is sorted
 DT08[, occ := soc2d]
@@ -218,9 +232,11 @@ DT08[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 DT08[lfstat == 2 | lfstat == 3, occ := NA_integer_]
 
 # create unemployment spell id
-DT08[, newstint := lfstat == 2 & shift(lfstat, 1, type = "lag") == 1, by = id]
+DT08[, newstint := lfstat == 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1), by = id]
 DT08[(newstint), stintid := cumsum(newstint), by = id]
-DT08[lfstat == 2 | lfstat == 3, stintid := na.locf(stintid, na.rm = FALSE), by = id]
+DT08[lfstat == 1, stintid := 0] #now only NA's are 2,3 that are connected to each other
+DT08[, stintid := na.locf(stintid, na.rm = FALSE), by = id]
+DT08[lfstat == 1, stintid := NA_integer_]
 
 # fill in occupation with next occupation in unemployment stints
 DT08[, leadocc := shift(occ, 1, type = "lead"), by = id]
