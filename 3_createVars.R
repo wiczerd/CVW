@@ -49,6 +49,7 @@ DTall[, fstintid := NULL]
 # create unemployment duration variable
 DTall[, unempdur := seq_len(.N)-1, by = list(id, stintid)]
 DTall[is.na(stintid), unempdur := NA]
+DTall[!is.na(unempdur) , maxunempdur := max(unempdur, na.rm=T), by= list(id,stintid)]
 
 # drop bad earnings data
 # Q: Why is this not in step 2?
