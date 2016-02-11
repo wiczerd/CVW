@@ -42,6 +42,7 @@ recallRecodeShorTerm <- function(DF){
 	DF[(lfstat>=2 | EU) & !is.na(stintid), recalled := max(recalled,na.rm=T), by=list(id,stintid)]
 	DF[ , EU:= ifelse( recalled > 0.75,F,EU), by=id]
 	DF[ , UE:= ifelse( recalled > 0.75,F,UE), by=id]
+	DF[ , c("jobpos","ENEwseam","ENEnoseam") := NULL]
 }
 
 DTall <- readRDS("./Data/DTall_5.RData")
@@ -68,6 +69,7 @@ wagechanges[, balancedEU := EU & shift(UE, 1, type = "lead"), by = id]
 wagechanges[, balancedUE := UE & shift(EU, 1, type = "lag"), by = id]
 wagechanges <- wagechanges[EE | balancedEU | balancedUE,]
 
+
 # change switchedocc to TRUE for UE if switchedocc is TRUE for corresponding EU
 # Q: Why?
 # A: To correct for how we defined the timing of the occupation switch. See 3_createVars.R.
@@ -81,7 +83,7 @@ wagechanges[, Young := as.logical(max(Young)), by = id]
 # create new person weights
 wagechanges[, perwt := mean(wpfinwgt, na.rm = TRUE), by = id]
 
-# Fallick/Fleischman numbers
+# Fallick/Fleischman CPS numbers, just for comparison
 EEpop <- 1.3630541872/100
 # halfway between EU and UE prob
 UEpop <- 0.5*(0.9201970443 + 0.8162561576)/100
@@ -90,16 +92,18 @@ SNpop <- (31.5270935961 + 0.8527093596 + 1.5384236453 + 0.8620689655 + 1.6463054
 # probability conditional on being in the labor force both periods
 EEprob <-EEpop/(1.-SNpop)
 UEprob <-UEpop/(1.-SNpop)
-ratio <- UEprob/EEprob
+
 
 # re-weight for total distribution
 UEweight.balanced <- wagechanges[UE & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
 EUweight.balanced <- wagechanges[EU & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
 EEweight.balanced <- wagechanges[EE & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
 
-# force weights to match Fallick/Fleischman ratio
-multiplier <- ratio*EEweight.balanced/EUweight.balanced
+# force weights to match pre-balancing ratio
+multiplier <- (EUnorecallweight/EEnorecallweight)*EUweight.balanced/EEweight.balanced
 wagechanges[, balanceweight := ifelse(EU | UE, perwt*multiplier*0.5, perwt)]
+
+###############come back here
 
 # scale weights back to original total
 divisor <- wagechanges[, sum(balanceweight, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
