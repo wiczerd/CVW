@@ -39,7 +39,7 @@ keepVars <- c("age",
 recDates <- as.Date(c("2001-02-01", "2001-12-01","2007-11-01", "2009-07-01"))
 
 # get PCE data
-PCE <- readRDS("PCE/PCE.RData")
+PCE <- readRDS("InputData/PCE.RData")
 
 # get crosswalk data
 occ90_soc2d <- readRDS(paste0(xwalkdir,"/occ90_soc2d.RData"))
