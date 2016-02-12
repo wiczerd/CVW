@@ -83,6 +83,38 @@ wagechanges[, Young := as.logical(max(Young)), by = id]
 # create new person weights
 wagechanges[, perwt := mean(wpfinwgt, na.rm = TRUE), by = id]
 
+
+
+
+# re-weight for total distribution
+UEweight.balanced <- wagechanges[UE & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
+EUweight.balanced <- wagechanges[EU & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
+EEweight.balanced <- wagechanges[EE & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
+
+# force weights to match pre-balancing ratio
+multiplier <- max((EUnorecallweight/EEnorecallweight)*(EEweight.balanced/EUweight.balanced),
+				  (UEnorecallweight/EEnorecallweight)*(EEweight.balanced/UEweight.balanced))
+wagechanges[, balanceweight := ifelse(EU | UE, perwt*multiplier, perwt)]
+
+# scale weights back to original total
+wtscale <- wagechanges[, sum(balanceweight, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
+wagechanges[, balanceweight := balanceweight/wtscale]
+
+# change weight among unemployed to match <15 weeks, 15-26 weeks, 27+ from CPS
+CPSunempdur <- readRDS("./InputData/CPSunempDurDist.RData")
+wagechanges <- merge(wagechanges, CPSunempdur, by = "date", all.x = TRUE)
+wagechanges$year <-format(date, "%Y") 
+
+
+#- Diagnostics
+
+# check weights
+UEweight <- wagechanges[UE & !is.na(wagechange), sum(balanceweight, na.rm = TRUE)]
+EUweight <- wagechanges[EU & !is.na(wagechange), sum(balanceweight, na.rm = TRUE)]
+EEweight <- wagechanges[EE & !is.na(wagechange), sum(balanceweight, na.rm = TRUE)]
+
+
+# new weight ratio diff from Fallick Fleischmann UE/EE ratio
 # Fallick/Fleischman CPS numbers, just for comparison
 EEpop <- 1.3630541872/100
 # halfway between EU and UE prob
@@ -92,30 +124,7 @@ SNpop <- (31.5270935961 + 0.8527093596 + 1.5384236453 + 0.8620689655 + 1.6463054
 # probability conditional on being in the labor force both periods
 EEprob <-EEpop/(1.-SNpop)
 UEprob <-UEpop/(1.-SNpop)
-
-
-# re-weight for total distribution
-UEweight.balanced <- wagechanges[UE & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
-EUweight.balanced <- wagechanges[EU & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
-EEweight.balanced <- wagechanges[EE & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
-
-# force weights to match pre-balancing ratio
-multiplier <- (EUnorecallweight/EEnorecallweight)*EUweight.balanced/EEweight.balanced
-wagechanges[, balanceweight := ifelse(EU | UE, perwt*multiplier*0.5, perwt)]
-
-###############come back here
-
-# scale weights back to original total
-divisor <- wagechanges[, sum(balanceweight, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
-wagechanges[, balanceweight := balanceweight/divisor]
-
-# check weights
-UEweight <- wagechanges[UE & !is.na(wagechange), sum(balanceweight, na.rm = TRUE)]
-EUweight <- wagechanges[EU & !is.na(wagechange), sum(balanceweight, na.rm = TRUE)]
-EEweight <- wagechanges[EE & !is.na(wagechange), sum(balanceweight, na.rm = TRUE)]
-
-# new weight ratio == Fallick Fleischmann UE/EE ratio
-round((UEweight + EUweight)/EEweight, 10) == round(ratio, 10)
+round((UEweight + EUweight)/EEweight, 10) - round(UEprob/EEprob, 10)
 
 # new weights sum to original weights
 wagechanges[, sum(wpfinwgt, na.rm = TRUE)] == wagechanges[, sum(balanceweight, na.rm = TRUE)]
