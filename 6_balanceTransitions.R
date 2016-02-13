@@ -60,6 +60,8 @@ UEnorecallweight <- DTall[UE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 EUnorecallweight <- DTall[EU & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 EEnorecallweight <- DTall[EE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 
+saveRDS(DTall,"./Data/DTall_6.RData")
+
 # create data set with defined wage changes only
 wagechanges <- DTall[!is.infinite(wagechange) & !is.na(wagechange),]
 setkey(wagechanges, id, date)
@@ -76,8 +78,6 @@ wagechanges <- wagechanges[EE | balancedEU | balancedUE,]
 # A: To correct for how we defined the timing of the occupation switch. See 3_createVars.R.
 #    Now both the EU and UE will be considered an occupation switch.
 wagechanges[UE & shift(switchedOcc, 1, type = "lag"), switchedOcc := TRUE, by = id]
-wagechanges[EU | UE, switchedOcc := TRUE, by = id]
-
 
 
 # set HSCol and Young to max over panel to ensure balance
@@ -131,14 +131,12 @@ balwtEU <- sum(wagechanges$balanceweight[wagechanges$EU], na.rm=T)
 balwtUE <- sum(wagechanges$balanceweight[wagechanges$UE], na.rm=T)
 
 wagechanges$balanceweight <- wagechanges$balanceweight*wagechanges$durwt
-wagechanges$balanceweight[wagechanges$EU] <- 
-	sum(wagechanges$balanceweight[wagechanges$EU], na.rm=T)/balwtEU
-wagechanges$balanceweight[wagechanges$UE] <- 
-	sum(wagechanges$balanceweight[wagechanges$UE], na.rm=T)/balwtUE
-
+wagechanges$balanceweight[wagechanges$EU] <- wagechanges$balanceweight[wagechanges$EU]/
+	sum(wagechanges$balanceweight[wagechanges$EU], na.rm=T)*balwtEU
+wagechanges$balanceweight[wagechanges$UE] <- wagechanges$balanceweight[wagechanges$UE]/
+	sum(wagechanges$balanceweight[wagechanges$UE], na.rm=T)*balwtUE
 
 wagechanges[,c("year","durwt"):=NULL]
-
 
 
 # scale weights back to original total
@@ -163,7 +161,7 @@ SNpop <- (31.5270935961 + 0.8527093596 + 1.5384236453 + 0.8620689655 + 1.6463054
 # probability conditional on being in the labor force both periods
 EEprob <-EEpop/(1.-SNpop)
 UEprob <-UEpop/(1.-SNpop)
-round((UEweight + EUweight)/EEweight, 10) - round(UEprob/EEprob, 10)
+round(UEweight/EEweight, 10) - round(UEprob/EEprob, 10)
 
 # new weights sum to original weights
 wagechanges[, sum(wpfinwgt, na.rm = TRUE)] == wagechanges[, sum(balanceweight, na.rm = TRUE)]
@@ -174,4 +172,4 @@ wagechanges[UE & switchedOcc, sum(balanceweight, na.rm = TRUE)] ==
 
 # store balanced data
 saveRDS(wagechanges, "./Data/balancedwagechanges.RData")
-rm(list=ls())
+#rm(list=ls())
