@@ -126,9 +126,17 @@ for( yi in seq(min(wagechanges$year, na.rm=T),max(wagechanges$year, na.rm=T)  ))
 # 10%       20%       30%       40%       50%       60%       70%       80%       90% 
 # 0.4973496 0.5356923 1.2305479 1.3949508 1.4803896 1.4812019 1.5501993 1.5722958 1.6393264 
 wagechanges[is.na(durwt), durwt := 1.]
-wagechanges[,year:=NULL]
+#do not increase the incidence of unemployment
+balwtEU <- sum(wagechanges$balanceweight[wagechanges$EU], na.rm=T)
+balwtUE <- sum(wagechanges$balanceweight[wagechanges$UE], na.rm=T)
 
 wagechanges$balanceweight <- wagechanges$balanceweight*wagechanges$durwt
+wagechanges$balanceweight[wagechanges$EU] <- 
+	sum(wagechanges$balanceweight[wagechanges$EU], na.rm=T)/balwtEU
+wagechanges$balanceweight[wagechanges$UE] <- 
+	sum(wagechanges$balanceweight[wagechanges$UE], na.rm=T)/balwtUE
+
+
 wagechanges[,c("year","durwt"):=NULL]
 
 
