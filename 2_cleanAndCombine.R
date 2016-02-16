@@ -26,10 +26,10 @@ Mode <- function(x) {
 }
 esrRecode <- function(DF){
 	# recode esr into lfstat
-	DF[esr == 1 | esr == 2 | esr == 4, lfstat := as.integer(1)] #altenrative esr>=1 & esr<=5
-	DF[esr == 3 | esr == 5 | esr == 6 | esr == 7, lfstat := as.integer(2)] #alternative: esr>=6 & esr<=7
-	#DF[esr >= 1 & esr <= 5, lfstat := as.integer(1)] #altenrative esr>=1 & esr<=5
-	#DF[esr == 6 | esr == 7, lfstat := as.integer(2)] #alternative: esr>=6 & esr<=7
+	#DF[esr == 1 | esr == 2 | esr == 4, lfstat := as.integer(1)] #altenrative esr>=1 & esr<=5
+	#DF[esr == 3 | esr == 5 | esr == 6 | esr == 7, lfstat := as.integer(2)] #alternative: esr>=6 & esr<=7
+	DF[esr >= 1 & esr <= 5, lfstat := as.integer(1)] #altenrative esr>=1 & esr<=5
+	DF[esr == 6 | esr == 7, lfstat := as.integer(2)] #alternative: esr>=6 & esr<=7
 	DF[esr == 8, lfstat := as.integer(3)]
 }
 estint <- function(DF){
