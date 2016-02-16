@@ -9,10 +9,16 @@ library(Hmisc)
 wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
 setwd(wd0)
-
+Mode <- function(x) {
+	ux <- unique(x[!is.na(x)])
+	ux[which.max(tabulate(match(x, ux)))]
+}
 
 recallRecodeShorTerm <- function(DF){
 	DF[job> 0 , jobpos := job]
+	DF[ EmpTmrw==T, nextjob := shift(jobpos,1,type="lead"), by=id]
+	DF[ lfstat==1 & EmpTmrw==F, nextjob := 0]
+	DF[ lfstat>=2, nextjob := Mode(nextjob), by=list(id,stintid)]
 	# will convert all recall stints as lfstat == NA_integer_
 	DF[ , ENEnoseam := lfstat ==2 & ( shift(lfstat,1,type="lead")==1 & shift(lfstat,1,type="lag")==1
 									  |  (sum(lfstat ==1, na.rm=T)==2 & (shift(lfstat,1,type="lead")==2 |shift(lfstat)==2)) )

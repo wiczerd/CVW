@@ -24,18 +24,19 @@ setkey(DTall, id, date)
 DTall[, EmpTmrw := EE | UE, by = id]
 DTall[EmpTmrw == T, nextwage := shift(usewage, 1, type = "lead"), by = id]
 DTall[EmpTmrw == T & is.na(nextwage), nextwage := shift(usewage, 2, type = "lead"), by = id]
-DTall[EmpTmrw == F & lfstat==2 | lfstat==3, nextwage := NA_real_, by = id]
+DTall[EmpTmrw == F & (lfstat==2 | lfstat==3), nextwage := NA_real_, by = id]
 DTall[lfstat==2 | lfstat==3, nextwage := Mode(nextwage), by = list(id,stintid)] #replace if it's UE
 DTall[lfstat==1, nextwage := Mode(nextwage), by = list(id,job)] #replace if it's EE
 DTall[EmpTmrw == T, nextoccwage := shift(occwage, 1, type = "lead"), by = id]
 DTall[EmpTmrw == T & is.na(nextoccwage), nextoccwage := shift(occwage, 2, type = "lead"), by = id]
-DTall[EmpTmrw == F & lfstat==2 | lfstat==3, nextoccwage := NA_real_, by = id]
+DTall[EmpTmrw == F & (lfstat==2 | lfstat==3), nextoccwage := NA_real_, by = id]
 DTall[lfstat==2 | lfstat==3, nextoccwage := Mode(nextoccwage), by = list(id,stintid)] #replace if it's UE
 DTall[lfstat==1, nextoccwage := Mode(nextoccwage), by = list(id,job)] #replace if it's EE
 
 
-DTall[, tuw := shift(usewage, 1, type = "lag"), by = id]
-DTall[!is.finite(tuw) & is.finite(usewage) & lfstat == 1, tuw := usewage]
+#DTall[, tuw := shift(usewage, 1, type = "lag"), by = id]
+#DTall[!is.finite(tuw) & is.finite(usewage) & lfstat == 1, tuw := usewage]
+DTall[, tuw := usewage, by = id]
 
 # create wagechange variable
 DTall[EE == T, wagechange := nextwage - tuw]

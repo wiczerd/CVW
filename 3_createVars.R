@@ -35,6 +35,10 @@ DTall[, switchedAddress := (shhadid != shift(shhadid, 1, type = "lead")) &
 	  	(shift(shhadid, 1, type = "lag") != shift(shhadid, 1, type = "lead")) &
 	  	(shhadid != shift(shhadid, 2, type = "lead")) &
 	  	switchedJob, by = id]
+DTall[, switchedInd := (ind != shift(ind, 1, type = "lead")) &
+	  	(shift(ind, 1, type = "lag") != shift(ind, 1, type = "lead")) &
+	  	(ind != shift(ind, 2, type = "lead")) &
+	  	switchedJob, by = id]
 
 # create EE, EU, and UE dummies
 DTall[, EE := lfstat == 1 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T, by = id]

@@ -31,7 +31,7 @@ keepVars <- c("age",
 			  "union",
 			  "shhadid",
 			  #"occ14", 
-			  #"ind23", 
+			  "ind", "ind23"
 			  #"state", 
 			  "wave")
 
@@ -69,6 +69,9 @@ DT96 <- merge(DT96, occ90_soc2d, by  = "occ1990", all.x = TRUE)
 DT96[, c("occ") := NULL]
 setnames(DT96, "occ1990", "occ")
 
+#recode industry as ind23
+DT96[, ind:= ind23]
+DT96[, ind23:=NULL]
 
 saveRDS(DT96, file("./Data/DT96_1.RData"))
 rm(DT96)
@@ -99,7 +102,9 @@ DT01[, occ1990 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
 DT01 <- merge(DT01, occ90_soc2d, by  = "occ1990", all.x = TRUE)
 DT01[, c("occ") := NULL]
 setnames(DT01, "occ1990", "occ")
-
+#recode industry as ind23
+DT01[, ind:= ind23]
+DT01[, ind23:=NULL]
 
 saveRDS(DT01, file("./Data/DT01_1.RData"))
 rm(DT01)
@@ -131,6 +136,9 @@ DT04 <- merge(DT04, coc2000_occ1990, by  = "coc2000", all.x = TRUE)
 DT04 <- merge(DT04, occ90_soc2d, by  = "occ1990", all.x = TRUE)
 DT04[, c("occ", "coc2000") := NULL]
 setnames(DT04, "occ1990", "occ")
+
+#add conversion to ind23
+
 
 saveRDS(DT04, file("./Data/DT04_1.RData"))
 rm(DT04)
