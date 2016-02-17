@@ -17,8 +17,7 @@ Mode <- function(x) {
 recallRecodeShorTerm <- function(DF){
 	DF[job> 0 , jobpos := job]
 	DF[ EmpTmrw==T, nextjob := shift(jobpos,1,type="lead"), by=id]
-	DF[ lfstat==1 & EmpTmrw==F, nextjob := 0]
-	DF[ lfstat>=2, nextjob := Mode(nextjob), by=list(id,stintid)]
+	DF[ is.finite(stintid) & (lfstat>=2 | EU==T) , nextjob := Mode(nextjob), by=list(id,stintid)]
 	# will convert all recall stints as lfstat == NA_integer_
 	DF[ , ENEnoseam := lfstat ==2 & ( shift(lfstat,1,type="lead")==1 & shift(lfstat,1,type="lag")==1
 									  |  (sum(lfstat ==1, na.rm=T)==2 & (shift(lfstat,1,type="lead")==2 |shift(lfstat)==2)) )
@@ -46,9 +45,11 @@ recallRecodeShorTerm <- function(DF){
 							 	((shift(jobpos,1,type="lead") == shift(jobpos,2,type="lag")) | (shift(jobpos,2,type="lead") == shift(jobpos,1,type="lag")))
 							 , 1,recalled ),  by= id]
 	DF[is.na(recalled), recalled := 0.]
+	#get the remaining recalled:
+	DF[EU , recalled := ifelse(jobpos == nextjob,1,recalled) ]
 	DF[(lfstat>=2 | EU) & !is.na(stintid), recalled := max(recalled,na.rm=T), by=list(id,stintid)]
-	DF[ , EU:= ifelse( recalled > 0.75,F,EU), by=id]
-	DF[ , UE:= ifelse( recalled > 0.75,F,UE), by=id]
+	#DF[ , EU:= ifelse( recalled > 0.75,F,EU), by=id]
+	#DF[ , UE:= ifelse( recalled > 0.75,F,UE), by=id]
 	DF[ , c("jobpos","ENEwseam","ENEnoseam") := NULL]
 }
 

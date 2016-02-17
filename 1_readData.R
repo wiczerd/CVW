@@ -31,7 +31,7 @@ keepVars <- c("age",
 			  "union",
 			  "shhadid",
 			  #"occ14", 
-			  "ind", "ind23"
+			  "ind", "ind23",
 			  #"state", 
 			  "wave")
 
