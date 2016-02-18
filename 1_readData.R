@@ -27,7 +27,7 @@ keepVars <- c("age",
 			  "earnm",
 			  "occ", 
 			  "job", 
-			  "esr",
+			  "esr","ersend","estlemp","rwkesr2",
 			  "union",
 			  "shhadid",
 			  #"occ14", 
@@ -138,7 +138,7 @@ DT04[, c("occ", "coc2000") := NULL]
 setnames(DT04, "occ1990", "occ")
 
 #add conversion to ind23
-
+DT04[, ind23:=NULL]
 
 saveRDS(DT04, file("./Data/DT04_1.RData"))
 rm(DT04)
@@ -170,6 +170,9 @@ DT08 <- merge(DT08, coc2000_occ1990, by  = "coc2000", all.x = TRUE)
 DT08 <- merge(DT08, occ90_soc2d, by  = "occ1990", all.x = TRUE)
 DT08[, c("occ", "coc2000") := NULL]
 setnames(DT08, "occ1990", "occ")
+
+#add conversion to ind23
+DT08[, ind23:=NULL]
 
 saveRDS(DT08, file("./Data/DT08_1.RData"))
 rm(list=ls())

@@ -46,28 +46,48 @@ recallRecodeShorTerm <- function(DF){
 							 , 1,recalled ),  by= id]
 	DF[is.na(recalled), recalled := 0.]
 	#get the remaining recalled:
-	DF[EU , recalled := ifelse(jobpos == nextjob,1,recalled) ]
-	DF[(lfstat>=2 | EU) & !is.na(stintid), recalled := max(recalled,na.rm=T), by=list(id,stintid)]
-	#DF[ , EU:= ifelse( recalled > 0.75,F,EU), by=id]
-	#DF[ , UE:= ifelse( recalled > 0.75,F,UE), by=id]
+	DF[EU==T , recalled := ifelse(jobpos == nextjob,1,recalled) ]
+	DF[(lfstat>=2 | EU==T) & !is.na(stintid), recalled := max(recalled,na.rm=T), by=list(id,stintid)]
+	DF[ , EUrecalled:= ( recalled > 0.75 & EU==T), by=id]
+	DF[ , UErecalled:= ( recalled > 0.75 & UE==T), by=id]
+	
+	DF[ recalled > 0.75, EU:= F, by=id]
+	DF[ recalled > 0.75, UE:= F, by=id]
+	DF[ recalled > 0.75 & lfstat>=2, lfstat := 0L, by=id]
 	DF[ , c("jobpos","ENEwseam","ENEnoseam") := NULL]
 }
 
 DTall <- readRDS("./Data/DTall_5.RData")
 
 # sum weights for UE, EU, and EE
-UEreadweight <- DTall[UE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
-EUreadweight <- DTall[EU & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
-EEreadweight <- DTall[EE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+UEreadweight <- DTall[UE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+EUreadweight <- DTall[EU==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+EEreadweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 
 DTall[lfstat==2, recalled:= 0 ]
 recallRecodeShorTerm(DTall)
 
-UEnorecallweight <- DTall[UE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
-EUnorecallweight <- DTall[EU & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
-EEnorecallweight <- DTall[EE & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+UEnorecallweight <- DTall[UE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+EUnorecallweight <- DTall[EU==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+EEnorecallweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+
+#recall rate:
+UEnorecallweight/UEreadweight
 
 saveRDS(DTall,"./Data/DTall_6.RData")
+#some rates: diagnostic
+sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
+sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
+sum(DTall$wpfinwgt[DTall$UE], na.rm=T)
+
+sum(DTall$wpfinwgt[DTall$EE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
+sum(DTall$wpfinwgt[DTall$EU], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
+sum(DTall$wpfinwgt[DTall$UE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==2], na.rm=T)
+
+sum(DTall$wpfinwgt[DTall$EE & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
+sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
+sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)],na.rm=T)/sum(DTall$wpfinwgt[!is.na(DTall$unempdur)],na.rm=T)
+
 
 # create data set with defined wage changes only
 wagechanges <- DTall[!is.infinite(wagechange) & !is.na(wagechange),]
@@ -102,10 +122,10 @@ UEweight.balanced <- wagechanges[UE & !is.na(wagechange), sum(perwt, na.rm = TRU
 EUweight.balanced <- wagechanges[EU & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
 EEweight.balanced <- wagechanges[EE & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
 
-# force weights to match pre-balancing ratio
+# force weights to match pre-balancing ratio & divide by 2 for the whole transition
 multiplier <- max((EUnorecallweight/EEnorecallweight)*(EEweight.balanced/EUweight.balanced),
 				  (UEnorecallweight/EEnorecallweight)*(EEweight.balanced/UEweight.balanced))
-wagechanges[, balanceweight := ifelse(EU | UE, perwt*multiplier, perwt)]
+wagechanges[, balanceweight := ifelse(EU | UE, perwt*multiplier * 0.5, perwt)]
 
 # change weight among unemployed to match <15 weeks, 15-26 weeks, 27+ from CPS
 CPSunempdur <- readRDS("./InputData/CPSunempDurDist.RData")
@@ -129,9 +149,11 @@ for( yi in seq(min(wagechanges$year, na.rm=T),max(wagechanges$year, na.rm=T)  ))
 	#durwt_GT26*SIPPmax_GT26 = CPSsurv_GT26
 	wagechanges[year == yi & (maxunempdur>26*12/52), durwt :=  CPSsurv_GT26/SIPPmax_GT26]
 }
-# quantile(wagechanges$durwt, na.rm=T,probs = seq(.1,.9,.1))
-# 10%       20%       30%       40%       50%       60%       70%       80%       90% 
-# 0.4973496 0.5356923 1.2305479 1.3949508 1.4803896 1.4812019 1.5501993 1.5722958 1.6393264 
+wagechanges[ (maxunempdur<15*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
+wagechanges[ (maxunempdur>=15*12/52 & maxunempdur<=26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
+wagechanges[ (maxunempdur>26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
+
+
 wagechanges[is.na(durwt), durwt := 1.]
 #do not increase the incidence of unemployment
 balwtEU <- sum(wagechanges$balanceweight[wagechanges$EU], na.rm=T)

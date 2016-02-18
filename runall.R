@@ -1,0 +1,6 @@
+source("~/workspace/CVW/R/1_readData.R",echo=T)
+source("~/workspace/CVW/R/2_cleanAndCombine.R",echo=T)
+source("~/workspace/CVW/R/3_createVars.R",echo=T)
+source("~/workspace/CVW/R/4_runWageRegressions.R",echo=T)
+source("~/workspace/CVW/R/5_calculateWageChanges.R",echo=T)
+source("~/workspace/CVW/R/6_balanceTransitions.R",echo=T)

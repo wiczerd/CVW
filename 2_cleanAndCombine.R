@@ -25,12 +25,20 @@ Mode <- function(x) {
 	ux[which.max(tabulate(match(x, ux)))]
 }
 esrRecode <- function(DF){
-	# recode esr into lfstat
-	#DF[esr == 1 | esr == 2 | esr == 4, lfstat := as.integer(1)] #altenrative esr>=1 & esr<=5
-	#DF[esr == 3 | esr == 5 | esr == 6 | esr == 7, lfstat := as.integer(2)] #alternative: esr>=6 & esr<=7
+	# recode esr into lfstat using monthly status, \exists week of unemployment:
+	#DF[esr == 1 | esr == 2 | esr == 4, lfstat := as.integer(1)] 
+	#DF[esr == 3 | esr == 5 | esr == 6 | esr == 7, lfstat := as.integer(2)] 
+	#DF[esr == 8, lfstat := as.integer(3)]
+	# monthly status that is a narrower view of unemployment: unemployed for the whole month
 	DF[esr >= 1 & esr <= 5, lfstat := as.integer(1)] #altenrative esr>=1 & esr<=5
 	DF[esr == 6 | esr == 7, lfstat := as.integer(2)] #alternative: esr>=6 & esr<=7
 	DF[esr == 8, lfstat := as.integer(3)]
+	# monthly status that uses only week 2 status, comparable to CPS
+	#DF[rwkesr2 >= 1 & rwkesr2 <= 3, lfstat := as.integer(1)] 
+	#DF[rwkesr2 == 4, lfstat := as.integer(2)] 
+	#DF[rwkesr2 == 5, lfstat := as.integer(3)]
+	DF[, rwkesr2:= NULL]
+	
 }
 estint <- function(DF){
 	#sometimes job is not a unique identifier, i.e. if there's been a long nonemployment stint
@@ -65,11 +73,9 @@ DT96[, occ := soc2d]
 DT96[, soc2d := NULL]
 setkey(DT96, id, date)
 
-#sometimes job is not a unique identifier, i.e. if there's been a long nonemployment stint
-estint(DT96)
 
 # replace occ with most common observed occ over employment spell
-DT96[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
+DT96[lfstat == 1, occ := Mode(occ), by = list(id, job)]
 
 # fix occupation code to be consistent with employment status
 DT96[lfstat == 2 | lfstat == 3, occ := NA_integer_]
@@ -117,11 +123,8 @@ DT01[, occ := soc2d]
 DT01[, soc2d := NULL]
 setkey(DT01, id, date)
 
-#sometimes job is not a unique identifier, i.e. if there's been a long nonemployment stint
-estint(DT01)
-
 # replace occ with most common observed occ over employment spell
-DT01[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
+DT01[lfstat == 1, occ := Mode(occ), by = list(id, job)]
 
 # fix occupation code to be consistent with employment status
 DT01[lfstat == 2 | lfstat == 3, occ := NA_integer_]
@@ -170,11 +173,9 @@ DT04[, occ := soc2d]
 DT04[, soc2d := NULL]
 setkey(DT04, id, date)
 
-#sometimes job is not a unique identifier, i.e. if there's been a long nonemployment stint
-estint(DT04)
 
 # replace occ with most common observed occ over employment spell
-DT04[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
+DT04[lfstat == 1, occ := Mode(occ), by = list(id, job)]
 
 # fix occupation code to be consistent with employment status
 DT04[lfstat == 2 | lfstat == 3, occ := NA_integer_]
@@ -222,11 +223,8 @@ DT08[, occ := soc2d]
 DT08[, soc2d := NULL]
 setkey(DT08, id, date)
 
-#sometimes job is not a unique identifier, i.e. if there's been a long nonemployment stint
-estint(DT08)
-
 # replace occ with most common observed occ over employment spell
-DT08[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
+DT08[lfstat == 1, occ := Mode(occ), by = list(id, job)]
 
 # fix occupation code to be consistent with employment status
 DT08[lfstat == 2 | lfstat == 3, occ := NA_integer_]

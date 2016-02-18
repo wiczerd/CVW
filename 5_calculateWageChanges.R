@@ -34,9 +34,9 @@ DTall[lfstat==2 | lfstat==3, nextoccwage := Mode(nextoccwage), by = list(id,stin
 DTall[lfstat==1, nextoccwage := Mode(nextoccwage), by = list(id,job)] #replace if it's EE
 
 
-#DTall[, tuw := shift(usewage, 1, type = "lag"), by = id]
-#DTall[!is.finite(tuw) & is.finite(usewage) & lfstat == 1, tuw := usewage]
-DTall[, tuw := usewage, by = id]
+DTall[, tuw := shift(usewage, 1, type = "lag"), by = id]
+DTall[(!is.finite(tuw) | tuw<=0) & is.finite(usewage) & lfstat == 1, tuw := usewage]
+#DTall[, tuw := usewage, by = id]
 
 # create wagechange variable
 DTall[EE == T, wagechange := nextwage - tuw]
