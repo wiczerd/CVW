@@ -121,6 +121,8 @@ wagechanges <- wagechanges[EE | balancedEU | balancedUE,]
 # A: To correct for how we defined the timing of the occupation switch. See 3_createVars.R.
 #    Now both the EU and UE will be considered an occupation switch.
 wagechanges[UE & shift(switchedOcc, 1, type = "lag"), switchedOcc := TRUE, by = id]
+wagechanges[EU==T |UE==T , maxunempdur:= max( maxunempdur, shift(maxunempdur,1,type="lead"), na.rm=T ), by = id]
+wagechanges[UE==T |EU==T, maxunempdur:= max( maxunempdur, shift(maxunempdur,1,type="lag") , na.rm=T), by = id]
 
 
 # set HSCol and Young to max over panel to ensure balance
@@ -129,8 +131,6 @@ wagechanges[, Young := as.logical(max(Young)), by = id]
 
 # create new person weights
 wagechanges[, perwt := mean(wpfinwgt, na.rm = TRUE), by = id]
-
-
 
 
 # re-weight for total distribution
@@ -213,7 +213,7 @@ wagechanges[, sum(wpfinwgt, na.rm = TRUE)] == wagechanges[, sum(balanceweight, n
 
 # EU and UE balance
 wagechanges[UE & switchedOcc, sum(balanceweight, na.rm = TRUE)] == 
-	wagechanges[EU & switchedOcc, sum(balanceweight, na.rm = TRUE)]
+ 	wagechanges[EU & switchedOcc, sum(balanceweight, na.rm = TRUE)]
 
 # store balanced data
 saveRDS(wagechanges, "./Data/balancedwagechanges.RData")

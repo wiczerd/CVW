@@ -75,7 +75,7 @@ setkey(DT96, id, date)
 
 
 # replace occ with most common observed occ over employment spell
-DT96[lfstat == 1, occ := Mode(occ), by = list(id, job)]
+DT96[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 
 # fix occupation code to be consistent with employment status
 DT96[lfstat == 2 | lfstat == 3, occ := NA_integer_]
@@ -124,7 +124,7 @@ DT01[, soc2d := NULL]
 setkey(DT01, id, date)
 
 # replace occ with most common observed occ over employment spell
-DT01[lfstat == 1, occ := Mode(occ), by = list(id, job)]
+DT01[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 
 # fix occupation code to be consistent with employment status
 DT01[lfstat == 2 | lfstat == 3, occ := NA_integer_]
@@ -175,7 +175,7 @@ setkey(DT04, id, date)
 
 
 # replace occ with most common observed occ over employment spell
-DT04[lfstat == 1, occ := Mode(occ), by = list(id, job)]
+DT04[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 
 # fix occupation code to be consistent with employment status
 DT04[lfstat == 2 | lfstat == 3, occ := NA_integer_]
@@ -224,7 +224,7 @@ DT08[, soc2d := NULL]
 setkey(DT08, id, date)
 
 # replace occ with most common observed occ over employment spell
-DT08[lfstat == 1, occ := Mode(occ), by = list(id, job)]
+DT08[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 
 # fix occupation code to be consistent with employment status
 DT08[lfstat == 2 | lfstat == 3, occ := NA_integer_]
