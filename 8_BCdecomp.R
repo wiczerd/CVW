@@ -207,7 +207,7 @@ pct_shift_EUE <- shift_share_EUE[[2]]/matrix(shift_share_EUE[[1]],nrow=9,ncol=4 
 
 MM_betaE_betaR_cf <- MMdecomp(wagechangesfull,6,"recIndic","wagechange","balanceweight")
 
-MMEUE_betaE_betaR_cf <- MMdecomp(wagechangesfull,4,"recIndic","wagechange_EUE","balanceweight")
+MMEUE_betaE_betaR_cf <- MMdecomp(subset(wagechangesfull,EE==T|EU==T),4,"recIndic","wagechange_EUE","balanceweight")
 
 
 wcExp <- subset(wagechangesfull,recIndic==F)

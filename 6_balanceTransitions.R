@@ -14,7 +14,21 @@ Mode <- function(x) {
 	ux[which.max(tabulate(match(x, ux)))]
 }
 
+recallRecodeJobID <- function(DF){
+	#this function just uses job ID to identify recalls, and may miss especially long-term when job id can reset.  
+	DF[job> 0 , jobpos := job]
+	DF[ EmpTmrw==T, nextjob := shift(jobpos,1,type="lead"), by=id]
+	DF[ is.finite(stintid) & (lfstat>=2 | EU==T) , nextjob := Mode(nextjob), by=list(id,stintid)]
+	# will convert all recall stints as lfstat == NA_integer_
+	DF[EU==T , recalled := (jobpos == nextjob) ]
+	DF[is.finite(stintid) &(EU==T | lfstat>=2 ), recalled:=Mode(recalled) , by=list(id,stintid)]
+	DF[EU==T & recalled==T, EU:=F]
+	DF[UE==T & recalled==T, UE:=F]
+	DF[lfstat>=2 & recalled==T, lfstat:=0]
+}
+
 recallRecodeShorTerm <- function(DF){
+	#this function closely follows Fujita & Moscarini for identification of short-term recalls
 	DF[job> 0 , jobpos := job]
 	DF[ EmpTmrw==T, nextjob := shift(jobpos,1,type="lead"), by=id]
 	DF[ is.finite(stintid) & (lfstat>=2 | EU==T) , nextjob := Mode(nextjob), by=list(id,stintid)]
@@ -64,7 +78,9 @@ UEreadweight <- DTall[UE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 EUreadweight <- DTall[EU==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 EEreadweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 
-DTall[lfstat==2, recalled:= 0 ]
+#DTall[lfstat==2, recalled:= F ]
+#recallRecodeJobID(DTall)
+DTall[lfstat==2, recalled:= 0. ]
 recallRecodeShorTerm(DTall)
 
 UEnorecallweight <- DTall[UE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
