@@ -43,7 +43,7 @@ DTall[, switchedInd := (ind != shift(ind, 1, type = "lead")) &
 # create EE, EU, and UE dummies
 DTall[, EE := lfstat == 1 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T, by = id]
 DTall[, EU := lfstat == 1 & shift(lfstat, 1, type = "lead") == 2 & switchedJob==T, by = id]
-DTall[, UE := lfstat >= 2 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T & is.finite(stintid), by = id]
+DTall[, UE := lfstat == 2 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T, by = id]
 # take stint ID into EU and clean it:
 DTall[, fstintid:= shift(stintid, 1, type = "lead"), by = id]
 DTall[EU==T, stintid := fstintid, by=id]
@@ -77,7 +77,7 @@ sum(DTall$wpfinwgt[DTall$UE], na.rm=T)
 
 sum(DTall$wpfinwgt[DTall$EE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
-sum(DTall$wpfinwgt[DTall$UE & DTall$stintid>0 & is.finite(DTall$stintid)], na.rm=T)/sum(DTall$wpfinwgt[DTall$stintid>0 & is.finite(DTall$stintid)], na.rm=T)
+sum(DTall$wpfinwgt[DTall$UE & DTall$stintid>0 & is.finite(DTall$stintid)], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat==2 & is.finite(DTall$stintid)], na.rm=T)
 
 sum(DTall$wpfinwgt[DTall$EE & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
