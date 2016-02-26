@@ -34,9 +34,9 @@ DTall[lfstat==2 | lfstat==3, nextoccwage := Mode(nextoccwage), by = list(id,stin
 DTall[lfstat==1, nextoccwage := Mode(nextoccwage), by = list(id,job)] #replace if it's EE
 
 
-DTall[, tuw := shift(usewage, 1, type = "lag"), by = id]
-DTall[(!is.finite(tuw) | tuw<=0) & is.finite(usewage) & lfstat == 1, tuw := usewage]
-#DTall[, tuw := usewage, by = id]
+#DTall[, tuw := shift(usewage, 1, type = "lag"), by = id]
+#DTall[(!is.finite(tuw) | tuw<=0) & is.finite(usewage) & lfstat == 1, tuw := usewage]
+DTall[, tuw := usewage, by = id]
 
 # create wagechange variable
 DTall[EE == T, wagechange := nextwage - tuw]
@@ -51,9 +51,9 @@ DTall[job == 0 & shift(job, 1, type = "lead") == 0,
 
 # create wagechange_EUE variable
 DTall[EU==T | EE==T, wagechange_EUE := nextwage - tuw]
-DTall[ EU==T|lfstat==2, wagechange_EUE:=ifelse(lfstat==2,
-							shift(wagechange_EUE,1,type="lag"),wagechange_EUE),by=id]
-DTall[lfstat==2, wagechange_EUE := Mode(wagechange_EUE), by=list(id,stintid)]
+#DTall[ EU==T|lfstat==2, wagechange_EUE:=ifelse(lfstat==2,
+#							shift(wagechange_EUE,1,type="lag"),wagechange_EUE),by=id]
+DTall[lfstat==2 | EU==T, wagechange_EUE := Mode(wagechange_EUE), by=list(id,stintid)]
 DTall[!(EU==T | EE==T | UE==T), wagechange_EUE := wagechange_stayer]
 
 # create wagechange_all variable
