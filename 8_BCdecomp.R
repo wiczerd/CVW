@@ -233,12 +233,12 @@ pct_share_shift <- xtable(pct_share_shift, label="tab:pct_share_shift", digits=2
 print(pct_share_shift,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="pct_share_shift.tex")
 
 #DHW: EE, EUE
-pct_share_shift <- data.table(cbind(seq(0.1,0.9,0.1),pct_share_EUE,pct_shift_EUE))
-names(pct_share_shift) <- c("Decile","Share","EE","EUE","EE","EUE")
+pct_share_shift_EUE <- data.table(cbind(seq(0.1,0.9,0.1),pct_share_EUE,pct_shift_EUE))
+names(pct_share_shift_EUE) <- c("Decile","Share","EE","EUE","EE","EUE")
 addswitched <-list(pos = list(-1),command="\\hline\\hline& & \\multicolumn{2}{c}{Switched Occ} & \\multicolumn{2}{c}{Not Switched Occ} \\\\ ")
-pct_share_shift <- xtable(pct_share_shift, label="tab:pct_share_shift", digits=2, 
+pct_share_shift_EUE <- xtable(pct_share_shift_EUE, label="tab:pct_share_shift_EUE", digits=2, 
 						  align="ll|l|ll|ll", caption="Shift-Share (DHL) decomposition, connecting across unemployment")
-print(pct_share_shift,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="pct_share_shift_EUE.tex")
+print(pct_share_shift_EUE,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="pct_share_shift_EUE.tex")
 
 #MM : EE, EU, UE
 MM_tab <- data.table(cbind( seq(0.1,0.9,0.1),(dist_cf),dist_rec,dist_exp,dist_rec- dist_exp, (dist_pct)))

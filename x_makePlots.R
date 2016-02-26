@@ -6,7 +6,10 @@
 library(data.table)
 library(ggplot2)
 
-setwd("G:/Research_Analyst/Eubanks/Occupation Switching/")
+s#etwd("G:/Research_Analyst/Eubanks/Occupation Switching/")
+wd0 = "~/workspace/CVW/R"
+xwalkdir = "~/workspace/CVW/R/Crosswalks"
+setwd(wd0)
 
 wagechanges <- readRDS("./Data/balancedwagechanges.RData")
 

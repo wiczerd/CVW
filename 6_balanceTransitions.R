@@ -33,7 +33,7 @@ recallRecodeShorTerm <- function(DF){
 	DF[ EmpTmrw==T, nextjob := shift(jobpos,1,type="lead"), by=id]
 	DF[ is.finite(stintid) & (lfstat>=2 | EU==T) , nextjob := Mode(nextjob), by=list(id,stintid)]
 	# will convert all recall stints as lfstat == NA_integer_
-	DF[ , ENEnoseam := lfstat ==2 & ( shift(lfstat,1,type="lead")==1 & shift(lfstat,1,type="lag")==1
+	DF[ , ENEnoseam := lfstat >=2 & ( shift(lfstat,1,type="lead")==1 & shift(lfstat,1,type="lag")==1
 									  |  (sum(lfstat ==1, na.rm=T)==2 & (shift(lfstat,1,type="lead")==2 |shift(lfstat)==2)) )
 	   , by=list(id,wave)]
 	DF[ is.na(ENEnoseam)==T, ENEnoseam:=F ]
@@ -61,7 +61,7 @@ recallRecodeShorTerm <- function(DF){
 	DF[is.na(recalled), recalled := 0.]
 	#get the remaining recalled:
 	DF[EU==T , recalled := ifelse(jobpos == nextjob,1,recalled) ]
-	DF[(lfstat>=2 | EU==T) & !is.na(stintid), recalled := max(recalled,na.rm=T), by=list(id,stintid)]
+	DF[(lfstat>=2 | EU==T) & !is.na(stintid) & stintid>0, recalled := max(recalled,na.rm=T), by=list(id,stintid)]
 	DF[ , EUrecalled:= ( recalled > 0.75 & EU==T), by=id]
 	DF[ , UErecalled:= ( recalled > 0.75 & UE==T), by=id]
 	
@@ -74,8 +74,8 @@ recallRecodeShorTerm <- function(DF){
 DTall <- readRDS("./Data/DTall_5.RData")
 
 # sum weights for UE, EU, and EE
-UEreadweight <- DTall[UE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
-EUreadweight <- DTall[EU==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+UEreadweight <- DTall[UE==T & !is.na(wagechange) & is.finite(stintid), sum(wpfinwgt, na.rm = TRUE)]
+EUreadweight <- DTall[EU==T & !is.na(wagechange) & is.finite(stintid), sum(wpfinwgt, na.rm = TRUE)]
 EEreadweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 
 #DTall[lfstat==2, recalled:= F ]
@@ -83,8 +83,8 @@ EEreadweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 DTall[lfstat==2, recalled:= 0. ]
 recallRecodeShorTerm(DTall)
 
-UEnorecallweight <- DTall[UE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
-EUnorecallweight <- DTall[EU==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+UEnorecallweight <- DTall[UE==T & !is.na(wagechange) & is.finite(stintid), sum(wpfinwgt, na.rm = TRUE)]
+EUnorecallweight <- DTall[EU==T & !is.na(wagechange) & is.finite(stintid), sum(wpfinwgt, na.rm = TRUE)]
 EEnorecallweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 
 #recall rate:
@@ -98,12 +98,12 @@ sum(DTall$wpfinwgt[DTall$UE], na.rm=T)
 
 sum(DTall$wpfinwgt[DTall$EE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
-sum(DTall$wpfinwgt[DTall$UE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==2], na.rm=T)
+sum(DTall$wpfinwgt[DTall$UE & is.finite(DTall$stintid)==T], na.rm=T)/sum(DTall$wpfinwgt[is.finite(DTall$stintid)==T], na.rm=T)
 
 sum(DTall$wpfinwgt[DTall$EE & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
 sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)],na.rm=T)/sum(DTall$wpfinwgt[!is.na(DTall$unempdur)],na.rm=T)
-
+#end diagnostic
 
 # create data set with defined wage changes only
 wagechanges <- DTall[!is.infinite(wagechange) & !is.na(wagechange),]
@@ -114,6 +114,11 @@ setkey(wagechanges, id, date)
 wagechanges[, balancedEU := EU & shift(UE, 1, type = "lead"), by = id]
 wagechanges[, balancedUE := UE & shift(EU, 1, type = "lag"), by = id]
 wagechanges <- wagechanges[EE | balancedEU | balancedUE,]
+DTall[is.finite(stintid), balancedEU := max(UE,na.rm=T)==T & EU==T, by = list(id,stintid)]
+DTall[is.finite(stintid), balancedUE := max(EU,na.rm=T)==T & UE==T, by = list(id,stintid)]
+DTall[UE==T, UE := balancedUE==T]
+DTall[EU==T, EU := balancedUE==T]
+
 
 
 # change switchedocc to TRUE for UE if switchedocc is TRUE for corresponding EU
@@ -121,8 +126,8 @@ wagechanges <- wagechanges[EE | balancedEU | balancedUE,]
 # A: To correct for how we defined the timing of the occupation switch. See 3_createVars.R.
 #    Now both the EU and UE will be considered an occupation switch.
 wagechanges[UE & shift(switchedOcc, 1, type = "lag"), switchedOcc := TRUE, by = id]
-wagechanges[EU==T |UE==T , maxunempdur:= max( maxunempdur, shift(maxunempdur,1,type="lead"), na.rm=T ), by = id]
-wagechanges[UE==T |EU==T, maxunempdur:= max( maxunempdur, shift(maxunempdur,1,type="lag") , na.rm=T), by = id]
+wagechanges[EU==T |UE==T , maxunempdur:= max( maxunempdur, na.rm=T ), by = list(id,stintid)]
+
 
 
 # set HSCol and Young to max over panel to ensure balance
@@ -131,6 +136,7 @@ wagechanges[, Young := as.logical(max(Young)), by = id]
 
 # create new person weights
 wagechanges[, perwt := mean(wpfinwgt, na.rm = TRUE), by = id]
+DTall[, perwt := mean(wpfinwgt, na.rm = TRUE), by = id]
 
 
 # re-weight for total distribution
@@ -138,10 +144,11 @@ UEweight.balanced <- wagechanges[UE & !is.na(wagechange), sum(perwt, na.rm = TRU
 EUweight.balanced <- wagechanges[EU & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
 EEweight.balanced <- wagechanges[EE & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
 
-# force weights to match pre-balancing ratio & divide by 2 for the whole transition
+# re-inflate weights for workers who enter and leave as unemployed & divide by 2 for the whole transition
 multiplier <- max((EUnorecallweight/EEnorecallweight)*(EEweight.balanced/EUweight.balanced),
 				  (UEnorecallweight/EEnorecallweight)*(EEweight.balanced/UEweight.balanced))
 wagechanges[, balanceweight := ifelse(EU | UE, perwt*multiplier * 0.5, perwt)]
+DTall[, balanceweight := ifelse(EU | UE, perwt*multiplier * 0.5, perwt)]
 
 # change weight among unemployed to match <15 weeks, 15-26 weeks, 27+ from CPS
 CPSunempdur <- readRDS("./InputData/CPSunempDurDist.RData")

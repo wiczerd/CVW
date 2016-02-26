@@ -30,7 +30,7 @@ DTall[, switchedOcc := (occ != shift(occ, 1, type = "lead")) &
      	(shift(occ, 1, type = "lag") != shift(occ, 1, type = "lead")) &
 	  	(occ != shift(occ, 2, type = "lead")) &
      	switchedJob, by = id]
-# create a switchedState dummy
+# create a switchedAddress dummy
 DTall[, switchedAddress := (shhadid != shift(shhadid, 1, type = "lead")) &
 	  	(shift(shhadid, 1, type = "lag") != shift(shhadid, 1, type = "lead")) &
 	  	(shhadid != shift(shhadid, 2, type = "lead")) &
@@ -43,8 +43,8 @@ DTall[, switchedInd := (ind != shift(ind, 1, type = "lead")) &
 # create EE, EU, and UE dummies
 DTall[, EE := lfstat == 1 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T, by = id]
 DTall[, EU := lfstat == 1 & shift(lfstat, 1, type = "lead") == 2 & switchedJob==T, by = id]
-DTall[, UE := lfstat == 2 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T, by = id]
-# take stint ID into EU:
+DTall[, UE := lfstat >= 2 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T & is.finite(stintid), by = id]
+# take stint ID into EU and clean it:
 DTall[, fstintid:= shift(stintid, 1, type = "lead"), by = id]
 DTall[EU==T, stintid := fstintid, by=id]
 DTall[, fstintid := NULL]
@@ -62,7 +62,7 @@ DTall[, nomearnm := earnm]
 DTall[, earnm := earnm/PCEPI*100]
 DTall[, badearn := abs(log(shift(earnm, 1, type = "lead")/earnm)) > 2.0 & 
       	abs(log(shift(earnm, 1, type = "lead")/shift(earnm, 1, type = "lag"))) < 0.1, by = id]
-DTall[UE | EU, badearn := FALSE]
+DTall[UE | EU | EE, badearn := FALSE]
 DTall[(badearn), earnm := NA_real_]
 DTall[, c("badearn", "nomearnm") := NULL]
 
@@ -77,7 +77,7 @@ sum(DTall$wpfinwgt[DTall$UE], na.rm=T)
 
 sum(DTall$wpfinwgt[DTall$EE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
-sum(DTall$wpfinwgt[DTall$UE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==2], na.rm=T)
+sum(DTall$wpfinwgt[DTall$UE & DTall$stintid>0 & is.finite(DTall$stintid)], na.rm=T)/sum(DTall$wpfinwgt[DTall$stintid>0 & is.finite(DTall$stintid)], na.rm=T)
 
 sum(DTall$wpfinwgt[DTall$EE & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
