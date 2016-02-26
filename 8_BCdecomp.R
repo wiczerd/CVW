@@ -294,6 +294,13 @@ print(MM_tab,include.rownames=F, hline.after= c(0,nrow(MM_tab)), file="MM.tex")
 ks.test(wcRec$wagechange,wcExp$wagechange,alternative = "greater")
 # plot the coefficients
 MMcoef <- data.table(cbind( mmtabqtls,MM_betaE_betaR_cf$betaptsE,MM_betaE_betaR_cf$betaptsE))
+names(MMcoef) <- c("Quantiles","ExpSwEE","ExpSwUE","ExpSwEU","ExpNSwEE","ExpNSwUE","ExpNSwEU","RecSwEE","RecSwUE","RecSwEU","RecNSwEE","RecNSwUE","RecNSwEU")
+EUfrac <- wagechanges[recIndic==F, wtd.mean(EU,na.rm=T,weights=balanceweight)]
+UEfrac <- wagechanges[recIndic==F, wtd.mean(UE,na.rm=T,weights=balanceweight)]
+EEfrac <- wagechanges[recIndic==F, wtd.mean(EE,na.rm=T,weights=balanceweight)]
+Swfrac <- wagechanges[recIndic==F, wtd.mean(switchedOcc,na.rm=T,weights=balanceweight)]
+MMcoef[ , ExpSw := ]
+
 
 #MM : EE,EUE
 MMEUE_tab <- data.table(cbind( mmtabqtls,(distEUE_cf),distEUE_rec,distEUE_exp,distEUE_rec- distEUE_exp, 

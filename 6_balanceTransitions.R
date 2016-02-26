@@ -111,11 +111,16 @@ setkey(wagechanges, id, date)
 
 
 # keep only count EEs and balanced EUs and UEs
-wagechanges[, balancedEU := EU & shift(UE, 1, type = "lead"), by = id]
-wagechanges[, balancedUE := UE & shift(EU, 1, type = "lag"), by = id]
+wagechanges[is.finite(stintid), balancedEU := EU & shift(UE, 1, type = "lead"), by = id]
+wagechanges[is.finite(stintid), balancedUE := UE & shift(EU, 1, type = "lag"), by = id]
 wagechanges <- wagechanges[EE | balancedEU | balancedUE,]
-DTall[is.finite(stintid), balancedEU := max(UE,na.rm=T)==T & EU==T, by = list(id,stintid)]
-DTall[is.finite(stintid), balancedUE := max(EU,na.rm=T)==T & UE==T, by = list(id,stintid)]
+#DTall[is.finite(stintid), balancedEU := max(UE,na.rm=T)==T & EU==T, by = list(id,stintid)]
+#DTall[is.finite(stintid), balancedUE := max(EU,na.rm=T)==T & UE==T, by = list(id,stintid)]
+
+wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE"))
+setkey(DTall,id,date)
+DTall<- merge(DTall,wagechangesBalanced,by=c("id","date"),all.x=T)
+
 DTall[UE==T, UE := balancedUE==T]
 DTall[EU==T, EU := balancedUE==T]
 

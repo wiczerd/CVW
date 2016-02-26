@@ -60,11 +60,11 @@ DT96 <- readRDS("./Data/DT96_1.RData")
 # restrict sample by age
 DT96 <- DT96[age >= 18 & age <= 65,]
 
-# remove observations with no employment status information
-DT96 <- DT96[!is.na(esr),]
-
 # recode esr into lfstat
 esrRecode(DT96)
+
+# remove observations with no employment status information
+DT96 <- DT96[!is.na(lfstat),]
 
 # replace soc2d with occ and make sure DT is sorted
 DT96[, occ := soc2d]
@@ -109,11 +109,11 @@ DT01 <- readRDS("./Data/DT01_1.RData")
 # restrict sample by age
 DT01 <- DT01[age >= 18 & age <= 65,]
 
-# remove observations with no employment status information
-DT01 <- DT01[!is.na(esr),]
-
 # recode esr into lfstat
 esrRecode(DT01)
+
+# remove observations with no employment status information
+DT01 <- DT01[!is.na(lfstat),]
 
 # replace soc2d with occ and make sure DT is sorted
 DT01[, occ := soc2d]
@@ -159,11 +159,11 @@ DT04 <- readRDS("./Data/DT04_1.RData")
 # restrict sample by age
 DT04 <- DT04[age >= 18 & age <= 65,]
 
-# remove observations with no employment status information
-DT04 <- DT04[!is.na(esr),]
-
 # recode esr into lfstat
 esrRecode(DT04)
+
+# remove observations with no employment status information
+DT04 <- DT04[!is.na(lfstat),]
 
 # replace soc2d with occ and make sure DT is sorted
 DT04[, occ := soc2d]
@@ -209,11 +209,11 @@ DT08 <- readRDS("./Data/DT08_1.RData")
 # restrict sample by age
 DT08 <- DT08[age >= 18 & age <= 65,]
 
-# remove observations with no employment status information
-DT08 <- DT08[!is.na(esr),]
-
 # recode esr into lfstat
 esrRecode(DT08)
+
+# remove observations with no employment status information
+DT08 <- DT08[!is.na(lfstat),]
 
 # replace soc2d with occ and make sure DT is sorted
 DT08[, occ := soc2d]
