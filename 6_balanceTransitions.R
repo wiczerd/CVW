@@ -90,7 +90,7 @@ EEnorecallweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE
 #recall rate:
 UEnorecallweight/UEreadweight
 
-saveRDS(DTall,"./Data/DTall_6.RData")
+#saveRDS(DTall,"./Data/DTall_6.RData")
 #some rates: diagnostic
 sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
@@ -114,27 +114,16 @@ setkey(wagechanges, id, date)
 wagechanges[is.finite(stintid), balancedEU := EU & shift(UE, 1, type = "lead"), by = id]
 wagechanges[is.finite(stintid), balancedUE := UE & shift(EU, 1, type = "lag"), by = id]
 wagechanges <- wagechanges[EE | balancedEU | balancedUE,]
-#DTall[is.finite(stintid), balancedEU := max(UE,na.rm=T)==T & EU==T, by = list(id,stintid)]
-#DTall[is.finite(stintid), balancedUE := max(EU,na.rm=T)==T & UE==T, by = list(id,stintid)]
-
-wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE"))
-setkey(DTall,id,date)
-DTall<- merge(DTall,wagechangesBalanced,by=c("id","date"),all.x=T)
-
-DTall[UE==T, UE := balancedUE==T]
-DTall[EU==T, EU := balancedUE==T]
-
-
 
 # change switchedocc to TRUE for UE if switchedocc is TRUE for corresponding EU
 # Q: Why?
 # A: To correct for how we defined the timing of the occupation switch. See 3_createVars.R.
 #    Now both the EU and UE will be considered an occupation switch.
-wagechanges[UE & shift(switchedOcc, 1, type = "lag"), switchedOcc := TRUE, by = id]
+wagechanges[UE==T & shift(switchedOcc, 1, type = "lag")==T, switchedOcc := T, by = id]
 wagechanges[, maxunempdur:= ifelse(UE==T & is.na(maxunempdur), shift(maxunempdur), maxunempdur) , by = id]
 wagechanges[, maxunempdur:= ifelse(UE==T & maxunempdur<shift(maxunempdur), shift(maxunempdur), maxunempdur) , by = id]
 wagechanges[, maxunempdur:= ifelse(EU==T & maxunempdur<shift(maxunempdur,1,type="lead"), shift(maxunempdur,1,type="lead"), maxunempdur) , by = id]
-
+wagechanges[, stintid := ifelse( EU==T, shift(stintid,1,type="lead"), stintid )]
 
 # set HSCol and Young to max over panel to ensure balance
 wagechanges[, HSCol := max(HSCol), by = id]
@@ -202,6 +191,26 @@ wagechanges[,c("year","durwt"):=NULL]
 wtscale <- wagechanges[, sum(balanceweight, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
 wagechanges[, balanceweight := balanceweight/wtscale]
 
+wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE","maxunempdur","stintid","balanceweight"))
+
+setkey(DTall,id,date)
+#DTall[is.finite(stintid), balancedEU := max(UE,na.rm=T)==T & EU==T, by = list(id,stintid)]
+#DTall[is.finite(stintid), balancedUE := max(EU,na.rm=T)==T & UE==T, by = list(id,stintid)]
+DTall<- merge(DTall,wagechangesBalanced,by=c("id","date"),all.x=T)
+
+DTall[UE==T, UE := balancedUE==T]
+DTall[EU==T, EU := balancedUE==T]
+FIGURE THIS OUT!
+
+#DTall[EU | UE, stintid := stintid.y]
+
+#DTall[EU | UE, stintid := stintid.y]
+
+DTall[UE|EU, maxunempdur := max(maxunempdur.y, maxunempdur.x,na.rm=T), by=list(id,stintid)]
+DTall[, c("maxunempdur.x","maxunempdur.y","stintid.y") := NULL ]
+
+
+saveRDS(DTall,"./Data/DTall_6.RData")
 #- Diagnostics
 
 # check weights
