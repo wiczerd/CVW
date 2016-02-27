@@ -111,8 +111,8 @@ setkey(wagechanges, id, date)
 
 
 # keep only count EEs and balanced EUs and UEs
-wagechanges[is.finite(stintid), balancedEU := EU & shift(UE, 1, type = "lead"), by = id]
-wagechanges[is.finite(stintid), balancedUE := UE & shift(EU, 1, type = "lag"), by = id]
+wagechanges[, balancedEU := EU & shift(UE, 1, type = "lead"), by = id]
+wagechanges[, balancedUE := UE & shift(EU, 1, type = "lag"), by = id]
 wagechanges <- wagechanges[EE | balancedEU | balancedUE,]
 
 # change switchedocc to TRUE for UE if switchedocc is TRUE for corresponding EU
@@ -123,7 +123,7 @@ wagechanges[UE==T & shift(switchedOcc, 1, type = "lag")==T, switchedOcc := T, by
 wagechanges[, maxunempdur:= ifelse(UE==T & is.na(maxunempdur), shift(maxunempdur), maxunempdur) , by = id]
 wagechanges[, maxunempdur:= ifelse(UE==T & maxunempdur<shift(maxunempdur), shift(maxunempdur), maxunempdur) , by = id]
 wagechanges[, maxunempdur:= ifelse(EU==T & maxunempdur<shift(maxunempdur,1,type="lead"), shift(maxunempdur,1,type="lead"), maxunempdur) , by = id]
-wagechanges[, stintid := ifelse( EU==T, shift(stintid,1,type="lead"), stintid )]
+wagechanges[, stintid := ifelse( EU==T, shift(stintid,1,type="lead"), stintid ), by=id]
 
 # set HSCol and Young to max over panel to ensure balance
 wagechanges[, HSCol := max(HSCol), by = id]
@@ -200,9 +200,10 @@ DTall<- merge(DTall,wagechangesBalanced,by=c("id","date"),all.x=T)
 
 DTall[UE==T, UE := balancedUE==T]
 DTall[EU==T, EU := balancedUE==T]
-FIGURE THIS OUT!
+DTall[EU | UE, stintid.t := stintid.y]
+DTall[lfstat>=2 & !(UE==T), stintid.t := 0.]
+DTall[lfstat>=2 | EU==T, stintid.t := ]
 
-#DTall[EU | UE, stintid := stintid.y]
 
 #DTall[EU | UE, stintid := stintid.y]
 
