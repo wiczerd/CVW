@@ -51,7 +51,7 @@ DTall[, fstintid := NULL]
 
 #check
 dupsUE<- DTall[UE==T, duplicated(stintid, na.rm=T), by=id]
-dupsEU<- DTall[UE==T, duplicated(stintid, na.rm=T), by=id]
+dupsEU<- DTall[EU==T, duplicated(stintid, na.rm=T), by=id]
 
 
 # create unemployment duration variable

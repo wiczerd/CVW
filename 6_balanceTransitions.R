@@ -123,7 +123,8 @@ wagechanges[UE==T & shift(switchedOcc, 1, type = "lag")==T, switchedOcc := T, by
 wagechanges[, maxunempdur:= ifelse(UE==T & is.na(maxunempdur), shift(maxunempdur), maxunempdur) , by = id]
 wagechanges[, maxunempdur:= ifelse(UE==T & maxunempdur<shift(maxunempdur), shift(maxunempdur), maxunempdur) , by = id]
 wagechanges[, maxunempdur:= ifelse(EU==T & maxunempdur<shift(maxunempdur,1,type="lead"), shift(maxunempdur,1,type="lead"), maxunempdur) , by = id]
-wagechanges[, stintid := ifelse( EU==T, shift(stintid,1,type="lead"), stintid ), by=id]
+wagechanges[, stintid := ifelse( EU==T & is.na(stintid), shift(stintid,1,type="lead"), stintid ), by=id]
+wagechanges[, stintid := ifelse( UE==T & is.na(stintid), shift(stintid,1,type="lag"), stintid ), by=id]
 
 # set HSCol and Young to max over panel to ensure balance
 wagechanges[, HSCol := max(HSCol), by = id]
@@ -144,7 +145,6 @@ EEweight.balanced <- wagechanges[EE & !is.na(wagechange), sum(perwt, na.rm = TRU
 multiplier <- (UEnorecallweight/EEnorecallweight)*(EEweight.balanced/UEweight.balanced)
 
 wagechanges[, balanceweight := ifelse(EU | UE, perwt*multiplier, perwt)]
-DTall[, balanceweight := ifelse(EU | UE, perwt*multiplier, perwt)]
 
 # change weight among unemployed to match <15 weeks, 15-26 weeks, 27+ from CPS
 CPSunempdur <- readRDS("./InputData/CPSunempDurDist.RData")
@@ -194,21 +194,18 @@ wagechanges[, balanceweight := balanceweight/wtscale]
 wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE","maxunempdur","stintid","balanceweight"))
 
 setkey(DTall,id,date)
-#DTall[is.finite(stintid), balancedEU := max(UE,na.rm=T)==T & EU==T, by = list(id,stintid)]
-#DTall[is.finite(stintid), balancedUE := max(EU,na.rm=T)==T & UE==T, by = list(id,stintid)]
+DTall[is.finite(stintid), balancedEU := max(UE,na.rm=T)==T & EU==T, by = list(id,stintid)]
+DTall[is.finite(stintid), balancedUE := max(EU,na.rm=T)==T & UE==T, by = list(id,stintid)]
 DTall<- merge(DTall,wagechangesBalanced,by=c("id","date"),all.x=T)
 
-DTall[UE==T, UE := balancedUE==T]
-DTall[EU==T, EU := balancedUE==T]
-DTall[EU | UE, stintid.t := stintid.y]
-DTall[lfstat>=2 & !(UE==T), stintid.t := 0.]
-DTall[lfstat>=2 | EU==T, stintid.t := ]
+DTall[UE==T, UE := balancedUE.y==T]
+DTall[EU==T, EU := balancedEU.y==T]
+#there are a few from x that don't have stintid, fill these with y.
 
-
-#DTall[EU | UE, stintid := stintid.y]
-
-DTall[UE|EU, maxunempdur := max(maxunempdur.y, maxunempdur.x,na.rm=T), by=list(id,stintid)]
-DTall[, c("maxunempdur.x","maxunempdur.y","stintid.y") := NULL ]
+DTall[is.finite(stintid), maxunempdur := max(c(maxunempdur.y, maxunempdur.x), na.rm=T), by=list(id,stintid)] #trusting the DTall worked right.
+DTall[ is.finite(stintid) , completestint:= max(balancedUE, na.rm=T), by=list(id,stintid) ]
+DTall[ is.finite(stintid) & completestint ==1 , balanceweight := max(balanceweight, na.rm=T), by=list(id,stintid)]
+DTall[, c("maxunempdur.x","maxunempdur.y") := NULL ]
 
 
 saveRDS(DTall,"./Data/DTall_6.RData")

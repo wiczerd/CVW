@@ -80,15 +80,25 @@ DT96[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 DT96[lfstat == 2 | lfstat == 3, occ := NA_integer_]
 
 # create unemployment spell id
-DT96[lfstat>=2 , newstint := 0L ]
-DT96[, newstint := as.integer(lfstat == 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1)), by = id]
-DT96[ lfstat==1, nstint:= 1] #everytime I hit some employment move up the counter, prevents several UE's assoc with 1 EU.s
-DT96[ , stintid:= cumsum(newstint), by=id]
-DT96[ lfstat==1 | stintid==0, stintid := NA_integer_]
-#DT96[newstint == T, stintid := cumsum(newstint), by = id]
-#DT96[lfstat == 1, stintid := 0] #now only NA's are 2,3 that are connected to each other
-#DT96[, stintid := na.locf(stintid, na.rm = FALSE), by = id]
-#DT96[lfstat == 1 | stintid==0, stintid := NA_integer_]
+# DT96[lfstat>=2 , newstint := 0L ]
+# DT96[, newstint := as.integer(lfstat == 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1)), by = id]
+# DT96[ lfstat==1, nstint:= 1] #everytime I hit some employment move up the counter, prevents several UE's assoc with 1 EU.s
+# DT96[ , stintid:= cumsum(newstint), by=id]
+# DT96[ lfstat==1 | stintid==0, stintid := NA_integer_]
+DT96[, newstint := as.integer(lfstat >= 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1)), by = id]
+DT96[newstint == T, stintid1 := cumsum(newstint), by = id]
+DT96[lfstat == 1, stintid1 := 0] #now only NA's are 2,3 that are connected to each other
+DT96[, stintid1 := na.locf(stintid1, na.rm = FALSE), by = id]
+DT96[lfstat == 1 | stintid1==0, stintid1 := NA_integer_]
+#now go back
+DT96[, endstint := as.integer(lfstat >= 2 & (shift(lfstat, 1, type = "lead") == 1 | mis == .N )), by = id]
+DT96[endstint == T, stintid2 := cumsum(endstint), by = id]
+DT96[lfstat == 1, stintid2 := 0] #now only NA's are 2,3 that are connected to each other
+DT96[, stintid2 := na.locf(stintid2, fromLast=T, na.rm = FALSE), by = id]
+DT96[lfstat == 1 | stintid2==0, stintid2 := NA_integer_]
+DT96[, stintid := stintid1+stintid2]
+
+
 
 # fill in occupation with next occupation in unemployment stints
 DT96[, leadocc := shift(occ, 1, type = "lead"), by = id]
@@ -133,11 +143,18 @@ DT01[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 DT01[lfstat == 2 | lfstat == 3, occ := NA_integer_]
 
 # create unemployment spell id
-DT01[lfstat>=2 , newstint := 0L ]
-DT01[, newstint := as.integer(lfstat == 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1)), by = id]
-DT01[ lfstat==1, nstint:= 1] #everytime I hit some employment move up the counter, prevents several UE's assoc with 1 EU.s
-DT01[ , stintid:= cumsum(newstint), by=id]
-DT01[ lfstat==1 | stintid==0, stintid := NA_integer_]
+DT01[, newstint := as.integer(lfstat >= 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1)), by = id]
+DT01[newstint == T, stintid1 := cumsum(newstint), by = id]
+DT01[lfstat == 1, stintid1 := 0] #now only NA's are 2,3 that are connected to each other
+DT01[, stintid1 := na.locf(stintid1, na.rm = FALSE), by = id]
+DT01[lfstat == 1 | stintid1==0, stintid1 := NA_integer_]
+#now go back
+DT01[, endstint := as.integer(lfstat >= 2 & (shift(lfstat, 1, type = "lead") == 1 | mis == .N )), by = id]
+DT01[endstint == T, stintid2 := cumsum(endstint), by = id]
+DT01[lfstat == 1, stintid2 := 0] #now only NA's are 2,3 that are connected to each other
+DT01[, stintid2 := na.locf(stintid2, fromLast=T, na.rm = FALSE), by = id]
+DT01[lfstat == 1 | stintid2==0, stintid2 := NA_integer_]
+DT01[, stintid := stintid1+stintid2]
 
 # fill in occupation with next occupation in unemployment stints
 DT01[, leadocc := shift(occ, 1, type = "lead"), by = id]
@@ -184,11 +201,18 @@ DT04[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 DT04[lfstat == 2 | lfstat == 3, occ := NA_integer_]
 
 # create unemployment spell id
-DT01[lfstat>=2 , newstint := 0L ]
-DT01[, newstint := as.integer(lfstat == 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1)), by = id]
-DT01[ lfstat==1, nstint:= 1] #everytime I hit some employment move up the counter, prevents several UE's assoc with 1 EU.s
-DT01[ , stintid:= cumsum(newstint), by=id]
-DT01[ lfstat==1 | stintid==0, stintid := NA_integer_]
+DT04[, newstint := as.integer(lfstat >= 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1)), by = id]
+DT04[newstint == T, stintid1 := cumsum(newstint), by = id]
+DT04[lfstat == 1, stintid1 := 0] #now only NA's are 2,3 that are connected to each other
+DT04[, stintid1 := na.locf(stintid1, na.rm = FALSE), by = id]
+DT04[lfstat == 1 | stintid1==0, stintid1 := NA_integer_]
+#now go back
+DT04[, endstint := as.integer(lfstat >= 2 & (shift(lfstat, 1, type = "lead") == 1 | mis == .N )), by = id]
+DT04[endstint == T, stintid2 := cumsum(endstint), by = id]
+DT04[lfstat == 1, stintid2 := 0] #now only NA's are 2,3 that are connected to each other
+DT04[, stintid2 := na.locf(stintid2, fromLast=T, na.rm = FALSE), by = id]
+DT04[lfstat == 1 | stintid2==0, stintid2 := NA_integer_]
+DT04[, stintid := stintid1+stintid2]
 
 # fill in occupation with next occupation in unemployment stints
 DT04[, leadocc := shift(occ, 1, type = "lead"), by = id]
@@ -233,11 +257,18 @@ DT08[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
 DT08[lfstat == 2 | lfstat == 3, occ := NA_integer_]
 
 # create unemployment spell id
-DT08[lfstat>=2 , newstint := 0L ]
-DT08[, newstint := as.integer(lfstat == 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1)), by = id]
-DT08[ lfstat==1, nstint:= 1] #everytime I hit some employment move up the counter, prevents several UE's assoc with 1 EU.s
-DT08[ , stintid:= cumsum(newstint), by=id]
-DT08[ lfstat==1 | stintid==0, stintid := NA_integer_]
+DT08[, newstint := as.integer(lfstat >= 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1)), by = id]
+DT08[newstint == T, stintid1 := cumsum(newstint), by = id]
+DT08[lfstat == 1, stintid1 := 0] #now only NA's are 2,3 that are connected to each other
+DT08[, stintid1 := na.locf(stintid1, na.rm = FALSE), by = id]
+DT08[lfstat == 1 | stintid1==0, stintid1 := NA_integer_]
+#now go back
+DT08[, endstint := as.integer(lfstat >= 2 & (shift(lfstat, 1, type = "lead") == 1 | mis == .N )), by = id]
+DT08[endstint == T, stintid2 := cumsum(endstint), by = id]
+DT08[lfstat == 1, stintid2 := 0] #now only NA's are 2,3 that are connected to each other
+DT08[, stintid2 := na.locf(stintid2, fromLast=T, na.rm = FALSE), by = id]
+DT08[lfstat == 1 | stintid2==0, stintid2 := NA_integer_]
+DT08[, stintid := stintid1+stintid2]
 
 # fill in occupation with next occupation in unemployment stints
 DT08[, leadocc := shift(occ, 1, type = "lead"), by = id]
