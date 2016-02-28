@@ -12,9 +12,10 @@ wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
 setwd(wd0)
 
+keep <- c("wagechange","wagechange_EUE","EU","UE","EE","recIndic","switchedOcc","balanceweight","date")
 
 wagechanges <- readRDS("./Data/balancedwagechanges.RData")
-
+wagechanges <- subset(wagechanges, select=keep)
 
 DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
 # wcDF : data set
@@ -169,6 +170,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 		rhere <- rq( wc ~ factor(s)+0,tau= q, data=wcExp, weights = wt)
 		betaptsE[qi,] = rhere$coefficients	
 		qi = qi+1
+		rm(rhere)
 	}
 
 	betaE <- list(approxfun(qtlgrid,betaptsE[,1]))
@@ -193,6 +195,10 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 		}
 		qi = qi+1
 	}
+	#clean up the space:
+	wc_cf_pctile <- quantile(wc_cf,probs=seq(.01,.99,.01),na.rm=T)
+	rm(wc_cf)
+	
 	wc_cf_sw <- matrix(NA, nrow=nsamp*nrow(wcExp),ncol=1) #storing the counter-factual distribution - only switch
 	for(q in qtlgrid){
 		if(NS == 6){
@@ -205,6 +211,10 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 		}
 		qi = qi+1
 	}
+	#clean up the space:
+	wc_cf_sw_pctile <- quantile(wc_cf_sw,probs=seq(.01,.99,.01),na.rm=T)
+	rm(wc_cf_sw)
+
 	wc_cf_un <- matrix(NA, nrow=nsamp*nrow(wcExp),ncol=1) #storing the counter-factual distribution - only unemployment
 	for(q in qtlgrid){
 		if(NS == 6){
@@ -218,8 +228,11 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 		}
 		qi = qi+1
 	}
+	#clean up the space:
+	wc_cf_un_pctile <- quantile(wc_cf_un,probs=seq(.01,.99,.01),na.rm=T)
+	rm(wc_cf_un)	
 	
-	return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_cf = wc_cf, wc_cf_sw= wc_cf_sw, wc_cf_un= wc_cf_un))
+	return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_cf = wc_cf_pctile, wc_cf_sw= wc_cf_sw_pctile, wc_cf_un= wc_cf_un_pctile))
 }
 
 # create vector of recession dates : above 6%
@@ -249,18 +262,18 @@ wcExp <- subset(wagechanges,recIndic==F)
 wcRec <- subset(wagechanges,recIndic==T)
 distEUE_exp <- wcExp[EE==T | EU==T, wtd.quantile(wagechange_EUE,probs=mmtabqtls,weights=balanceweight, na.rm=T)]
 distEUE_rec <- wcRec[EE==T | EU==T, wtd.quantile(wagechange_EUE,probs=mmtabqtls,weights=balanceweight, na.rm=T)]
-distEUE_cf  <- quantile(MMEUE_betaE_betaR_cf$wc_cf,probs=mmtabqtls, na.rm=T)
-distEUE_cf_sw  <- quantile(MMEUE_betaE_betaR_cf$wc_cf_sw,probs=mmtabqtls, na.rm=T)
-distEUE_cf_un  <- quantile(MMEUE_betaE_betaR_cf$wc_cf_un,probs=mmtabqtls, na.rm=T)
+distEUE_cf  <- MMEUE_betaE_betaR_cf$wc_cf[mmtabqtls*100] 
+distEUE_cf_sw  <- MMEUE_betaE_betaR_cf$wc_cf_un[mmtabqtls*100]
+distEUE_cf_un  <- MMEUE_betaE_betaR_cf$wc_cf_sw[mmtabqtls*100]
 distEUE_pct <- (distEUE_cf - distEUE_exp)/(distEUE_rec - distEUE_exp)
 distEUE_pct_sw <- (distEUE_cf_sw - distEUE_exp)/(distEUE_rec - distEUE_exp)
 distEUE_pct_un <- (distEUE_cf_un - distEUE_exp)/(distEUE_rec - distEUE_exp)
 
 dist_exp <- wtd.quantile(wcExp$wagechange,probs=mmtabqtls,weights=wcExp$balanceweight, na.rm=T)
 dist_rec <- wtd.quantile(wcRec$wagechange,probs=mmtabqtls,weights=wcRec$balanceweight, na.rm=T)
-dist_cf  <- quantile(MM_betaE_betaR_cf$wc_cf,probs=mmtabqtls, na.rm=T)
-dist_cf_sw  <- quantile(MM_betaE_betaR_cf$wc_cf_sw,probs=mmtabqtls, na.rm=T)
-dist_cf_un  <- quantile(MM_betaE_betaR_cf$wc_cf_un,probs=mmtabqtls, na.rm=T)
+dist_cf  <- MM_betaE_betaR_cf$wc_cf[mmtabqtls*100]
+dist_cf_sw  <- MM_betaE_betaR_cf$wc_cf[mmtabqtls*100]
+dist_cf_un  <- MM_betaE_betaR_cf$wc_cf[mmtabqtls*100] 
 dist_pct <- (dist_cf - dist_exp)/(dist_rec - dist_exp)
 dist_pct_sw <- (dist_cf_sw - dist_exp)/(dist_rec - dist_exp)
 dist_pct_un <- (dist_cf_un - dist_exp)/(dist_rec - dist_exp)
