@@ -50,8 +50,12 @@ DTall[EU==T, stintid := fstintid, by=id]
 DTall[, fstintid := NULL]
 
 #check
-dupsUE<- DTall[UE==T, duplicated(stintid, na.rm=T), by=id]
-dupsEU<- DTall[EU==T, duplicated(stintid, na.rm=T), by=id]
+DTall[UE==T, dupedUE:= duplicated(stintid, na.rm=T), by=id]
+DTall[EU==T, dupedEU:= duplicated(stintid, na.rm=T), by=id]
+#drop the duplicates:
+DTall[ UE==T & dupedUE, UE==F ]
+DTall[ EU==T & dupedEU, EU==F ]
+# it is still possible there are lfstat=2|3 that are associated with a duplicate
 
 
 # create unemployment duration variable

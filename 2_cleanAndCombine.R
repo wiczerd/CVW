@@ -105,7 +105,7 @@ DT96[, leadocc := shift(occ, 1, type = "lead"), by = id]
 DT96[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
 DT96[, lagocc := shift(occ), by = id]
 DT96[lfstat==2|lfstat==3, lagocc := Mode(lagocc), by = list(id, stintid)] 
-DT96[, c("leadocc", "newstint") := NULL]
+DT96[, c("leadocc", "newstint","endstint","stintid1","stintid2") := NULL]
 
 DT96 <- DT96[!is.na(occ),]
 
@@ -161,7 +161,7 @@ DT01[, leadocc := shift(occ, 1, type = "lead"), by = id]
 DT01[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
 DT01[, lagocc := shift(occ), by = id]
 DT01[lfstat==2|lfstat==3, lagocc := Mode(lagocc), by = list(id, stintid)] 
-DT01[, c("leadocc", "newstint") := NULL]
+DT01[, c("leadocc", "newstint","endstint","stintid1","stintid2") := NULL]
 
 DT01 <- DT01[!is.na(occ),]
 
@@ -219,7 +219,7 @@ DT04[, leadocc := shift(occ, 1, type = "lead"), by = id]
 DT04[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
 DT04[, lagocc := shift(occ), by = id]
 DT04[lfstat==2|lfstat==3, lagocc := Mode(lagocc), by = list(id, stintid)] 
-DT04[, c("leadocc", "newstint") := NULL]
+DT04[, c("leadocc", "newstint","endstint","stintid1","stintid2") := NULL]
 
 DT04 <- DT04[!is.na(occ),]
 
@@ -275,7 +275,7 @@ DT08[, leadocc := shift(occ, 1, type = "lead"), by = id]
 DT08[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
 DT08[, lagocc := shift(occ), by = id]
 DT08[lfstat==2|lfstat==3, lagocc := Mode(lagocc), by = list(id, stintid)] 
-DT08[, c("leadocc", "newstint") := NULL]
+DT08[, c("leadocc", "newstint","endstint","stintid1","stintid2") := NULL]
 
 
 DT08 <- DT08[!is.na(occ),]

@@ -191,7 +191,7 @@ wagechanges[,c("year","durwt"):=NULL]
 wtscale <- wagechanges[, sum(balanceweight, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
 wagechanges[, balanceweight := balanceweight/wtscale]
 
-wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE","maxunempdur","stintid","balanceweight"))
+wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE","maxunempdur","balanceweight"))
 
 setkey(DTall,id,date)
 DTall[is.finite(stintid), balancedEU := max(UE,na.rm=T)==T & EU==T, by = list(id,stintid)]
@@ -202,13 +202,18 @@ DTall[UE==T, UE := balancedUE.y==T]
 DTall[EU==T, EU := balancedEU.y==T]
 #there are a few from x that don't have stintid, fill these with y.
 
-DTall[is.finite(stintid), maxunempdur := max(c(maxunempdur.y, maxunempdur.x), na.rm=T), by=list(id,stintid)] #trusting the DTall worked right.
-DTall[ is.finite(stintid) , completestint:= max(balancedUE, na.rm=T), by=list(id,stintid) ]
-DTall[ is.finite(stintid) & completestint ==1 , balanceweight := max(balanceweight, na.rm=T), by=list(id,stintid)]
+DTall[ is.finite(stintid), maxunempdur := max(c(maxunempdur.y, maxunempdur.x), na.rm=T), by=list(id,stintid)] #trusting the DTall worked right.
+#DTall[ is.finite(stintid) , completestintUE:= as.integer(balancedUE.y==T) ] <- this part is unecessary
+#DTall[ is.finite(stintid) , completestintUE:= max(completestintUE) , by = list(id,stintid)]
+#DTall[ is.finite(stintid) , completestintEU:= as.integer(balancedEU.y==T) ]
+#DTall[ is.finite(stintid) , completestintEU:= max(balancedEU.y), by=list(id,stintid) ]
+DTall[ !is.finite(balanceweight), balanceweight:= 0.]
+DTall[, balanceweight := max(balanceweight, na.rm=T), by=list(id,stintid)]
 DTall[, c("maxunempdur.x","maxunempdur.y") := NULL ]
 
-
 saveRDS(DTall,"./Data/DTall_6.RData")
+
+
 #- Diagnostics
 
 # check weights
