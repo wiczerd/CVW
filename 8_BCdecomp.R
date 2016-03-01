@@ -287,7 +287,7 @@ names(pct_share_shift) <- c("Decile","Share","EE","UE","EU","EE","UE","EU")
 addswitched <-list(pos = list(-1),command="\\hline\\hline& & \\multicolumn{3}{c}{Switched Occ} & \\multicolumn{3}{c}{Not Switched Occ} \\\\ ")
 pct_share_shift <- xtable(pct_share_shift, label="tab:pct_share_shift", digits=2, 
 						  align="ll|l|lll|lll", caption="Shift-Share (DHL) decomposition, including unemployment")
-print(pct_share_shift,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="pct_share_shift.tex")
+print(pct_share_shift,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="./Figures/pct_share_shift.tex")
 
 #DHW: EE, EUE
 pct_share_shift_EUE <- data.table(cbind(seq(0.1,0.9,0.1),pct_share_EUE,pct_shift_EUE))
@@ -295,15 +295,16 @@ names(pct_share_shift_EUE) <- c("Decile","Share","EE","EUE","EE","EUE")
 addswitched <-list(pos = list(-1),command="\\hline\\hline& & \\multicolumn{2}{c}{Switched Occ} & \\multicolumn{2}{c}{Not Switched Occ} \\\\ ")
 pct_share_shift_EUE <- xtable(pct_share_shift_EUE, label="tab:pct_share_shift_EUE", digits=2, 
 						  align="ll|l|ll|ll", caption="Shift-Share (DHL) decomposition, connecting across unemployment")
-print(pct_share_shift_EUE,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="pct_share_shift_EUE.tex")
+print(pct_share_shift_EUE,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="./Figures/pct_share_shift_EUE.tex")
 
 #MM : EE, EU, UE
 MM_tab <- data.table(cbind( mmtabqtls,(dist_cf),dist_rec,dist_exp,dist_rec- dist_exp, 
 							dist_pct,dist_pct_sw,dist_pct_un))
-names(MM_tab) <- c("Decile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
+names(MM_tab) <- c("Quantile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
+rownames(MM_tab) <- c(seq(0.1,0.9,0.1))
 MM_tab <- xtable(MM_tab, label="tab:MMEUE_tab", digits=2, 
 					align="ll|lll|l|lll", caption="Machado-Mata, including unemployment")
-print(MM_tab,include.rownames=F, hline.after= c(0,nrow(MM_tab)), file="MM.tex")
+print(MM_tab,include.rownames=T, hline.after= c(0,nrow(MM_tab)), file="./Figures/MM.tex")
 ks.test(wcRec$wagechange,wcExp$wagechange,alternative = "greater")
 # plot the coefficients
 MMcoef <- data.table(cbind( mmtabqtls,MM_betaE_betaR_cf$betaptsE,MM_betaE_betaR_cf$betaptsE))
@@ -312,16 +313,16 @@ EUfrac <- wagechanges[recIndic==F, wtd.mean(EU,na.rm=T,weights=balanceweight)]
 UEfrac <- wagechanges[recIndic==F, wtd.mean(UE,na.rm=T,weights=balanceweight)]
 EEfrac <- wagechanges[recIndic==F, wtd.mean(EE,na.rm=T,weights=balanceweight)]
 Swfrac <- wagechanges[recIndic==F, wtd.mean(switchedOcc,na.rm=T,weights=balanceweight)]
-MMcoef[ , ExpSw := ]
 
 
 #MM : EE,EUE
 MMEUE_tab <- data.table(cbind( mmtabqtls,(distEUE_cf),distEUE_rec,distEUE_exp,distEUE_rec- distEUE_exp, 
 							   distEUE_pct,distEUE_pct_sw,distEUE_pct_un ))
-names(MMEUE_tab) <- c("Decile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
+names(MMEUE_tab) <- c("Quantile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
+rownames(MMEUE_tab) <- c(seq(0.1,0.9,0.1))
 MMEUE_tab <- xtable(MMEUE_tab, label="tab:MMEUE_tab", digits=2, 
 						  align="ll|lll|l|lll", caption="Machado-Mata, connecting across unemployment")
-print(MMEUE_tab,include.rownames=F, hline.after= c(0,nrow(MMEUE_tab)), file="MMEUE.tex")
+print(MMEUE_tab,include.rownames=F, hline.after= c(0,nrow(MMEUE_tab)), file="./Figures/MMEUE.tex")
 
 ks.test(wcRec$wagechange_EUE,wcExp$wagechange_EUE,alternative = "greater")
 
@@ -329,11 +330,19 @@ ks.test(wcRec$wagechange_EUE,wcExp$wagechange_EUE,alternative = "greater")
 ## Now use full distribution ##
 rm(list = c("wagechanges","wcRec","wcExp"))
 
+# select toKeep columns only
+wagechanges <- wagechanges[, toKeep, with = FALSE]
+
 DTall <- readRDS("./Data/DTall_6.RData")
 
-toKeep <- c(toKeep,"wpfinwgt")
+toKeep <- c(toKeep,"wpfinwgt","switchedJob",)
+
 
 # select toKeep columns only
 DTall <- DTall[, toKeep, with = FALSE]
 DTall <- subset(DTall, is.finite(wpfinwgt) & is.finite(wagechange_all))
-# plot all wage changes
+
+DTall[, allwt := wpfinwgt]
+DTall[EU==T|UE==T|EE==T, allwt := balanceweight]
+DTall[, wagechange_allEUE := ifelse(EU==T, wagechange_EUE,wagechange_all)]
+DTall[UE==T, wagechange_allEUE := NA_real_]

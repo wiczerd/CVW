@@ -173,7 +173,8 @@ wagechanges[ (maxunempdur>=15*12/52 & maxunempdur<=26*12/52), quantile(durwt, na
 wagechanges[ (maxunempdur>26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
 
 
-wagechanges[is.na(durwt), durwt := 1.]
+#wagechanges[is.na(durwt), durwt := 1.]
+wagechanges[, durwt := 1.]
 #do not increase the incidence of unemployment
 balwtEU <- sum(wagechanges$balanceweight[wagechanges$EU], na.rm=T)
 balwtUE <- sum(wagechanges$balanceweight[wagechanges$UE], na.rm=T)
