@@ -36,7 +36,7 @@ wagechanges[EE == TRUE, groupBalanceWeight_EE := sum(balanceweight), by = switch
 wagechanges[EE == TRUE, groupBalanceWeight_EErec := sum(balanceweight), by = "switchedOcc,recIndic"]
 
 
-# plot all wage changes
+# plot all earnings changes
 ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeight_all, linetype = switchedOcc)) +
 	geom_line(stat ="density",size = 0.5) +
 	scale_linetype_manual(values = c("solid", "dashed"),
@@ -47,7 +47,7 @@ ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeigh
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
 	ylab("Density") +
-	xlab("Wage change") 
+	xlab("Earnings change") 
 ggsave(filename = "Figures/wagechanges_job.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_job.eps",height= 5,width=10)
 #cdf
@@ -59,7 +59,7 @@ ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeigh
 	theme_bw() +
 	theme(legend.position = c(.2,0.85)) +
 	ylab("") +
-	xlab("Wage change") 
+	xlab("Earnings change") 
 ggsave(filename = "Figures/wagechanges_job_cdf.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_job_cdf.eps",height= 5,width=10)	
 
@@ -76,7 +76,7 @@ ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeigh
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
 	ylab("Density") +
-	xlab("Wage change") 
+	xlab("Earnings change") 
 ggsave(filename = "Figures/wagechanges_joboccrec.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_joboccrec.eps",height= 5,width=10)
 
@@ -90,7 +90,7 @@ ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeigh
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
 	ylab("Density") +
-	xlab("Wage change") 
+	xlab("Earnings change") 
 ggsave(filename = "Figures/wagechanges_jobrec.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_jobrec.eps",height= 5,width=10)
 
@@ -102,7 +102,7 @@ ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeigh
 	xlim(c(-10,10)) +
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
-	xlab("Wage change") 
+	xlab("Earnings change") 
 ggsave(filename = "Figures/wagechanges_jobrec_cdf.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_jobrec_cdf.eps",height= 5,width=10)
 
@@ -117,7 +117,7 @@ ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeigh
 					   name = "") +
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
-	xlab("Wage change")+ ylab("")
+	xlab("Earnings change")+ ylab("")
 ggsave(filename = "Figures/wagechanges_allrec_cdf.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_allrec_cdf.eps",height= 5,width=10)
 
@@ -133,7 +133,7 @@ ggplot(subset(wagechanges, EE==T|EU==T), aes(wagechange_EUE, weight = balancewei
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
 	ylab("Density") +
-	xlab("Wage change")
+	xlab("Earnings change")
 ggsave(filename = "Figures/wagechanges_EUE.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_EUE.eps",height= 5,width=10)
 
@@ -146,7 +146,7 @@ ggplot(subset(wagechanges, EE==T|EU==T), aes(wagechange_EUE, weight = balancewei
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
 	ylab(" ") +
-	xlab("Wage change")
+	xlab("Earnings change")
 ggsave(filename = "Figures/wagechanges_EUE_cdf.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_EUE_cdf.eps",height= 5,width=10)
 
@@ -165,7 +165,7 @@ ggplot(subset(wagechanges, EE==T|EU==T), aes(wagechange_EUE, weight = balancewei
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
 	ylab("Density") +
-	xlab("Wage change")
+	xlab("Earnings change")
 ggsave(filename = "Figures/wagechanges_EUErec.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_EUErec.eps",height= 5,width=10)
 
@@ -181,7 +181,7 @@ ggplot(subset(wagechanges, EE==T|EU==T), aes(wagechange_EUE, weight = balancewei
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
 	ylab("") +
-	xlab("Wage change")
+	xlab("Earnings change")
 ggsave(filename = "Figures/wagechanges_EUErec_cdf.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_EUErec_cdf.eps",height= 5,width=10)
 
@@ -196,7 +196,7 @@ ggplot(subset(wagechanges,EE), aes(wagechange, weight = balanceweight/groupBalan
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
 	ylab("Density") +
-	xlab("Wage change")
+	xlab("Earnings change")
 ggsave(filename = "Figures/wagechanges_EE.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_EE.eps",height= 5,width=10)
 # 
@@ -209,7 +209,7 @@ ggplot(subset(wagechanges,EE), aes(wagechange, weight = balanceweight/groupBalan
 	xlim(c(-4,4)) +
 	theme(legend.position = c(0.2,0.85)) +
 	ylab("") +
-	xlab("Wage change")
+	xlab("Earnings change")
 ggsave(filename = "Figures/wagechanges_EE_cdf.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_EE_cdf.eps",height= 5,width=10)
 
@@ -226,7 +226,7 @@ ggplot(subset(wagechanges,EE), aes(wagechange, weight = balanceweight/groupBalan
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
 	ylab("Density") +
-	xlab("Wage change")
+	xlab("Earnings change")
 ggsave(filename = "Figures/wagechanges_EErec.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_EErec.eps",height= 5,width=10)
 ggplot(subset(wagechanges,EE), aes(wagechange, weight = balanceweight/groupBalanceWeight_EErec, color=recIndic, linetype = switchedOcc)) +
@@ -241,7 +241,7 @@ ggplot(subset(wagechanges,EE), aes(wagechange, weight = balanceweight/groupBalan
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
 	ylab("") +
-	xlab("Wage change")
+	xlab("Earnings change")
 ggsave(filename = "Figures/wagechanges_EErec_cdf.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_EErec_cdf.eps",height= 5,width=10)
 
@@ -266,7 +266,7 @@ ggplot(DTall, aes(wagechange_all, linetype = switchedOcc)) +
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
 	ylab("Density") +
-	xlab("Wage change") 
+	xlab("Earnings change") 
 ggsave(filename = "Figures/wagechanges_unc.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_unc.eps",height= 5,width=10)
 #cdf
@@ -278,6 +278,6 @@ ggplot(DTall, aes(wagechange_all, weight = balanceweight/groupBalanceWeight_all,
 	theme_bw() +
 	theme(legend.position = c(.2,0.85)) +
 	ylab("") +
-	xlab("Wage change") 
+	xlab("Earnings change") 
 ggsave(filename = "Figures/wagechanges_unc_cdf.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_unc_cdf.eps",height= 5,width=10)	

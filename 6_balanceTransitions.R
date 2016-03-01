@@ -192,6 +192,12 @@ wagechanges[,c("year","durwt"):=NULL]
 wtscale <- wagechanges[, sum(balanceweight, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
 wagechanges[, balanceweight := balanceweight/wtscale]
 
+# create EUE balance weights that give double weight to the EU and zero to the UE
+wagechanges[, balanceweightEUE := balanceweight]
+wagechanges[EU==T, balanceweightEUE := balanceweight*2]
+wagechanges[UE==T, balanceweightEUE := 0.]
+
+
 wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE","maxunempdur","balanceweight"))
 
 setkey(DTall,id,date)

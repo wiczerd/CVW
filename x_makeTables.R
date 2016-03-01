@@ -13,8 +13,8 @@ xwalkdir = "~/workspace/CVW/R/Crosswalks"
 setwd(wd0)
 
 wagechanges <- readRDS("./Data/balancedwagechanges.RData")
-CPSunempdur <- readRDS("./InputData/CPSunempDurDist.RData")
-wagechanges <- merge(wagechanges, CPSunempdur, by = "date", all.x = TRUE)
+CPSunempRt <- readRDS("./InputData/CPSunempRt.RData")
+wagechanges <- merge(wagechanges, CPSunempRt, by = "date", all.x = TRUE)
 
 
 toKeep <- c("switchedOcc",
@@ -26,12 +26,13 @@ toKeep <- c("switchedOcc",
 			"wagechange_all", 
 			"balanceweight", 
 			"EE","EU","UE",
-			"unrate")
+			"unrt")
 
 # select toKeep columns only
 wagechanges <- wagechanges[, toKeep, with = FALSE]
 
 DTall <- readRDS("./Data/DTall_6.RData")
+DTall <- merge(DTall, CPSunempRt, by = "date", all.x = TRUE)
 
 toKeep <- c(toKeep,"wpfinwgt","switchedJob")
 
@@ -44,6 +45,10 @@ DTall[, allwt := wpfinwgt]
 DTall[EU==T|UE==T|EE==T, allwt := balanceweight]
 DTall[, wagechange_allEUE := ifelse(EU==T, wagechange_EUE,wagechange_all)]
 DTall[UE==T, wagechange_allEUE := NA_real_]
+DTall[, allwtEUE := allwt]
+DTall[EU==T, allwtEUE := allwtEUE*2.]
+DTall[UE==T, allwtEUE := 0.]
+
 DTall<-DTall[ is.finite(EE)&is.finite(EU)&is.finite(UE),]
 
 # Full sample table-------------------------------------------------------------
@@ -69,20 +74,20 @@ tab_fulldist[6,2:tN]  <- DTall[recIndic == T &  (EU==T|UE==T|EE==T), wtd.quantil
 
 # EUE wage changes
 tab_fulldistEUE <- tab_fulldist
-tab_fulldistEUE[1,1]    <- DTall[!(EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwt)]
-tab_fulldistEUE[1,2:tN] <- DTall[!(EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwt, probs=tabqtls)]
-tab_fulldistEUE[2,1]    <- DTall[  EU==T|UE==T|EE==T, wtd.mean(wagechange_allEUE,na.rm=T,weights=allwt)]
-tab_fulldistEUE[2,2:tN] <- DTall[  EU==T|UE==T|EE==T, wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwt, probs=tabqtls)]
+tab_fulldistEUE[1,1]    <- DTall[!(EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
+tab_fulldistEUE[1,2:tN] <- DTall[!(EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
+tab_fulldistEUE[2,1]    <- DTall[  EU==T|UE==T|EE==T, wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
+tab_fulldistEUE[2,2:tN] <- DTall[  EU==T|UE==T|EE==T, wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
 #expansion
-tab_fulldistEUE[3,1]     <- DTall[recIndic == F & !(EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwt)]
-tab_fulldistEUE[3,2:tN]  <- DTall[recIndic == F & !(EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwt, probs=tabqtls)]
-tab_fulldistEUE[4,1]     <- DTall[recIndic == F &  (EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwt)]
-tab_fulldistEUE[4,2:tN]  <- DTall[recIndic == F &  (EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwt, probs=tabqtls)]
+tab_fulldistEUE[3,1]     <- DTall[recIndic == F & !(EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
+tab_fulldistEUE[3,2:tN]  <- DTall[recIndic == F & !(EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
+tab_fulldistEUE[4,1]     <- DTall[recIndic == F &  (EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
+tab_fulldistEUE[4,2:tN]  <- DTall[recIndic == F &  (EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
 #recession
-tab_fulldistEUE[5,1]     <- DTall[recIndic == T & !(EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwt)]
-tab_fulldistEUE[5,2:tN]  <- DTall[recIndic == T & !(EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwt, probs=tabqtls)]
-tab_fulldistEUE[6,1]     <- DTall[recIndic == T &  (EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwt)]
-tab_fulldistEUE[6,2:tN]  <- DTall[recIndic == T &  (EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwt, probs=tabqtls)]
+tab_fulldistEUE[5,1]     <- DTall[recIndic == T & !(EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
+tab_fulldistEUE[5,2:tN]  <- DTall[recIndic == T & !(EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
+tab_fulldistEUE[6,1]     <- DTall[recIndic == T &  (EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
+tab_fulldistEUE[6,2:tN]  <- DTall[recIndic == T &  (EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
 
 
 #output it to tables
@@ -101,8 +106,6 @@ print(tab_fulldist,include.rownames=T, hline.after= c(0,nrow(tab_fulldist)), fil
 tab_fulldistEUE <- xtable(tab_fulldistEUE, label="tab:fulldistEUE", digits=2, 
 					   align="l|l|lllll", caption="Distribution of earnings changes, connecting unemployment spells")
 print(tab_fulldistEUE,include.rownames=T, hline.after= c(0,nrow(tab_fulldist)), file="./Figures/fulldistEUE.tex")
-
-
 
 
 # Full sample var decomp -------------------------------------------------------------
@@ -131,7 +134,13 @@ tab_vardec[4,1] <- DTall[(EE==F&EU==F), sum(allwt,na.rm=T) ]/totwt
 tab_vardec[4,2] <- DTall[(EE==T&EU==F), sum(allwt,na.rm=T) ]/totwt
 tab_vardec[4,4] <- DTall[(EE==F&(EU==T)),sum(allwt,na.rm=T) ]/totwt
 
+# Full sample quantile-diff decomposition --------------------------
+tot1025qtl <- DTall[, wtd.quantile(wagechange_all,na.rm=T,weights=allwt, probs=c(.1,.25,.75,.9)) ]
+tot1025qtlEUE <- DTall[, wtd.quantile(wagechange_all,na.rm=T,weights=allwtEUE, probs=c(.1,.25,.75,.9)) ]
 
+
+
+##########################################################################################
 
 # Only job-changers -----------------------
 wagechanges<- wagechanges[ is.finite(switchedOcc), ]
@@ -225,7 +234,7 @@ print(tab_chngdistEUE_rec,include.rownames=T,
 
 # Quantile Regressions ---------------
 
-	rhere <- rq( wagechange_EUE ~  factor(EU) + factor(switchedOcc) ,tau= tabqtls, data=subset(wagechanges,recIndic==recHere), weights = balanceweight)
+	rhere <- rq( wagechange_EUE ~  factor(EU) + factor(switchedOcc) + unrt,tau= tabqtls, data=wagechanges, weights = balanceweight)
 	betaptsR[,ri] = rhere$coefficients
 
 
