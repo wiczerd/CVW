@@ -198,6 +198,10 @@ DTall[is.finite(stintid), balancedEU := max(UE,na.rm=T)==T & EU==T, by = list(id
 DTall[is.finite(stintid), balancedUE := max(EU,na.rm=T)==T & UE==T, by = list(id,stintid)]
 DTall<- merge(DTall,wagechangesBalanced,by=c("id","date"),all.x=T)
 
+#make the wage changes NA if not-balanced
+DTall[UE==T & balancedUE.y==F, c("wagechange_EUE","wagechange_all","wagechange") := NA_real_]
+DTall[EU==T & balancedEU.y==F, c("wagechange_EUE","wagechange_all","wagechange") := NA_real_]
+
 DTall[UE==T, UE := balancedUE.y==T]
 DTall[EU==T, EU := balancedEU.y==T]
 #there are a few from x that don't have stintid, fill these with y.

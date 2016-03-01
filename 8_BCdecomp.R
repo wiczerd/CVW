@@ -324,3 +324,16 @@ MMEUE_tab <- xtable(MMEUE_tab, label="tab:MMEUE_tab", digits=2,
 print(MMEUE_tab,include.rownames=F, hline.after= c(0,nrow(MMEUE_tab)), file="MMEUE.tex")
 
 ks.test(wcRec$wagechange_EUE,wcExp$wagechange_EUE,alternative = "greater")
+
+
+## Now use full distribution ##
+rm(list = c("wagechanges","wcRec","wcExp"))
+
+DTall <- readRDS("./Data/DTall_6.RData")
+
+toKeep <- c(toKeep,"wpfinwgt")
+
+# select toKeep columns only
+DTall <- DTall[, toKeep, with = FALSE]
+DTall <- subset(DTall, is.finite(wpfinwgt) & is.finite(wagechange_all))
+# plot all wage changes

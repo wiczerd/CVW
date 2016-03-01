@@ -6,7 +6,7 @@
 library(data.table)
 library(ggplot2)
 
-s#etwd("G:/Research_Analyst/Eubanks/Occupation Switching/")
+#setwd("G:/Research_Analyst/Eubanks/Occupation Switching/")
 wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
 setwd(wd0)
@@ -43,13 +43,13 @@ ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeigh
 			      labels = c("Non-switchers", "Switchers"),
 			      name = "") +
 	ylim(c(0,.8)) +
-	xlim(c(-12,12)) +
+	xlim(c(-10,10)) +
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
 	ylab("Density") +
 	xlab("Wage change") 
-ggsave(filename = "Figures/wagechanges_all.png",height= 5,width=10)
-ggsave(filename = "Figures/wagechanges_all.eps",height= 5,width=10)
+ggsave(filename = "Figures/wagechanges_job.png",height= 5,width=10)
+ggsave(filename = "Figures/wagechanges_job.eps",height= 5,width=10)
 #cdf
 ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeight_all, linetype = switchedOcc)) +
 	stat_ecdf()+
@@ -60,8 +60,8 @@ ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeigh
 	theme(legend.position = c(.2,0.85)) +
 	ylab("") +
 	xlab("Wage change") 
-ggsave(filename = "Figures/wagechanges_all_cdf.png",height= 5,width=10)
-ggsave(filename = "Figures/wagechanges_all_cdf.eps",height= 5,width=10)	
+ggsave(filename = "Figures/wagechanges_job_cdf.png",height= 5,width=10)
+ggsave(filename = "Figures/wagechanges_job_cdf.eps",height= 5,width=10)	
 
 ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeight_rec, color = recIndic, linetype = switchedOcc)) +
 	geom_line(stat ="density",size = 0.5) +
@@ -72,13 +72,40 @@ ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeigh
 					   labels = c("Expansion", "Recession"),
 					   name = "") +
 	ylim(c(0,0.8)) +
-	xlim(c(-12,12)) +
+	xlim(c(-10,10)) +
 	theme_bw() +
 	theme(legend.position = c(0.2,0.85)) +
 	ylab("Density") +
-	xlab("Wage change, all") 
-ggsave(filename = "Figures/wagechanges_allrec.png",height= 5,width=10)
-ggsave(filename = "Figures/wagechanges_allrec.eps",height= 5,width=10)
+	xlab("Wage change") 
+ggsave(filename = "Figures/wagechanges_joboccrec.png",height= 5,width=10)
+ggsave(filename = "Figures/wagechanges_joboccrec.eps",height= 5,width=10)
+
+ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeight_rec, color = recIndic)) +
+	geom_line(stat ="density",size = 0.5) +
+	scale_color_manual(values = c("black", "red"),
+					   labels = c("Expansion", "Recession"),
+					   name = "") +
+	ylim(c(0,1.4)) +
+	xlim(c(-10,10)) +
+	theme_bw() +
+	theme(legend.position = c(0.2,0.85)) +
+	ylab("Density") +
+	xlab("Wage change") 
+ggsave(filename = "Figures/wagechanges_jobrec.png",height= 5,width=10)
+ggsave(filename = "Figures/wagechanges_jobrec.eps",height= 5,width=10)
+
+ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeight_rec, color = recIndic)) +
+	stat_ecdf() +
+	scale_color_manual(values = c("black", "red"),
+					   labels = c("Expansion", "Recession"),
+					   name = "") +
+	xlim(c(-10,10)) +
+	theme_bw() +
+	theme(legend.position = c(0.2,0.85)) +
+	xlab("Wage change") 
+ggsave(filename = "Figures/wagechanges_jobrec_cdf.png",height= 5,width=10)
+ggsave(filename = "Figures/wagechanges_jobrec_cdf.eps",height= 5,width=10)
+
 
 ggplot(wagechanges, aes(wagechange_all, weight = balanceweight/groupBalanceWeight_rec, color = recIndic, linetype = switchedOcc)) +
 	stat_ecdf() +
@@ -217,3 +244,40 @@ ggplot(subset(wagechanges,EE), aes(wagechange, weight = balanceweight/groupBalan
 	xlab("Wage change")
 ggsave(filename = "Figures/wagechanges_EErec_cdf.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_EErec_cdf.eps",height= 5,width=10)
+
+## Now use full distribution ##
+rm(wagechanges)
+
+DTall <- readRDS("./Data/DTall_6.RData")
+
+toKeep <- c(toKeep,"wpfinwgt")
+
+# select toKeep columns only
+DTall <- DTall[, toKeep, with = FALSE]
+DTall <- subset(DTall, is.finite(wpfinwgt) & is.finite(wagechange_all))
+# plot all wage changes
+ggplot(DTall, aes(wagechange_all, linetype = switchedOcc)) +
+	geom_line(stat ="density",size = 0.5) +
+	scale_linetype_manual(values = c("solid", "dashed"),
+						  labels = c("Non-switchers", "Switchers"),
+						  name = "") +
+	ylim(c(0,.8)) +
+	xlim(c(-10,10)) +
+	theme_bw() +
+	theme(legend.position = c(0.2,0.85)) +
+	ylab("Density") +
+	xlab("Wage change") 
+ggsave(filename = "Figures/wagechanges_unc.png",height= 5,width=10)
+ggsave(filename = "Figures/wagechanges_unc.eps",height= 5,width=10)
+#cdf
+ggplot(DTall, aes(wagechange_all, weight = balanceweight/groupBalanceWeight_all, linetype = switchedOcc)) +
+	stat_ecdf()+
+	scale_linetype_manual(values = c("solid", "dashed"),
+						  labels = c("Non-switchers", "Switchers"),
+						  name = "") +
+	theme_bw() +
+	theme(legend.position = c(.2,0.85)) +
+	ylab("") +
+	xlab("Wage change") 
+ggsave(filename = "Figures/wagechanges_unc_cdf.png",height= 5,width=10)
+ggsave(filename = "Figures/wagechanges_unc_cdf.eps",height= 5,width=10)	

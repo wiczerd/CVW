@@ -56,7 +56,7 @@ DTall[EU==T, dupedEU:= duplicated(stintid, na.rm=T), by=id]
 DTall[ UE==T & dupedUE, UE==F ]
 DTall[ EU==T & dupedEU, EU==F ]
 # it is still possible there are lfstat=2|3 that are associated with a duplicate
-
+DTall[ , c("dupedEU","dupedUE"):=NULL]
 
 # create unemployment duration variable
 DTall[, unempdur := seq_len(.N)-1, by = list(id, stintid)]

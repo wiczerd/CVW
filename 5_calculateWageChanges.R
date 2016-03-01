@@ -38,6 +38,8 @@ DTall[EmpTmrw == T & is.na(nextoccwage) & lead2status==T, nextoccwage := leadwag
 DTall[lfstat==2 | lfstat==3 | EU==T, nextoccwage := Mode(nextoccwage), by = list(id,stintid)] #replace if it's UE
 DTall[lfstat==1 & !(EU==T), nextoccwage := Mode(nextoccwage), by = list(id,job)] #replace if it's EE
 
+DTall[, c("leadwage","lead2status"):=NULL]
+
 
 DTall[, tuw := as.numeric(ifelse(shift(lfstat)==1, shift(usewage, 1, type = "lag"),usewage)), by = id]
 #DTall[(!is.finite(tuw) | tuw<=0) & is.finite(usewage) & lfstat == 1, tuw := usewage]

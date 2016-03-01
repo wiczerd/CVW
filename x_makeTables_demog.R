@@ -5,47 +5,11 @@ library(zoo)
 library(Hmisc)
 library(reshape2)
 
+setwd("G:/Research_Analyst/Eubanks/Occupation Switching")
 
-wd0 = "~/workspace/CVW/R"
-xwalkdir = "~/workspace/CVW/R/Crosswalks"
-setwd(wd0)
+wagechangesfull <- readRDS("balancedwagechanges.RData")
 
-wagechanges <- readRDS("./Data/balancedwagechanges.RData")
-
-toKeep <- c("switchedOcc",
-			"Young",
-			"HSCol",
-			"recIndic",
-			"wagechange",
-			"wagechange_EUE", 
-			"wagechange_all", 
-			"balanceweight", 
-			"EE","EU","UE")
-
-# select toKeep columns only
-wagechanges <- wagechanges[, toKeep, with = FALSE]
-
-DTall <- readRDS("./Data/DTall_6.RData")
-
-toKeep <- c(toKeep,"wpfinwgt","switchedJob",)
-
-#drop the EU and UE that are not balanced
-
-
-# select toKeep columns only
-DTall <- DTall[, toKeep, with = FALSE]
-DTall <- subset(DTall, is.finite(wpfinwgt) & is.finite(wagechange_all))
-
-tabqtls <- c(.1,.25,.5,.75,.9)
-
-tab_fulldist <- array(0., dim=c(4,length(tabqtls)+1))
-tab_fulldist[1,1] <- DTall[, wtd.mean(wagechange_all,na.rm=T,weights=wpfinwgt)]
-tab_fulldist[1,2:length(tabqtls)+1] <- DTall[, wtd.quantile(wagechange_all,na.rm=T,weights=wpfinwgt, probs=tabqtls)]
-
-
-# Full sample, including -------------------------------------------------------------
-
-
+# Full sample -------------------------------------------------------------
 
 dataTable <- c()
 
