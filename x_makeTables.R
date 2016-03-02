@@ -26,7 +26,8 @@ toKeep <- c("switchedOcc",
 			"wagechange_all", 
 			"balanceweight", 
 			"EE","EU","UE",
-			"unrt")
+			"unrt",
+			"wave","id")
 
 # select toKeep columns only
 wagechanges <- wagechanges[, toKeep, with = FALSE]
@@ -110,33 +111,91 @@ print(tab_fulldistEUE,include.rownames=T, hline.after= c(0,nrow(tab_fulldist)), 
 
 # Full sample var decomp -------------------------------------------------------------
 
-totmean <- DTall[, wtd.mean(wagechange_all,na.rm=T,weights=allwt) ]
-totvar  <- DTall[, sum(allwt*(wagechange_all- totmean)^2,na.rm=T) ]
+# take out seam effect by regression:
+DTall[ , seam:= wave != shift(wave,1,type="lead"), by=id ]
+seamcorr<-lm( wagechange_all ~ I(seam & wagechange_all>0) + I(seam & wagechange_all<0) , data=subset(DTall, EE==F&EU==F&UE==F), na.action=na.omit)
+seamcorrEUE<-lm( wagechange_allEUE ~ I(seam & wagechange_allEUE>0) + I(seam & wagechange_allEUE<0) , data=subset(DTall, EE==F&EU==F&UE==F), na.action=na.omit)
+DTall[ (EE==F&EU==F&UE==F)& wagechange_all<0 & seam==T, wagechange_noseam := wagechange_all + seamcorr$coefficients[3] ]
+DTall[ (EE==F&EU==F&UE==F)& wagechange_all>0 & seam==T, wagechange_noseam := wagechange_all + seamcorr$coefficients[2] ]
+DTall[ (EE==F&EU==F&UE==F)& wagechange_allEUE<0 & seam==T, wagechange_noseamEUE := wagechange_allEUE + seamcorrEUE$coefficients[3] ]
+DTall[ (EE==F&EU==F&UE==F)& wagechange_allEUE>0 & seam==T, wagechange_noseamEUE := wagechange_allEUE + seamcorrEUE$coefficients[2] ]
+seamcorr<-lm( wagechange_all ~ I(seam & wagechange_all>0) + I(seam & wagechange_all<0) , data=subset(DTall, EE==T|EU==T|UE==T), na.action=na.omit)
+seamcorrEUE<-lm( wagechange_allEUE ~ I(seam & wagechange_allEUE>0) + I(seam & wagechange_allEUE<0) , data=subset(DTall, EE==T|EU==T|UE==T), na.action=na.omit)
+DTall[ (EE==T|EU==T|UE==T)& wagechange_all<0 & seam==T, wagechange_noseam := wagechange_all + seamcorr$coefficients[3] ]
+DTall[ (EE==T|EU==T|UE==T)& wagechange_all>0 & seam==T, wagechange_noseam := wagechange_all + seamcorr$coefficients[2] ]
+DTall[ (EE==T|EU==T|UE==T)& wagechange_allEUE<0 & seam==T, wagechange_noseamEUE := wagechange_allEUE + seamcorrEUE$coefficients[3] ]
+DTall[ (EE==T|EU==T|UE==T)& wagechange_allEUE>0 & seam==T, wagechange_noseamEUE := wagechange_allEUE + seamcorrEUE$coefficients[2] ]
 
-tab_vardec <- array(0.,dim=c(4,4))
 
-tab_vardec[1,1] <- DTall[(EE==F&EU==F&UE==F), sum(allwt*(wagechange_all - totmean)^2,na.rm=T) ]/totvar
-tab_vardec[1,2] <- DTall[(EE==T&EU==F&UE==F), sum(allwt*(wagechange_all - totmean)^2,na.rm=T) ]/totvar
-tab_vardec[1,3] <- DTall[(EE==F&(EU==T|UE==T)),sum(allwt*(wagechange_all - totmean)^2,na.rm=T) ]/totvar
+totmean <- DTall[, wtd.mean(wagechange_noseam,na.rm=T,weights=allwt) ]
+totvar  <- DTall[, sum(allwt*(wagechange_noseam- totmean)^2,na.rm=T) ]
+
+tab_vardec <- array(NA_real_,dim=c(4,4))
+
+tab_vardec[1,1] <- DTall[(EE==F&EU==F&UE==F), sum(allwt*(wagechange_noseam - totmean)^2,na.rm=T) ]/totvar
+tab_vardec[1,2] <- DTall[(EE==T&EU==F&UE==F), sum(allwt*(wagechange_noseam - totmean)^2,na.rm=T) ]/totvar
+tab_vardec[1,3] <- DTall[(EE==F&(EU==T|UE==T)),sum(allwt*(wagechange_noseam - totmean)^2,na.rm=T) ]/totvar
 totwt <- DTall[, sum(allwt,na.rm=T) ]
 tab_vardec[2,1] <- DTall[(EE==F&EU==F&UE==F), sum(allwt,na.rm=T) ]/totwt
 tab_vardec[2,2] <- DTall[(EE==T&EU==F&UE==F), sum(allwt,na.rm=T) ]/totwt
 tab_vardec[2,3] <- DTall[(EE==F&(EU==T|UE==T)),sum(allwt,na.rm=T) ]/totwt
 
 
-totmean <- DTall[UE==F, wtd.mean(wagechange_allEUE,na.rm=T,weights=allwt) ]
-totvar  <- DTall[UE==F, sum(allwt*(wagechange_allEUE- totmean)^2,na.rm=T) ]
-tab_vardec[3,1] <- DTall[(EE==F&EU==F), sum(allwt*(wagechange_allEUE - totmean)^2,na.rm=T) ]/totvar
-tab_vardec[3,2] <- DTall[(EE==T&EU==F), sum(allwt*(wagechange_allEUE - totmean)^2,na.rm=T) ]/totvar
-tab_vardec[3,4] <- DTall[(EE==F&(EU==T)),sum(allwt*(wagechange_allEUE - totmean)^2,na.rm=T) ]/totvar
+totmean <- DTall[UE==F, wtd.mean(wagechange_noseamEUE,na.rm=T,weights=allwt) ]
+totvar  <- DTall[UE==F, sum(allwt*(wagechange_noseamEUE- totmean)^2,na.rm=T) ]
+tab_vardec[3,1] <- DTall[(EE==F&EU==F), sum(allwtEUE*(wagechange_noseamEUE - totmean)^2,na.rm=T) ]/totvar
+tab_vardec[3,2] <- DTall[(EE==T&EU==F), sum(allwtEUE*(wagechange_noseamEUE - totmean)^2,na.rm=T) ]/totvar
+tab_vardec[3,4] <- DTall[(EE==F&(EU==T)),sum(allwtEUE*(wagechange_noseamEUE - totmean)^2,na.rm=T) ]/totvar
 totwt <- DTall[UE==F, sum(allwt,na.rm=T) ]
-tab_vardec[4,1] <- DTall[(EE==F&EU==F), sum(allwt,na.rm=T) ]/totwt
-tab_vardec[4,2] <- DTall[(EE==T&EU==F), sum(allwt,na.rm=T) ]/totwt
-tab_vardec[4,4] <- DTall[(EE==F&(EU==T)),sum(allwt,na.rm=T) ]/totwt
+tab_vardec[4,1] <- DTall[(EE==F&EU==F), sum(allwtEUE,na.rm=T) ]/totwt
+tab_vardec[4,2] <- DTall[(EE==T&EU==F), sum(allwtEUE,na.rm=T) ]/totwt
+tab_vardec[4,4] <- DTall[(EE==F&(EU==T)),sum(allwtEUE,na.rm=T) ]/totwt
 
 # Full sample quantile-diff decomposition --------------------------
-tot1025qtl <- DTall[, wtd.quantile(wagechange_all,na.rm=T,weights=allwt, probs=c(.1,.25,.75,.9)) ]
-tot1025qtlEUE <- DTall[, wtd.quantile(wagechange_all,na.rm=T,weights=allwtEUE, probs=c(.1,.25,.75,.9)) ]
+tot51025qtl <- DTall[, wtd.quantile(wagechange_noseam,na.rm=T,weights=allwt, probs=c(0.05,0.1,.25,.75,.9,.95)) ]
+tot51025qtlEUE <- DTall[, wtd.quantile(wagechange_noseamEUE,na.rm=T,weights=allwtEUE, probs=c(0.05,0.1,.25,.75,.9,.95)) ]
+
+Nqtls <-length(tot51025qtl)
+Ndifs <- Nqtls/2
+
+
+tab_qtldec <- array(NA_real_,dim=c((Ndifs+1)*2,4))
+
+for( EUEindic in c(F,T)){
+	wc <- ifelse(EUEindic,"wagechange_noseamEUE","wagechange_noseam")
+	wt <- ifelse(EUEindic,"allwtEUE","allwt")
+	qtlshere <- ifelse(rep(EUEindic,Nqtls),tot51025qtlEUE,tot51025qtl)
+	ri <- (Ndifs+1)*EUEindic
+	ci <- 3+EUEindic
+	for(rri in seq(1,Ndifs)){
+		tab_qtldec[rri+ri,1] <- DTall[(EE==F&EU==F&UE==F)   & (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+		tab_qtldec[rri+ri,2] <- DTall[(EE==T&EU==F&UE==F)   & (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+		tab_qtldec[rri+ri,ci]<- DTall[(EE==F&(EU==T|UE==T)) & (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+	}
+	tab_qtldec[Ndifs+1+ri,1] <- DTall[(EE==F&EU==F&UE==F)   , sum(eval(as.name(wt)),na.rm=T) ]
+	tab_qtldec[Ndifs+1+ri,2] <- DTall[(EE==T&EU==F&UE==F)   , sum(eval(as.name(wt)),na.rm=T) ]
+	tab_qtldec[Ndifs+1+ri,ci]<- DTall[(EE==F&(EU==T|UE==T)) , sum(eval(as.name(wt)),na.rm=T) ]
+}
+
+rsum <- rowSums(tab_qtldec, na.rm=T)
+for(ri in seq(1,nrow(tab_qtldec))){
+	tab_qtldec[ri,] <-tab_qtldec[ri,]/rsum[ri]
+}
+
+#output it to tables
+tab_chngvarqtldec <- data.table(rbind(tab_vardec[1,],tab_qtldec[1:Ndifs,],tab_vardec[3,],tab_qtldec[(2+Ndifs):nrow(tab_qtldec),]) )
+names(tab_chngvarqtldec) <- c("Same\ Job","EE","EU,UE","EUE")
+#rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
+rownames(tab_chngvarqtldec) <- c("Variance","0.95-0.05","0.9-0.1","0.75-0.25", "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
+
+tab_chngvarqtldec <- xtable(tab_chngvarqtldec, label="tab:chngvarqtldec", digits=2, 
+					   align="l|l|lll", caption="Distribution of earnings changes among job changers")
+print(tab_chngdist,include.rownames=T, hline.after= c(0,nrow(tab_chngdist)), file="./Figures/chngdist.tex")
+
+tab_chngdistEUE <- xtable(tab_chngdistEUE, label="tab:chngdistEUE", digits=2, 
+						  align="l|l|lllll", caption="Distribution of earnings changes among job changers, connecting unemployment spells")
+print(tab_chngdistEUE,include.rownames=T, hline.after= c(0,nrow(tab_chngdistEUE)), file="./Figures/chngdistEUE.tex")
+
 
 
 
