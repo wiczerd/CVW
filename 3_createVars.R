@@ -53,8 +53,8 @@ DTall[, fstintid := NULL]
 DTall[UE==T, dupedUE:= duplicated(stintid, na.rm=T), by=id]
 DTall[EU==T, dupedEU:= duplicated(stintid, na.rm=T), by=id]
 #drop the duplicates:
-DTall[ UE==T & dupedUE, UE==F ]
-DTall[ EU==T & dupedEU, EU==F ]
+#DTall[ UE==T & dupedUE, UE==F ]
+#DTall[ EU==T & dupedEU, EU==F ]
 # it is still possible there are lfstat=2|3 that are associated with a duplicate
 DTall[ , c("dupedEU","dupedUE"):=NULL]
 
