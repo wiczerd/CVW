@@ -16,6 +16,9 @@ keep <- c("wagechange","wagechange_EUE","EU","UE","EE","recIndic","switchedOcc",
 
 wagechanges <- readRDS("./Data/balancedwagechanges.RData")
 wagechanges <- subset(wagechanges, select=keep)
+wagechanges[EE==T, balanceweightEUE:=balanceweight]
+wagechanges[EU==T, balanceweightEUE:=balanceweight*2]
+wagechanges[UE==T, balanceweightEUE:=0.]
 
 DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
 # wcDF : data set
@@ -249,19 +252,19 @@ shift_share <- DHLdecomp(wagechanges,6,"recIndic","wagechange","balanceweight")
 pct_share <- shift_share[[3]]/shift_share[[1]]
 pct_shift <- shift_share[[2]]/matrix(shift_share[[1]],nrow=9,ncol=6 )
 
-shift_share_EUE <- DHLdecomp(wagechanges,4,"recIndic","wagechange_EUE","balanceweight")
+shift_share_EUE <- DHLdecomp(wagechanges,4,"recIndic","wagechange_EUE","balanceweightEUE")
 pct_share_EUE <- shift_share_EUE[[3]]/shift_share_EUE[[1]]
 pct_shift_EUE <- shift_share_EUE[[2]]/matrix(shift_share_EUE[[1]],nrow=9,ncol=4 )
 
 MM_betaE_betaR_cf <- MMdecomp(wagechanges,6,"recIndic","wagechange","balanceweight")
 
-MMEUE_betaE_betaR_cf <- MMdecomp(subset(wagechanges,EE==T|EU==T),4,"recIndic","wagechange_EUE","balanceweight")
+MMEUE_betaE_betaR_cf <- MMdecomp(subset(wagechanges,EE==T|EU==T),4,"recIndic","wagechange_EUE","balanceweightEUE")
 
-mmtabqtls <- seq(0.1,0.9,0.1)
+mmtabqtls <- seq(0.2,0.8,0.1)
 wcExp <- subset(wagechanges,recIndic==F)
 wcRec <- subset(wagechanges,recIndic==T)
-distEUE_exp <- wcExp[EE==T | EU==T, wtd.quantile(wagechange_EUE,probs=mmtabqtls,weights=balanceweight, na.rm=T)]
-distEUE_rec <- wcRec[EE==T | EU==T, wtd.quantile(wagechange_EUE,probs=mmtabqtls,weights=balanceweight, na.rm=T)]
+distEUE_exp <- wcExp[EE==T | EU==T, wtd.quantile(wagechange_EUE,probs=mmtabqtls,weights=balanceweightEUE, na.rm=T)]
+distEUE_rec <- wcRec[EE==T | EU==T, wtd.quantile(wagechange_EUE,probs=mmtabqtls,weights=balanceweightEUE, na.rm=T)]
 distEUE_cf  <- MMEUE_betaE_betaR_cf$wc_cf[mmtabqtls*100] 
 distEUE_cf_sw  <- MMEUE_betaE_betaR_cf$wc_cf_un[mmtabqtls*100]
 distEUE_cf_un  <- MMEUE_betaE_betaR_cf$wc_cf_sw[mmtabqtls*100]
@@ -301,7 +304,7 @@ print(pct_share_shift_EUE,add.to.row=addswitched, include.rownames=F, hline.afte
 MM_tab <- data.table(cbind( mmtabqtls,(dist_cf),dist_rec,dist_exp,dist_rec- dist_exp, 
 							dist_pct,dist_pct_sw,dist_pct_un))
 names(MM_tab) <- c("Quantile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
-rownames(MM_tab) <- c(seq(0.1,0.9,0.1))
+rownames(MM_tab) <- mmtabqtls
 MM_tab <- xtable(MM_tab, label="tab:MMEUE_tab", digits=2, 
 					align="ll|lll|l|lll", caption="Machado-Mata, including unemployment")
 print(MM_tab,include.rownames=T, hline.after= c(0,nrow(MM_tab)), file="./Figures/MM.tex")
@@ -319,7 +322,7 @@ Swfrac <- wagechanges[recIndic==F, wtd.mean(switchedOcc,na.rm=T,weights=balancew
 MMEUE_tab <- data.table(cbind( mmtabqtls,(distEUE_cf),distEUE_rec,distEUE_exp,distEUE_rec- distEUE_exp, 
 							   distEUE_pct,distEUE_pct_sw,distEUE_pct_un ))
 names(MMEUE_tab) <- c("Quantile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
-rownames(MMEUE_tab) <- c(seq(0.1,0.9,0.1))
+rownames(MMEUE_tab) <- mmtabqtls
 MMEUE_tab <- xtable(MMEUE_tab, label="tab:MMEUE_tab", digits=2, 
 						  align="ll|lll|l|lll", caption="Machado-Mata, connecting across unemployment")
 print(MMEUE_tab,include.rownames=F, hline.after= c(0,nrow(MMEUE_tab)), file="./Figures/MMEUE.tex")

@@ -54,7 +54,7 @@ DTall[, occwage := fitted(lm(logearnm ~ experience + I(experience^2) + factor(ed
 			     na.action = na.exclude, weights = wpfinwgt)), by = occ]
 
 # remove regressor variables
-DTall[, (regressors) := NULL]
+DTall[, c("race","experience","educ") := NULL]
 
 saveRDS(DTall, "./Data/DTall_4.RData")
 rm(list=ls())

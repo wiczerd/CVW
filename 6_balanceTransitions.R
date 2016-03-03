@@ -172,6 +172,8 @@ wagechanges[ (maxunempdur<15*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5
 wagechanges[ (maxunempdur>=15*12/52 & maxunempdur<=26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
 wagechanges[ (maxunempdur>26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
 
+wagechanges[ , c("SIPPmax_LT15","SIPPmax_15_26","SIPPmax_GT26","CPSsurv_LT15","CPSsurv_15_26","CPSsurv_GT26")
+			:= NULL]
 
 #wagechanges[is.na(durwt), durwt := 1.]
 wagechanges[, durwt := 1.]
@@ -220,7 +222,7 @@ DTall[ is.finite(stintid), maxunempdur := max(c(maxunempdur.y, maxunempdur.x), n
 #DTall[ is.finite(stintid) , completestintEU:= max(balancedEU.y), by=list(id,stintid) ]
 DTall[ !is.finite(balanceweight), balanceweight:= 0.]
 DTall[, balanceweight := max(balanceweight, na.rm=T), by=list(id,stintid)]
-DTall[, c("maxunempdur.x","maxunempdur.y") := NULL ]
+DTall[, c("maxunempdur.x","maxunempdur.y","balancedEU.x","balancedEU.y","") := NULL ]
 
 saveRDS(DTall,"./Data/DTall_6.RData")
 
