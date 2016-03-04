@@ -163,7 +163,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	wcExp <- subset(wcDF, rec==F)
 	
 	# run quantile regressions on a relatively coarse grid (have to run 8 regressions)
-	qtlgrid <- seq(0.02,0.98,.12)
+	qtlgrid <- seq(0.02,0.98,.06)
 	betaptsR <- matrix(0.,nrow = length(qtlgrid),ncol=NS)
 	betaptsE <- matrix(0.,nrow = length(qtlgrid),ncol=NS)
 	qi  = 1
@@ -183,7 +183,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 		betaR[[si]] <-approxfun(qtlgrid,betaptsR[,si]) 
 	}
 	
-	qtlgrid <- seq(0.02,0.98,0.01)
+	qtlgrid <- seq(0.01,0.99,0.01)
 	nsamp = floor(nrow(wcExp)/length(qtlgrid))
 	qi = 1
 	wc_cf <- matrix(NA, nrow=nsamp*nrow(wcExp),ncol=1) #storing the counter-factual distribution
@@ -260,7 +260,7 @@ MM_betaE_betaR_cf <- MMdecomp(wagechanges,6,"recIndic","wagechange","balanceweig
 
 MMEUE_betaE_betaR_cf <- MMdecomp(subset(wagechanges,EE==T|EU==T),4,"recIndic","wagechange_EUE","balanceweightEUE")
 
-mmtabqtls <- seq(0.2,0.8,0.1)
+mmtabqtls <- seq(0.1,0.9,0.1)
 wcExp <- subset(wagechanges,recIndic==F)
 wcRec <- subset(wagechanges,recIndic==T)
 distEUE_exp <- wcExp[EE==T | EU==T, wtd.quantile(wagechange_EUE,probs=mmtabqtls,weights=balanceweightEUE, na.rm=T)]
@@ -275,8 +275,8 @@ distEUE_pct_un <- (distEUE_cf_un - distEUE_exp)/(distEUE_rec - distEUE_exp)
 dist_exp <- wtd.quantile(wcExp$wagechange,probs=mmtabqtls,weights=wcExp$balanceweight, na.rm=T)
 dist_rec <- wtd.quantile(wcRec$wagechange,probs=mmtabqtls,weights=wcRec$balanceweight, na.rm=T)
 dist_cf  <- MM_betaE_betaR_cf$wc_cf[mmtabqtls*100]
-dist_cf_sw  <- MM_betaE_betaR_cf$wc_cf[mmtabqtls*100]
-dist_cf_un  <- MM_betaE_betaR_cf$wc_cf[mmtabqtls*100] 
+dist_cf_sw  <- MM_betaE_betaR_cf$wc_cf_sw[mmtabqtls*100]
+dist_cf_un  <- MM_betaE_betaR_cf$wc_cf_un[mmtabqtls*100] 
 dist_pct <- (dist_cf - dist_exp)/(dist_rec - dist_exp)
 dist_pct_sw <- (dist_cf_sw - dist_exp)/(dist_rec - dist_exp)
 dist_pct_un <- (dist_cf_un - dist_exp)/(dist_rec - dist_exp)
