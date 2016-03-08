@@ -138,7 +138,13 @@ DT04[, c("occ", "coc2000") := NULL]
 setnames(DT04, "occ1990", "occ")
 
 #add conversion to ind23
-DT04[, ind23:=NULL]
+CIC2002_CIC2000<- readRDS(paste0(xwalkdir,"/CIC2002_2_CIC2000.RData"))
+DT04 <- merge(DT04,CIC2002_CIC2000, by = "ind", all.x=T)
+DT04[ , ind := CIC2000]
+CIC2000_2_CIC1990<- readRDS(paste0(xwalkdir,"/CIC2000_2_CIC1990.RData"))
+DT04 <- merge(DT04,CIC2002_CIC2000, by = "ind", all.x=T)
+DT04[ , ind := ind23]
+DT04[, c("ind23","CIC2000"):=NULL]
 
 saveRDS(DT04, file("./Data/DT04_1.RData"))
 rm(DT04)
@@ -172,7 +178,11 @@ DT08[, c("occ", "coc2000") := NULL]
 setnames(DT08, "occ1990", "occ")
 
 #add conversion to ind23
-DT08[, ind23:=NULL]
+DT08 <- merge(DT08,CIC2002_CIC2000, by = "ind", all.x=T)
+DT08[ , ind := CIC2000]
+DT08 <- merge(DT08,CIC2002_CIC2000, by = "ind", all.x=T)
+DT08[ , ind := ind23]
+DT08[, c("ind23","CIC2000"):=NULL]
 
 saveRDS(DT08, file("./Data/DT08_1.RData"))
 rm(list=ls())
