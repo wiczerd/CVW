@@ -47,8 +47,10 @@ CIC2000_2_CIC1990[, NoMatch:= length(unique(ind23)), by = CIC2000]
 CIC2000_2_CIC1990[, maxprob := max(prob1990), by = CIC2000]
 CIC2000_2_CIC1990 <- CIC2000_2_CIC1990[ prob1990>= maxprob, ]
 
-CIC2000_2_CIC1990[, ind:= CIC2000]
-CIC2002_2_CIC2000[, ind:= CIC2002]
+CIC2000_2_CIC1990[, ind:= as.integer(CIC2000)]
+CIC2000_2_CIC1990[, ind23:= as.integer(ind23)]
+CIC2002_2_CIC2000[, ind:= as.integer(CIC2002)]
+CIC2002_2_CIC2000[, CIC2000:= as.integer(CIC2000)]
 
 setkey(CIC2002_2_CIC2000,ind)
 setkey(CIC2000_2_CIC1990,ind)
