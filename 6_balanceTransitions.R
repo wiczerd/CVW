@@ -222,7 +222,7 @@ DTall[ is.finite(stintid), maxunempdur := max(c(maxunempdur.y, maxunempdur.x), n
 #DTall[ is.finite(stintid) , completestintEU:= max(balancedEU.y), by=list(id,stintid) ]
 DTall[ !is.finite(balanceweight), balanceweight:= 0.]
 DTall[, balanceweight := max(balanceweight, na.rm=T), by=list(id,stintid)]
-DTall[, c("maxunempdur.x","maxunempdur.y","balancedEU.x","balancedEU.y","") := NULL ]
+DTall[, c("maxunempdur.x","maxunempdur.y","balancedEU.x","balancedEU.y") := NULL ]
 
 saveRDS(DTall,"./Data/DTall_6.RData")
 

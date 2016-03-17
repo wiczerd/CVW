@@ -12,7 +12,7 @@ wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
 setwd(wd0)
 
-keep <- c("wagechange","wagechange_EUE","EU","UE","EE","recIndic","switchedOcc","balanceweight","date")
+keep <- c("wagechange","wagechange_EUE","EU","UE","EE","recIndic","switchedOcc","switchedInd","balanceweight","date")
 
 wagechanges <- readRDS("./Data/balancedwagechanges.RData")
 wagechanges <- subset(wagechanges, select=keep)
@@ -148,7 +148,24 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
 		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]
 		wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]		
-	}else if(NS==4){
+	}else if(NS==7){
+		# 6 subgroups, Sw X (EE UE EU), sets up conditional distributions.
+		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F, s := 1]
+		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F, s := 2]
+		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T, s := 3]
+		wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F, s := 4]
+		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F, s := 5]
+		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T, s := 6]
+		wcDF[                      wcDF$EE==F & wcDF$UE==F & wcDF$EU ==F, s := 7]
+		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]
+		wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]		
+		wcDF[!is.na(wcDF$s), s7 := ifelse(s==7,1,0)]
+	}
+	else if(NS==4){
 		# 4 subgroups, Sw X (EE EU), sets up conditional distributions.
 		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$EU ==F, s := 1]
 		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$EU ==T, s := 2]
@@ -168,9 +185,13 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	betaptsE <- matrix(0.,nrow = length(qtlgrid),ncol=NS)
 	qi  = 1
 	for( q in qtlgrid){
-		rhere <- rq( wc ~ factor(s)+0 ,tau= q, data=wcRec, weights = wt)
+		#rhere <- rq( as.formula(paste0("wc~",paste(grep("s[1-9]", names(wcDF),value=T), collapse="+"),"+0") ),
+		#			 tau= q, data=wcRec, weights = wt)
+		rhere <- rq( wc ~ factor(s)+0 ,tau= q, wcRec, weights = wt)
 		betaptsR[qi,] = rhere$coefficients
-		rhere <- rq( wc ~ factor(s)+0,tau= q, data=wcExp, weights = wt)
+		#rhere <- rq( as.formula(paste0("wc~",paste(grep("s[1-9]", names(wcDF),value=T), collapse="+"),"+0") ), 
+		#			 tau= q, data=wcExp, weights = wt)
+		rhere <- rq( wc ~factor(s) +0,tau= q, data=wcExp, weights = wt)
 		betaptsE[qi,] = rhere$coefficients	
 		qi = qi+1
 		rm(rhere)
@@ -192,6 +213,11 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
 				  	betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + 
 				  	betaE[[4]](q)*s4 + betaE[[5]](q)*s5 + betaE[[6]](q)*s6] 
+		}else if(NS==7){
+			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] < wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
+					betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + 
+					betaE[[4]](q)*s4 + betaE[[5]](q)*s5 + betaE[[6]](q)*s6 +
+					betaE[[7]](q)*s7]
 		}else if(NS==4){
 			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
 					betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + betaE[[4]](q)*s4]
@@ -331,14 +357,11 @@ ks.test(wcRec$wagechange_EUE,wcExp$wagechange_EUE,alternative = "greater")
 
 
 ## Now use full distribution ##
-rm(list = c("wagechanges","wcRec","wcExp"))
-
-# select toKeep columns only
-wagechanges <- wagechanges[, toKeep, with = FALSE]
+rm(list = c("wcRec","wcExp"))
 
 DTall <- readRDS("./Data/DTall_6.RData")
 
-toKeep <- c(toKeep,"wpfinwgt","switchedJob",)
+toKeep <- c(keep,"wpfinwgt","switchedJob","wagechange_all")
 
 
 # select toKeep columns only
