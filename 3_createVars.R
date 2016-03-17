@@ -89,6 +89,8 @@ sum(DTall$wpfinwgt[DTall$UE & DTall$stintid>0 & is.finite(DTall$stintid)], na.rm
 
 sum(DTall$wpfinwgt[DTall$EE & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
+sum(DTall$wpfinwgt[DTall$EE & DTall$switchedInd], na.rm=T)/sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
+sum(DTall$wpfinwgt[DTall$EU & DTall$switchedInd], na.rm=T)/sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
 sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)],na.rm=T)/sum(DTall$wpfinwgt[!is.na(DTall$unempdur)],na.rm=T)
 
 saveRDS(DTall, "./Data/DTall_3.RData")

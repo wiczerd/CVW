@@ -120,6 +120,7 @@ wagechanges <- wagechanges[EE | balancedEU | balancedUE,]
 # A: To correct for how we defined the timing of the occupation switch. See 3_createVars.R.
 #    Now both the EU and UE will be considered an occupation switch.
 wagechanges[UE==T & shift(switchedOcc, 1, type = "lag")==T, switchedOcc := T, by = id]
+wagechanges[UE==T & shift(switchedInd, 1, type = "lag")==T, switchedInd := T, by = id]
 wagechanges[, maxunempdur:= ifelse(UE==T & is.na(maxunempdur), shift(maxunempdur), maxunempdur) , by = id]
 wagechanges[, maxunempdur:= ifelse(UE==T & maxunempdur<shift(maxunempdur), shift(maxunempdur), maxunempdur) , by = id]
 wagechanges[, maxunempdur:= ifelse(EU==T & maxunempdur<shift(maxunempdur,1,type="lead"), shift(maxunempdur,1,type="lead"), maxunempdur) , by = id]
@@ -200,7 +201,7 @@ wagechanges[EU==T, balanceweightEUE := balanceweight*2]
 wagechanges[UE==T, balanceweightEUE := 0.]
 
 
-wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE","maxunempdur","balanceweight"))
+wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE","maxunempdur","balanceweight","switchedOcc","switchedInd"))
 
 setkey(DTall,id,date)
 DTall[is.finite(stintid), balancedEU := max(UE,na.rm=T)==T & EU==T, by = list(id,stintid)]
@@ -215,7 +216,9 @@ DTall[UE==T, UE := balancedUE.y==T]
 DTall[EU==T, EU := balancedEU.y==T]
 #there are a few from x that don't have stintid, fill these with y.
 
-DTall[ is.finite(stintid), maxunempdur := max(c(maxunempdur.y, maxunempdur.x), na.rm=T), by=list(id,stintid)] #trusting the DTall worked right.
+DTall[ is.finite(stintid), switchedOcc := max(c(switchedOcc.y, switchedOcc.x), na.rm=T), by=list(id,stintid)] #trusting the DTall worked right.
+DTall[ is.finite(stintid), switchedInd := max(c(switchedInd.y, switchedInd.x), na.rm=T), by=list(id,stintid)]
+DTall[ is.finite(stintid), maxunempdur := max(c(maxunempdur.y, maxunempdur.x), na.rm=T), by=list(id,stintid)]
 #DTall[ is.finite(stintid) , completestintUE:= as.integer(balancedUE.y==T) ] <- this part is unecessary
 #DTall[ is.finite(stintid) , completestintUE:= max(completestintUE) , by = list(id,stintid)]
 #DTall[ is.finite(stintid) , completestintEU:= as.integer(balancedEU.y==T) ]

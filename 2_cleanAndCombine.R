@@ -75,9 +75,13 @@ DT96[, mis := seq_len(.N), by=id]
 
 # replace occ with most common observed occ over employment spell
 DT96[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
-
 # fix occupation code to be consistent with employment status
 DT96[lfstat == 2 | lfstat == 3, occ := NA_integer_]
+# replace occ with most common observed occ over employment spell
+DT96[lfstat == 1, ind := Mode(ind), by = list(id, job,wave)]
+# fix occupation code to be consistent with employment status
+DT96[lfstat == 2 | lfstat == 3, ind := NA_integer_]
+
 
 # create unemployment spell id
 # DT96[lfstat>=2 , newstint := 0L ]
@@ -105,7 +109,13 @@ DT96[, leadocc := shift(occ, 1, type = "lead"), by = id]
 DT96[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
 DT96[, lagocc := shift(occ), by = id]
 DT96[lfstat==2|lfstat==3, lagocc := Mode(lagocc), by = list(id, stintid)] 
-DT96[, c("leadocc", "newstint","endstint","stintid1","stintid2") := NULL]
+# fill in industry with next occupation in unemployment stints
+DT96[, leadind := shift(ind, 1, type = "lead"), by = id]
+DT96[lfstat==2|lfstat==3, ind := Mode(leadind), by = list(id, stintid)]
+DT96[, leadind := shift(ind), by = id]
+DT96[lfstat==2|lfstat==3, leadind := Mode(leadind), by = list(id, stintid)] 
+
+DT96[, c("leadocc","leadind","newstint","endstint","stintid1","stintid2") := NULL]
 
 DT96 <- DT96[!is.na(occ),]
 
@@ -138,9 +148,13 @@ DT01[, mis := seq_len(.N), by=id]
 
 # replace occ with most common observed occ over employment spell
 DT01[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
-
 # fix occupation code to be consistent with employment status
 DT01[lfstat == 2 | lfstat == 3, occ := NA_integer_]
+# replace ind with most common observed occ over employment spell
+DT01[lfstat == 1, ind := Mode(ind), by = list(id, job,wave)]
+# fix industry code to be consistent with employment status
+DT01[lfstat == 2 | lfstat == 3, ind := NA_integer_]
+
 
 # create unemployment spell id
 DT01[, newstint := as.integer(lfstat >= 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1)), by = id]
@@ -161,7 +175,14 @@ DT01[, leadocc := shift(occ, 1, type = "lead"), by = id]
 DT01[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
 DT01[, lagocc := shift(occ), by = id]
 DT01[lfstat==2|lfstat==3, lagocc := Mode(lagocc), by = list(id, stintid)] 
-DT01[, c("leadocc", "newstint","endstint","stintid1","stintid2") := NULL]
+# fill in industry with next occupation in unemployment stints
+DT01[, leadind := shift(ind, 1, type = "lead"), by = id]
+DT01[lfstat==2|lfstat==3, ind := Mode(leadind), by = list(id, stintid)]
+DT01[, leadind := shift(ind), by = id]
+DT01[lfstat==2|lfstat==3, leadind := Mode(leadind), by = list(id, stintid)] 
+
+DT01[, c("leadocc","leadind","newstint","endstint","stintid1","stintid2") := NULL]
+
 
 DT01 <- DT01[!is.na(occ),]
 
@@ -196,9 +217,13 @@ DT04[, mis := seq_len(.N), by=id]
 
 # replace occ with most common observed occ over employment spell
 DT04[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
-
 # fix occupation code to be consistent with employment status
 DT04[lfstat == 2 | lfstat == 3, occ := NA_integer_]
+# replace ind with most common observed occ over employment spell
+DT04[lfstat == 1, ind := Mode(ind), by = list(id, job,wave)]
+# fix industry code to be consistent with employment status
+DT04[lfstat == 2 | lfstat == 3, ind := NA_integer_]
+
 
 # create unemployment spell id
 DT04[, newstint := as.integer(lfstat >= 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1)), by = id]
@@ -219,7 +244,13 @@ DT04[, leadocc := shift(occ, 1, type = "lead"), by = id]
 DT04[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
 DT04[, lagocc := shift(occ), by = id]
 DT04[lfstat==2|lfstat==3, lagocc := Mode(lagocc), by = list(id, stintid)] 
-DT04[, c("leadocc", "newstint","endstint","stintid1","stintid2") := NULL]
+# fill in industry with next occupation in unemployment stints
+DT04[, leadind := shift(ind, 1, type = "lead"), by = id]
+DT04[lfstat==2|lfstat==3, ind := Mode(leadind), by = list(id, stintid)]
+DT04[, leadind := shift(ind), by = id]
+DT04[lfstat==2|lfstat==3, leadind := Mode(leadind), by = list(id, stintid)] 
+
+DT04[, c("leadocc","leadind","newstint","endstint","stintid1","stintid2") := NULL]
 
 DT04 <- DT04[!is.na(occ),]
 
@@ -252,9 +283,13 @@ DT08[, mis := seq_len(.N), by=id]
 
 # replace occ with most common observed occ over employment spell
 DT08[lfstat == 1, occ := Mode(occ), by = list(id, job,wave)]
-
 # fix occupation code to be consistent with employment status
 DT08[lfstat == 2 | lfstat == 3, occ := NA_integer_]
+# replace ind with most common observed occ over employment spell
+DT08[lfstat == 1, ind := Mode(ind), by = list(id, job,wave)]
+# fix industry code to be consistent with employment status
+DT08[lfstat == 2 | lfstat == 3, ind := NA_integer_]
+
 
 # create unemployment spell id
 DT08[, newstint := as.integer(lfstat >= 2 & (shift(lfstat, 1, type = "lag") == 1 | mis == 1)), by = id]
@@ -275,7 +310,13 @@ DT08[, leadocc := shift(occ, 1, type = "lead"), by = id]
 DT08[lfstat==2|lfstat==3, occ := Mode(leadocc), by = list(id, stintid)]
 DT08[, lagocc := shift(occ), by = id]
 DT08[lfstat==2|lfstat==3, lagocc := Mode(lagocc), by = list(id, stintid)] 
-DT08[, c("leadocc", "newstint","endstint","stintid1","stintid2") := NULL]
+# fill in industry with next occupation in unemployment stints
+DT08[, leadind := shift(ind, 1, type = "lead"), by = id]
+DT08[lfstat==2|lfstat==3, ind := Mode(leadind), by = list(id, stintid)]
+DT08[, leadind := shift(ind), by = id]
+DT08[lfstat==2|lfstat==3, leadind := Mode(leadind), by = list(id, stintid)] 
+
+DT08[, c("leadocc","leadind","newstint","endstint","stintid1","stintid2") := NULL]
 
 
 DT08 <- DT08[!is.na(occ),]
