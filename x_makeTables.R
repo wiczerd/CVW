@@ -23,7 +23,7 @@ wagechanges[EE==T, balanceweightEUE:=balanceweight]
 wagechanges[EU==T, balanceweightEUE:=balanceweight*2]
 wagechanges[UE==T, balanceweightEUE:=0.]
 
-toKeep <- c("switchedOcc",
+toKeep <- c("switchedOcc","switchedInd",
 			"Young",
 			"HSCol",
 			"recIndic",
@@ -227,6 +227,10 @@ print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,Ndifs+1, nrow(tab_c
 
 # Only job-changers -----------------------
 wagechanges<- wagechanges[ is.finite(switchedOcc), ]
+wagechanges[EE==T, balanceweightEUE:=balanceweight]
+wagechanges[EU==T, balanceweightEUE:=balanceweight*2]
+wagechanges[UE==T, balanceweightEUE:=0.]
+
 
 tab_chngdist    <- array(0.,dim=c(3,tN))
 tab_chngdistEUE <- array(0.,dim=c(3,tN))
@@ -452,3 +456,15 @@ ggplot(qtlregsco, aes(x=Quantile,y=EUE, color= recIndic)) +
 	xlab("Quantile") 
 ggsave(filename = "Figures/lmqr_swEUE_EUE.png",height= 5,width=10)
 ggsave(filename = "Figures/lmqr_swEUE_EUE.eps",height= 5,width=10)
+
+
+#lmqr_OccIndunrt0 <-rq( wagechange ~  EU + UE + switchedOcc+ switchedInd  + unrt,tau= tabqtls, data=wagechanges, weights = balanceweight)
+#lmqr_Occunrt0 <-rq( wagechange ~  EU + UE + switchedOcc  + unrt,tau= tabqtls, data=wagechanges, weights = balanceweight)
+#lmqr_Indunrt0 <-rq( wagechange ~  EU + UE + switchedInd  + unrt,tau= tabqtls, data=wagechanges, weights = balanceweight)
+
+lm_EUEOccIndunrt <- lm( wagechange_EUE ~  EU + switchedOcc + switchedInd + unrt, data=wagechanges, weights = balanceweightEUE)
+lmqr_EUEOccIndnrt0 <-rq( wagechange_EUE ~  EU + switchedOcc+ switchedInd  + unrt,tau= tabqtls, data=wagechanges, weights = balanceweightEUE)
+lmqr_EUEOccIndnrt <- list(lm_EUEOccIndunrt)
+for(ti in seq(1,length(tabqtls))){
+	lmqr_EUEOccIndnrt[[ti+1]] <- rq( wagechange_EUE ~  factor(EU) + factor(switchedOcc)+ factor(switchedInd)  + unrt,tau= tabqtls[ti], data=wagechanges, weights = balanceweightEUE)
+}

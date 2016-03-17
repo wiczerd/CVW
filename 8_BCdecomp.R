@@ -150,13 +150,13 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 		wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]		
 	}else if(NS==7){
 		# 6 subgroups, Sw X (EE UE EU), sets up conditional distributions.
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F, s := 1]
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F, s := 2]
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T, s := 3]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F, s := 4]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F, s := 5]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T, s := 6]
-		wcDF[                      wcDF$EE==F & wcDF$UE==F & wcDF$EU ==F, s := 7]
+		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F , s := 1]
+		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F , s := 2]
+		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T , s := 3]
+		wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F , s := 4]
+		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F , s := 5]
+		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T , s := 6]
+		wcDF[                    !(wcDF$EE==T | wcDF$UE==T | wcDF$EU ==T), s := 7]
 		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
 		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
 		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
@@ -164,8 +164,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]
 		wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]		
 		wcDF[!is.na(wcDF$s), s7 := ifelse(s==7,1,0)]
-	}
-	else if(NS==4){
+	}else if(NS==4){
 		# 4 subgroups, Sw X (EE EU), sets up conditional distributions.
 		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$EU ==F, s := 1]
 		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$EU ==T, s := 2]
@@ -175,12 +174,30 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
 		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
 		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+	}else if(NS==5){
+		# 4 subgroups, Sw X (EE EU), sets up conditional distributions.
+		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$EU ==F , s := 1]
+		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$EU ==T , s := 2]
+		wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$EU ==F , s := 3]
+		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$EU ==T , s := 4]
+		wcDF[                    !(wcDF$EE==T | wcDF$EU ==T), s := 5]
+		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+		wcDF[!is.na(wcDF$s), s5 := ifelse(s==4,1,0)]		
 	}
+	wcDF<- subset(wcDF,is.finite(wcDF$s))
 	wcRec <- subset(wcDF, rec==T)
 	wcExp <- subset(wcDF, rec==F)
 	
 	# run quantile regressions on a relatively coarse grid (have to run 8 regressions)
-	qtlgrid <- seq(0.02,0.98,.06)
+	#if(NS == 5 | NS==7){
+		qtlgrid <- seq(0.02,0.98,.12)
+	#}else{
+	#	qtlgrid <- seq(0.1,0.9,.16)
+	#}
+	
 	betaptsR <- matrix(0.,nrow = length(qtlgrid),ncol=NS)
 	betaptsE <- matrix(0.,nrow = length(qtlgrid),ncol=NS)
 	qi  = 1
@@ -200,8 +217,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	betaE <- list(approxfun(qtlgrid,betaptsE[,1]))
 	betaR <- list(approxfun(qtlgrid,betaptsR[,1]))
 	for(si in seq(2,NS)){
-		betaE[[si]] <-approxfun(qtlgrid,betaptsE[,si]) 
-		betaR[[si]] <-approxfun(qtlgrid,betaptsR[,si]) 
+		betaE[[si]] <-approxfun(qtlgrid,betaptsE[,si],rule=2) 
+		betaR[[si]] <-approxfun(qtlgrid,betaptsR[,si],rule=2) 
 	}
 	
 	qtlgrid <- seq(0.01,0.99,0.01)
@@ -220,7 +237,13 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 					betaE[[7]](q)*s7]
 		}else if(NS==4){
 			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
-					betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + betaE[[4]](q)*s4]
+					betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + 
+					betaE[[3]](q)*s3 + betaE[[4]](q)*s4]
+		}else if(NS==5){
+			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
+					betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + 
+					betaE[[3]](q)*s3 + betaE[[4]](q)*s4 +
+					betaE[[5]](q)*s5	]
 		}
 		qi = qi+1
 	}
@@ -234,9 +257,20 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 			wc_cf_sw[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
 						betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + 
 						betaR[[4]](q)*s4 + betaR[[5]](q)*s5 + betaR[[6]](q)*s6] 
+		}else if(NS == 7){
+			wc_cf_sw[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
+						betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + 
+						betaR[[4]](q)*s4 + betaR[[5]](q)*s5 + betaR[[6]](q)*s6 + 
+						betaE[[7]](q)*s7]
 		}else if(NS==4){
 			wc_cf_sw[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
-						betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + betaR[[3]](q)*s3 + betaR[[4]](q)*s4]
+						betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + 
+						betaR[[3]](q)*s3 + betaR[[4]](q)*s4]
+		}else if(NS==5){
+			wc_cf_sw[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
+						betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + 
+						betaR[[3]](q)*s3 + betaR[[4]](q)*s4 + 
+						betaE[[5]](q)*s5]
 		}
 		qi = qi+1
 	}
@@ -250,10 +284,20 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 			wc_cf_un[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
 						betaR[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + 
 						betaR[[4]](q)*s4 + betaE[[5]](q)*s5 + betaE[[6]](q)*s6] 
+		}else if(NS == 7){
+			wc_cf_un[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
+						betaR[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + 
+						betaR[[4]](q)*s4 + betaE[[5]](q)*s5 + betaE[[6]](q)*s6 +
+						betaR[[7]](q)*s7]
 		}else if(NS==4){
 			wc_cf_un[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
 						betaR[[1]](q)*s1 + betaE[[2]](q)*s2 + 
 						betaR[[3]](q)*s3 + betaE[[4]](q)*s4]
+		}else if(NS==5){
+			wc_cf_un[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
+						betaR[[1]](q)*s1 + betaE[[2]](q)*s2 + 
+						betaR[[3]](q)*s3 + betaE[[4]](q)*s4 +
+						betaR[[5]](q)*s5]
 		}
 		qi = qi+1
 	}
@@ -372,3 +416,13 @@ DTall[, allwt := wpfinwgt]
 DTall[EU==T|UE==T|EE==T, allwt := balanceweight]
 DTall[, wagechange_allEUE := ifelse(EU==T, wagechange_EUE,wagechange_all)]
 DTall[UE==T, wagechange_allEUE := NA_real_]
+DTall[, allwtEUE := allwt]
+DTall[EU==T, allwtEUE := allwt*2]
+DTall[UE==T, allwtEUE := NA_real_]
+
+MM_all_betaE_betaR_cf <- MMdecomp(DTall,7,"recIndic","wagechange_all","allwt")
+MM_allEUE_betaE_betaR_cf <- MMdecomp(DTall,5,"recIndic","wagechange_allEUE","allwtEUE")
+
+save.image(file="result_decomp.RData")
+
+rm(list=ls())
