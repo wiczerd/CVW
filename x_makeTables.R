@@ -37,6 +37,11 @@ toKeep <- c("switchedOcc","switchedInd",
 
 # select toKeep columns only
 wagechanges <- wagechanges[, toKeep, with = FALSE]
+wagechanges<- wagechanges[ is.finite(switchedOcc), ]
+wagechanges[EE==T, balanceweightEUE:=balanceweight]
+wagechanges[EU==T, balanceweightEUE:=balanceweight*2]
+wagechanges[UE==T, balanceweightEUE:=0.]
+
 
 DTall <- readRDS("./Data/DTall_6.RData")
 DTall <- merge(DTall, CPSunempRt, by = "date", all.x = TRUE)
@@ -125,17 +130,34 @@ rownames(tab_fulldistEUE) <- c("All\ Workers",      "Same\ Job",     "Chng\ Job"
 rowtitles <- list( pos=list(0,3,6), command=c("\\hline  \\color{Maroon}{1996-2012} &  & & & & & \\\\ \n",
 					"\\hline \\hline   \\color{Maroon}{Expansion} &  & & & & & \\\\  \n", 
 					"\\hline \\hline   \\color{Maroon}{Recession} &  & & & & & \\\\  \n")  )
-tab_fulldist <- xtable(tab_fulldist, label="tab:fulldist", digits=2, 
-					align="l|l|lllll", caption="Distribution of earnings changes")
+tab_fulldist <- xtable(tab_fulldist, digits=2, 
+					align="l|l|lllll", caption="Distribution of earnings changes \\label{tab:fulldist}")
 print(tab_fulldist,include.rownames=T, hline.after= c(nrow(tab_fulldist)), 
 	  add.to.row=rowtitles, file="./Figures/fulldist.tex")
 
 
-tab_fulldistEUE <- xtable(tab_fulldistEUE, label="tab:fulldistEUE", digits=2,
-					   align="l|l|lllll", caption="Distribution of earnings changes, connecting unemployment spells")
+tab_fulldistEUE <- xtable(tab_fulldistEUE, digits=2,
+					   align="l|l|lllll", caption="Distribution of earnings changes, connecting unemployment spells \\label{tab:fulldistEUE}")
 print(tab_fulldistEUE,include.rownames=T, hline.after= c(nrow(tab_fulldistEUE)),
 	  add.to.row= rowtitles,file="./Figures/fulldistEUE.tex")
 
+# are these different? --------------------------------
+
+# first do KS test with each subsample 
+DTall[ , s1:= T]
+DTall[ , s2:= ifelse(!(EU==T|UE==T|EE==T), T,F) ]
+DTall[ , s3:= ifelse(EU==T|UE==T|EE==T, T,F)]
+#expansion
+DTall[ , s4:= ifelse(recIndic == F,T,F)]
+DTall[ , s5:= ifelse(recIndic == F & !(EU==T|UE==T|EE==T),T,F)]
+DTall[ , s6:= ifelse(recIndic == F &  (EU==T|UE==T|EE==T),T,F)]
+#recession
+DTall[ , s7 := ifelse(recIndic == T, T,F)]
+DTall[ , s8 := ifelse(recIndic == T & !(EU==T|UE==T|EE==T),T,F)]
+DTall[ , s9 := ifelse(recIndic == T &  (EU==T|UE==T|EE==T),T,F)]
+
+
+DTall[ , c("s1","s2","s3","s4","s5","s6","s7","s8","s9") := NULL]
 
 # Full sample var decomp -------------------------------------------------------------
 
@@ -216,8 +238,8 @@ names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EU,UE","EUE")
 #rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
 rownames(tab_chngvarqtldec) <- c("Variance","0.95-0.05","0.9-0.1","0.75-0.25", "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
 
-tab_chngvarqtldec <- xtable(tab_chngvarqtldec, label="tab:chngvarqtldec", digits=2, 
-					   align="l|l|lll", caption="Decomposition of earnings changes")
+tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=2, 
+					   align="l|l|lll", caption="Decomposition of earnings change dispersion \\label{tab:chngvarqtldec}")
 print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,Ndifs+1, nrow(tab_chngvarqtldec)), file="./Figures/chngvarqtldec.tex")
 
 
@@ -226,11 +248,6 @@ print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,Ndifs+1, nrow(tab_c
 ##########################################################################################
 
 # Only job-changers -----------------------
-wagechanges<- wagechanges[ is.finite(switchedOcc), ]
-wagechanges[EE==T, balanceweightEUE:=balanceweight]
-wagechanges[EU==T, balanceweightEUE:=balanceweight*2]
-wagechanges[UE==T, balanceweightEUE:=0.]
-
 
 tab_chngdist    <- array(0.,dim=c(3,tN))
 tab_chngdistEUE <- array(0.,dim=c(3,tN))
