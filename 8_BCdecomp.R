@@ -149,7 +149,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]
 		wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]		
 	}else if(NS==7){
-		# 6 subgroups, Sw X (EE UE EU), sets up conditional distributions.
+		# 7 subgroups, Sw X (EE UE EU), sets up conditional distributions.
 		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F , s := 1]
 		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F , s := 2]
 		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T , s := 3]
@@ -224,7 +224,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	qtlgrid <- seq(0.01,0.99,0.01)
 	nsamp = floor(nrow(wcExp)/length(qtlgrid))
 	qi = 1
-	wc_cf <- matrix(NA, nrow=nsamp*nrow(wcExp),ncol=1) #storing the counter-factual distribution
+	wc_cf <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution
 	for(q in qtlgrid){
 		if(NS == 6){
 			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
@@ -251,7 +251,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	wc_cf_pctile <- quantile(wc_cf,probs=seq(.01,.99,.01),na.rm=T)
 	rm(wc_cf)
 	
-	wc_cf_sw <- matrix(NA, nrow=nsamp*nrow(wcExp),ncol=1) #storing the counter-factual distribution - only switch
+	wc_cf_sw <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution - only switch
 	for(q in qtlgrid){
 		if(NS == 6){
 			wc_cf_sw[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
@@ -278,7 +278,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	wc_cf_sw_pctile <- quantile(wc_cf_sw,probs=seq(.01,.99,.01),na.rm=T)
 	rm(wc_cf_sw)
 
-	wc_cf_un <- matrix(NA, nrow=nsamp*nrow(wcExp),ncol=1) #storing the counter-factual distribution - only unemployment
+	wc_cf_un <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution - only unemployment
 	for(q in qtlgrid){
 		if(NS == 6){
 			wc_cf_un[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),

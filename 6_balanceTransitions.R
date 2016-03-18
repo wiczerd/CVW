@@ -216,8 +216,12 @@ DTall[UE==T, UE := balancedUE.y==T]
 DTall[EU==T, EU := balancedEU.y==T]
 #there are a few from x that don't have stintid, fill these with y.
 
-DTall[ is.finite(stintid), switchedOcc := max(c(switchedOcc.y, switchedOcc.x), na.rm=T), by=list(id,stintid)] #trusting the DTall worked right.
-DTall[ is.finite(stintid), switchedInd := max(c(switchedInd.y, switchedInd.x), na.rm=T), by=list(id,stintid)]
+DTall[ , switchedOcc := switchedOcc.y] 
+DTall[ is.finite(stintid), switchedOcc := Mode(switchedOcc), by=list(id,stintid)]
+DTall[ lfstat==1 & !(EE==T|EU==T|UE==T), switchedOcc := switchedOcc.x]
+DTall[ , switchedInd := switchedInd.y] 
+DTall[ is.finite(stintid), switchedInd := Mode(switchedInd), by=list(id,stintid)]
+DTall[ lfstat==1 & !(EE==T|EU==T|UE==T), switchedInd := switchedInd.x]
 DTall[ is.finite(stintid), maxunempdur := max(c(maxunempdur.y, maxunempdur.x), na.rm=T), by=list(id,stintid)]
 #DTall[ is.finite(stintid) , completestintUE:= as.integer(balancedUE.y==T) ] <- this part is unecessary
 #DTall[ is.finite(stintid) , completestintUE:= max(completestintUE) , by = list(id,stintid)]
