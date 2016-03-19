@@ -156,6 +156,31 @@ DTall[ , s7 := ifelse(recIndic == T, T,F)]
 DTall[ , s8 := ifelse(recIndic == T & !(EU==T|UE==T|EE==T),T,F)]
 DTall[ , s9 := ifelse(recIndic == T &  (EU==T|UE==T|EE==T),T,F)]
 
+NS = 9
+
+tab_fulldist_ks <- array(NA_real_,dim=c(NS-1,NS-1))
+for( si in seq(1,NS-1)){
+	for(ki in seq(si+1,NS)){
+		kshere <- ks.test( DTall[get(paste0("s",si))==T,wagechange_all ] , DTall[get(paste0("s",ki))==T,wagechange_all])
+		tab_fulldist_ks[si,ki-1] = kshere$p.value
+	}
+}
+
+tab_fulldist_moodqtl <- array(0.,dim=c(NS,NS,length(tabqtls)))
+for( qi in seq(1,length(tabqtls)) ){
+	for( si in seq(1,NS)){
+		for(ki in seq(1,NS)){
+			if(si != ki){
+				Finvq <- tab_fulldist[si,qi+1]
+				Nbase <- DTall[ get(paste0("s",si))==T, sum(allwt>0, na.rm=T) ]
+				prob_other <- DTall[ get(paste0("s",ki))==T, wtd.mean(wagechange_all < Finvq, weights=allwt, na.rm=T) ]
+				test_tab <- cbind( c( tabqtls[qi], 1.-tabqtls[qi] ), c(prob_other,1.-prob_other) )*Nbase
+				tab_fulldist_moodqtl[si,ki,qi] <- chisq.test(test_tab)$p.value 	
+			}
+		}
+	}
+}
+
 
 DTall[ , c("s1","s2","s3","s4","s5","s6","s7","s8","s9") := NULL]
 
