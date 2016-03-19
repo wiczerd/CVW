@@ -200,19 +200,17 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	
 	betaptsR <- matrix(0.,nrow = length(qtlgrid),ncol=NS)
 	betaptsE <- matrix(0.,nrow = length(qtlgrid),ncol=NS)
-	qi  = 1
-	for( q in qtlgrid){
-		#rhere <- rq( as.formula(paste0("wc~",paste(grep("s[1-9]", names(wcDF),value=T), collapse="+"),"+0") ),
-		#			 tau= q, data=wcRec, weights = wt)
-		rhere <- rq( wc ~ factor(s)+0 ,tau= q, wcRec, weights = wt)
-		betaptsR[qi,] = rhere$coefficients
-		#rhere <- rq( as.formula(paste0("wc~",paste(grep("s[1-9]", names(wcDF),value=T), collapse="+"),"+0") ), 
-		#			 tau= q, data=wcExp, weights = wt)
-		rhere <- rq( wc ~factor(s) +0,tau= q, data=wcExp, weights = wt)
-		betaptsE[qi,] = rhere$coefficients	
-		qi = qi+1
-		rm(rhere)
-	}
+
+	#rhere <- rq( as.formula(paste0("wc~",paste(grep("s[1-9]", names(wcDF),value=T), collapse="+"),"+0") ),
+	#			 tau= q, data=wcRec, weights = wt)
+	rhere <- rq( wc ~ factor(s)+0 ,tau= qtlgrid, wcRec, weights = wt, method="pfn")
+	betaptsR = t(rhere$coefficients)
+	#rhere <- rq( as.formula(paste0("wc~",paste(grep("s[1-9]", names(wcDF),value=T), collapse="+"),"+0") ), 
+	#			 tau= q, data=wcExp, weights = wt)
+	rhere <- rq( wc ~factor(s) +0,tau= qtlgrid, data=wcExp, weights = wt, method="pfn")
+	betaptsE = t(rhere$coefficients)
+	rm(rhere)
+
 
 	betaE <- list(approxfun(qtlgrid,betaptsE[,1]))
 	betaR <- list(approxfun(qtlgrid,betaptsR[,1]))
@@ -250,7 +248,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	#clean up the space:
 	wc_cf_pctile <- quantile(wc_cf,probs=seq(.01,.99,.01),na.rm=T)
 	rm(wc_cf)
-	
+	qi=1
 	wc_cf_sw <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution - only switch
 	for(q in qtlgrid){
 		if(NS == 6){
@@ -277,7 +275,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	#clean up the space:
 	wc_cf_sw_pctile <- quantile(wc_cf_sw,probs=seq(.01,.99,.01),na.rm=T)
 	rm(wc_cf_sw)
-
+	qi=1
 	wc_cf_un <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution - only unemployment
 	for(q in qtlgrid){
 		if(NS == 6){
@@ -418,7 +416,7 @@ DTall[, wagechange_allEUE := ifelse(EU==T, wagechange_EUE,wagechange_all)]
 DTall[UE==T, wagechange_allEUE := NA_real_]
 DTall[, allwtEUE := allwt]
 DTall[EU==T, allwtEUE := allwt*2]
-DTall[UE==T, allwtEUE := NA_real_]
+DTall[UE==T, allwtEUE := 0.]
 
 MM_all_betaE_betaR_cf <- MMdecomp(DTall,7,"recIndic","wagechange_all","allwt")
 MM_allEUE_betaE_betaR_cf <- MMdecomp(DTall,5,"recIndic","wagechange_allEUE","allwtEUE")
