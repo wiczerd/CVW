@@ -193,7 +193,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	
 	# run quantile regressions on a relatively coarse grid (have to run 8 regressions)
 	#if(NS == 5 | NS==7){
-		qtlgrid <- seq(0.02,0.98,.12)
+		qtlgrid <- seq(0.08,0.92,.14)
 	#}else{
 	#	qtlgrid <- seq(0.1,0.9,.16)
 	#}
@@ -203,104 +203,111 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 
 	#rhere <- rq( as.formula(paste0("wc~",paste(grep("s[1-9]", names(wcDF),value=T), collapse="+"),"+0") ),
 	#			 tau= q, data=wcRec, weights = wt)
-	rhere <- rq( wc ~ factor(s)+0 ,tau= qtlgrid, wcRec, weights = wt, method="pfn")
+	rhere <- rq( wc ~ factor(s)+0 ,tau= qtlgrid, wcRec, weights = wt, method="pfn", Mm.factor = 1.6)
 	betaptsR = t(rhere$coefficients)
 	#rhere <- rq( as.formula(paste0("wc~",paste(grep("s[1-9]", names(wcDF),value=T), collapse="+"),"+0") ), 
 	#			 tau= q, data=wcExp, weights = wt)
-	rhere <- rq( wc ~factor(s) +0,tau= qtlgrid, data=wcExp, weights = wt, method="pfn")
+	rhere <- rq( wc ~factor(s) +0,tau= qtlgrid, data=wcExp, weights = wt, method="pfn", Mm.factor = 1.6)
 	betaptsE = t(rhere$coefficients)
 	rm(rhere)
 
-
-	betaE <- list(approxfun(qtlgrid,betaptsE[,1]))
-	betaR <- list(approxfun(qtlgrid,betaptsR[,1]))
-	for(si in seq(2,NS)){
-		betaE[[si]] <-approxfun(qtlgrid,betaptsE[,si],rule=2) 
-		betaR[[si]] <-approxfun(qtlgrid,betaptsR[,si],rule=2) 
+	#betaE <- list(approxfun(qtlgrid,betaptsE[,1]))
+	#betaR <- list(approxfun(qtlgrid,betaptsR[,1]))
+	#for(si in seq(2,NS)){
+	#	betaE[[si]] <-approxfun(qtlgrid,betaptsE[,si],rule=2) 
+	#	betaR[[si]] <-approxfun(qtlgrid,betaptsR[,si],rule=2) 
+	#}
+	
+	qtlgridOut <- seq(0.01,0.99,0.01)
+	betaE <- array(0.,dim=c(NS,length(qtlgridOut)) )
+	betaR <- array(0.,dim=c(NS,length(qtlgridOut)) )
+	for(si in seq(1,NS)){
+		betaE[si,] <- approxExtrap(x=qtlgrid, y=betaptsE[,si], xout=qtlgridOut)$y
+		betaR[si,] <- approxExtrap(x=qtlgrid, y=betaptsR[,si], xout=qtlgridOut)$y
 	}
 	
-	qtlgrid <- seq(0.01,0.99,0.01)
+	qtlgrid <- qtlgridOut
 	nsamp = floor(nrow(wcExp)/length(qtlgrid))
 	qi = 1
 	wc_cf <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution
 	for(q in qtlgrid){
 		if(NS == 6){
 			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
-				  	betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + 
-				  	betaE[[4]](q)*s4 + betaE[[5]](q)*s5 + betaE[[6]](q)*s6] 
+				  	betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+				  	betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6] 
 		}else if(NS==7){
 			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] < wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
-					betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + 
-					betaE[[4]](q)*s4 + betaE[[5]](q)*s5 + betaE[[6]](q)*s6 +
-					betaE[[7]](q)*s7]
+					betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+					betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 +
+					betaE[7,qi]*s7]
 		}else if(NS==4){
 			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
-					betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + 
-					betaE[[3]](q)*s3 + betaE[[4]](q)*s4]
+					betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
+					betaE[3,qi]*s3 + betaE[4,qi]*s4]
 		}else if(NS==5){
 			wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
-					betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + 
-					betaE[[3]](q)*s3 + betaE[[4]](q)*s4 +
-					betaE[[5]](q)*s5	]
+					betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
+					betaE[3,qi]*s3 + betaE[4,qi]*s4 +
+					betaE[5,qi]*s5	]
 		}
 		qi = qi+1
 	}
 	#clean up the space:
-	wc_cf_pctile <- quantile(wc_cf,probs=seq(.01,.99,.01),na.rm=T)
+	wc_cf_pctile <- quantile(wc_cf,probs=qtlgrid,na.rm=T)
 	rm(wc_cf)
 	qi=1
 	wc_cf_sw <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution - only switch
 	for(q in qtlgrid){
 		if(NS == 6){
 			wc_cf_sw[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
-						betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + 
-						betaR[[4]](q)*s4 + betaR[[5]](q)*s5 + betaR[[6]](q)*s6] 
+						betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+						betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6] 
 		}else if(NS == 7){
 			wc_cf_sw[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
-						betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + 
-						betaR[[4]](q)*s4 + betaR[[5]](q)*s5 + betaR[[6]](q)*s6 + 
-						betaE[[7]](q)*s7]
+						betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+						betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 + 
+						betaE[7,qi]*s7]
 		}else if(NS==4){
 			wc_cf_sw[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
-						betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + 
-						betaR[[3]](q)*s3 + betaR[[4]](q)*s4]
+						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
+						betaR[3,qi]*s3 + betaR[4,qi]*s4]
 		}else if(NS==5){
 			wc_cf_sw[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
-						betaE[[1]](q)*s1 + betaE[[2]](q)*s2 + 
-						betaR[[3]](q)*s3 + betaR[[4]](q)*s4 + 
-						betaE[[5]](q)*s5]
+						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
+						betaR[3,qi]*s3 + betaR[4,qi]*s4 + 
+						betaE[5,qi]*s5]
 		}
 		qi = qi+1
 	}
 	#clean up the space:
-	wc_cf_sw_pctile <- quantile(wc_cf_sw,probs=seq(.01,.99,.01),na.rm=T)
+	wc_cf_sw_pctile <- quantile(wc_cf_sw,probs=qtlgrid,na.rm=T)
 	rm(wc_cf_sw)
 	qi=1
 	wc_cf_un <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution - only unemployment
 	for(q in qtlgrid){
 		if(NS == 6){
 			wc_cf_un[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
-						betaR[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + 
-						betaR[[4]](q)*s4 + betaE[[5]](q)*s5 + betaE[[6]](q)*s6] 
+						betaR[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+						betaR[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6] 
 		}else if(NS == 7){
 			wc_cf_un[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
-						betaR[[1]](q)*s1 + betaE[[2]](q)*s2 + betaE[[3]](q)*s3 + 
-						betaR[[4]](q)*s4 + betaE[[5]](q)*s5 + betaE[[6]](q)*s6 +
-						betaR[[7]](q)*s7]
+						betaR[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+						betaR[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 +
+						betaR[7,qi]*s7]
 		}else if(NS==4){
 			wc_cf_un[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
-						betaR[[1]](q)*s1 + betaE[[2]](q)*s2 + 
-						betaR[[3]](q)*s3 + betaE[[4]](q)*s4]
+						betaR[1,qi]*s1 + betaE[2,qi]*s2 + 
+						betaR[3,qi]*s3 + betaE[4,qi]*s4]
 		}else if(NS==5){
 			wc_cf_un[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
-						betaR[[1]](q)*s1 + betaE[[2]](q)*s2 + 
-						betaR[[3]](q)*s3 + betaE[[4]](q)*s4 +
-						betaR[[5]](q)*s5]
+						betaR[1,qi]*s1 + betaE[2,qi]*s2 + 
+						betaR[3,qi]*s3 + betaE[4,qi]*s4 +
+						betaR[5,qi]*s5]
 		}
 		qi = qi+1
 	}
 	#clean up the space:
-	wc_cf_un_pctile <- quantile(wc_cf_un,probs=seq(.01,.99,.01),na.rm=T)
+	wc_cf_un_pctile <- quantile(wc_cf_un,probs=qtlgrid,na.rm=T)
 	rm(wc_cf_un)	
 	
 	return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_cf = wc_cf_pctile, wc_cf_sw= wc_cf_sw_pctile, wc_cf_un= wc_cf_un_pctile))
@@ -373,8 +380,8 @@ MM_tab <- data.table(cbind( mmtabqtls,(dist_cf),dist_rec,dist_exp,dist_rec- dist
 							dist_pct,dist_pct_sw,dist_pct_un))
 names(MM_tab) <- c("Quantile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
 rownames(MM_tab) <- mmtabqtls
-MM_tab <- xtable(MM_tab, label="tab:MMEUE_tab", digits=2, 
-					align="ll|lll|l|lll", caption="Machado-Mata, including unemployment")
+MM_tab <- xtable(MM_tab, digits=2, 
+					align="ll|lll|l|lll", caption="Machado-Mata, including unemployment \\label{tab:MM_tab}")
 print(MM_tab,include.rownames=T, hline.after= c(0,nrow(MM_tab)), file="./Figures/MM.tex")
 ks.test(wcRec$wagechange,wcExp$wagechange,alternative = "greater")
 # plot the coefficients
@@ -391,8 +398,8 @@ MMEUE_tab <- data.table(cbind( mmtabqtls,(distEUE_cf),distEUE_rec,distEUE_exp,di
 							   distEUE_pct,distEUE_pct_sw,distEUE_pct_un ))
 names(MMEUE_tab) <- c("Quantile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
 rownames(MMEUE_tab) <- mmtabqtls
-MMEUE_tab <- xtable(MMEUE_tab, label="tab:MMEUE_tab", digits=2, 
-						  align="ll|lll|l|lll", caption="Machado-Mata, connecting across unemployment")
+MMEUE_tab <- xtable(MMEUE_tab, digits=2, 
+						  align="ll|lll|l|lll", caption="Machado-Mata, connecting across unemployment \\label{tab:MMEUE_tab}")
 print(MMEUE_tab,include.rownames=F, hline.after= c(0,nrow(MMEUE_tab)), file="./Figures/MMEUE.tex")
 
 ks.test(wcRec$wagechange_EUE,wcExp$wagechange_EUE,alternative = "greater")
@@ -422,5 +429,38 @@ MM_all_betaE_betaR_cf <- MMdecomp(DTall,7,"recIndic","wagechange_all","allwt")
 MM_allEUE_betaE_betaR_cf <- MMdecomp(DTall,5,"recIndic","wagechange_allEUE","allwtEUE")
 
 save.image(file="result_decomp.RData")
+
+
+mmtabqtls <- seq(0.1,0.9,0.1)
+wcExp <- subset(DTall,recIndic==F)
+wcRec <- subset(DTall,recIndic==T)
+distEUE_exp <- wcExp[EE==T | EU==T, wtd.quantile(wagechange_allEUE,probs=mmtabqtls,weights=allwtEUE, na.rm=T)]
+distEUE_rec <- wcRec[EE==T | EU==T, wtd.quantile(wagechange_allEUE,probs=mmtabqtls,weights=allwtEUE, na.rm=T)]
+distEUE_cf  <- MM_allEUE_betaE_betaR_cf$wc_cf[mmtabqtls*100] 
+distEUE_cf_sw  <- MM_allEUE_betaE_betaR_cf$wc_cf_un[mmtabqtls*100]
+distEUE_cf_un  <- MM_allEUE_betaE_betaR_cf$wc_cf_sw[mmtabqtls*100]
+distEUE_pct <- (distEUE_cf - distEUE_exp)/(distEUE_rec - distEUE_exp)
+distEUE_pct_sw <- (distEUE_cf_sw - distEUE_exp)/(distEUE_rec - distEUE_exp)
+distEUE_pct_un <- (distEUE_cf_un - distEUE_exp)/(distEUE_rec - distEUE_exp)
+
+dist_exp <- wtd.quantile(wcExp$wagechange_all,probs=mmtabqtls,weights=wcExp$allwt, na.rm=T)
+dist_rec <- wtd.quantile(wcRec$wagechange_all,probs=mmtabqtls,weights=wcRec$allwt, na.rm=T)
+dist_cf  <- MM_all_betaE_betaR_cf$wc_cf[mmtabqtls*100]
+dist_cf_sw  <- MM_all_betaE_betaR_cf$wc_cf_sw[mmtabqtls*100]
+dist_cf_un  <- MM_all_betaE_betaR_cf$wc_cf_un[mmtabqtls*100] 
+dist_pct <- (dist_cf - dist_exp)/(dist_rec - dist_exp)
+dist_pct_sw <- (dist_cf_sw - dist_exp)/(dist_rec - dist_exp)
+dist_pct_un <- (dist_cf_un - dist_exp)/(dist_rec - dist_exp)
+
+#table out:
+MM_all_tab <- data.table(cbind( mmtabqtls,(dist_cf),dist_rec,dist_exp,dist_rec- dist_exp, 
+							dist_pct,dist_pct_sw,dist_pct_un))
+names(MM_all_tab) <- c("Quantile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
+rownames(MM_all_tab) <- mmtabqtls
+MM_all_tab <- xtable(MM_all_tab, digits=2, 
+				 align="ll|lll|l|lll", caption="Machado-Mata, including unemployment \\label{tab:MM_all_tab}")
+print(MM_all_tab,include.rownames=T, hline.after= c(0,nrow(MM_all_tab)), file="./Figures/MM_all.tex")
+
+
 
 rm(list=ls())
