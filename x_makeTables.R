@@ -118,14 +118,13 @@ tab_fulldistEUE[9,2:tN]  <- DTall[recIndic == T &  (EU==T|UE==T|EE==T), wtd.quan
 tab_fulldist <- data.table(tab_fulldist)
 names(tab_fulldist) <- c("Mean","0.10","0.25","0.50","0.75","0.90")
 #rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
-rownames(tab_fulldist) <- c("All\ Workers",      "Same\ Job",     "Chng\ Job",
-							"All\ Workers\ ",   "Same\ Job\ ",  "Chng\ Job\ ",
-							"All\ Workers\ \ ", "Same\ Job,\ \ ","Chng\ Job\ \ ")
+rnames <- c("All\ Workers",      "Same\ Job",     "Chng\ Job",
+			"All\ Workers\ ",   "Same\ Job\ ",  "Chng\ Job\ ",
+			"All\ Workers\ \ ", "Same\ Job,\ \ ","Chng\ Job\ \ ")
+rownames(tab_fulldist) <- rnames
 tab_fulldistEUE <- data.table(tab_fulldistEUE)
 names(tab_fulldistEUE) <- c("Mean","0.10","0.25","0.50","0.75","0.90")
-rownames(tab_fulldistEUE) <- c("All\ Workers",      "Same\ Job",     "Chng\ Job",
-							   "All\ Workers\ ",   "Same\ Job\ ",  "Chng\ Job\ ",
-							   "All\ Workers\ \ ", "Same\ Job\ \ ","Chng\ Job\ \ ")
+rownames(tab_fulldistEUE) <- rnames
 
 rowtitles <- list( pos=list(0,3,6), command=c("\\hline  \\color{Maroon}{1996-2012} &  & & & & & \\\\ \n",
 					"\\hline \\hline   \\color{Maroon}{Expansion} &  & & & & & \\\\  \n", 
@@ -179,6 +178,22 @@ for( qi in seq(1,length(tabqtls)) ){
 			}
 		}
 	}
+}
+
+rnames <- c("All, 1996-2012","Changers, 1996-2012","Stayers, 1996-2012",
+			"All, Expansion","Changers, Expansion","Stayers, Expansion",
+			"All, Recession","Changers, Recession","Stayers, Recession")
+cnames <- c("All, 96-12","Chng, 96-12","Stay, 96-12",
+			"All, Exp","Chng, Exp","Stay, Exp",
+			"All, Rec","Chng, Rec","Stay, Rec")
+for(qi in seq(1,length(tabqtls))) {
+	tab_fulldist_mood <- data.table(tab_fulldist_moodqtl[,,qi])
+	names(tab_fulldist_mood) <- cnames
+	rownames(tab_fulldist_mood) <- rnames
+	tab_fulldist_mood <- xtable(tab_fulldist_mood, digits=4, 
+						   align="l|lll|lll|lll", caption=paste0("Difference in the", tabqtls[qi] ,"quantile of earnings changes, p-values \\label{tab:moodqtl",qi,"}"))
+	print(tab_fulldist_mood,include.rownames=T, hline.after= c(nrow(tab_fulldist_mood)), 
+		  file=paste0("./Figures/tab_moodqtl",qi,".tex"))
 }
 
 

@@ -193,7 +193,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	
 	# run quantile regressions on a relatively coarse grid (have to run 8 regressions)
 	#if(NS == 5 | NS==7){
-		qtlgrid <- seq(0.08,0.92,.14)
+		qtlgrid <- seq(0.08,0.92,.07)
 	#}else{
 	#	qtlgrid <- seq(0.1,0.9,.16)
 	#}
@@ -454,13 +454,21 @@ dist_pct_un <- (dist_cf_un - dist_exp)/(dist_rec - dist_exp)
 
 #table out:
 MM_all_tab <- data.table(cbind( mmtabqtls,(dist_cf),dist_rec,dist_exp,dist_rec- dist_exp, 
-							dist_pct,dist_pct_sw,dist_pct_un))
+								dist_pct,dist_pct_sw,dist_pct_un))
 names(MM_all_tab) <- c("Quantile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
 rownames(MM_all_tab) <- mmtabqtls
 MM_all_tab <- xtable(MM_all_tab, digits=2, 
 				 align="ll|lll|l|lll", caption="Machado-Mata, including unemployment \\label{tab:MM_all_tab}")
 print(MM_all_tab,include.rownames=T, hline.after= c(0,nrow(MM_all_tab)), file="./Figures/MM_all.tex")
 
+#table out:
+MM_allEUE_tab <- data.table(cbind( mmtabqtls,(distEUE_cf),distEUE_rec,distEUE_exp,distEUE_rec- distEUE_exp, 
+								   distEUE_pct,distEUE_pct_sw,distEUE_pct_un))
+names(MM_allEUE_tab) <- c("Quantile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
+rownames(MM_allEUE_tab) <- mmtabqtls
+MM_allEUE_tab <- xtable(MM_allEUE_tab, digits=2, 
+					 align="ll|lll|l|lll", caption="Machado-Mata, connecting unemployment spells \\label{tab:MM_allEUE_tab}")
+print(MM_allEUE_tab,include.rownames=T, hline.after= c(0,nrow(MM_allEUE_tab)), file="./Figures/MM_allEUE.tex")
 
 
 rm(list=ls())
