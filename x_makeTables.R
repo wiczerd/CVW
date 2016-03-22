@@ -68,54 +68,32 @@ DTall<-DTall[ is.finite(EE)&is.finite(EU)&is.finite(UE),]
 tabqtls <- c(.1,.25,.5,.75,.9)
 tN <- (length(tabqtls)+1)
 
-tab_fulldist <- array(0., dim=c(9,length(tabqtls)+1))
-tab_fulldist[1,1]    <- DTall[ , wtd.mean(wagechange_all,na.rm=T,weights=allwt)]
-tab_fulldist[1,2:tN] <- DTall[ , wtd.quantile(wagechange_all,na.rm=T,weights=allwt, probs=tabqtls)]
-tab_fulldist[2,1]    <- DTall[!(EU==T|UE==T|EE==T), wtd.mean(wagechange_all,na.rm=T,weights=allwt)]
-tab_fulldist[2,2:tN] <- DTall[!(EU==T|UE==T|EE==T), wtd.quantile(wagechange_all,na.rm=T,weights=allwt, probs=tabqtls)]
-tab_fulldist[3,1]    <- DTall[  EU==T|UE==T|EE==T, wtd.mean(wagechange_all,na.rm=T,weights=allwt)]
-tab_fulldist[3,2:tN] <- DTall[  EU==T|UE==T|EE==T, wtd.quantile(wagechange_all,na.rm=T,weights=allwt, probs=tabqtls)]
-#expansion
-tab_fulldist[4,1]     <- DTall[recIndic == F , wtd.mean(wagechange_all,na.rm=T,weights=allwt)]
-tab_fulldist[4,2:tN]  <- DTall[recIndic == F , wtd.quantile(wagechange_all,na.rm=T,weights=allwt, probs=tabqtls)]
-tab_fulldist[5,1]     <- DTall[recIndic == F & !(EU==T|UE==T|EE==T), wtd.mean(wagechange_all,na.rm=T,weights=allwt)]
-tab_fulldist[5,2:tN]  <- DTall[recIndic == F & !(EU==T|UE==T|EE==T), wtd.quantile(wagechange_all,na.rm=T,weights=allwt, probs=tabqtls)]
-tab_fulldist[6,1]     <- DTall[recIndic == F &  (EU==T|UE==T|EE==T), wtd.mean(wagechange_all,na.rm=T,weights=allwt)]
-tab_fulldist[6,2:tN]  <- DTall[recIndic == F &  (EU==T|UE==T|EE==T), wtd.quantile(wagechange_all,na.rm=T,weights=allwt, probs=tabqtls)]
-#recession
-tab_fulldist[7,1]     <- DTall[recIndic == T, wtd.mean(wagechange_all,na.rm=T,weights=allwt)]
-tab_fulldist[7,2:tN]  <- DTall[recIndic == T, wtd.quantile(wagechange_all,na.rm=T,weights=allwt, probs=tabqtls)]
-tab_fulldist[8,1]     <- DTall[recIndic == T & !(EU==T|UE==T|EE==T), wtd.mean(wagechange_all,na.rm=T,weights=allwt)]
-tab_fulldist[8,2:tN]  <- DTall[recIndic == T & !(EU==T|UE==T|EE==T), wtd.quantile(wagechange_all,na.rm=T,weights=allwt, probs=tabqtls)]
-tab_fulldist[9,1]     <- DTall[recIndic == T &  (EU==T|UE==T|EE==T), wtd.mean(wagechange_all,na.rm=T,weights=allwt)]
-tab_fulldist[9,2:tN]  <- DTall[recIndic == T &  (EU==T|UE==T|EE==T), wtd.quantile(wagechange_all,na.rm=T,weights=allwt, probs=tabqtls)]
-
-# EUE wage changes
-tab_fulldistEUE <- array(0., dim=c(9,length(tabqtls)+1))
-tab_fulldistEUE[1,1]    <- DTall[, wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
-tab_fulldistEUE[1,2:tN] <- DTall[, wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
-tab_fulldistEUE[2,1]    <- DTall[!(EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
-tab_fulldistEUE[2,2:tN] <- DTall[!(EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
-tab_fulldistEUE[3,1]    <- DTall[  EU==T|UE==T|EE==T, wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
-tab_fulldistEUE[3,2:tN] <- DTall[  EU==T|UE==T|EE==T, wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
-#expansion
-tab_fulldistEUE[4,1]     <- DTall[recIndic == F , wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
-tab_fulldistEUE[4,2:tN]  <- DTall[recIndic == F , wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
-tab_fulldistEUE[5,1]     <- DTall[recIndic == F & !(EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
-tab_fulldistEUE[5,2:tN]  <- DTall[recIndic == F & !(EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
-tab_fulldistEUE[6,1]     <- DTall[recIndic == F &  (EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
-tab_fulldistEUE[6,2:tN]  <- DTall[recIndic == F &  (EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
-#recession
-tab_fulldistEUE[7,1]     <- DTall[recIndic == T , wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
-tab_fulldistEUE[7,2:tN]  <- DTall[recIndic == T , wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
-tab_fulldistEUE[8,1]     <- DTall[recIndic == T & !(EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
-tab_fulldistEUE[8,2:tN]  <- DTall[recIndic == T & !(EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
-tab_fulldistEUE[9,1]     <- DTall[recIndic == T &  (EU==T|UE==T|EE==T), wtd.mean(wagechange_allEUE,na.rm=T,weights=allwtEUE)]
-tab_fulldistEUE[9,2:tN]  <- DTall[recIndic == T &  (EU==T|UE==T|EE==T), wtd.quantile(wagechange_allEUE,na.rm=T,weights=allwtEUE, probs=tabqtls)]
+tab_fulldist <- array(0., dim=c(9,length(tabqtls)+1,2))
+for(EUEindic in seq(T,F)){
+	wc <- ifelse(EUEindic,"wagechange_allEUE","wagechange_all")
+	wt <- ifelse(EUEindic,"allwtEUE","allwt")
+	idx = as.integer(EUEindic)+1
+	tab_fulldist[1,1,idx]    <- DTall[                    ,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_fulldist[1,2:tN,idx] <- DTall[                    , wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+	tab_fulldist[2,1,idx]    <- DTall[!(EU==T|UE==T|EE==T),     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_fulldist[2,2:tN,idx] <- DTall[!(EU==T|UE==T|EE==T), wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+	tab_fulldist[3,1,idx]    <- DTall[  EU==T|UE==T|EE==T ,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_fulldist[3,2:tN,idx] <- DTall[  EU==T|UE==T|EE==T , wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+	#expansion/recession
+	for(rI in c(T,F)){
+		rix = rI*3+3
+		tab_fulldist[1+rix,1,idx]   <- DTall[recIndic == rI                       ,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_fulldist[1+rix,2:tN,idx]<- DTall[recIndic == rI                       , wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_fulldist[2+rix,1,idx]   <- DTall[recIndic == rI & !(EU==T|UE==T|EE==T),     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_fulldist[2+rix,2:tN,idx]<- DTall[recIndic == rI & !(EU==T|UE==T|EE==T), wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_fulldist[3+rix,1,idx]   <- DTall[recIndic == rI &  (EU==T|UE==T|EE==T),     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_fulldist[3+rix,2:tN,idx]<- DTall[recIndic == rI &  (EU==T|UE==T|EE==T), wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+	}
+}
 
 
 #output it to tables
-dat_fulldist <- tab_fulldist
+dat_fulldist <- tab_fulldist[,,1]
 tab_fulldist <- data.table(tab_fulldist)
 names(tab_fulldist) <- c("Mean","0.10","0.25","0.50","0.75","0.90")
 #rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
@@ -123,7 +101,7 @@ rnames <- c("All\ Workers",      "Same\ Job",     "Chng\ Job",
 			"All\ Workers\ ",   "Same\ Job\ ",  "Chng\ Job\ ",
 			"All\ Workers\ \ ", "Same\ Job,\ \ ","Chng\ Job\ \ ")
 rownames(tab_fulldist) <- rnames
-dat_fulldistEUE <- tab_fulldistEUE
+dat_fulldistEUE <- tab_fulldist[,,2]
 tab_fulldistEUE <- data.table(tab_fulldistEUE)
 names(tab_fulldistEUE) <- c("Mean","0.10","0.25","0.50","0.75","0.90")
 rownames(tab_fulldistEUE) <- rnames
@@ -476,7 +454,7 @@ names(tab_chngdist_rec) <- cnames
 rownames(tab_chngdist_rec) <- rnames
 tab_chngdist_rec <- xtable(tab_chngdist_rec, digits=2, 
 					   align="l|l|lllll", caption="Distribution of earnings changes among job changers in recession and expansion \\label{tab:chngdist_rec}")
-print(tab_fulldist,include.rownames=T, hline.after= c(nrow(tab_chngdist_rec)), 
+print(tab_chngdist_rec,include.rownames=T, hline.after= c(nrow(tab_chngdist_rec)), 
 	  add.to.row=rowtitles, file="./Figures/chngdist_rec.tex")
 
 
@@ -494,16 +472,17 @@ tab_chngdistEUE_recEUE <- data.table(rbind(dat_chngdist[7:9,,2],dat_chngdist_rec
 tab_chngdist_recEE     <- data.table(rbind(dat_chngdist[4:6,,1],dat_chngdist_rec_EEEU[1:6 ,,1]))
 tab_chngdist_recEUUE   <- data.table(rbind(dat_chngdist[7:9,,1],dat_chngdist_rec_EEEU[7:12,,1]))
 
-names(tab_chngdistEUE_recEUE) <- c("Mean","0.10","0.25","0.50","0.75","0.90")
-names(tab_chngdistEUE_recEE) <- c("Mean","0.10","0.25","0.50","0.75","0.90")
-rnvec <- c("All job changers", "Occ stayers", "Occ movers",
-		   "All job changers\ ", "Occ stayers\ ", "Occ movers\ ",
-		   "All job changers\ \ ", "Occ stayers\ \ ", "Occ movers\ \ ")
-rownames(tab_chngdistEUE_recEE) <-rnvec
-rownames(tab_chngdistEUE_recEUE) <-rnvec
-rowtitles <- list( pos=list(0,3,6), command=c("\\hline  \\color{Maroon}{1996-2012} &  & & & & & \\\\ \n",
-											  "\\hline \\hline   \\color{Maroon}{Expansion} &  & & & & & \\\\  \n", 
-											  "\\hline \\hline   \\color{Maroon}{Recession} &  & & & & & \\\\  \n")  )
+names(tab_chngdistEUE_recEUE) <- cnames
+names(tab_chngdistEUE_recEE) <- cnames
+names(tab_chngdist_recEUUE) <- cnames
+names(tab_chngdist_recEE) <- cnames
+
+rownames(tab_chngdistEUE_recEE) <-rnames
+rownames(tab_chngdistEUE_recEUE) <-rnames
+rownames(tab_chngdist_recEE) <-rnames
+rownames(tab_chngdist_recEUUE) <-rnames
+
+
 tab_chngdistEUE_recEE <- xtable(tab_chngdistEUE_recEE, label="tab:chngdistEUE_recEE", digits=2, 
 					   align="l|l|lllll", caption="Distribution of earnings changes among job-job changers")
 print(tab_chngdistEUE_recEE,include.rownames=T, hline.after= c(nrow(tab_chngdistEUE_recEE)), 
@@ -512,6 +491,10 @@ tab_chngdistEUE_recEUE <- xtable(tab_chngdistEUE_recEUE, label="tab:chngdistEUE_
 								align="l|l|lllll", caption="Distribution of earnings changes among those transitioning through unemployment")
 print(tab_chngdistEUE_recEUE,include.rownames=T, hline.after= c(nrow(tab_chngdistEUE_recEUE)), 
 	  add.to.row=rowtitles, file="./Figures/chngdistEUE_recEUE.tex")
+tab_chngdist_recEUUE <- xtable(tab_chngdist_recEUUE, label="tab:chngdistEUE_recEE", digits=2, 
+								 align="l|l|lllll", caption="Distribution of earnings changes among those transitioning through unemployment")
+print(tab_chngdist_recEUUE,include.rownames=T, hline.after= c(nrow(tab_chngdist_recEUUE)), 
+	  add.to.row=rowtitles, file="./Figures/tab_chngdist_recEUUE.tex")
 
 
 # Quantile Regressions ---------------
