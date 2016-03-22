@@ -483,10 +483,10 @@ rownames(tab_chngdist_recEE) <-rnames
 rownames(tab_chngdist_recEUUE) <-rnames
 
 
-tab_chngdistEUE_recEE <- xtable(tab_chngdistEUE_recEE, label="tab:chngdistEUE_recEE", digits=2, 
+tab_chngdist_recEE <- xtable(tab_chngdist_recEE, label="tab:chngdist_recEE", digits=2, 
 					   align="l|l|lllll", caption="Distribution of earnings changes among job-job changers")
-print(tab_chngdistEUE_recEE,include.rownames=T, hline.after= c(nrow(tab_chngdistEUE_recEE)), 
-	  add.to.row=rowtitles, file="./Figures/chngdistEUE_recEE.tex")
+print(tab_chngdist_recEE,include.rownames=T, hline.after= c(nrow(chngdist_recEE)), 
+	  add.to.row=rowtitles, file="./Figures/chngdist_recEE.tex")
 tab_chngdistEUE_recEUE <- xtable(tab_chngdistEUE_recEUE, label="tab:chngdistEUE_recEE", digits=2, 
 								align="l|l|lllll", caption="Distribution of earnings changes among those transitioning through unemployment")
 print(tab_chngdistEUE_recEUE,include.rownames=T, hline.after= c(nrow(tab_chngdistEUE_recEUE)), 
@@ -494,7 +494,95 @@ print(tab_chngdistEUE_recEUE,include.rownames=T, hline.after= c(nrow(tab_chngdis
 tab_chngdist_recEUUE <- xtable(tab_chngdist_recEUUE, label="tab:chngdistEUE_recEE", digits=2, 
 								 align="l|l|lllll", caption="Distribution of earnings changes among those transitioning through unemployment")
 print(tab_chngdist_recEUUE,include.rownames=T, hline.after= c(nrow(tab_chngdist_recEUUE)), 
-	  add.to.row=rowtitles, file="./Figures/tab_chngdist_recEUUE.tex")
+	  add.to.row=rowtitles, file="./Figures/chngdist_recEUUE.tex")
+
+# Are these the same distributions ? -----------------------------------
+
+
+
+# first do KS test with each subsample 
+wagechanges[ , s1:= T]
+wagechanges[ , s2:= ifelse(switchedOcc==F, T,F) ]
+wagechanges[ , s3:= ifelse(switchedOcc==T, T,F)]
+#expansion
+wagechanges[ , s4:= ifelse(recIndic == F,T,F)]
+wagechanges[ , s5:= ifelse(recIndic == F & switchedOcc==F,T,F)]
+wagechanges[ , s6:= ifelse(recIndic == F & switchedOcc==T,T,F)]
+#recession
+wagechanges[ , s7 := ifelse(recIndic == T, T,F)]
+wagechanges[ , s8 := ifelse(recIndic == T & switchedOcc==F,T,F)]
+wagechanges[ , s9 := ifelse(recIndic == T & switchedOcc==T,T,F)]
+
+NS = 9
+
+tab_chngdist_ks <- array(NA_real_,dim=c(NS-1,NS-1,2))
+for(EUEindic in c(F,T)){
+	idx = as.integer(EUEindic)+1
+	wc <- ifelse(EUEindic,"wagechange_EUE","wagechange")
+	wt <- ifelse(EUEindic,"balanceweightEUE","balanceweight")
+	
+	for( si in seq(1,NS-1)){
+		for(ki in seq(si+1,NS)){
+			kshere <- ks.test( wagechanges[get(paste0("s",si))==T,eval(as.name(wc)) ] , wagechanges[get(paste0("s",ki))==T,eval(as.name(wc))])
+			tab_chngdist_ks[si,ki-1] = kshere$p.value
+		}
+	}
+}
+
+tab_chngdist_moodqtl     <- array(0.,dim=c(NS,NS,length(tabqtls),2))
+tab_chngdistEE_moodqtl   <- array(0.,dim=c(NS,NS,length(tabqtls),2))
+tab_chngdistEUUE_moodqtl <- array(0.,dim=c(NS,NS,length(tabqtls),2))
+for(EUEindic in c(F,T)){
+	idx = as.integer(EUEindic)+1
+	wc <- ifelse(EUEindic,"wagechange_EUE","wagechange")
+	wt <- ifelse(EUEindic,"balanceweightEUE","balanceweight")
+	#full dist				 
+	for( qi in seq(1,length(tabqtls)) ){
+		for( si in seq(1,NS)){
+			for(ki in seq(1,NS)){
+				if(si != ki){
+					Finvq <- tab_chngdist_rec[si,qi+1]
+					Nbase <- wagechanges[ get(paste0("s",si))==T, sum(eval(as.name(wc))>0, na.rm=T) ]
+					prob_other <- wagechanges[ get(paste0("s",ki))==T, wtd.mean(eval(as.name(wc)) < Finvq, weights=eval(as.name(wt)), na.rm=T) ]
+					test_tab <- cbind( c( tabqtls[qi], 1.-tabqtls[qi] ), c(prob_other,1.-prob_other) )*Nbase
+					tab_chngdist_moodqtl[si,ki,qi,idx] <- chisq.test(test_tab)$p.value 	
+				}
+			}
+		}
+	}
+	# EUE and EUUE
+	for( qi in seq(1,length(tabqtls)) ){
+		for( si in seq(1,NS)){
+			for(ki in seq(1,NS)){
+				if(si != ki){
+					if(EUEindic){
+						Finvq <- tab_chngdistEUE_recEUE[si,qi+1]
+					}else{
+						Finvq <- tab_chngdist_recEUUE[si,qi+1]
+					}
+					Nbase <- wagechanges[ get(paste0("s",si))==T, sum(eval(as.name(wc))>0, na.rm=T) ]
+					prob_other <- wagechanges[ get(paste0("s",ki))==T, wtd.mean(eval(as.name(wc)) < Finvq, weights=eval(as.name(wt)), na.rm=T) ]
+					test_tab <- cbind( c( tabqtls[qi], 1.-tabqtls[qi] ), c(prob_other,1.-prob_other) )*Nbase
+					tab_chngdist_moodqtl[si,ki,qi,idx] <- chisq.test(test_tab)$p.value 	
+				}
+			}
+		}
+	}
+}
+# EE
+for( qi in seq(1,length(tabqtls)) ){
+	for( si in seq(1,NS)){
+		for(ki in seq(1,NS)){
+			if(si != ki){
+				Finvq <- chngdist_recEE[si,qi+1]
+				Nbase <- wagechanges[ get(paste0("s",si))==T, sum(wagechange, na.rm=T) ]
+				prob_other <- wagechanges[ get(paste0("s",ki))==T, wtd.mean(wagechange < Finvq, weights=balanceweight, na.rm=T) ]
+				test_tab <- cbind( c( tabqtls[qi], 1.-tabqtls[qi] ), c(prob_other,1.-prob_other) )*Nbase
+				tab_chngdist_moodqtl[si,ki,qi,idx] <- chisq.test(test_tab)$p.value 	
+			}
+		}
+	}
+}
 
 
 # Quantile Regressions ---------------
