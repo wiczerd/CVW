@@ -83,10 +83,11 @@ DTall[, occwagechange := as.numeric(ifelse(switchedOcc & shift(switchedOcc, 1, t
 DTall[ , seam:= wave != shift(wave,1,type="lead"), by=id ]
 DTall[ , levwage := 1/2*(exp(usewage)-exp(-usewage))]
 DTall[ , wavewage := sum(levwage,na.rm=T), by= list(id,wave)]
+DTall[ , wavewage := log(wavewage + (1+wavewage^2)^.5), by= list(id,wave)]
 DTall[ , levwage:=NULL]
 DTall[ seam==T, seamwage := usewage]
 DTall[ , seamwage := Mode(seamwage), by=list(id,wave)]
-
+#need to add change across waves (use wavewage)
 
 
 saveRDS(DTall, "./Data/DTall_5.RData")
