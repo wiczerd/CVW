@@ -47,18 +47,18 @@ DTall[, tuw := as.numeric(ifelse(shift(lfstat)==1, shift(usewage, 1, type = "lag
 #DTall[mis>0, tuw := as.numeric(ifelse(!is.finite(tuw) & lfstat == shift(lfstat), shift(usewage, 1, type = "lag"), tuw)), by = id]
 
 
-# create wagechange variable
+# create wagechange variable---------------------------------------------
 DTall[EE == T, wagechange := nextwage - tuw]
 DTall[EU == T, wagechange := log(1.0) - tuw]
 DTall[UE == T, wagechange := nextwage - log(1.0)]
 
-# create wagechange_stayer variable
+# create wagechange_stayer variable------------------------------
 DTall[job == shift(job, 1, type = "lead") & job == shift(job, 1, type = "lag"),
       wagechange_stayer := shift(usewage, 1, type = "lead") - shift(usewage, 1, type = "lag"), by = id]
 DTall[job == 0 & shift(job, 1, type = "lead") == 0,
       wagechange_stayer := 0.0, by = id]
 
-# create wagechange_EUE variable
+# create wagechange_EUE variable -----------------------------------
 DTall[EU==T | EE==T, wagechange_EUE := nextwage - tuw]
 #DTall[ EU==T|lfstat==2, wagechange_EUE:=ifelse(lfstat==2,
 #							shift(wagechange_EUE,1,type="lag"),wagechange_EUE),by=id]
@@ -78,6 +78,16 @@ DTall[, occwagechange := as.numeric(ifelse(switchedOcc & !shift(switchedOcc, 1, 
 DTall[, occwagechange := as.numeric(ifelse(switchedOcc & shift(switchedOcc, 1, type = "lag"),
 				nextoccwage - occwage, 
 				0.)), by = id]
+
+# compute seam-to-seam wage change variable ----------------------------
+DTall[ , seam:= wave != shift(wave,1,type="lead"), by=id ]
+DTall[ , levwage := 1/2*(exp(usewage)-exp(-usewage))]
+DTall[ , wavewage := sum(levwage,na.rm=T), by= list(id,wave)]
+DTall[ , levwage:=NULL]
+DTall[ seam==T, seamwage := usewage]
+DTall[ , seamwage := Mode(seamwage), by=list(id,wave)]
+
+
 
 saveRDS(DTall, "./Data/DTall_5.RData")
 rm(list=ls())

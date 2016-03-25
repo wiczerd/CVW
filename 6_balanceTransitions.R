@@ -231,6 +231,22 @@ DTall[ !is.finite(balanceweight), balanceweight:= 0.]
 DTall[, balanceweight := max(balanceweight, na.rm=T), by=list(id,stintid)]
 DTall[, c("maxunempdur.x","maxunempdur.y","balancedEU.x","balancedEU.y") := NULL ]
 
+# create weights & EUE specific stuff
+
+
+DTall[                 , allwt := wpfinwgt]
+DTall[EU==T|UE==T|EE==T, allwt := balanceweight]
+DTall[                 , allwtEUE := allwt]
+DTall[EU==T            , allwtEUE := allwtEUE*2.]
+DTall[UE==T            , allwtEUE := 0.]
+DTall[                 , wagechange_allEUE := ifelse(EU==T, wagechange_EUE,wagechange_all)]
+DTall[UE==T            , wagechange_allEUE := NA_real_]
+
+wagechanges[EE==T      , balanceweightEUE:=balanceweight]
+wagechanges[EU==T      , balanceweightEUE:=balanceweight*2]
+wagechanges[UE==T      , balanceweightEUE:=0.]
+
+
 saveRDS(DTall,"./Data/DTall_6.RData")
 
 

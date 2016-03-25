@@ -16,9 +16,7 @@ keep <- c("wagechange","wagechange_EUE","EU","UE","EE","recIndic","switchedOcc",
 
 wagechanges <- readRDS("./Data/balancedwagechanges.RData")
 wagechanges <- subset(wagechanges, select=keep)
-wagechanges[EE==T, balanceweightEUE:=balanceweight]
-wagechanges[EU==T, balanceweightEUE:=balanceweight*2]
-wagechanges[UE==T, balanceweightEUE:=0.]
+
 
 DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
 # wcDF : data set
@@ -416,14 +414,6 @@ toKeep <- c(keep,"wpfinwgt","switchedJob","wagechange_all")
 # select toKeep columns only
 DTall <- DTall[, toKeep, with = FALSE]
 DTall <- subset(DTall, is.finite(wpfinwgt) & is.finite(wagechange_all))
-
-DTall[, allwt := wpfinwgt]
-DTall[EU==T|UE==T|EE==T, allwt := balanceweight]
-DTall[, wagechange_allEUE := ifelse(EU==T, wagechange_EUE,wagechange_all)]
-DTall[UE==T, wagechange_allEUE := NA_real_]
-DTall[, allwtEUE := allwt]
-DTall[EU==T, allwtEUE := allwt*2]
-DTall[UE==T, allwtEUE := 0.]
 
 MM_all_betaE_betaR_cf <- MMdecomp(DTall,7,"recIndic","wagechange_all","allwt")
 MM_allEUE_betaE_betaR_cf <- MMdecomp(DTall,5,"recIndic","wagechange_allEUE","allwtEUE")

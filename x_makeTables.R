@@ -19,9 +19,6 @@ CPSunempRt$unrt <- CPSunempRt$unrt/100
 
 wagechanges <- merge(wagechanges, CPSunempRt, by = "date", all.x = TRUE)
 
-wagechanges[EE==T, balanceweightEUE:=balanceweight]
-wagechanges[EU==T, balanceweightEUE:=balanceweight*2]
-wagechanges[UE==T, balanceweightEUE:=0.]
 
 toKeep <- c("switchedOcc","switchedInd",
 			"Young",
@@ -38,9 +35,7 @@ toKeep <- c("switchedOcc","switchedInd",
 # select toKeep columns only
 wagechanges <- wagechanges[, toKeep, with = FALSE]
 wagechanges<- wagechanges[ is.finite(switchedOcc), ]
-wagechanges[EE==T, balanceweightEUE:=balanceweight]
-wagechanges[EU==T, balanceweightEUE:=balanceweight*2]
-wagechanges[UE==T, balanceweightEUE:=0.]
+
 
 
 DTall <- readRDS("./Data/DTall_6.RData")
@@ -52,14 +47,6 @@ toKeep <- c(toKeep,"wpfinwgt","switchedJob")
 # select toKeep columns only
 DTall <- DTall[, toKeep, with = FALSE]
 DTall <- subset(DTall, is.finite(wpfinwgt) & is.finite(wagechange_all))
-
-DTall[, allwt := wpfinwgt]
-DTall[EU==T|UE==T|EE==T, allwt := balanceweight]
-DTall[, wagechange_allEUE := ifelse(EU==T, wagechange_EUE,wagechange_all)]
-DTall[UE==T, wagechange_allEUE := NA_real_]
-DTall[, allwtEUE := allwt]
-DTall[EU==T, allwtEUE := allwtEUE*2.]
-DTall[UE==T, allwtEUE := 0.]
 
 DTall<-DTall[ is.finite(EE)&is.finite(EU)&is.finite(UE),]
 
