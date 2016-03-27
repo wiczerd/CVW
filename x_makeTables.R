@@ -518,7 +518,7 @@ for(EUEindic in c(F,T)){
 }
 
 tab_chngdist_moodqtl     <- array(0.,dim=c(NS,NS,length(tabqtls),2))
-tab_chngdistEE_moodqtl   <- array(0.,dim=c(NS,NS,length(tabqtls),2))
+tab_chngdistEE_moodqtl   <- array(0.,dim=c(NS,NS,length(tabqtls)))
 tab_chngdistEUUE_moodqtl <- array(0.,dim=c(NS,NS,length(tabqtls),2))
 for(EUEindic in c(F,T)){
 	idx = as.integer(EUEindic)+1
@@ -551,7 +551,7 @@ for(EUEindic in c(F,T)){
 					Nbase <- wagechanges[ get(paste0("s",si))==T, sum(eval(as.name(wc))>0, na.rm=T) ]
 					prob_other <- wagechanges[ get(paste0("s",ki))==T, wtd.mean(eval(as.name(wc)) < Finvq, weights=eval(as.name(wt)), na.rm=T) ]
 					test_tab <- cbind( c( tabqtls[qi], 1.-tabqtls[qi] ), c(prob_other,1.-prob_other) )*Nbase
-					tab_chngdist_moodqtl[si,ki,qi,idx] <- chisq.test(test_tab)$p.value 	
+					tab_chngdistEUUE_moodqtl[si,ki,qi,idx] <- chisq.test(test_tab)$p.value 	
 				}
 			}
 		}
@@ -562,16 +562,59 @@ for( qi in seq(1,length(tabqtls)) ){
 	for( si in seq(1,NS)){
 		for(ki in seq(1,NS)){
 			if(si != ki){
-				Finvq <- chngdist_recEE[si,qi+1]
-				Nbase <- wagechanges[ get(paste0("s",si))==T, sum(wagechange, na.rm=T) ]
+				Finvq <- tab_chngdist_recEE[si,qi+1]
+				Nbase <- wagechanges[ get(paste0("s",si))==T, sum(wagechange>0, na.rm=T) ]
 				prob_other <- wagechanges[ get(paste0("s",ki))==T, wtd.mean(wagechange < Finvq, weights=balanceweight, na.rm=T) ]
 				test_tab <- cbind( c( tabqtls[qi], 1.-tabqtls[qi] ), c(prob_other,1.-prob_other) )*Nbase
-				tab_chngdist_moodqtl[si,ki,qi,idx] <- chisq.test(test_tab)$p.value 	
+				tab_chngdistEE_moodqtl[si,ki,qi] <- chisq.test(test_tab)$p.value 	
 			}
 		}
 	}
 }
 
+#output them to latex tables
+rnames <- c("All, 1996-2012","Stayers, 1996-2012","Changers, 1996-2012",
+			"All, Expansion","Stayers, Expansion","Changers, Expansion",
+			"All, Recession","Stayers, Recession","Changers, Recession")
+#cnames <- c("All, 96-12","Stay, 96-12","Chng, 96-12",
+#			"All, Exp","Stay, Exp","Chng, Exp",
+#			"All, Rec","Stay, Rec","Chng, Rec")
+cnames <- c("All    ","Stay    ","Chng    ",
+			"All\   ","Stay\   ","Chng\   ",
+			"All\ \ ","Stay\ \ ","Chng\ \ ")
+rowtitles = list( pos=list(-1), command = c("& \\multicolumn{3}{|c|}{1996-2012} & \\multicolumn{3}{|c|}{Expansion} &\\multicolumn{3}{|c}{Recession} \\\\ \n  "))
+for(qi in seq(1,length(tabqtls))) {
+	for(EUEindic in c(F,T)){
+		EUEtxt <- ifelse(EUEindic," connecting across unemployment spells ","")
+		EUEfnam <- ifelse(EUEindic,"EUE","")
+		tab_chngdist_mood <- data.table(tab_chngdist_moodqtl[,,qi,EUEindic+1])
+		names(tab_chngdist_mood) <- cnames
+		rownames(tab_chngdist_mood) <- rnames
+		tab_chngdist_mood <- xtable(tab_chngdist_mood, digits=4, 
+									align="l|lll|lll|lll", caption=paste0("Difference in the ", tabqtls[qi]*100 ," pctile of earnings changes among job changers",EUEtxt,", p-values \\label{tab:chng_moodqtl",qi,"}"))
+		print(tab_chngdist_mood,include.rownames=T, hline.after= c(0,nrow(tab_chngdist_mood)), add.to.row = rowtitles, 
+			  file=paste0("./Figures/chng",EUEfnam,"_moodqtl",qi,".tex"))
+		#EUE
+		tab_chngdist_mood <- data.table(tab_chngdistEUUE_moodqtl[,,qi,EUEindic+1])
+		names(tab_chngdist_mood) <- cnames
+		rownames(tab_chngdist_mood) <- rnames
+		tab_chngdist_mood <- xtable(tab_chngdist_mood, digits=4, 
+									align="l|lll|lll|lll", caption=paste0("Difference in the ", tabqtls[qi]*100 ," pctile of earnings changes among job changers through unemployment",EUEtxt,", p-values \\label{tab:chng_moodqtl",qi,"}"))
+		print(tab_chngdist_mood,include.rownames=T, hline.after= c(0,nrow(tab_chngdist_mood)), add.to.row = rowtitles, 
+			  file=paste0("./Figures/chng",EUEfnam,"_EUUE_moodqtl",qi,".tex"))
+	}
+	#EE
+	tab_chngdist_mood <- data.table(tab_chngdistEE_moodqtl[,,qi])
+	names(tab_chngdist_mood) <- cnames
+	rownames(tab_chngdist_mood) <- rnames
+	tab_chngdist_mood <- xtable(tab_chngdist_mood, digits=4, 
+								align="l|lll|lll|lll", caption=paste0("Difference in the ", tabqtls[qi]*100 ," pctile of earnings changes among job-to-job changers, p-values \\label{tab:chng_moodqtl",qi,"}"))
+	print(tab_chngdist_mood,include.rownames=T, hline.after= c(0,nrow(tab_chngdist_mood)), add.to.row = rowtitles, 
+		  file=paste0("./Figures/chng_EE_moodqtl",qi,".tex"))
+}
+
+
+wagechanges[ , c("s1","s2","s3","s4","s5","s6","s7","s8","s9"):=NULL]
 
 # Quantile Regressions ---------------
 
