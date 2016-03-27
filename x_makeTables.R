@@ -41,7 +41,8 @@ wagechanges<- wagechanges[ is.finite(switchedOcc), ]
 DTall <- readRDS("./Data/DTall_6.RData")
 DTall <- merge(DTall, CPSunempRt, by = "date", all.x = TRUE)
 
-toKeep <- c(toKeep,"wpfinwgt","switchedJob")
+toKeep <- c(toKeep,"wpfinwgt","switchedJob","allwt","allwtEUE",
+			"wagechange_seam","wagechange_allEUE")
 
 
 # select toKeep columns only
@@ -212,11 +213,11 @@ DTall[ (EE==T|EU==T|UE==T)& wagechange_allEUE<0 & seam==T, wagechange_noseamEUE 
 DTall[ (EE==T|EU==T|UE==T)& wagechange_allEUE>0 & seam==T, wagechange_noseamEUE := wagechange_allEUE + seamcorrEUE$coefficients[2] ]
 
 
-totmean <- DTall[, wtd.mean(wagechange_noseam,na.rm=T,weights=allwt) ]
-totvar  <- DTall[, sum(allwt*(wagechange_noseam- totmean)^2,na.rm=T) ]
 
 tab_vardec <- array(NA_real_,dim=c(4,4))
 
+totmean <- DTall[, wtd.mean(wagechange_noseam,na.rm=T,weights=allwt) ]
+totvar  <- DTall[, sum(allwt*(wagechange_noseam- totmean)^2,na.rm=T) ]
 tab_vardec[1,1] <- DTall[(EE==F&EU==F&UE==F), sum(allwt*(wagechange_noseam - totmean)^2,na.rm=T) ]/totvar
 tab_vardec[1,2] <- DTall[(EE==T&EU==F&UE==F), sum(allwt*(wagechange_noseam - totmean)^2,na.rm=T) ]/totvar
 tab_vardec[1,3] <- DTall[(EE==F&(EU==T|UE==T)),sum(allwt*(wagechange_noseam - totmean)^2,na.rm=T) ]/totvar
