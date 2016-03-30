@@ -27,7 +27,7 @@ toKeep <- c("switchedOcc","switchedInd",
 			"wagechange",
 			"wagechange_EUE", 
 			"wagechange_all", 
-			"balanceweight", 
+			"balanceweight","balanceweightEUE",
 			"EE","EU","UE",
 			"unrt",
 			"wave","id")
@@ -395,8 +395,8 @@ tab_chngdistEUE_out <- xtable(tab_chngdistEUE_out, label="tab:chngdistEUE", digi
 print(tab_chngdistEUE_out,include.rownames=T, hline.after= c(0,nrow(tab_chngdistEUE_out)), file="./Figures/chngdistEUE.tex")
 
 
-tab_chngdist_rec    <- array(0.,dim=c(6,tN,2))
-tab_chngdist_rec_EEEU    <- array(0.,dim=c(12,tN,2))
+tab_chngdist_rec    <- array(NA,dim=c(6,tN,2))
+tab_chngdist_rec_EEEU    <- array(NA,dim=c(12,tN,2))
 
 for(EUEindic in c(F,T)){
 for(recHere in c(F,T)){
@@ -405,11 +405,11 @@ for(recHere in c(F,T)){
 	wc <- ifelse(EUEindic,"wagechange_EUE","wagechange")
 	wt <- ifelse(EUEindic,"balanceweightEUE","balanceweight")
 	
-	tab_chngdist_rec[1+idx,1,idx]     <- wagechanges[(EE|EU|UE)                & recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_chngdist_rec[1+ridx,1   ,idx] <- wagechanges[(EE|EU|UE)                & recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 	tab_chngdist_rec[1+ridx,2:tN,idx] <- wagechanges[(EE|EU|UE)                & recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-	tab_chngdist_rec[2+ridx,1,idx]    <- wagechanges[(EE|EU|UE)&switchedOcc==F & recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_chngdist_rec[2+ridx,1   ,idx] <- wagechanges[(EE|EU|UE)&switchedOcc==F & recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 	tab_chngdist_rec[2+ridx,2:tN,idx] <- wagechanges[(EE|EU|UE)&switchedOcc==F & recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-	tab_chngdist_rec[3+ridx,1,idx]    <- wagechanges[(EE|EU|UE)&switchedOcc==T & recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_chngdist_rec[3+ridx,1   ,idx] <- wagechanges[(EE|EU|UE)&switchedOcc==T & recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 	tab_chngdist_rec[3+ridx,2:tN,idx] <- wagechanges[(EE|EU|UE)&switchedOcc==T & recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 
 	for(EUhere in c(F,T)){
@@ -451,7 +451,7 @@ names(tab_chngdistEUE_rec) <- cnames
 rownames(tab_chngdistEUE_rec) <-rnames
 
 tab_chngdistEUE_rec <- xtable(tab_chngdistEUE_rec, digits=2, 
-						  align="l|l|lllll", caption="Distribution of earnings changes among job changers in recession and expansion, connecting unemployment spells \\label{tab:chngdistEUE}")
+						  align="l|l|lllll", caption="Distribution of earnings changes among job changers in recession and expansion, connecting unemployment spells \\label{tab:chngdistEUE_rec}")
 print(tab_chngdistEUE_rec,include.rownames=T, hline.after= c(nrow(tab_chngdistEUE_rec)), 
 	  add.to.row=rowtitles, file="./Figures/chngdistEUE_rec.tex")
 
@@ -473,7 +473,7 @@ rownames(tab_chngdist_recEUUE) <-rnames
 
 tab_chngdist_recEE <- xtable(tab_chngdist_recEE, label="tab:chngdist_recEE", digits=2, 
 					   align="l|l|lllll", caption="Distribution of earnings changes among job-job changers")
-print(tab_chngdist_recEE,include.rownames=T, hline.after= c(nrow(chngdist_recEE)), 
+print(tab_chngdist_recEE,include.rownames=T, hline.after= c(nrow(tab_chngdist_recEE)), 
 	  add.to.row=rowtitles, file="./Figures/chngdist_recEE.tex")
 tab_chngdistEUE_recEUE <- xtable(tab_chngdistEUE_recEUE, label="tab:chngdistEUE_recEE", digits=2, 
 								align="l|l|lllll", caption="Distribution of earnings changes among those transitioning through unemployment")
