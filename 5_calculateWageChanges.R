@@ -80,7 +80,6 @@ DTall[, occwagechange := as.numeric(ifelse(switchedOcc & shift(switchedOcc, 1, t
 				0.)), by = id]
 
 # compute seam-to-seam wage change variable ----------------------------
-DTall[ , seam:= wave != shift(wave,1,type="lead"), by=id ]
 DTall[!is.na(usewage) , levwage := 1/2*(exp(usewage)-exp(-usewage))]
 DTall[ , wavewage := sum(levwage,na.rm=T), by= list(id,wave)]
 DTall[ , wavewage := log(wavewage + (1+wavewage^2)^.5) ]
@@ -93,10 +92,6 @@ DTall[ seam==T, wagechange_wave := shift(wavewage,1,type="lead") - wavewage, by=
 DTall[ , wagechange_wave := Mode(wagechange_wave), by= list(id,wave)]
 DTall[ seam==T, wagechange_seam := shift(seamwage,1,type="lead") - seamwage, by =id]
 DTall[ , wagechange_seam := Mode(wagechange_seam), by= list(id,wave)]
-DTall[ is.finite(EE), EE_wave := max(EE,na.rm=T)==1, by=list(id,wave)]
-DTall[ is.finite(EU), EU_wave := max(EU,na.rm=T)==1, by=list(id,wave)]
-DTall[ is.finite(UE), UE_wave := max(UE,na.rm=T)==1, by=list(id,wave)]
-
 
 
 saveRDS(DTall, "./Data/DTall_5.RData")

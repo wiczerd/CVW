@@ -233,7 +233,6 @@ DTall[, c("maxunempdur.x","maxunempdur.y","balancedEU.x","balancedEU.y") := NULL
 
 # create weights & EUE specific stuff
 
-
 DTall[                 , allwt := wpfinwgt]
 DTall[EU==T|UE==T|EE==T, allwt := balanceweight]
 DTall[                 , allwtEUE := allwt]

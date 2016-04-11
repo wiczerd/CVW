@@ -15,6 +15,10 @@ wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
 setwd(wd0)
 
+Mode <- function(x) {
+  ux <- unique(x[!is.na(x)])
+  ux[which.max(tabulate(match(x, ux)))]
+}
 
 DTall <- readRDS("./Data/DTall_2.RData")
 
@@ -78,7 +82,31 @@ DTall[, c("badearn", "nomearnm") := NULL]
 DTall[, Young := age < 30]
 DTall[, HSCol := (educ >= 4) + (educ >= 2)]
 
-#some diagnostics
+
+# compute seam-to-seam status change variable ----------------------------
+DTall[ , seam:= wave != shift(wave,1,type="lead"), by=id ]
+
+DTall[ is.finite(lfstat), lfstat_wave := max(lfstat,na.rm=T), by=list(id,wave)]
+DTall[ is.finite(lfstat), lfstat_wave := 2L*max(lfstat==2,na.rm=T), by=list(id,wave)] #anytime an unemployment shows up, we count it as such
+DTall[                  , lfstat_wave := Mode(lfstat_wave)]
+DTall[ , UE_wave := ifelse(lfstat_wave==2 & shift(lfstat_wave,1,type="lead")==1,1,0), by=id] #will only count 1 if seam ==1
+DTall[ , UE_wave := max(UE_wave, na.rm = T), by=id] 
+DTall[ , EU_wave := ifelse(lfstat_wave==1 & shift(lfstat_wave,1,type="lead")==2,1,0), by=id] #will only count 1 if seam ==1
+DTall[ , EU_wave := max(EU_wave, na.rm = T), by=id] 
+DTall[ is.finite(EE), EEmax_wave := max(EE==T & srefmon<4,na.rm=T), by=list(id,wave)] #get whether there was an EE w/in the wave (and not on the edge)
+DTall[ seam==T, EEnextmax_wave := shift(EEmax_wave,1,type="lead"), by = id]
+DTall[ is.na(EEnextmax_wave), EEnextmax_wave := 0L]
+DTall[ , EEnextmax_wave := max(EEnextmax_wave, na.rm=T), by=list(id,wave)]
+DTall[ seam==T, EE_wave := EE]
+DTall[ , EE_wave := (EE_wave | EEnextmax_wave ==1 | EEmax_wave ==1)]
+DTall[ is.na(EE_wave), EE_wave:=F]
+DTall[, EE_wave := max(EE_wave, na.rm=T)==1, by=list(id,wave)]
+DTall[, c("EEnextmax_wave","EEmax_wave"):= NULL] 
+
+
+
+
+#some diagnostics -------------------------------------------
 sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
 sum(DTall$wpfinwgt[DTall$UE], na.rm=T)
@@ -92,6 +120,7 @@ sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DT
 sum(DTall$wpfinwgt[DTall$EE & DTall$switchedInd], na.rm=T)/sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU & DTall$switchedInd], na.rm=T)/sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
 sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)],na.rm=T)/sum(DTall$wpfinwgt[!is.na(DTall$unempdur)],na.rm=T)
+
 
 saveRDS(DTall, "./Data/DTall_3.RData")
 rm(list=ls())
