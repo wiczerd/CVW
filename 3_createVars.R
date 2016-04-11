@@ -87,21 +87,29 @@ DTall[, HSCol := (educ >= 4) + (educ >= 2)]
 DTall[ , seam:= wave != shift(wave,1,type="lead"), by=id ]
 
 DTall[ is.finite(lfstat), lfstat_wave := max(lfstat,na.rm=T), by=list(id,wave)]
-DTall[ is.finite(lfstat), lfstat_wave := 2L*max(lfstat==2,na.rm=T), by=list(id,wave)] #anytime an unemployment shows up, we count it as such
-DTall[                  , lfstat_wave := Mode(lfstat_wave)]
-DTall[ , UE_wave := ifelse(lfstat_wave==2 & shift(lfstat_wave,1,type="lead")==1,1,0), by=id] #will only count 1 if seam ==1
-DTall[ , UE_wave := max(UE_wave, na.rm = T), by=id] 
-DTall[ , EU_wave := ifelse(lfstat_wave==1 & shift(lfstat_wave,1,type="lead")==2,1,0), by=id] #will only count 1 if seam ==1
-DTall[ , EU_wave := max(EU_wave, na.rm = T), by=id] 
-DTall[ is.finite(EE), EEmax_wave := max(EE==T & srefmon<4,na.rm=T), by=list(id,wave)] #get whether there was an EE w/in the wave (and not on the edge)
+DTall[ is.finite(lfstat), lfstat2_wave := 2L*max(lfstat==2,na.rm=T), by=list(id,wave)] #anytime an unemployment shows up, we count it as such
+DTall[ is.finite(lfstat), lfstat_wave := ifelse(lfstat2_wave == 2, 2L, lfstat_wave)] #anytime an unemployment shows up, we count it as such
+
+DTall[ , UE_wave := (lfstat_wave==2L & shift(lfstat_wave,1,type="lead")==1L), by=id] #will only count 1 if seam ==1
+DTall[ , UE_wave := any(UE_wave, na.rm = T), by=list(id,wave)] 
+DTall[ , EU_wave := (lfstat_wave==1L & shift(lfstat_wave,1,type="lead")==2L), by=id] #will only count 1 if seam ==1
+DTall[ , EU_wave := any(EU_wave, na.rm = T), by=list(id,wave)] 
+DTall[ is.finite(EE), EEmax_wave := any(EE==T & seam==F,na.rm=T), by=list(id,wave)] #get whether there was an EE w/in the wave (and not on the edge)
 DTall[ seam==T, EEnextmax_wave := shift(EEmax_wave,1,type="lead"), by = id]
-DTall[ is.na(EEnextmax_wave), EEnextmax_wave := 0L]
-DTall[ , EEnextmax_wave := max(EEnextmax_wave, na.rm=T), by=list(id,wave)]
+DTall[ is.na(EEnextmax_wave), EEnextmax_wave := F]
+DTall[ , EEnextmax_wave := any(EEnextmax_wave, na.rm=T), by=list(id,wave)]
 DTall[ seam==T, EE_wave := EE]
-DTall[ , EE_wave := (EE_wave | EEnextmax_wave ==1 | EEmax_wave ==1)]
+DTall[ , EE_wave := (EE_wave | EEnextmax_wave | EEmax_wave )]
 DTall[ is.na(EE_wave), EE_wave:=F]
-DTall[, EE_wave := max(EE_wave, na.rm=T)==1, by=list(id,wave)]
-DTall[, c("EEnextmax_wave","EEmax_wave"):= NULL] 
+DTall[, EE_wave := any(EE_wave, na.rm=T), by=list(id,wave)]
+
+DTall[ , sOmax_wave := any(switchedOcc), by=list(id,wave)]
+DTall[ seam==T, sOnextmax_wave := shit(sOmax_wave,1,type="lead"), by=id]
+DTall[ , sOnextmax_wave := any(sOnextmax_wave), by=list(id,wave)]
+DTall[ , switchedOcc_wave := (EEnextmax_wave & sOnextmax_wave) | (EEmax_wave & sOmax_wave) | (EE & switchedOcc), by=id]
+DTall[ , switchedOcc_wave := any(switchedOcc_wave), by=list=(id,wave)]
+
+DTall[, c("EEnextmax_wave","EEmax_wave","lfstat2_wave"):= NULL] 
 
 
 
