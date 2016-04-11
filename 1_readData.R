@@ -44,6 +44,8 @@ PCE <- readRDS("InputData/PCE.RData")
 # get crosswalk data
 occ90_soc2d <- readRDS(paste0(xwalkdir,"/occ90_soc2d.RData"))
 coc2000_occ1990 <- readRDS(paste0(xwalkdir,"/coc2000_occ1990.RData"))
+coc1990_occ1990 <- readRDS(paste0(xwalkdir,"/coc1990_occ1990.RData"))
+
 
 CIC2002_CIC2000<- readRDS(paste0(xwalkdir,"/CIC2002_2_CIC2000.RData"))
 CIC2000_2_CIC1990<- readRDS(paste0(xwalkdir,"/CIC2000_2_CIC1990.RData"))
@@ -68,7 +70,8 @@ DT96[, recIndic := (date > recDates[1] & date < recDates[2]) |
 DT96 <- merge(DT96, PCE, by = "date", all.x = TRUE)
 
 # add soc2d codes
-DT96[, occ1990 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
+DT96[, coc90 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
+DT96 <- merge(DT96, coc1990_occ1990, by  = "coc90", all.x = TRUE)
 DT96 <- merge(DT96, occ90_soc2d, by  = "occ1990", all.x = TRUE)
 DT96[, c("occ") := NULL]
 setnames(DT96, "occ1990", "occ")
@@ -102,7 +105,8 @@ DT01 <- merge(DT01, PCE, by = "date", all.x = TRUE)
 # FILL IN LATER
 
 # add soc2d codes
-DT01[, occ1990 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
+DT01[, coc90 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
+DT01 <- merge(DT01, coc1990_occ1990, by  = "coc90", all.x = TRUE)
 DT01 <- merge(DT01, occ90_soc2d, by  = "occ1990", all.x = TRUE)
 DT01[, c("occ") := NULL]
 setnames(DT01, "occ1990", "occ")
