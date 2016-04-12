@@ -57,8 +57,8 @@ DTall[, fstintid := NULL]
 DTall[UE==T, dupedUE:= duplicated(stintid, na.rm=T), by=id]
 DTall[EU==T, dupedEU:= duplicated(stintid, na.rm=T), by=id]
 #drop the duplicates:
-DTall[ UE==T & dupedUE, UE==F ]
-DTall[ EU==T & dupedEU, EU==F ]
+DTall[ UE==T & dupedUE, UE:=F ]
+DTall[ EU==T & dupedEU, EU:=F ]
 # it is still possible there are lfstat=2|3 that are associated with a duplicate
 DTall[ , c("dupedEU","dupedUE"):=NULL]
 
@@ -102,16 +102,18 @@ DTall[ seam==T, EE_wave := EE]
 DTall[ , EE_wave := (EE_wave | EEnextmax_wave | EEmax_wave )]
 DTall[ is.na(EE_wave), EE_wave:=F]
 DTall[, EE_wave := any(EE_wave, na.rm=T), by=list(id,wave)]
+# only EE if nothing else
+DTall[UE_wave==T & EE_wave==T, EE_wave :=F]
+DTall[EU_wave==T & EE_wave==T, EE_wave :=F]
 
 DTall[ , sOmax_wave := any(switchedOcc), by=list(id,wave)]
-DTall[ seam==T, sOnextmax_wave := shit(sOmax_wave,1,type="lead"), by=id]
+DTall[ seam==T, sOnextmax_wave := shift(sOmax_wave,1,type="lead"), by=id]
 DTall[ , sOnextmax_wave := any(sOnextmax_wave), by=list(id,wave)]
-DTall[ , switchedOcc_wave := (EEnextmax_wave & sOnextmax_wave) | (EEmax_wave & sOmax_wave) | (EE & switchedOcc), by=id]
-DTall[ , switchedOcc_wave := any(switchedOcc_wave), by=list=(id,wave)]
+DTall[ , switchedOcc_wave := (EEnextmax_wave & sOnextmax_wave) | (EEmax_wave & sOmax_wave) | (EE & switchedOcc)
+	   						|(EU_wave        & sOmax_wave)     | (UE_wave    & sOmax_wave) , by=id]
+DTall[ , switchedOcc_wave := any(switchedOcc_wave), by=list(id,wave)]
 
-DTall[, c("EEnextmax_wave","EEmax_wave","lfstat2_wave"):= NULL] 
-
-
+DTall[, c("EEnextmax_wave","EEmax_wave","lfstat2_wave","sOmax_wave","sOnextmax_wave"):= NULL] 
 
 
 #some diagnostics -------------------------------------------

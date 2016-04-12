@@ -70,10 +70,10 @@ DT96[, recIndic := (date > recDates[1] & date < recDates[2]) |
 DT96 <- merge(DT96, PCE, by = "date", all.x = TRUE)
 
 # add soc2d codes
-DT96[, coc90 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
+DT96[, coc90 := occ]
 DT96 <- merge(DT96, coc1990_occ1990, by  = "coc90", all.x = TRUE)
 DT96 <- merge(DT96, occ90_soc2d, by  = "occ1990", all.x = TRUE)
-DT96[, c("occ") := NULL]
+DT96[, c("occ","coc90") := NULL]
 setnames(DT96, "occ1990", "occ")
 
 #recode industry as ind23
@@ -105,10 +105,10 @@ DT01 <- merge(DT01, PCE, by = "date", all.x = TRUE)
 # FILL IN LATER
 
 # add soc2d codes
-DT01[, coc90 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
+DT01[, coc90 := occ]
 DT01 <- merge(DT01, coc1990_occ1990, by  = "coc90", all.x = TRUE)
 DT01 <- merge(DT01, occ90_soc2d, by  = "occ1990", all.x = TRUE)
-DT01[, c("occ") := NULL]
+DT01[, c("occ","coc90") := NULL]
 setnames(DT01, "occ1990", "occ")
 #recode industry as ind23
 DT01[, ind:= ind23]
