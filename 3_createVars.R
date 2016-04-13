@@ -99,7 +99,7 @@ DTall[ seam==T, EEnextmax_wave := shift(EEmax_wave,1,type="lead"), by = id]
 DTall[ is.na(EEnextmax_wave), EEnextmax_wave := F]
 DTall[ , EEnextmax_wave := any(EEnextmax_wave, na.rm=T), by=list(id,wave)]
 DTall[ seam==T, EE_wave := EE]
-DTall[ , EE_wave := (EE_wave | EEnextmax_wave | EEmax_wave )]
+DTall[ , EE_wave := (EE_wave | EEnextmax_wave )]
 DTall[ is.na(EE_wave), EE_wave:=F]
 DTall[, EE_wave := any(EE_wave, na.rm=T), by=list(id,wave)]
 # only EE if nothing else
@@ -109,8 +109,7 @@ DTall[EU_wave==T & EE_wave==T, EE_wave :=F]
 DTall[ , sOmax_wave := any(switchedOcc), by=list(id,wave)]
 DTall[ seam==T, sOnextmax_wave := shift(sOmax_wave,1,type="lead"), by=id]
 DTall[ , sOnextmax_wave := any(sOnextmax_wave), by=list(id,wave)]
-DTall[ , switchedOcc_wave := (EEnextmax_wave & sOnextmax_wave) | (EEmax_wave & sOmax_wave) | (EE & switchedOcc)
-	   						|(EU_wave        & sOmax_wave)     | (UE_wave    & sOmax_wave) , by=id]
+DTall[ , switchedOcc_wave := (EEnextmax_wave & sOnextmax_wave) | (EE & switchedOcc) | (EU_wave & sOmax_wave) , by=id]
 DTall[ , switchedOcc_wave := any(switchedOcc_wave), by=list(id,wave)]
 
 DTall[, c("EEnextmax_wave","EEmax_wave","lfstat2_wave","sOmax_wave","sOnextmax_wave"):= NULL] 

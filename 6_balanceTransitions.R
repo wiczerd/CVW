@@ -75,6 +75,14 @@ DTall <- readRDS("./Data/DTall_5.RData")
 
 #save only the seams as a 'wave-change' set
 DTseam <- subset(DTall, seam==T)
+#balance seams EU and UE
+DTseam[ EU_wave ==T | UE_wave==T, EU_match := shift(UE_wave,1,type = "lead")==T, by=id]
+DTseam[ EU_wave ==T | UE_wave==T, UE_match := shift(EU_wave,1,type = "lag")==T, by=id]
+DTseam[ , EU_wave := EU_match==T]
+DTseam[ , UE_wave := UE_match==T]
+DTseam[ EU_wave ==T | UE_wave==T, switchedOcc_wave := ifelse(UE_wave==T,shift(switchedOcc_wave,1,type="lead"),switchedOcc_wave)]
+
+saveRDS(wagechanges, "./Data/DTseam.RData")
 
 # sum weights for UE, EU, and EE
 UEreadweight <- DTall[UE==T & !is.na(wagechange) & is.finite(stintid), sum(wpfinwgt, na.rm = TRUE)]
