@@ -87,8 +87,8 @@ DTall[, HSCol := (educ >= 4) + (educ >= 2)]
 DTall[ , seam:= wave != shift(wave,1,type="lead"), by=id ]
 
 DTall[ is.finite(lfstat), lfstat_wave := max(lfstat,na.rm=T), by=list(id,wave)]
-DTall[ is.finite(lfstat), lfstat2_wave := 2L*max(lfstat==2,na.rm=T), by=list(id,wave)] #anytime an unemployment shows up, we count it as such
-DTall[ is.finite(lfstat), lfstat_wave := ifelse(lfstat2_wave == 2, 2L, lfstat_wave)] #anytime an unemployment shows up, we count it as such
+DTall[ is.finite(lfstat), lfstat2_wave := any(lfstat==2, na.rm=T), by=list(id,wave)] #anytime an unemployment shows up, we count it as such
+DTall[ is.finite(lfstat), lfstat_wave := ifelse(lfstat2_wave, 2L, lfstat_wave)] #anytime an unemployment shows up, we count it as such
 
 DTall[ , UE_wave := (lfstat_wave==2L & shift(lfstat_wave,1,type="lead")==1L), by=id] #will only count 1 if seam ==1
 DTall[ , UE_wave := any(UE_wave, na.rm = T), by=list(id,wave)] 
@@ -115,6 +115,7 @@ DTall[ , switchedOcc_wave := any(switchedOcc_wave), by=list(id,wave)]
 
 DTall[, c("EEnextmax_wave","EEmax_wave","lfstat2_wave","sOmax_wave","sOnextmax_wave"):= NULL] 
 
+DTall[, recIndic_wave := any(recIndic, na.rm=T), by=list(wave,id)]
 
 #some diagnostics -------------------------------------------
 sum(DTall$wpfinwgt[DTall$EE], na.rm=T)

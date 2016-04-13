@@ -73,6 +73,9 @@ recallRecodeShorTerm <- function(DF){
 
 DTall <- readRDS("./Data/DTall_5.RData")
 
+#save only the seams as a 'wave-change' set
+DTseam <- subset(DTall, seam==T)
+
 # sum weights for UE, EU, and EE
 UEreadweight <- DTall[UE==T & !is.na(wagechange) & is.finite(stintid), sum(wpfinwgt, na.rm = TRUE)]
 EUreadweight <- DTall[EU==T & !is.na(wagechange) & is.finite(stintid), sum(wpfinwgt, na.rm = TRUE)]
