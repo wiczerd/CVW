@@ -26,8 +26,8 @@ toKeep <- c("switchedOcc","switchedInd",
 			"recIndic",
 			"wagechange",
 			"wagechange_EUE", 
-			"wagechange_all", 
 			"balanceweight","balanceweightEUE",
+			"wagechange_all",
 			"EE","EU","UE",
 			"unrt",
 			"wave","id")
@@ -37,12 +37,80 @@ wagechanges <- wagechanges[, toKeep, with = FALSE]
 wagechanges<- wagechanges[ is.finite(switchedOcc), ]
 
 
+##########################################################################################
+# By wave -----------------------
+toKeep_wave <- c("switchedOcc_wave","switchedInd",
+            "Young",
+            "HSCol",
+            "recIndic","recIndic_wave",
+            "wagechange",
+            "wagechange_wave", 
+            "wagechange_seam",
+            "EE_wave","EU_wave","UE_wave",
+            "unrt","wpfinwgt",
+            "wave","id")
+DTseam <- readRDS("./Data/DTseam.RData")
+DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
 
+# select toKeep columns only
+DTseam <- DTseam[, toKeep_wave, with = FALSE]
+DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
+
+DTseam[ is.na(EU_wave), EU_wave:= F ]
+DTseam[ is.na(UE_wave), UE_wave:= F ]
+DTseam[ is.na(EE_wave), EE_wave:= F ]
+
+DTseam<-DTseam[ is.finite(EE_wave)&is.finite(EU_wave)&is.finite(UE_wave),]
+tabqtls <- c(.1,.25,.5,.75,.9)
+tN <- (length(tabqtls)+1)
+
+tab_wavedist <- array(0., dim=c(9,length(tabqtls)+1))
+
+tab_wavedist[1,1]    <- DTseam[                                   ,     wtd.mean(wagechange_wave,na.rm=T,weights=wpfinwgt)]
+tab_wavedist[1,2:tN] <- DTseam[                                   , wtd.quantile(wagechange_wave,na.rm=T,weights=wpfinwgt, probs=tabqtls)]
+tab_wavedist[2,1]    <- DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T),     wtd.mean(wagechange_wave,na.rm=T,weights=wpfinwgt)]
+tab_wavedist[2,2:tN] <- DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T), wtd.quantile(wagechange_wave,na.rm=T,weights=wpfinwgt, probs=tabqtls)]
+tab_wavedist[3,1]    <- DTseam[  EU_wave==T|UE_wave==T|EE_wave==T ,     wtd.mean(wagechange_wave,na.rm=T,weights=wpfinwgt)]
+tab_wavedist[3,2:tN] <- DTseam[  EU_wave==T|UE_wave==T|EE_wave==T , wtd.quantile(wagechange_wave,na.rm=T,weights=wpfinwgt, probs=tabqtls)]
+#expansion/recession
+for(rI in c(T,F)){
+  rix = rI*3+3
+  tab_wavedist[1+rix,1]   <- DTseam[recIndic_wave == rI                       ,     wtd.mean(wagechange_wave,na.rm=T,weights=wpfinwgt)]
+  tab_wavedist[1+rix,2:tN]<- DTseam[recIndic_wave == rI                       , wtd.quantile(wagechange_wave,na.rm=T,weights=wpfinwgt, probs=tabqtls)]
+  tab_wavedist[2+rix,1]   <- DTseam[recIndic_wave == rI & !(EU_wave==T|UE_wave==T|EE_wave==T),     wtd.mean(wagechange_wave,na.rm=T,weights=wpfinwgt)]
+  tab_wavedist[2+rix,2:tN]<- DTseam[recIndic_wave == rI & !(EU_wave==T|UE_wave==T|EE_wave==T), wtd.quantile(wagechange_wave,na.rm=T,weights=wpfinwgt, probs=tabqtls)]
+  tab_wavedist[3+rix,1]   <- DTseam[recIndic_wave == rI &  (EU_wave==T|UE_wave==T|EE_wave==T),     wtd.mean(wagechange_wave,na.rm=T,weights=wpfinwgt)]
+  tab_wavedist[3+rix,2:tN]<- DTseam[recIndic_wave == rI &  (EU_wave==T|UE_wave==T|EE_wave==T), wtd.quantile(wagechange_wave,na.rm=T,weights=wpfinwgt, probs=tabqtls)]
+}
+
+
+
+#output it to tables
+dat_wavedist <- tab_wavedist
+tab_wavedist <- data.table(tab_wavedist)
+names(tab_wavedist) <- c("Mean","0.10","0.25","0.50","0.75","0.90")
+#rownames(tab_wavedist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
+rnames <- c("All\ Workers",      "Same\ Job",     "Chng\ Job",
+            "All\ Workers\ ",   "Same\ Job\ ",  "Chng\ Job\ ",
+            "All\ Workers\ \ ", "Same\ Job,\ \ ","Chng\ Job\ \ ")
+rownames(tab_wavedist) <- rnames
+
+rowtitles <- list( pos=list(0,3,6), command=c("\\hline  \\color{Maroon}{1996-2012} &  & & & & & \\\\ \n",
+                                              "\\hline \\hline   \\color{Maroon}{Expansion} &  & & & & & \\\\  \n", 
+                                              "\\hline \\hline   \\color{Maroon}{Recession} &  & & & & & \\\\  \n")  )
+tab_wavedist <- xtable(tab_wavedist, digits=2, 
+                       align="l|l|lllll", caption="Distribution of earnings changes \\label{tab:wavedist}")
+print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)), 
+      add.to.row=rowtitles, file="./Figures/wavedist.tex")
+
+
+##########################################################################################
+# Full sample table-------------------------------------------------------------
 DTall <- readRDS("./Data/DTall_6.RData")
 DTall <- merge(DTall, CPSunempRt, by = "date", all.x = TRUE)
 
-toKeep <- c(toKeep,"wpfinwgt","switchedJob","allwt","allwtEUE",
-			"wagechange_seam","wagechange_allEUE")
+toKeep <- c(toKeep,"wpfinwgt","switchedJob","allwt","allwtEUE","balanceweight","balanceweightEUE",
+            "wagechange_seam","wagechange_allEUE")
 
 
 # select toKeep columns only
@@ -50,9 +118,6 @@ DTall <- DTall[, toKeep, with = FALSE]
 DTall <- subset(DTall, is.finite(wpfinwgt) & is.finite(wagechange_all))
 
 DTall<-DTall[ is.finite(EE)&is.finite(EU)&is.finite(UE),]
-
-# Full sample table-------------------------------------------------------------
-
 tabqtls <- c(.1,.25,.5,.75,.9)
 tN <- (length(tabqtls)+1)
 
