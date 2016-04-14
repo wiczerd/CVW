@@ -94,6 +94,9 @@ DTall[ , UE_wave := (lfstat_wave==2L & shift(lfstat_wave,1,type="lead")==1L), by
 DTall[ , UE_wave := any(UE_wave, na.rm = T), by=list(id,wave)] 
 DTall[ , EU_wave := (lfstat_wave==1L & shift(lfstat_wave,1,type="lead")==2L), by=id] #will only count 1 if seam ==1
 DTall[ , EU_wave := any(EU_wave, na.rm = T), by=list(id,wave)] 
+DTall[ is.na(UE_wave), UE_wave:=F]
+DTall[ is.na(EU_wave), EU_wave:=F]
+
 DTall[ is.finite(EE), EEmax_wave := any(EE==T & seam==F,na.rm=T), by=list(id,wave)] #get whether there was an EE w/in the wave (and not on the edge)
 DTall[ seam==T, EEnextmax_wave := shift(EEmax_wave,1,type="lead"), by = id]
 DTall[ is.na(EEnextmax_wave), EEnextmax_wave := F]
@@ -102,6 +105,8 @@ DTall[ seam==T, EE_wave := EE]
 DTall[ , EE_wave := (EE_wave | EEnextmax_wave )]
 DTall[ is.na(EE_wave), EE_wave:=F]
 DTall[, EE_wave := any(EE_wave, na.rm=T), by=list(id,wave)]
+# HAVE THIS???
+DTall[EEmaxwave ==T & EE_wave ==F, EE_wave := NA]
 # only EE if nothing else
 DTall[UE_wave==T & EE_wave==T, EE_wave :=F]
 DTall[EU_wave==T & EE_wave==T, EE_wave :=F]

@@ -56,10 +56,6 @@ DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
 DTseam <- DTseam[, toKeep_wave, with = FALSE]
 DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
 
-DTseam[ is.na(EU_wave), EU_wave:= F ]
-DTseam[ is.na(UE_wave), UE_wave:= F ]
-DTseam[ is.na(EE_wave), EE_wave:= F ]
-
 DTseam<-DTseam[ is.finite(EE_wave)&is.finite(EU_wave)&is.finite(UE_wave),]
 tabqtls <- c(.1,.25,.5,.75,.9)
 tN <- (length(tabqtls)+1)
