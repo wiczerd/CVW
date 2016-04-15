@@ -105,8 +105,7 @@ DTall[ seam==T, EE_wave := EE]
 DTall[ , EE_wave := (EE_wave | EEnextmax_wave )]
 DTall[ is.na(EE_wave), EE_wave:=F]
 DTall[, EE_wave := any(EE_wave, na.rm=T), by=list(id,wave)]
-# HAVE THIS???
-DTall[EEmaxwave ==T & EE_wave ==F, EE_wave := NA]
+DTall[EEmax_wave ==T & EE_wave ==F, EE_wave := NA]
 # only EE if nothing else
 DTall[UE_wave==T & EE_wave==T, EE_wave :=F]
 DTall[EU_wave==T & EE_wave==T, EE_wave :=F]
