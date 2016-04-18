@@ -128,8 +128,8 @@ DTseam[ is.na(EU_wave), EU_wave := F]
 DTseam[ is.na(UE_wave), UE_wave := F]
 DTseam[ EU_wave ==T | UE_wave==T, switchedOcc_wave := ifelse(UE_wave==T,shift(switchedOcc_wave,1,type="lead"),switchedOcc_wave)]
 DTseam[ , perwt:= mean(wpfinwgt), by=id]
-DTseam[ , balanceweight := perwt]
-DTseam[ EU_wave==T | UE_wave==T, balanceweight := perwt*min(EUmult,UEmult)]
+DTseam[ , waveweight := perwt]
+DTseam[ EU_wave==T | UE_wave==T, waveweight := perwt*min(EUmult,UEmult)]
 
 saveRDS(DTseam, "./Data/DTseam.RData")
 
@@ -274,7 +274,6 @@ DTall[UE==T            , wagechange_allEUE := NA_real_]
 wagechanges[EE==T      , balanceweightEUE:=balanceweight]
 wagechanges[EU==T      , balanceweightEUE:=balanceweight*2]
 wagechanges[UE==T      , balanceweightEUE:=0.]
-
 
 saveRDS(DTall,"./Data/DTall_6.RData")
 
