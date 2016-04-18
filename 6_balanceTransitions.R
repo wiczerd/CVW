@@ -73,27 +73,6 @@ recallRecodeShorTerm <- function(DF){
 
 DTall <- readRDS("./Data/DTall_5.RData")
 
-#save only the seams as a 'wave-change' set
-DTseam <- subset(DTall, seam==T)
-#balance seams EU and UE
-DTseam[ EU_wave ==T | UE_wave==T, EU_match := shift(UE_wave,1,type = "lead")==T, by=id]
-DTseam[ EU_wave ==T | UE_wave==T, UE_match := shift(EU_wave,1,type = "lag")==T, by=id]
-#re-weighting for the left/right survey truncation
-DTseam[ , EU_nomatch := ((EU_match ==F | is.na(EU_match)) & EU_wave==T)]
-DTseam[ , UE_nomatch := ((UE_match ==F | is.na(UE_match)) & UE_wave==T)]
-DTseam[, misRemaining := max(mis), by=id]
-DTseam[, misRemaining := misRemaining-mis , by=id]
-EUmult <- DTseam[EU_wave==T & misRemaining<=12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[EU_wave==T & misRemaining> 12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
-UEmult <- DTseam[UE_wave==T & mis         <=12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]  -DTseam[UE_wave==T & mis         > 12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
-DTseam[ , EU_wave := EU_match==T]
-DTseam[ , UE_wave := UE_match==T]
-DTseam[ EU_wave ==T | UE_wave==T, switchedOcc_wave := ifelse(UE_wave==T,shift(switchedOcc_wave,1,type="lead"),switchedOcc_wave)]
-DTseam[ , perwt:= mean(wpfinwgt), by=id]
-DTseam[ , balanceweight := perwt]
-DTseam[ EU_wave==T | UE_wave==T, balanceweight := perwt*min(EUmult,UEmult)]
-
-
-saveRDS(DTseam, "./Data/DTseam.RData")
 
 # sum weights for UE, EU, and EE
 UEreadweight <- DTall[UE==T & !is.na(wagechange) & is.finite(stintid), sum(wpfinwgt, na.rm = TRUE)]
@@ -110,7 +89,7 @@ EUnorecallweight <- DTall[EU==T & !is.na(wagechange) & is.finite(stintid), sum(w
 EEnorecallweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 
 #recall rate:
-UEnorecallweight/UEreadweight
+1.-UEnorecallweight/UEreadweight
 
 #saveRDS(DTall,"./Data/DTall_6.RData")
 #some rates: diagnostic
@@ -127,7 +106,36 @@ sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DT
 sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)],na.rm=T)/sum(DTall$wpfinwgt[!is.na(DTall$unempdur)],na.rm=T)
 #end diagnostic
 
-# create data set with defined wage changes only
+#save only the seams as a 'wave-change' set ---------------------
+DTseam <- subset(DTall, seam==T)
+#cancel the recalled transitions
+DTseam[ , recalled_wave:=any(recalled,na.rm=T), by=list(id,wave)]
+DTseam[ recalled_wave==T&UE_wave==T, UE_wave:=NA]
+DTseam[ recalled_wave==T&EU_wave==T, EU_wave:=NA]
+#balance seams EU and UE
+DTseam[ EU_wave ==T | UE_wave==T, EU_match := shift(UE_wave,1,type = "lead")==T, by=id]
+DTseam[ EU_wave ==T | UE_wave==T, UE_match := shift(EU_wave,1,type = "lag")==T, by=id]
+#re-weighting for the left/right survey truncation
+DTseam[ , EU_nomatch := ((EU_match ==F | is.na(EU_match)) & EU_wave==T)]
+DTseam[ , UE_nomatch := ((UE_match ==F | is.na(UE_match)) & UE_wave==T)]
+DTseam[, misRemaining := max(mis), by=id]
+DTseam[, misRemaining := misRemaining-mis , by=id]
+EUmult <- DTseam[EU_wave==T & misRemaining<=12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[EU_wave==T & misRemaining> 12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
+UEmult <- DTseam[UE_wave==T & mis         <=12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]  -DTseam[UE_wave==T & mis         > 12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
+DTseam[ , EU_wave := (EU_match==T)]
+DTseam[ , UE_wave := (UE_match==T)]
+DTseam[ is.na(EU_wave), EU_wave := F]
+DTseam[ is.na(UE_wave), UE_wave := F]
+DTseam[ EU_wave ==T | UE_wave==T, switchedOcc_wave := ifelse(UE_wave==T,shift(switchedOcc_wave,1,type="lead"),switchedOcc_wave)]
+DTseam[ , perwt:= mean(wpfinwgt), by=id]
+DTseam[ , balanceweight := perwt]
+DTseam[ EU_wave==T | UE_wave==T, balanceweight := perwt*min(EUmult,UEmult)]
+
+saveRDS(DTseam, "./Data/DTseam.RData")
+
+
+
+# create data set with defined wage changes only ------------------------------
 wagechanges <- DTall[!is.infinite(wagechange) & !is.na(wagechange),]
 setkey(wagechanges, id, date)
 
