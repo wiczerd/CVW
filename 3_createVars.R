@@ -116,9 +116,18 @@ DTall[ , sOnextmax_wave := any(sOnextmax_wave), by=list(id,wave)]
 DTall[ , switchedOcc_wave := (EEnextmax_wave & sOnextmax_wave) | (EE & switchedOcc) | (EU_wave & sOmax_wave) , by=id]
 DTall[ , switchedOcc_wave := any(switchedOcc_wave), by=list(id,wave)]
 
+DTall[ lfstat_wave==2, switchedOcc_wave := any(switchedOcc_wave), by=list(id,wave)]
+DTall[ , switchedOcc_wave := ifelse(EU_wave==T,shift(switchedOcc_wave,1,type="lead")), by=list(id,wave)]
+
+
 DTall[, c("EEnextmax_wave","EEmax_wave","lfstat2_wave","sOmax_wave","sOnextmax_wave"):= NULL] 
 
 DTall[, recIndic_wave := any(recIndic, na.rm=T), by=list(wave,id)]
+DTall[ lfstat==2, maxunempdur_wave := maxunempdur]
+DTall[ lfstat_wave==2, maxunempdur_wave:=max(maxunempdur_wave,na.rm = T), by=list(id,wave)]
+DTall[ , maxunempdur_wave := ifelse(EU_wave==T, shift(maxunempdur_wave,1,type="lead"),maxunempdur_wave)]
+DTall[ EU_wave==T, maxunempdur_wave:=max(maxunempdur_wave,na.rm = T), by=list(id,wave)]
+
 
 #some diagnostics -------------------------------------------
 sum(DTall$wpfinwgt[DTall$EE], na.rm=T)

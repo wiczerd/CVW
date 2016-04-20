@@ -99,7 +99,7 @@ tab_wavedist <- xtable(tab_wavedist, digits=2,
 print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)), 
       add.to.row=rowtitles, file="./Figures/wavedist.tex")
 
-tab_wavevardec <- array(NA_real_,dim=c(4,3))
+tab_wavevardec <- array(NA_real_,dim=c(2,3))
 
 totmean <- DTseam[, wtd.mean(wagechange_wave,na.rm=T,weights=waveweight) ]
 totvar  <- DTseam[, sum(waveweight*(wagechange_wave- totmean)^2,na.rm=T) ]
@@ -118,7 +118,7 @@ tot51025qtl <- DTseam[, wtd.quantile(wagechange_wave,na.rm=T,weights=waveweight,
 Nqtls <-length(tot51025qtl)
 Ndifs <- Nqtls/2
 
-tab_waveqtldec <- array(NA_real_,dim=c(Ndifs+1,4))
+tab_waveqtldec <- array(NA_real_,dim=c(Ndifs+1,3))
 
 qtlshere <- tot51025qtl
 
@@ -131,7 +131,7 @@ tab_waveqtldec[Ndifs+1,1] <- DTseam[(EE_wave==F& EU_wave==F&UE_wave==F)  , sum(w
 tab_waveqtldec[Ndifs+1,2] <- DTseam[(EE_wave==T& EU_wave==F&UE_wave==F)  , sum(waveweight,na.rm=T) ]
 tab_waveqtldec[Ndifs+1,3] <- DTseam[(EE_wave==F&(EU_wave==T|UE_wave==T)) , sum(waveweight,na.rm=T) ]
 
-  
+
 rsum <- rowSums(tab_waveqtldec, na.rm=T)
 for(ri in seq(1,nrow(tab_waveqtldec))){
   tab_waveqtldec[ri,] <-tab_waveqtldec[ri,]/rsum[ri]
@@ -150,23 +150,18 @@ print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_chngvarqtl
 
 # recession and expansion
 for (rI in c(F,T)){
-  for(EUEindic in c(F,T)){
-    wc <- ifelse(EUEindic,"wagechange_noseamEUE","wagechange_wave")
-    wt <- ifelse(EUEindic,"allwtEUE","allwt")
-    
-    totmean <- DTseam[recIndic_wave==rI, wtd.mean(wagechange_wave,na.rm=T,weights=waveweight) ]
-    totvar  <- DTseam[recIndic_wave==rI, sum(waveweight*(wagechange_wave- totmean)^2,na.rm=T) ]
-    idx = 2*as.integer(EUEindic)
-    tab_wavevardec[1+idx,1] <- DTseam[(EE_wave==F&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
-    tab_wavevardec[1+idx,2] <- DTseam[(EE_wave==T&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
-    tab_wavevardec[1+idx,3] <- DTseam[(EE_wave==F&(EU_wave==T|UE_wave==T))&recIndic_wave==rI, sum(waveweight*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
-    totwt <- DTseam[recIndic_wave==rI, sum(waveweight,na.rm=T) ]
-    tab_wavevardec[2+idx,1] <- DTseam[(EE_wave==F&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight,na.rm=T) ]/totwt
-    tab_wavevardec[2+idx,2] <- DTseam[(EE_wave==T&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight,na.rm=T) ]/totwt
-    tab_wavevardec[2+idx,3] <- DTseam[(EE_wave==F&(EU_wave==T|UE_wave==T))&recIndic_wave==rI, sum(waveweight,na.rm=T) ]/totwt
-    
-  }
-  
+   
+  totmean <- DTseam[recIndic_wave==rI, wtd.mean(wagechange_wave,na.rm=T,weights=waveweight) ]
+  totvar  <- DTseam[recIndic_wave==rI, sum(waveweight*(wagechange_wave- totmean)^2,na.rm=T) ]
+  idx = 2*as.integer(EUEindic)
+  tab_wavevardec[1+idx,1] <- DTseam[(EE_wave==F&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
+  tab_wavevardec[1+idx,2] <- DTseam[(EE_wave==T&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
+  tab_wavevardec[1+idx,3] <- DTseam[(EE_wave==F&(EU_wave==T|UE_wave==T))&recIndic_wave==rI, sum(waveweight*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
+  totwt <- DTseam[recIndic_wave==rI, sum(waveweight,na.rm=T) ]
+  tab_wavevardec[2+idx,1] <- DTseam[(EE_wave==F&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight,na.rm=T) ]/totwt
+  tab_wavevardec[2+idx,2] <- DTseam[(EE_wave==T&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight,na.rm=T) ]/totwt
+  tab_wavevardec[2+idx,3] <- DTseam[(EE_wave==F&(EU_wave==T|UE_wave==T))&recIndic_wave==rI, sum(waveweight,na.rm=T) ]/totwt
+
   # Seam sample quantile-diff decomposition --------------------------
   tot51025qtl <- DTseam[ recIndic_wave==rI, wtd.quantile(wagechange_wave,na.rm=T,weights=waveweight, probs=c(0.05,0.1,.25,.75,.9,.95)) ]
   
@@ -175,15 +170,15 @@ for (rI in c(F,T)){
   
   tab_waveqtldec <- array(NA_real_,dim=c(Ndifs+1,4))
   
-qtlshere <- tot51025qtl
-for(rri in seq(1,Ndifs)){
-  tab_waveqtldec[rri,1] <- DTseam[recIndic_wave==rI & (EE_wave==F&EU_wave==F&UE_wave==F)   & (wagechange_wave > qtlshere[Nqtls-rri+1] | wagechange_wave < qtlshere[rri]), sum(waveweight ,na.rm=T)]
-  tab_waveqtldec[rri,2] <- DTseam[recIndic_wave==rI & (EE_wave==T&EU_wave==F&UE_wave==F)   & (wagechange_wave > qtlshere[Nqtls-rri+1] | wagechange_wave < qtlshere[rri]), sum(waveweight ,na.rm=T)]
-  tab_waveqtldec[rri,3] <- DTseam[recIndic_wave==rI & (EE_wave==F&(EU_wave==T|UE_wave==T)) & (wagechange_wave > qtlshere[Nqtls-rri+1] | wagechange_wave < qtlshere[rri]), sum(waveweight ,na.rm=T)]
-}
-tab_waveqtldec[Ndifs+1,1] <- DTseam[recIndic_wave==rI & (EE_wave==F&EU_wave==F&UE_wave==F)  , sum(waveweight,na.rm=T) ]
-tab_waveqtldec[Ndifs+1,2] <- DTseam[recIndic_wave==rI & (EE_wave==T&EU_wave==F&UE_wave==F)  , sum(waveweight,na.rm=T) ]
-tab_waveqtldec[Ndifs+1,3] <- DTseam[recIndic_wave==rI & (EE_wave==F&(EU_wave==T|UE_wave==T)), sum(waveweight,na.rm=T) ]
+  qtlshere <- tot51025qtl
+  for(rri in seq(1,Ndifs)){
+    tab_waveqtldec[rri,1] <- DTseam[recIndic_wave==rI & (EE_wave==F&EU_wave==F&UE_wave==F)   & (wagechange_wave > qtlshere[Nqtls-rri+1] | wagechange_wave < qtlshere[rri]), sum(waveweight ,na.rm=T)]
+    tab_waveqtldec[rri,2] <- DTseam[recIndic_wave==rI & (EE_wave==T&EU_wave==F&UE_wave==F)   & (wagechange_wave > qtlshere[Nqtls-rri+1] | wagechange_wave < qtlshere[rri]), sum(waveweight ,na.rm=T)]
+    tab_waveqtldec[rri,3] <- DTseam[recIndic_wave==rI & (EE_wave==F&(EU_wave==T|UE_wave==T)) & (wagechange_wave > qtlshere[Nqtls-rri+1] | wagechange_wave < qtlshere[rri]), sum(waveweight ,na.rm=T)]
+  }
+  tab_waveqtldec[Ndifs+1,1] <- DTseam[recIndic_wave==rI & (EE_wave==F&EU_wave==F&UE_wave==F)  , sum(waveweight,na.rm=T) ]
+  tab_waveqtldec[Ndifs+1,2] <- DTseam[recIndic_wave==rI & (EE_wave==T&EU_wave==F&UE_wave==F)  , sum(waveweight,na.rm=T) ]
+  tab_waveqtldec[Ndifs+1,3] <- DTseam[recIndic_wave==rI & (EE_wave==F&(EU_wave==T|UE_wave==T)), sum(waveweight,na.rm=T) ]
 
   
   rsum <- rowSums(tab_waveqtldec, na.rm=T)
@@ -199,12 +194,12 @@ tab_waveqtldec[Ndifs+1,3] <- DTseam[recIndic_wave==rI & (EE_wave==F&(EU_wave==T|
   
   if(rI){
     tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=2, 
-                                align="l|l|lll", caption="Decomposition of earnings change dispersion, recession \\label{tab:chngvarqtldec_rec}")
+                                align="l|l|lll", caption="Decomposition of earnings change dispersion, recession \\label{tab:chngvarqtldec_wave_rec}")
   }else{
     tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=2, 
-                                align="l|l|lll", caption="Decomposition of earnings change dispersion, expansion \\label{tab:chngvarqtldec_exp}")
+                                align="l|l|lll", caption="Decomposition of earnings change dispersion, expansion \\label{tab:chngvarqtldec_wave_exp}")
   }
-  print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,Ndifs+1, nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file=paste0("./Figures/chngvarqtldec_rec",rI,".tex"))
+  print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,Ndifs+1, nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file=paste0("./Figures/chngvarqtldec_wave_rec",rI,".tex"))
   
 }
 

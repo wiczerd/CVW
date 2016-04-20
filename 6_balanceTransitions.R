@@ -5,7 +5,6 @@ library(data.table)
 library(zoo)
 library(Hmisc)
 
-#setwd("G:/Research_Analyst/Eubanks/Occupation Switching")
 wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
 setwd(wd0)
@@ -13,6 +12,10 @@ Mode <- function(x) {
 	ux <- unique(x[!is.na(x)])
 	ux[which.max(tabulate(match(x, ux)))]
 }
+
+# for getting the duration right
+CPSunempdur <- readRDS("./InputData/CPSunempDurDist.RData")
+
 
 recallRecodeJobID <- function(DF){
 	#this function just uses job ID to identify recalls, and may miss especially long-term when job id can reset.  
@@ -107,7 +110,11 @@ sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)
 #end diagnostic
 
 #save only the seams as a 'wave-change' set ---------------------
+DTall[ , maxunempdur_wave := ifelse(is.finite(maxunempdur),maxunempdur,0.), by=list(id,wave)]
+DTall[ , maxunempdur_wave := max(maxunempdur_wave,na.rm = T), by=list(id,wave)]
 DTseam <- subset(DTall, seam==T)
+DTseam[ , maxunempdur:= maxunempdur_wave]
+DTseam[ , c("maxunempdur_wave","EE","EU","UE","switchedOcc"):= NULL]
 #cancel the recalled transitions
 DTseam[ , recalled_wave:=any(recalled,na.rm=T), by=list(id,wave)]
 DTseam[ recalled_wave==T&UE_wave==T, UE_wave:=NA]
@@ -121,7 +128,7 @@ DTseam[ , UE_nomatch := ((UE_match ==F | is.na(UE_match)) & UE_wave==T)]
 DTseam[, misRemaining := max(mis), by=id]
 DTseam[, misRemaining := misRemaining-mis , by=id]
 EUmult <- DTseam[EU_wave==T & misRemaining<=12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[EU_wave==T & misRemaining> 12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
-UEmult <- DTseam[UE_wave==T & mis         <=12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]  -DTseam[UE_wave==T & mis         > 12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
+UEmult <- DTseam[UE_wave==T & mis         <=12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[UE_wave==T & mis         > 12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
 DTseam[ , EU_wave := (EU_match==T)]
 DTseam[ , UE_wave := (UE_match==T)]
 DTseam[ is.na(EU_wave), EU_wave := F]
@@ -129,7 +136,47 @@ DTseam[ is.na(UE_wave), UE_wave := F]
 DTseam[ EU_wave ==T | UE_wave==T, switchedOcc_wave := ifelse(UE_wave==T,shift(switchedOcc_wave,1,type="lead"),switchedOcc_wave)]
 DTseam[ , perwt:= mean(wpfinwgt), by=id]
 DTseam[ , waveweight := perwt]
-DTseam[ EU_wave==T | UE_wave==T, waveweight := perwt*min(EUmult,UEmult)]
+DTseam[ EU_wave==T | UE_wave==T, waveweight := perwt*(1+max(EUmult,UEmult))]
+
+
+DTseam <- merge(DTseam, CPSunempdur, by = "date", all.x = TRUE)
+DTseam[ UE_wave ==F & EU_wave==F, maxunempdur:= maxunempdur_wave]
+#this is the failure rate
+DTseam[,SIPPmax_LT15  :=wtd.mean( (maxunempdur< 15*12/52)                         , perwt,na.rm=T)]
+DTseam[,SIPPmax_15_26 :=wtd.mean( (maxunempdur>=15*12/52 & maxunempdur<=26*12/52) , perwt,na.rm=T)]
+DTseam[,SIPPmax_GT26  :=wtd.mean( (maxunempdur> 26*12/52)                         , perwt,na.rm=T)]
+#this is the cumulative survival rate
+DTseam[,CPSsurv_LT15  :=(mean(FRM5_14  ,na.rm=T)+ mean(LT5,na.rm=T))/100]
+DTseam[,CPSsurv_15_26 :=(mean(FRM15_26 ,na.rm=T))/100]
+DTseam[,CPSsurv_GT26  :=(mean(GT26     ,na.rm=T))/100]
+#1-durwt_LT15*SIPPmax_LT15 = CPSsurv_GT26+ CPSsurv_15_26
+DTseam[(maxunempdur<15*12/52), durwt :=  (1.-CPSsurv_GT26+ CPSsurv_15_26)/SIPPmax_LT15]
+#durwt_FRM1526*SIPPmax_15_26 = CPSsurv_15_26
+DTseam[(maxunempdur>=15*12/52 & maxunempdur<=26*12/52), durwt :=  CPSsurv_15_26/SIPPmax_15_26]
+#durwt_GT26*SIPPmax_GT26 = CPSsurv_GT26
+DTseam[(maxunempdur>26*12/52), durwt :=  CPSsurv_GT26/SIPPmax_GT26]
+
+DTseam[ (maxunempdur<15*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
+DTseam[ (maxunempdur>=15*12/52 & maxunempdur<=26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
+DTseam[ (maxunempdur>26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
+
+DTseam[ , c("SIPPmax_LT15","SIPPmax_15_26","SIPPmax_GT26","CPSsurv_LT15","CPSsurv_15_26","CPSsurv_GT26")
+             := NULL]
+#do not increase the incidence of unemployment
+balwtEU <- DTseam[EU_wave==T, sum(waveweight, na.rm=T)]
+balwtUE <- DTseam[UE_wave==T, sum(waveweight, na.rm=T)]
+
+DTseam[EU_wave ==T | UE_wave ==T, waveweight:= waveweight*durwt] 
+DTseam[EU_wave==T, waveweight:= waveweight/sum(waveweight,na.rm=T)*balwtEU ]
+DTseam[UE_wave==T, waveweight:= waveweight/sum(waveweight,na.rm=T)*balwtUE ]
+
+DTseam[,durwt :=NULL]
+
+
+# scale weights back to original total
+wtscale <- DTseam[, sum(waveweight, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
+DTseam[, waveweight := waveweight/wtscale]
+
 
 saveRDS(DTseam, "./Data/DTseam.RData")
 
@@ -178,22 +225,21 @@ multiplier <- (UEnorecallweight/EEnorecallweight)*(EEweight.balanced/UEweight.ba
 wagechanges[, balanceweight := ifelse(EU | UE, perwt*multiplier, perwt)]
 
 # change weight among unemployed to match <15 weeks, 15-26 weeks, 27+ from CPS
-CPSunempdur <- readRDS("./InputData/CPSunempDurDist.RData")
 wagechanges <- merge(wagechanges, CPSunempdur, by = "date", all.x = TRUE)
 wagechanges$year <-as.integer(format(wagechanges$date, "%Y") )
-wagechanges[ UE ==T, year := shift(year,1,type="lag")] # be sure UE is in the same year as EU
+wagechanges[ UE ==T | EU==T, year := shift(year,1,type="lag")] # be sure UE is in the same year as EU
 
 #for( yi in seq(min(wagechanges$year, na.rm=T),max(wagechanges$year, na.rm=T)  )){
 	#this is the failure rate
-	wagechanges[,SIPPmax_LT15:=wtd.mean( (maxunempdur<15*12/52) , perwt)]
-	wagechanges[,SIPPmax_15_26:=wtd.mean( (maxunempdur>=15*12/52 & maxunempdur<=26*12/52) , perwt)]
-	wagechanges[,SIPPmax_GT26:=wtd.mean( (maxunempdur>26*12/52) , perwt)]
+	wagechanges[,SIPPmax_LT15  :=wtd.mean( (maxunempdur< 15*12/52)                         , perwt,na.rm = T)]
+	wagechanges[,SIPPmax_15_26 :=wtd.mean( (maxunempdur>=15*12/52 & maxunempdur<=26*12/52) , perwt,na.rm = T)]
+	wagechanges[,SIPPmax_GT26  :=wtd.mean( (maxunempdur> 26*12/52)                         , perwt,na.rm = T)]
 	#this is the cumulative survival rate
-	wagechanges[,CPSsurv_LT15:=(mean(FRM5_14)+ mean(LT5))/100]
-	wagechanges[,CPSsurv_15_26:=(mean(FRM15_26))/100]
-	wagechanges[,CPSsurv_GT26:=(mean(GT26))/100]
+	wagechanges[,CPSsurv_LT15  :=(mean(FRM5_14  ,na.rm = T) + mean(LT5,na.rm = T))/100]
+	wagechanges[,CPSsurv_15_26 :=(mean(FRM15_26 ,na.rm = T))/100]
+	wagechanges[,CPSsurv_GT26  :=(mean(GT26     ,na.rm = T))/100]
 	#1-durwt_LT15*SIPPmax_LT15 = CPSsurv_GT26+ CPSsurv_15_26
-	wagechanges[(maxunempdur<15*12/52), durwt :=  (1.-CPSsurv_GT26+ CPSsurv_15_26)/SIPPmax_LT15]
+	wagechanges[(maxunempdur<15*12/52), durwt := (1.-CPSsurv_GT26+ CPSsurv_15_26)/SIPPmax_LT15]
 	#durwt_FRM1526*SIPPmax_15_26 = CPSsurv_15_26
 	wagechanges[(maxunempdur>=15*12/52 & maxunempdur<=26*12/52), durwt :=  CPSsurv_15_26/SIPPmax_15_26]
 	#durwt_GT26*SIPPmax_GT26 = CPSsurv_GT26
