@@ -110,8 +110,6 @@ sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)
 #end diagnostic
 
 #save only the seams as a 'wave-change' set ---------------------
-DTall[ , maxunempdur_wave := ifelse(is.finite(maxunempdur),maxunempdur,0.), by=list(id,wave)]
-DTall[ , maxunempdur_wave := max(maxunempdur_wave,na.rm = T), by=list(id,wave)]
 DTseam <- subset(DTall, seam==T)
 DTseam[ , maxunempdur:= maxunempdur_wave]
 DTseam[ , c("maxunempdur_wave","EE","EU","UE","switchedOcc"):= NULL]
@@ -133,14 +131,13 @@ DTseam[ , EU_wave := (EU_match==T)]
 DTseam[ , UE_wave := (UE_match==T)]
 DTseam[ is.na(EU_wave), EU_wave := F]
 DTseam[ is.na(UE_wave), UE_wave := F]
-DTseam[ EU_wave ==T | UE_wave==T, switchedOcc_wave := ifelse(UE_wave==T,shift(switchedOcc_wave,1,type="lead"),switchedOcc_wave)]
+DTseam[ EU_wave ==T | UE_wave==T, switchedOcc_wave := ifelse(UE_wave==T,shift(switchedOcc_wave,1,type="lag"),switchedOcc_wave)]
 DTseam[ , perwt:= mean(wpfinwgt), by=id]
 DTseam[ , waveweight := perwt]
 DTseam[ EU_wave==T | UE_wave==T, waveweight := perwt*(1+max(EUmult,UEmult))]
 
 
 DTseam <- merge(DTseam, CPSunempdur, by = "date", all.x = TRUE)
-DTseam[ UE_wave ==F & EU_wave==F, maxunempdur:= maxunempdur_wave]
 #this is the failure rate
 DTseam[,SIPPmax_LT15  :=wtd.mean( (maxunempdur< 15*12/52)                         , perwt,na.rm=T)]
 DTseam[,SIPPmax_15_26 :=wtd.mean( (maxunempdur>=15*12/52 & maxunempdur<=26*12/52) , perwt,na.rm=T)]
