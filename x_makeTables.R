@@ -13,28 +13,8 @@ wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
 setwd(wd0)
 
-wagechanges <- readRDS("./Data/balancedwagechanges.RData")
 CPSunempRt <- readRDS("./InputData/CPSunempRt.RData")
 CPSunempRt$unrt <- CPSunempRt$unrt/100
-
-wagechanges <- merge(wagechanges, CPSunempRt, by = "date", all.x = TRUE)
-
-
-toKeep <- c("switchedOcc","switchedInd",
-			"Young",
-			"HSCol",
-			"recIndic",
-			"wagechange",
-			"wagechange_EUE", 
-			"balanceweight","balanceweightEUE",
-			"wagechange_all",
-			"EE","EU","UE",
-			"unrt",
-			"wave","id")
-
-# select toKeep columns only
-wagechanges <- wagechanges[, toKeep, with = FALSE]
-wagechanges<- wagechanges[ is.finite(switchedOcc), ]
 
 
 ##########################################################################################
@@ -144,8 +124,8 @@ names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EU,UE","EUE")
 rownames(tab_chngvarqtldec) <- c("Variance","0.95-0.05","0.9-0.1","0.75-0.25", "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
 
 tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=2, 
-                            align="l|l|lll", caption="Decomposition of earnings change dispersion \\label{tab:chngvarqtldec_wave}")
-print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file="./Figures/chngvarqtldec_wave.tex")
+                            align="l|l|lll", caption="Decomposition of earnings change dispersion \\label{tab:wavechngvarqtldec}")
+print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file="./Figures/wavechngvarqtldec.tex")
 
 
 # recession and expansion
@@ -153,14 +133,13 @@ for (rI in c(F,T)){
    
   totmean <- DTseam[recIndic_wave==rI, wtd.mean(wagechange_wave,na.rm=T,weights=waveweight) ]
   totvar  <- DTseam[recIndic_wave==rI, sum(waveweight*(wagechange_wave- totmean)^2,na.rm=T) ]
-  idx = 2*as.integer(EUEindic)
-  tab_wavevardec[1+idx,1] <- DTseam[(EE_wave==F&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
-  tab_wavevardec[1+idx,2] <- DTseam[(EE_wave==T&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
-  tab_wavevardec[1+idx,3] <- DTseam[(EE_wave==F&(EU_wave==T|UE_wave==T))&recIndic_wave==rI, sum(waveweight*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
+  tab_wavevardec[1,1] <- DTseam[(EE_wave==F&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
+  tab_wavevardec[1,2] <- DTseam[(EE_wave==T&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
+  tab_wavevardec[1,3] <- DTseam[(EE_wave==F&(EU_wave==T|UE_wave==T))&recIndic_wave==rI, sum(waveweight*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
   totwt <- DTseam[recIndic_wave==rI, sum(waveweight,na.rm=T) ]
-  tab_wavevardec[2+idx,1] <- DTseam[(EE_wave==F&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight,na.rm=T) ]/totwt
-  tab_wavevardec[2+idx,2] <- DTseam[(EE_wave==T&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight,na.rm=T) ]/totwt
-  tab_wavevardec[2+idx,3] <- DTseam[(EE_wave==F&(EU_wave==T|UE_wave==T))&recIndic_wave==rI, sum(waveweight,na.rm=T) ]/totwt
+  tab_wavevardec[2,1] <- DTseam[(EE_wave==F&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight,na.rm=T) ]/totwt
+  tab_wavevardec[2,2] <- DTseam[(EE_wave==T&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(waveweight,na.rm=T) ]/totwt
+  tab_wavevardec[2,3] <- DTseam[(EE_wave==F&(EU_wave==T|UE_wave==T))&recIndic_wave==rI, sum(waveweight,na.rm=T) ]/totwt
 
   # Seam sample quantile-diff decomposition --------------------------
   tot51025qtl <- DTseam[ recIndic_wave==rI, wtd.quantile(wagechange_wave,na.rm=T,weights=waveweight, probs=c(0.05,0.1,.25,.75,.9,.95)) ]
@@ -188,18 +167,18 @@ for (rI in c(F,T)){
   
   #output it to tables
   tab_chngvarqtldec <- data.table(rbind(tab_wavevardec[1,],tab_waveqtldec[1:Ndifs,],tab_wavevardec[3,],tab_waveqtldec[(2+Ndifs):nrow(tab_waveqtldec),]) )
-  names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EU,UE","EUE")
+  names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EU,UE")
   #rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
   rownames(tab_chngvarqtldec) <- c("Variance","0.95-0.05","0.9-0.1","0.75-0.25", "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
   
   if(rI){
     tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=2, 
-                                align="l|l|lll", caption="Decomposition of earnings change dispersion, recession \\label{tab:chngvarqtldec_wave_rec}")
+                                align="l|l|lll", caption="Decomposition of earnings change dispersion, recession \\label{tab:wavechngvarqtldec_rec}")
   }else{
     tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=2, 
-                                align="l|l|lll", caption="Decomposition of earnings change dispersion, expansion \\label{tab:chngvarqtldec_wave_exp}")
+                                align="l|l|lll", caption="Decomposition of earnings change dispersion, expansion \\label{tab:wavechngvarqtldec_exp}")
   }
-  print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,Ndifs+1, nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file=paste0("./Figures/chngvarqtldec_wave_rec",rI,".tex"))
+  print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,Ndifs+1, nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file=paste0("./Figures/wavechngvarqtldec_rec",rI,".tex"))
   
 }
 
@@ -208,82 +187,70 @@ for (rI in c(F,T)){
 tabqtls <- c(.1,.25,.5,.75,.9)
 tN <- (length(tabqtls)+1)
 
-tab_chngdist    <- array(0.,dim=c(9,tN,2))
+tab_wavechngdist    <- array(0.,dim=c(9,tN))
 
-for( EUEindic in c(F,T)){
-  wc <- ifelse(EUEindic,"wagechange_EUE","wagechange")
-  wt <- ifelse(EUEindic,"balanceweightEUE","balanceweight")
-  idx = 1+as.integer(EUEindic)
-  tab_chngdist[1,1,idx]    <- wagechanges[(EE|EU|UE),                    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-  tab_chngdist[1,2:tN,idx] <- wagechanges[ EE|EU|UE ,                wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-  tab_chngdist[2,1,idx]    <- wagechanges[(EE|EU|UE)& switchedOcc==F,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-  tab_chngdist[2,2:tN,idx] <- wagechanges[(EE|EU|UE)& switchedOcc==F,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-  tab_chngdist[3,1,idx]    <- wagechanges[(EE|EU|UE)& switchedOcc==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-  tab_chngdist[3,2:tN,idx] <- wagechanges[(EE|EU|UE)& switchedOcc==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-  for(EUhere in c(F,T)){
-    EEhere = ifelse(EUhere==F, T,F)
-    eidx = as.integer(EUhere)*3
-    tab_chngdist[4+eidx,1,idx]    <- wagechanges[(EE==EEhere&(EU==EUhere|UE==EUhere)),                    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-    tab_chngdist[4+eidx,2:tN,idx] <- wagechanges[(EE==EEhere&(EU==EUhere|UE==EUhere)),                wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-    tab_chngdist[5+eidx,1,idx]    <- wagechanges[(EE==EEhere&(EU==EUhere|UE==EUhere))& switchedOcc==F,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-    tab_chngdist[5+eidx,2:tN,idx] <- wagechanges[(EE==EEhere&(EU==EUhere|UE==EUhere))& switchedOcc==F,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-    tab_chngdist[6+eidx,1,idx]    <- wagechanges[(EE==EEhere&(EU==EUhere|UE==EUhere))& switchedOcc==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-    tab_chngdist[6+eidx,2:tN,idx] <- wagechanges[(EE==EEhere&(EU==EUhere|UE==EUhere))& switchedOcc==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-  }
-  
+
+wc <- "wagechange_wave"
+wt <- "waveweight"
+
+tab_wavechngdist[1,1]    <- DTseam[(EE_wave|EU_wave|UE_wave),                    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+tab_wavechngdist[1,2:tN] <- DTseam[ EE_wave|EU_wave|UE_wave ,                wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+tab_wavechngdist[2,1]    <- DTseam[(EE_wave|EU_wave|UE_wave)& switchedOcc_wave==F,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+tab_wavechngdist[2,2:tN] <- DTseam[(EE_wave|EU_wave|UE_wave)& switchedOcc_wave==F,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+tab_wavechngdist[3,1]    <- DTseam[(EE_wave|EU_wave|UE_wave)& switchedOcc_wave==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+tab_wavechngdist[3,2:tN] <- DTseam[(EE_wave|EU_wave|UE_wave)& switchedOcc_wave==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+for(EUhere in c(F,T)){
+	EEhere = ifelse(EUhere==F, T,F)
+	eidx = as.integer(EUhere)*3
+	tab_wavechngdist[4+eidx,1]    <- DTseam[(EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere)),                    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavechngdist[4+eidx,2:tN] <- DTseam[(EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere)),                wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+	tab_wavechngdist[5+eidx,1]    <- DTseam[(EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere))& switchedOcc_wave==F,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavechngdist[5+eidx,2:tN] <- DTseam[(EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere))& switchedOcc_wave==F,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+	tab_wavechngdist[6+eidx,1]    <- DTseam[(EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere))& switchedOcc_wave==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavechngdist[6+eidx,2:tN] <- DTseam[(EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere))& switchedOcc_wave==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 }
-dat_chngdist <- tab_chngdist
+
+dat_wavechngdist <- tab_wavechngdist
 
 #output it to tables
-tab_chngdist_out <- data.table(tab_chngdist[1:3,,1])
-names(tab_chngdist_out) <- c("Mean","0.10","0.25","0.50","0.75","0.90")
+tab_wavechngdist_out <- data.table(tab_wavechngdist[1:3, ])
+names(tab_wavechngdist_out) <- c("Mean","0.10","0.25","0.50","0.75","0.90")
 #rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
-rownames(tab_chngdist_out) <- c("Chng\ Job, All", "Chng\ Job, Same\ Occ", "Chng\ Job & Switch\ Occ")
-tab_chngdistEUE_out <- data.table(tab_chngdist[1:3,,2])
-names(tab_chngdistEUE_out) <- c("Mean","0.10","0.25","0.50","0.75","0.90")
-rownames(tab_chngdistEUE_out) <- c("Chng\ Job, All", "Chng\ Job, Same\ Occ", "Chng\ Job & Switch\ Occ")
+rownames(tab_wavechngdist_out) <- c("Chng\ Job, All", "Chng\ Job, Same\ Occ", "Chng\ Job & Switch\ Occ")
 
-tab_chngdist_out <- xtable(tab_chngdist_out, label="tab:chngdist", digits=2, 
+tab_wavechngdist_out <- xtable(tab_wavechngdist_out, label="tab:wavechngdist", digits=2, 
                            align="l|l|lllll", caption="Distribution of earnings changes among job changers")
-print(tab_chngdist_out,include.rownames=T, hline.after= c(0,nrow(tab_chngdist_out)), file="./Figures/chngdist.tex")
+print(tab_wavechngdist_out,include.rownames=T, hline.after= c(0,nrow(tab_wavechngdist_out)), file="./Figures/wavechngdist.tex")
 
-tab_chngdistEUE_out <- xtable(tab_chngdistEUE_out, label="tab:chngdistEUE", digits=2, 
-                              align="l|l|lllll", caption="Distribution of earnings changes among job changers, connecting unemployment spells")
-print(tab_chngdistEUE_out,include.rownames=T, hline.after= c(0,nrow(tab_chngdistEUE_out)), file="./Figures/chngdistEUE.tex")
-
-
-tab_chngdist_rec    <- array(NA,dim=c(6,tN,2))
-tab_chngdist_rec_EEEU    <- array(NA,dim=c(12,tN,2))
-
-for(EUEindic in c(F,T)){
-  for(recHere in c(F,T)){
-    ridx = as.integer(recHere)*3
-    idx = as.integer(EUEindic) +1
-    wc <- ifelse(EUEindic,"wagechange_EUE","wagechange")
-    wt <- ifelse(EUEindic,"balanceweightEUE","balanceweight")
-    
-    tab_chngdist_rec[1+ridx,1   ,idx] <- wagechanges[(EE|EU|UE)                & recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-    tab_chngdist_rec[1+ridx,2:tN,idx] <- wagechanges[(EE|EU|UE)                & recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-    tab_chngdist_rec[2+ridx,1   ,idx] <- wagechanges[(EE|EU|UE)&switchedOcc==F & recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-    tab_chngdist_rec[2+ridx,2:tN,idx] <- wagechanges[(EE|EU|UE)&switchedOcc==F & recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-    tab_chngdist_rec[3+ridx,1   ,idx] <- wagechanges[(EE|EU|UE)&switchedOcc==T & recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-    tab_chngdist_rec[3+ridx,2:tN,idx] <- wagechanges[(EE|EU|UE)&switchedOcc==T & recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-    
-    for(EUhere in c(F,T)){
-      EEhere = ifelse(EUhere==F, T,F)
-      eidx = 6*as.integer(EUhere)
-      tab_chngdist_rec_EEEU[1+ridx+eidx,1,   idx] <- wagechanges[(EE==EEhere&(EU==EUhere|UE==EUhere))                &recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-      tab_chngdist_rec_EEEU[1+ridx+eidx,2:tN,idx] <- wagechanges[(EE==EEhere&(EU==EUhere|UE==EUhere))                &recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-      tab_chngdist_rec_EEEU[2+ridx+eidx,1,   idx] <- wagechanges[(EE==EEhere&(EU==EUhere|UE==EUhere))&switchedOcc==F &recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-      tab_chngdist_rec_EEEU[2+ridx+eidx,2:tN,idx] <- wagechanges[(EE==EEhere&(EU==EUhere|UE==EUhere))&switchedOcc==F &recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-      tab_chngdist_rec_EEEU[3+ridx+eidx,1,   idx] <- wagechanges[(EE==EEhere&(EU==EUhere|UE==EUhere))&switchedOcc==T &recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-      tab_chngdist_rec_EEEU[3+ridx+eidx,2:tN,idx] <- wagechanges[(EE==EEhere&(EU==EUhere|UE==EUhere))&switchedOcc==T &recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-    }
-  }
+# rec and expansion
+tab_wavechngdist_rec    <- array(NA,dim=c(6,tN))
+tab_wavechngdist_rec_EEEU    <- array(NA,dim=c(12,tN))
+for(recHere in c(F,T)){
+	ridx = as.integer(recHere)*3
+	wc <- "wagechange_wave"
+	wt <- "waveweight"
+	
+	tab_wavechngdist_rec[1+ridx,1   ] <- DTseam[(EE_wave|EU_wave|UE_wave)                & recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavechngdist_rec[1+ridx,2:tN] <- DTseam[(EE_wave|EU_wave|UE_wave)                & recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+	tab_wavechngdist_rec[2+ridx,1   ] <- DTseam[(EE_wave|EU_wave|UE_wave)&switchedOcc_wave==F & recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavechngdist_rec[2+ridx,2:tN] <- DTseam[(EE_wave|EU_wave|UE_wave)&switchedOcc_wave==F & recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+	tab_wavechngdist_rec[3+ridx,1   ] <- DTseam[(EE_wave|EU_wave|UE_wave)&switchedOcc_wave==T & recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavechngdist_rec[3+ridx,2:tN] <- DTseam[(EE_wave|EU_wave|UE_wave)&switchedOcc_wave==T & recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+	
+	for(EUhere in c(F,T)){
+		EEhere = ifelse(EUhere==F, T,F)
+		eidx = 6*as.integer(EUhere)
+		tab_wavechngdist_rec_EEEU[1+ridx+eidx,1   ] <- DTseam[(EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere))                &recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavechngdist_rec_EEEU[1+ridx+eidx,2:tN] <- DTseam[(EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere))                &recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+		tab_wavechngdist_rec_EEEU[2+ridx+eidx,1   ] <- DTseam[(EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere))&switchedOcc_wave==F &recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavechngdist_rec_EEEU[2+ridx+eidx,2:tN] <- DTseam[(EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere))&switchedOcc_wave==F &recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_wavechngdist_rec_EEEU[3+ridx+eidx,1   ] <- DTseam[(EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere))&switchedOcc_wave==T &recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavechngdist_rec_EEEU[3+ridx+eidx,2:tN] <- DTseam[(EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere))&switchedOcc_wave==T &recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+	}
 }
 #output it to tables
-dat_chngdist_rec <-tab_chngdist_rec
-dat_chngdist_rec_EEEU <-tab_chngdist_rec_EEEU
+dat_wavechngdist_rec <-tab_wavechngdist_rec
+dat_wavechngdist_rec_EEEU <-tab_wavechngdist_rec_EEEU
 cnames <- c("Mean","0.10","0.25","0.50","0.75","0.90")
 rnames <- c("All job changers    ", "Occ stayers    ","Occ movers    ",
             "All job changers\   ", "Occ stayers\   ","Occ movers\   ",
@@ -294,52 +261,35 @@ rowtitles <- list( pos=list(0,3,6), command=c("\\hline  \\color{Maroon}{1996-201
                                               "\\hline \\hline   \\color{Maroon}{Recession} &  & & & & & \\\\  \n")  )
 
 
-tab_chngdist_rec <- data.table(rbind(dat_chngdist[1:3,,1],dat_chngdist_rec[1:6,,1]))
-names(tab_chngdist_rec) <- cnames
-rownames(tab_chngdist_rec) <- rnames
-tab_chngdist_rec <- xtable(tab_chngdist_rec, digits=2, 
-                           align="l|l|lllll", caption="Distribution of earnings changes among job changers in recession and expansion \\label{tab:chngdist_rec}")
-print(tab_chngdist_rec,include.rownames=T, hline.after= c(nrow(tab_chngdist_rec)), 
-      add.to.row=rowtitles, file="./Figures/chngdist_rec.tex")
+tab_wavechngdist_rec <- data.table(rbind(dat_wavechngdist[1:3, ],dat_wavechngdist_rec[1:6, ]))
+names(tab_wavechngdist_rec) <- cnames
+rownames(tab_wavechngdist_rec) <- rnames
+tab_wavechngdist_rec <- xtable(tab_wavechngdist_rec, digits=2, 
+                           align="l|l|lllll", caption="Distribution of earnings changes among job changers in recession and expansion \\label{tab:wavechngdist_rec}")
+print(tab_wavechngdist_rec,include.rownames=T, hline.after= c(nrow(tab_wavechngdist_rec)), 
+      add.to.row=rowtitles, file="./Figures/wavechngdist_rec.tex")
 
 
-tab_chngdistEUE_rec <- data.table(rbind(dat_chngdist[1:3,,2],dat_chngdist_rec[1:6,,2]))
-names(tab_chngdistEUE_rec) <- cnames
-rownames(tab_chngdistEUE_rec) <-rnames
 
-tab_chngdistEUE_rec <- xtable(tab_chngdistEUE_rec, digits=2, 
-                              align="l|l|lllll", caption="Distribution of earnings changes among job changers in recession and expansion, connecting unemployment spells \\label{tab:chngdistEUE_rec}")
-print(tab_chngdistEUE_rec,include.rownames=T, hline.after= c(nrow(tab_chngdistEUE_rec)), 
-      add.to.row=rowtitles, file="./Figures/chngdistEUE_rec.tex")
+tab_wavechngdist_recEE     <- data.table(rbind(dat_wavechngdist[4:6, ],dat_wavechngdist_rec_EEEU[1:6 , ]))
+tab_wavechngdist_recEUUE   <- data.table(rbind(dat_wavechngdist[7:9, ],dat_wavechngdist_rec_EEEU[7:12, ]))
 
-tab_chngdistEUE_recEE  <- data.table(rbind(dat_chngdist[4:6,,2],dat_chngdist_rec_EEEU[1:6 ,,2]))
-tab_chngdistEUE_recEUE <- data.table(rbind(dat_chngdist[7:9,,2],dat_chngdist_rec_EEEU[7:12,,2]))
-tab_chngdist_recEE     <- data.table(rbind(dat_chngdist[4:6,,1],dat_chngdist_rec_EEEU[1:6 ,,1]))
-tab_chngdist_recEUUE   <- data.table(rbind(dat_chngdist[7:9,,1],dat_chngdist_rec_EEEU[7:12,,1]))
+names(tab_wavechngdist_recEUUE) <- cnames
+names(tab_wavechngdist_recEE) <- cnames
 
-names(tab_chngdistEUE_recEUE) <- cnames
-names(tab_chngdistEUE_recEE) <- cnames
-names(tab_chngdist_recEUUE) <- cnames
-names(tab_chngdist_recEE) <- cnames
-
-rownames(tab_chngdistEUE_recEE) <-rnames
-rownames(tab_chngdistEUE_recEUE) <-rnames
-rownames(tab_chngdist_recEE) <-rnames
-rownames(tab_chngdist_recEUUE) <-rnames
+rownames(tab_wavechngdist_recEE) <-rnames
+rownames(tab_wavechngdist_recEUUE) <-rnames
 
 
-tab_chngdist_recEE <- xtable(tab_chngdist_recEE, label="tab:chngdist_recEE", digits=2, 
+tab_wavechngdist_recEE <- xtable(tab_wavechngdist_recEE, label="tab:wavechngdist_recEE", digits=2, 
                              align="l|l|lllll", caption="Distribution of earnings changes among job-job changers")
-print(tab_chngdist_recEE,include.rownames=T, hline.after= c(nrow(tab_chngdist_recEE)), 
-      add.to.row=rowtitles, file="./Figures/chngdist_recEE.tex")
-tab_chngdistEUE_recEUE <- xtable(tab_chngdistEUE_recEUE, label="tab:chngdistEUE_recEE", digits=2, 
-                                 align="l|l|lllll", caption="Distribution of earnings changes among those transitioning through unemployment")
-print(tab_chngdistEUE_recEUE,include.rownames=T, hline.after= c(nrow(tab_chngdistEUE_recEUE)), 
-      add.to.row=rowtitles, file="./Figures/chngdistEUE_recEUE.tex")
-tab_chngdist_recEUUE <- xtable(tab_chngdist_recEUUE, label="tab:chngdistEUE_recEE", digits=2, 
+print(tab_wavechngdist_recEE,include.rownames=T, hline.after= c(nrow(tab_wavechngdist_recEE)), 
+      add.to.row=rowtitles, file="./Figures/wavechngdist_recEE.tex")
+
+tab_wavechngdist_recEUUE <- xtable(tab_wavechngdist_recEUUE, label="tab:wavechngdistEUE_recEE", digits=2, 
                                align="l|l|lllll", caption="Distribution of earnings changes among those transitioning through unemployment")
-print(tab_chngdist_recEUUE,include.rownames=T, hline.after= c(nrow(tab_chngdist_recEUUE)), 
-      add.to.row=rowtitles, file="./Figures/chngdist_recEUUE.tex")
+print(tab_wavechngdist_recEUUE,include.rownames=T, hline.after= c(nrow(tab_wavechngdist_recEUUE)), 
+      add.to.row=rowtitles, file="./Figures/wavechngdist_recEUUE.tex")
 
 
 # Are these the same distributions ? -----------------------------------
@@ -347,17 +297,17 @@ print(tab_chngdist_recEUUE,include.rownames=T, hline.after= c(nrow(tab_chngdist_
 
 
 # first do KS test with each subsample 
-wagechanges[ , s1:= T]
-wagechanges[ , s2:= ifelse(switchedOcc==F, T,F) ]
-wagechanges[ , s3:= ifelse(switchedOcc==T, T,F)]
+DTseam[ , s1:= T]
+DTseam[ , s2:= ifelse(switchedOcc==F, T,F) ]
+DTseam[ , s3:= ifelse(switchedOcc==T, T,F)]
 #expansion
-wagechanges[ , s4:= ifelse(recIndic == F,T,F)]
-wagechanges[ , s5:= ifelse(recIndic == F & switchedOcc==F,T,F)]
-wagechanges[ , s6:= ifelse(recIndic == F & switchedOcc==T,T,F)]
+DTseam[ , s4:= ifelse(recIndic == F,T,F)]
+DTseam[ , s5:= ifelse(recIndic == F & switchedOcc==F,T,F)]
+DTseam[ , s6:= ifelse(recIndic == F & switchedOcc==T,T,F)]
 #recession
-wagechanges[ , s7 := ifelse(recIndic == T, T,F)]
-wagechanges[ , s8 := ifelse(recIndic == T & switchedOcc==F,T,F)]
-wagechanges[ , s9 := ifelse(recIndic == T & switchedOcc==T,T,F)]
+DTseam[ , s7 := ifelse(recIndic == T, T,F)]
+DTseam[ , s8 := ifelse(recIndic == T & switchedOcc==F,T,F)]
+DTseam[ , s9 := ifelse(recIndic == T & switchedOcc==T,T,F)]
 
 NS = 9
 
@@ -369,7 +319,7 @@ for(EUEindic in c(F,T)){
 	
 	for( si in seq(1,NS-1)){
 		for(ki in seq(si+1,NS)){
-			kshere <- ks.test( wagechanges[get(paste0("s",si))==T,eval(as.name(wc)) ] , wagechanges[get(paste0("s",ki))==T,eval(as.name(wc))])
+			kshere <- ks.test( DTseam[get(paste0("s",si))==T,eval(as.name(wc)) ] , DTseam[get(paste0("s",ki))==T,eval(as.name(wc))])
 			tab_chngdist_ks[si,ki-1] = kshere$p.value
 		}
 	}
@@ -388,8 +338,8 @@ for(EUEindic in c(F,T)){
 			for(ki in seq(1,NS)){
 				if(si != ki){
 					Finvq <- tab_chngdist_rec[si,qi+1]
-					Nbase <- wagechanges[ get(paste0("s",si))==T, sum(eval(as.name(wc))>0, na.rm=T) ]
-					prob_other <- wagechanges[ get(paste0("s",ki))==T, wtd.mean(eval(as.name(wc)) < Finvq, weights=eval(as.name(wt)), na.rm=T) ]
+					Nbase <- DTseam[ get(paste0("s",si))==T, sum(eval(as.name(wc))>0, na.rm=T) ]
+					prob_other <- DTseam[ get(paste0("s",ki))==T, wtd.mean(eval(as.name(wc)) < Finvq, weights=eval(as.name(wt)), na.rm=T) ]
 					test_tab <- cbind( c( tabqtls[qi], 1.-tabqtls[qi] ), c(prob_other,1.-prob_other) )*Nbase
 					tab_chngdist_moodqtl[si,ki,qi,idx] <- chisq.test(test_tab)$p.value 	
 				}
@@ -406,8 +356,8 @@ for(EUEindic in c(F,T)){
 					}else{
 						Finvq <- tab_chngdist_recEUUE[si,qi+1]
 					}
-					Nbase <- wagechanges[ get(paste0("s",si))==T, sum(eval(as.name(wc))>0, na.rm=T) ]
-					prob_other <- wagechanges[ get(paste0("s",ki))==T, wtd.mean(eval(as.name(wc)) < Finvq, weights=eval(as.name(wt)), na.rm=T) ]
+					Nbase <- DTseam[ get(paste0("s",si))==T, sum(eval(as.name(wc))>0, na.rm=T) ]
+					prob_other <- DTseam[ get(paste0("s",ki))==T, wtd.mean(eval(as.name(wc)) < Finvq, weights=eval(as.name(wt)), na.rm=T) ]
 					test_tab <- cbind( c( tabqtls[qi], 1.-tabqtls[qi] ), c(prob_other,1.-prob_other) )*Nbase
 					tab_chngdistEUUE_moodqtl[si,ki,qi,idx] <- chisq.test(test_tab)$p.value 	
 				}
@@ -421,8 +371,8 @@ for( qi in seq(1,length(tabqtls)) ){
 		for(ki in seq(1,NS)){
 			if(si != ki){
 				Finvq <- tab_chngdist_recEE[si,qi+1]
-				Nbase <- wagechanges[ get(paste0("s",si))==T, sum(wagechange>0, na.rm=T) ]
-				prob_other <- wagechanges[ get(paste0("s",ki))==T, wtd.mean(wagechange < Finvq, weights=balanceweight, na.rm=T) ]
+				Nbase <- DTseam[ get(paste0("s",si))==T, sum(wagechange>0, na.rm=T) ]
+				prob_other <- DTseam[ get(paste0("s",ki))==T, wtd.mean(wagechange < Finvq, weights=balanceweight, na.rm=T) ]
 				test_tab <- cbind( c( tabqtls[qi], 1.-tabqtls[qi] ), c(prob_other,1.-prob_other) )*Nbase
 				tab_chngdistEE_moodqtl[si,ki,qi] <- chisq.test(test_tab)$p.value 	
 			}
@@ -472,7 +422,7 @@ for(qi in seq(1,length(tabqtls))) {
 }
 
 
-wagechanges[ , c("s1","s2","s3","s4","s5","s6","s7","s8","s9"):=NULL]
+DTseam[ , c("s1","s2","s3","s4","s5","s6","s7","s8","s9"):=NULL]
 
 # Quantile Regressions ---------------
 
