@@ -118,13 +118,13 @@ for(ri in seq(1,nrow(tab_waveqtldec))){
 }
 
 #output it to tables
-tab_chngvarqtldec <- data.table(rbind(tab_wavevardec[1,],tab_waveqtldec[1:Ndifs,],tab_wavevardec[3,]) )
-names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EU,UE","EUE")
+tab_chngvarqtldec <- data.table(rbind(tab_wavevardec[1,],tab_waveqtldec[1:Ndifs,]) )
+names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EU,UE")
 #rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
 rownames(tab_chngvarqtldec) <- c("Variance","0.95-0.05","0.9-0.1","0.75-0.25", "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
 
 tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=2, 
-                            align="l|l|lll", caption="Decomposition of earnings change dispersion \\label{tab:wavechngvarqtldec}")
+                            align="l|l|ll", caption="Decomposition of earnings change dispersion \\label{tab:wavechngvarqtldec}")
 print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file="./Figures/wavechngvarqtldec.tex")
 
 
@@ -147,7 +147,7 @@ for (rI in c(F,T)){
   Nqtls <-length(tot51025qtl)
   Ndifs <- Nqtls/2
   
-  tab_waveqtldec <- array(NA_real_,dim=c(Ndifs+1,4))
+  tab_waveqtldec <- array(NA_real_,dim=c(Ndifs+1,3))
   
   qtlshere <- tot51025qtl
   for(rri in seq(1,Ndifs)){
@@ -166,17 +166,17 @@ for (rI in c(F,T)){
   }
   
   #output it to tables
-  tab_chngvarqtldec <- data.table(rbind(tab_wavevardec[1,],tab_waveqtldec[1:Ndifs,],tab_wavevardec[3,],tab_waveqtldec[(2+Ndifs):nrow(tab_waveqtldec),]) )
+  tab_chngvarqtldec <- data.table(rbind(tab_wavevardec[1,],tab_waveqtldec[1:Ndifs,]) )
   names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EU,UE")
   #rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
-  rownames(tab_chngvarqtldec) <- c("Variance","0.95-0.05","0.9-0.1","0.75-0.25", "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
+  rownames(tab_chngvarqtldec) <- c("Variance","0.95-0.05","0.9-0.1","0.75-0.25")
   
   if(rI){
     tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=2, 
-                                align="l|l|lll", caption="Decomposition of earnings change dispersion, recession \\label{tab:wavechngvarqtldec_rec}")
+                                align="l|l|ll", caption="Decomposition of earnings change dispersion, recession \\label{tab:wavechngvarqtldec_rec}")
   }else{
     tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=2, 
-                                align="l|l|lll", caption="Decomposition of earnings change dispersion, expansion \\label{tab:wavechngvarqtldec_exp}")
+                                align="l|l|ll", caption="Decomposition of earnings change dispersion, expansion \\label{tab:wavechngvarqtldec_exp}")
   }
   print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,Ndifs+1, nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file=paste0("./Figures/wavechngvarqtldec_rec",rI,".tex"))
   
