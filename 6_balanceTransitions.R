@@ -76,7 +76,6 @@ recallRecodeShorTerm <- function(DF){
 
 DTall <- readRDS("./Data/DTall_5.RData")
 
-
 # sum weights for UE, EU, and EE
 UEreadweight <- DTall[UE==T & !is.na(wagechange) & is.finite(stintid), sum(wpfinwgt, na.rm = TRUE)]
 EUreadweight <- DTall[EU==T & !is.na(wagechange) & is.finite(stintid), sum(wpfinwgt, na.rm = TRUE)]
@@ -94,7 +93,6 @@ EEnorecallweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE
 #recall rate:
 1.-UEnorecallweight/UEreadweight
 
-#saveRDS(DTall,"./Data/DTall_6.RData")
 #some rates: diagnostic
 sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
@@ -109,10 +107,14 @@ sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DT
 sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)],na.rm=T)/sum(DTall$wpfinwgt[!is.na(DTall$unempdur)],na.rm=T)
 #end diagnostic
 
+
 #save only the seams as a 'wave-change' set ---------------------
 DTseam <- subset(DTall, seam==T)
+DTseam[ is.finite(EE_wave) &is.finite(EU_wave)&is.finite((UE_wave)) , ]
 DTseam[ , maxunempdur:= maxunempdur_wave]
 DTseam[ , c("maxunempdur_wave","EE","EU","UE","switchedOcc"):= NULL]
+#do not allow stayers to have larger than 200% change in earnings plus or minus
+DTseam[ EE_wave==F&EU_wave==F&UE_wave==F, wagechange_wave := ifelse( abs(wagechange_wave)>2., NA,wagechange_wave )]
 #cancel the recalled transitions
 DTseam[ , recalled_wave:=any(recalled,na.rm=T), by=list(id,wave)]
 DTseam[ recalled_wave==T&UE_wave==T, UE_wave:=NA]

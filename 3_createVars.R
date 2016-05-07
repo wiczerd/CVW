@@ -114,16 +114,20 @@ DTall[seam==T, EE_wave:= lfstat==1L & shift(lfstat_wave,1,type="lead")==1L & job
 DTall[ is.na(EE_wave) , EE_wave:=F]
 DTall[ , EE_wave := any(EE_wave==T, na.rm=T), by=list(id,wave)]
 
-DTall[ seam==T , EE_nextwave := lfstat_wave==1L & shift(lfstat,1,type="lag")==1L & job != shift(job, 1, type = "lag"), by=id]
-DTall[ is.na(EE_nextwave) , EE_nextwave:=F]
-DTall[ , EE_nextwave := any(EE_nextwave==T, na.rm=T), by=list(id,wave)]
+DTall[ seam==T , EE_lastwave := lfstat_wave==1L & shift(lfstat,1,type="lag")==1L & job != shift(job, 1, type = "lag"), by=id]
+DTall[ is.na(EE_lastwave) , EE_lastwave:=F]
+DTall[ , EE_lastwave := any(EE_lastwave==T, na.rm=T), by=list(id,wave)]
+DTall[ seam==T, EE_nextwave := shift(EE_wave,1,type="lead"), by=id]
+DTall[ seam==T, EE_nextwave := any(EE_nextwave,na.rm = T), by=list(id,wave)]
 DTall[ , EE_maxwave := any(EE==T, na.rm=T), by=list(id,wave)]
 
-DTall[ , EE_nomatch := EE ==T & EE_wave ==F & EE_nextwave==F]
-DTall[ , EE_nomatch :=any(EE_nomatch), by=list(id,wave)]
-DTall[EE_nomatch==T , EE_wave := NA]
-#DTall[ seam==T & EE_nomatch==T, EE_wave := NA]
-#DTall[ seam==F & EE_nomatch==T, EE_wave := NA]
+DTall[ seam==T & EE ==T, EE_nomatch := (EE_wave ==F) ]
+DTall[ seam==F & EE ==T, EE_lastnomatch := (EE_lastwave ==F) ]
+DTall[ , EE_lastnomatch := any(EE_lastnomatch==T , na.rm=T), by=list(id,wave)]
+DTall[ seam==T , EE_nomatch := ifelse( shift(EE_lastnomatch ==T,1, type="lead"),T, EE_nomatch )]
+DTall[ , EE_nomatch := any(EE_nomatch==T, na.rm=T), by=list(id,wave)]
+
+DTall[ EE_nomatch==T & EE_wave !=T, EE_wave := NA]
 
 
 # only EE if nothing else
@@ -171,7 +175,8 @@ sum(DTall$wpfinwgt[DTall$UE], na.rm=T)
 
 sum(DTall$wpfinwgt[DTall$EE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
-sum(DTall$wpfinwgt[DTall$UE & DTall$stintid>0 & is.finite(DTall$stintid)], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat==2 & is.finite(DTall$stintid)], na.rm=T)
+sum(DTall$wpfinwgt[DTall$UE & DTall$stintid>0 & is.finite(DTall$stintid)], na.rm=T)/
+	sum(DTall$wpfinwgt[DTall$lfstat==2 & is.finite(DTall$stintid)], na.rm=T)
 
 sum(DTall$wpfinwgt[DTall$EE & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EU], na.rm=T)

@@ -35,8 +35,8 @@ DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
 # select toKeep columns only
 DTseam <- DTseam[, toKeep_wave, with = FALSE]
 DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
-
 DTseam<-DTseam[ is.finite(EE_wave)&is.finite(EU_wave)&is.finite(UE_wave),]
+
 tabqtls <- c(.1,.25,.5,.75,.9)
 tN <- (length(tabqtls)+1)
 
@@ -44,8 +44,8 @@ tab_wavedist <- array(0., dim=c(9,length(tabqtls)+1))
 
 tab_wavedist[1,1]    <- DTseam[                                   ,     wtd.mean(wagechange_wave,na.rm=T,weights=waveweight)]
 tab_wavedist[1,2:tN] <- DTseam[                                   , wtd.quantile(wagechange_wave,na.rm=T,weights=waveweight, probs=tabqtls)]
-tab_wavedist[2,1]    <- DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T),     wtd.mean(wagechange_wave,na.rm=T,weights=waveweight)]
-tab_wavedist[2,2:tN] <- DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T), wtd.quantile(wagechange_wave,na.rm=T,weights=waveweight, probs=tabqtls)]
+tab_wavedist[2,1]    <- DTseam[  EU_wave==F&UE_wave==F&EE_wave==F ,     wtd.mean(wagechange_wave,na.rm=T,weights=waveweight)]
+tab_wavedist[2,2:tN] <- DTseam[  EU_wave==F&UE_wave==F&EE_wave==F , wtd.quantile(wagechange_wave,na.rm=T,weights=waveweight, probs=tabqtls)]
 tab_wavedist[3,1]    <- DTseam[  EU_wave==T|UE_wave==T|EE_wave==T ,     wtd.mean(wagechange_wave,na.rm=T,weights=waveweight)]
 tab_wavedist[3,2:tN] <- DTseam[  EU_wave==T|UE_wave==T|EE_wave==T , wtd.quantile(wagechange_wave,na.rm=T,weights=waveweight, probs=tabqtls)]
 #expansion/recession

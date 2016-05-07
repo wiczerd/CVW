@@ -71,6 +71,9 @@ DTall[, wagechange_all := wagechange]
 DTall[job == shift(job, 1, type = "lead") & job > 0, wagechange_all := wagechange_stayer, by = id]
 DTall[(EE | UE | EU), wagechange_all := wagechange]
 
+#do not allow stayers to have larger than 200% change in earnings plus or minus
+DTall[ EE==F&EU==F&UE==F, wagechange_all := ifelse( abs(wagechange_all)>2., NA,wagechange_all )]
+
 # create occwagechange variable
 DTall[, occwagechange := as.numeric(ifelse(switchedOcc & !shift(switchedOcc, 1, type = "lag"), 
 				nextoccwage - shift(occwage, 1, type = "lag"), 
