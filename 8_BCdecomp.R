@@ -18,7 +18,7 @@ wagechanges <- subset(wagechanges, select=keep)
 
 mmtabchngqtls <- seq(0.1,0.9,0.1)
 mmtaballqtls  <- c(seq(.01,.1,.03),seq(0.25,0.75,0.25),seq(.9,.99,.03))
-Niter = 10
+Niter = 50
 
 DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
 # wcDF : data set
@@ -80,8 +80,8 @@ DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
 								wtd.quantile(wc, wt, probs = seq(0.01,0.99,by=0.005)))
 	}
 	# allocate lists, and will grow them later
-	distRecS <-list(distExp) 
-	invdistRecS <-list(invdistExp)
+	distRecS <-list(distRec) 
+	invdistRecS <-list(invdistRec)
 	distExpS <-list(distExp)
 	invdistExpS <-list(invdistExp)
 	
@@ -204,8 +204,9 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	if(NS == 5 | NS==7){
 		qtlgrid <- mmtaballqtls
 	}else{
-		qtlgrid <- mmtabchngqtls
+		qtlgrid <- c(0.01,0.05,mmtabchngqtls,0.95,0.99)
 	}
+	#qtlgrid <- seq(0.01,0.99,0.01)
 	
 	betaptsR <- matrix(0.,nrow = length(qtlgrid),ncol=NS)
 	betaptsE <- matrix(0.,nrow = length(qtlgrid),ncol=NS)
@@ -226,23 +227,24 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	betaE <- array(0.,dim=c(NS,length(qtlgridOut)) )
 	betaR <- array(0.,dim=c(NS,length(qtlgridOut)) )
 	for(si in seq(1,NS)){
-		betaE[si,] <- approxExtrap(x=qtlgrid, y=betaptsE[,si], xout=qtlgridOut)$y
-		betaR[si,] <- approxExtrap(x=qtlgrid, y=betaptsR[,si], xout=qtlgridOut)$y
+		betaE[si,] <- spline(x=qtlgrid, y=betaptsE[,si], method="hyman", xout=qtlgridOut)$y
+		betaR[si,] <- spline(x=qtlgrid, y=betaptsR[,si], method="hyman", xout=qtlgridOut)$y
 	}
 	
 	qtlgrid <- qtlgridOut
 	nsamp = floor(nrow(wcExp)/length(qtlgrid))
 
 	seedint = 941987
+	set.seed(seedint)
 	# initialize distributions:
-	wc_cf_pctile <- array(0.,dim=length(qtlgridOut))
-	wc_cf_sw_pctile <- array(0.,dim=length(qtlgridOut))
-	wc_cf_un_pctile <- array(0.,dim=length(qtlgridOut))
-	wc_rec_pctile <- array(0.,dim=length(qtlgridOut))
-	wc_exp_pctile <- array(0.,dim=length(qtlgridOut))
+	wc_cf_pctile <- array(0.,dim=c(length(qtlgridOut),Niter))
+	wc_cf_sw_pctile <- array(0.,dim=c(length(qtlgridOut),Niter))
+	wc_cf_un_pctile <- array(0.,dim=c(length(qtlgridOut),Niter))
+	wc_rec_pctile <- array(0.,dim=c(length(qtlgridOut),Niter))
+	wc_exp_pctile <- array(0.,dim=c(length(qtlgridOut),Niter))
 	
 	for( iter in seq(1,Niter)){	
-	#	set.seed(seedint + 13*iter)
+		set.seed(seedint + 13*iter)
 		qi = 1
 		wc_cf <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution
 		for(q in qtlgrid){
@@ -255,8 +257,6 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 						betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
 						betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 + 
 						betaE[7,qi]*s7]
-				wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt),
-					  mean(s)]
 			}else if(NS==4){
 				wc_cf[ ((qi-1)*nsamp+1):(qi*nsamp) ] <- wcRec[sample(nrow(wcRec), nsamp ,replace =T, prob=wt), 
 						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
@@ -270,9 +270,9 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_cf_pctile <- quantile(wc_cf,probs=qtlgrid,na.rm=T)/Niter + wc_cf_pctile
+		wc_cf_pctile[,iter] <- quantile(wc_cf,probs=qtlgrid,na.rm=T)
 		rm(wc_cf)
-	#	set.seed(seedint + 13*iter)
+		set.seed(seedint + 13*iter)
 		qi=1
 		wc_cf_sw <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution - only switch
 		for(q in qtlgrid){
@@ -298,10 +298,10 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_cf_sw_pctile <- quantile(wc_cf_sw,probs=qtlgrid,na.rm=T)/Niter + wc_cf_sw_pctile
+		wc_cf_sw_pctile[,iter] <- quantile(wc_cf_sw,probs=qtlgrid,na.rm=T)
 		rm(wc_cf_sw)
 		
-	#	set.seed(seedint + iter)
+		set.seed(seedint + 13*iter)
 		qi=1
 		wc_cf_un <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution - only unemployment
 		for(q in qtlgrid){
@@ -327,10 +327,10 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_cf_un_pctile <- quantile(wc_cf_un,probs=qtlgrid,na.rm=T)/Niter + wc_cf_un_pctile
+		wc_cf_un_pctile[,iter] <- quantile(wc_cf_un,probs=qtlgrid,na.rm=T)
 		rm(wc_cf_un)
 		
-	#	set.seed(seedint + iter)
+		set.seed(seedint + 13*iter)
 		qi=1
 		wc_rec <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution - only unemployment
 		for(q in qtlgrid){
@@ -356,10 +356,10 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_rec_pctile <- quantile(wc_rec,probs=qtlgrid,na.rm=T)/Niter + wc_rec_pctile
+		wc_rec_pctile[,iter] <- quantile(wc_rec,probs=qtlgrid,na.rm=T)
 		rm(wc_rec)
 	
-	#	set.seed(seedint + iter)
+		set.seed(seedint + 13*iter)
 		qi=1
 		wc_exp <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution - only unemployment
 		for(q in qtlgrid){
@@ -385,7 +385,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_exp_pctile <- quantile(wc_exp,probs=qtlgrid,na.rm=T)/Niter + wc_exp_pctile
+		wc_exp_pctile[,iter] <- quantile(wc_exp,probs=qtlgrid,na.rm=T)
 		rm(wc_exp)
 	}	
 	
@@ -519,8 +519,8 @@ dist_sim_exp  <- MM_waveall_betaE_betaR_cf$wc_exp  [mmtaballqtls*100]
 
 #dist_pct <- (dist_cf - dist_exp)/(dist_rec - dist_exp)
 dist_pct <- (dist_cf - dist_sim_exp)/(dist_sim_rec - dist_sim_exp)
-dist_pct_sw <- (dist_cf_sw - dist_exp)/(dist_rec - dist_exp)
-dist_pct_un <- (dist_cf_un - dist_exp)/(dist_rec - dist_exp)
+dist_pct_sw <- (dist_cf_sw - dist_sim_exp)/(dist_sim_rec - dist_sim_exp)
+dist_pct_un <- (dist_cf_un - dist_sim_exp)/(dist_sim_rec - dist_sim_exp)
 
 wcExp <- subset(DTseamchng,recIndic_wave==F)
 wcRec <- subset(DTseamchng,recIndic_wave==T)
