@@ -50,6 +50,11 @@ coc1990_occ1990 <- readRDS(paste0(xwalkdir,"/coc1990_occ1990.RData"))
 CIC2002_CIC2000<- readRDS(paste0(xwalkdir,"/CIC2002_2_CIC2000.RData"))
 CIC2000_2_CIC1990<- readRDS(paste0(xwalkdir,"/CIC2000_2_CIC1990.RData"))
 
+# get unemployment data
+
+CPSunempRt <- readRDS("./InputData/CPSunempRt.RData")
+CPSunempRt$unrt <- CPSunempRt$unrt/100
+
 
 # 1996 panel --------------------------------------------------------------
 
@@ -66,6 +71,9 @@ DT96[, c("year", "month") := NULL]
 DT96[, recIndic := (date > recDates[1] & date < recDates[2]) | 
      		   (date > recDates[3] & date < recDates[4])]
 
+#add unemployment
+DT96 <- merge(DT96, CPSunempRt, by = "date", all.x = TRUE)
+
 # add PCE data
 DT96 <- merge(DT96, PCE, by = "date", all.x = TRUE)
 
@@ -79,6 +87,7 @@ setnames(DT96, "occ1990", "occ")
 #recode industry as ind23
 DT96[, ind:= ind23]
 DT96[, ind23:=NULL]
+
 
 saveRDS(DT96, file("./Data/DT96_1.RData"))
 rm(DT96)
@@ -101,8 +110,8 @@ DT01[, recIndic := (date > recDates[1] & date < recDates[2]) |
 # add PCE data
 DT01 <- merge(DT01, PCE, by = "date", all.x = TRUE)
 
-# add unemployment data
-# FILL IN LATER
+#add unemployment
+DT01 <- merge(DT01, CPSunempRt, by = "date", all.x = TRUE)
 
 # add soc2d codes
 DT01[, coc90 := occ]
@@ -113,6 +122,7 @@ setnames(DT01, "occ1990", "occ")
 #recode industry as ind23
 DT01[, ind:= ind23]
 DT01[, ind23:=NULL]
+
 
 saveRDS(DT01, file("./Data/DT01_1.RData"))
 rm(DT01)
@@ -135,8 +145,9 @@ DT04[, recIndic := (date > recDates[1] & date < recDates[2]) |
 # add PCE data
 DT04 <- merge(DT04, PCE, by = "date", all.x = TRUE)
 
-# add unemployment data
-# FILL IN LATER
+#add unemployment
+DT04 <- merge(DT04, CPSunempRt, by = "date", all.x = TRUE)
+
 
 # add soc2d codes
 DT04[, coc2000 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
@@ -175,8 +186,8 @@ DT08[, recIndic := (date > recDates[1] & date < recDates[2]) |
 # add PCE data
 DT08 <- merge(DT08, PCE, by = "date", all.x = TRUE)
 
-# add unemployment data
-# FILL IN LATER
+#add unemployment
+DT08 <- merge(DT08, CPSunempRt, by = "date", all.x = TRUE)
 
 # add soc2d codes
 DT08[, coc2000 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
