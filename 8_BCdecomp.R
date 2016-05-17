@@ -18,7 +18,7 @@ wagechanges <- subset(wagechanges, select=keep)
 
 mmtabchngqtls <- seq(0.1,0.9,0.1)
 mmtaballqtls  <- c(seq(.01,.1,.03),seq(0.25,0.75,0.25),seq(.9,.99,.03))
-Niter = 50
+Nsims = 50
 
 DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
 # wcDF : data set
@@ -237,14 +237,14 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	seedint = 941987
 	set.seed(seedint)
 	# initialize distributions:
-	wc_cf_pctile <- array(0.,dim=c(length(qtlgridOut),Niter))
-	wc_cf_sw_pctile <- array(0.,dim=c(length(qtlgridOut),Niter))
-	wc_cf_un_pctile <- array(0.,dim=c(length(qtlgridOut),Niter))
-	wc_rec_pctile <- array(0.,dim=c(length(qtlgridOut),Niter))
-	wc_exp_pctile <- array(0.,dim=c(length(qtlgridOut),Niter))
+	wc_cf_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
+	wc_cf_sw_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
+	wc_cf_un_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
+	wc_rec_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
+	wc_exp_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
 	
-	for( iter in seq(1,Niter)){	
-		set.seed(seedint + 13*iter)
+	for( simiter in seq(1,Nsims)){	
+		set.seed(seedint + 13*simiter)
 		qi = 1
 		wc_cf <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution
 		for(q in qtlgrid){
@@ -270,9 +270,9 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_cf_pctile[,iter] <- quantile(wc_cf,probs=qtlgrid,na.rm=T)
+		wc_cf_pctile[,simiter] <- quantile(wc_cf,probs=qtlgrid,na.rm=T)
 		rm(wc_cf)
-		set.seed(seedint + 13*iter)
+		set.seed(seedint + 13*simiter)
 		qi=1
 		wc_cf_sw <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution - only switch
 		for(q in qtlgrid){
@@ -298,10 +298,10 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_cf_sw_pctile[,iter] <- quantile(wc_cf_sw,probs=qtlgrid,na.rm=T)
+		wc_cf_sw_pctile[,simiter] <- quantile(wc_cf_sw,probs=qtlgrid,na.rm=T)
 		rm(wc_cf_sw)
 		
-		set.seed(seedint + 13*iter)
+		set.seed(seedint + 13*simiter)
 		qi=1
 		wc_cf_un <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution - only unemployment
 		for(q in qtlgrid){
@@ -327,10 +327,10 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_cf_un_pctile[,iter] <- quantile(wc_cf_un,probs=qtlgrid,na.rm=T)
+		wc_cf_un_pctile[,simiter] <- quantile(wc_cf_un,probs=qtlgrid,na.rm=T)
 		rm(wc_cf_un)
 		
-		set.seed(seedint + 13*iter)
+		set.seed(seedint + 13*simiter)
 		qi=1
 		wc_rec <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution - only unemployment
 		for(q in qtlgrid){
@@ -356,10 +356,10 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_rec_pctile[,iter] <- quantile(wc_rec,probs=qtlgrid,na.rm=T)
+		wc_rec_pctile[,simiter] <- quantile(wc_rec,probs=qtlgrid,na.rm=T)
 		rm(wc_rec)
 	
-		set.seed(seedint + 13*iter)
+		set.seed(seedint + 13*simiter)
 		qi=1
 		wc_exp <- matrix(NA, nrow=nsamp*length(qtlgrid),ncol=1) #storing the counter-factual distribution - only unemployment
 		for(q in qtlgrid){
@@ -385,7 +385,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_exp_pctile[,iter] <- quantile(wc_exp,probs=qtlgrid,na.rm=T)
+		wc_exp_pctile[,simiter] <- quantile(wc_exp,probs=qtlgrid,na.rm=T)
 		rm(wc_exp)
 	}	
 	
@@ -485,10 +485,10 @@ print(MMEUE_tab,include.rownames=F, hline.after= c(0,nrow(MMEUE_tab)), file="./F
 
 ks.test(wcRec$wagechange_EUE,wcExp$wagechange_EUE,alternative = "greater")
 
-
-## Seams version -------------------------------
 rm(list = c("wcRec","wcExp"))
+## Seams version -------------------------------
 
+library(ggplot2)
 DTseam <- readRDS("./Data/DTseam.RData")
 
 toKeep <- c("waveweight","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","recIndic_wave")
@@ -509,13 +509,29 @@ MM_waveall_betaE_betaR_cf <- MMdecomp(DTseam,7,"recIndic_wave","wagechange_wave"
 
 wcExp <- subset(DTseam,recIndic_wave==F)
 wcRec <- subset(DTseam,recIndic_wave==T)
-dist_exp      <- wcExp[ , wtd.quantile(wagechange_wave,probs=mmtaballqtls,weights=waveweight, na.rm=T)]
-dist_rec      <- wcRec[ , wtd.quantile(wagechange_wave,probs=mmtaballqtls,weights=waveweight, na.rm=T)]
-dist_cf       <- MM_waveall_betaE_betaR_cf$wc_cf[mmtaballqtls*100] 
-dist_cf_sw    <- MM_waveall_betaE_betaR_cf$wc_cf_un[mmtaballqtls*100]
-dist_cf_un    <- MM_waveall_betaE_betaR_cf$wc_cf_sw[mmtaballqtls*100]
-dist_sim_rec  <- MM_waveall_betaE_betaR_cf$wc_rec  [mmtaballqtls*100]
-dist_sim_exp  <- MM_waveall_betaE_betaR_cf$wc_exp  [mmtaballqtls*100]
+dist_exp      <- wcExp[ , wtd.quantile(wagechange_wave,probs=seq(0.01,.99,0.01),weights=waveweight, na.rm=T)]
+dist_rec      <- wcRec[ , wtd.quantile(wagechange_wave,probs=seq(0.01,.99,0.01),weights=waveweight, na.rm=T)]
+dist_cf       <- rowMeans(MM_waveall_betaE_betaR_cf$wc_cf   )
+dist_cf_sw    <- rowMeans(MM_waveall_betaE_betaR_cf$wc_cf_un)
+dist_cf_un    <- rowMeans(MM_waveall_betaE_betaR_cf$wc_cf_sw)
+dist_sim_rec  <- rowMeans(MM_waveall_betaE_betaR_cf$wc_rec  )
+dist_sim_exp  <- rowMeans(MM_waveall_betaE_betaR_cf$wc_exp  )
+
+#take decile averages
+dec_cf  <- array(0.,dim = 10)
+dec_exp <- array(0.,dim = 10)
+dec_rec <- array(0.,dim = 10)
+dec_exp_dat <- array(0.,dim = 10)
+dec_rec_dat <- array(0.,dim = 10)
+for(di in seq(1,10,1)){
+	dec_cf [di] <- mean(dist_cf     [ ((di-1)*10+1):min(di*10,99)])
+	dec_rec[di] <- mean(dist_sim_rec[ ((di-1)*10+1):min(di*10,99)])
+	dec_exp[di] <- mean(dist_sim_exp[ ((di-1)*10+1):min(di*10,99)])
+	dec_rec_dat[di] <- mean(dist_rec[ ((di-1)*10+1):min(di*10,99)])
+	dec_exp_dat[di] <- mean(dist_exp[ ((di-1)*10+1):min(di*10,99)])	
+}
+
+spn_dif_cf_exp <- approx(seq(0.05,0.95,0.1), (dec_cf-dec_exp),xout=seq(0.05,0.95,0.01))$y
 
 #dist_pct <- (dist_cf - dist_exp)/(dist_rec - dist_exp)
 dist_pct <- (dist_cf - dist_sim_exp)/(dist_sim_rec - dist_sim_exp)
@@ -526,11 +542,11 @@ wcExp <- subset(DTseamchng,recIndic_wave==F)
 wcRec <- subset(DTseamchng,recIndic_wave==T)
 distchng_exp    <- wcExp[, wtd.quantile(wagechange_wave,probs=mmtabchngqtls,weights=waveweight, na.rm=T)]
 distchng_rec    <- wcRec[, wtd.quantile(wagechange_wave,probs=mmtabchngqtls,weights=wcRec$allwt, na.rm=T)]
-distchng_sim_rec<- MM_wavechng_betaE_betaR_cf$wc_rec[mmtabchngqtls*100]
-distchng_sim_exp<- MM_wavechng_betaE_betaR_cf$wc_exp[mmtabchngqtls*100]
-distchng_cf     <- MM_wavechng_betaE_betaR_cf$wc_cf[mmtabchngqtls*100]
-distchng_cf_sw  <- MM_wavechng_betaE_betaR_cf$wc_cf_sw[mmtabchngqtls*100]
-distchng_cf_un  <- MM_wavechng_betaE_betaR_cf$wc_cf_un[mmtabchngqtls*100] 
+distchng_sim_rec<- rowMeans(MM_wavechng_betaE_betaR_cf$wc_rec)
+distchng_sim_exp<- rowMeans(MM_wavechng_betaE_betaR_cf$wc_exp)
+distchng_cf     <- rowMeans(MM_wavechng_betaE_betaR_cf$wc_cf)
+distchng_cf_sw  <- rowMeans(MM_wavechng_betaE_betaR_cf$wc_cf_sw)
+distchng_cf_un  <- rowMeans(MM_wavechng_betaE_betaR_cf$wc_cf_un)
 distchng_pct    <- (distchng_cf - distchng_exp)/(distchng_rec - distchng_exp)
 distchng_pct    <- (distchng_cf - distchng_sim_exp)/(distchng_sim_rec - distchng_sim_exp)
 distchng_pct_sw <- (distchng_cf_sw - distchng_exp)/(distchng_rec - distchng_exp)
