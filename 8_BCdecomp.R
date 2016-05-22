@@ -18,7 +18,7 @@ wagechanges <- subset(wagechanges, select=keep)
 
 mmtabchngqtls <- seq(0.1,0.9,0.1)
 mmtaballqtls  <- c(seq(.01,.1,.03),seq(0.25,0.75,0.25),seq(.9,.99,.03))
-Nsims = 50
+Nsims = 10
 
 DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
 # wcDF : data set

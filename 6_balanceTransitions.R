@@ -107,6 +107,16 @@ sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DT
 sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)],na.rm=T)/sum(DTall$wpfinwgt[!is.na(DTall$unempdur)],na.rm=T)
 #end diagnostic
 
+DTall[ , maxwave := max(wave,na.rm=T), by=id ]
+DTall[ , EE_wave:= ifelse(wave==maxwave, NA, EE_wave), by=id]
+
+#do some re-weighting to take out seasonality and trend in transitions
+EEdata <- DTall[ seam==T & lfstat_wave ==1, wtd.mean(EE_wave, weights = wpfinwgt), by=date]
+EEdata[, month :=factor(format(date, "%B" ),
+	   levels = month.name)]
+EEdata[, EErt:= V1]
+EEdata[, V1:=NULL]
+EEdata <- cbind( EEdata,DTall[ seam==T & lfstat_wave ==1, sum(wpfinwgt), by=date]$V1 )
 
 #save only the seams as a 'wave-change' set ---------------------
 DTseam <- subset(DTall, seam==T)
