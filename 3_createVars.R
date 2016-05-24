@@ -24,7 +24,13 @@ DTall <- readRDS("./Data/DTall_2.RData")
 
 setkey(DTall, id, date)
 
-DTall[, linked := is.finite(lfstat) & is.finite( shift(lfstat, 1, type = "lead") ) & lfstat<=3 & shift(lfstat, 1, type = "lead")<=3, by=id]
+DTall[, linked := is.finite(lfstat) & is.finite( shift(lfstat, 1, type = "lead") )
+	  #	& is.finite(earnm) & is.finite(shift(earnm,type="lead"))
+	  	, by=id]
+DTall[, linked_EE := is.finite(lfstat) & is.finite( shift(lfstat, 1, type = "lead") )
+	  #	& is.finite(earnm) & is.finite(shift(earnm,type="lead"))
+	  	& lfstat==1 & shift(lfstat,type="lead")==1, by=id]
+
 # create switchedJob dummy
 #DTall[, switchedJob := (job != shift(job, 1, type = "lead")) &
 #    	(shift(job, 1, type = "lag") != shift(job, 1, type = "lead")), by = id]
@@ -50,7 +56,7 @@ DTall[linked==T, EE := lfstat == 1 & shift(lfstat, 1, type = "lead") == 1 & swit
 DTall[linked==T, EU := lfstat == 1 & shift(lfstat, 1, type = "lead") == 2 & switchedJob==T, by = id]
 DTall[linked==T, UE := lfstat == 2 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T, by = id]
 #an alternative measure of EE
-DTall[linked==T, EE_alt := shift(estlemp,type="lead")==F, by = id]
+DTall[linked==T, EE_alt := shift(estlemp,type="lead")==F & lfstat==1 & shift(lfstat,type="lead")==1, by = id]
 # take stint ID into EU and clean it:
 DTall[, fstintid:= shift(stintid, 1, type = "lead"), by = id]
 DTall[EU==T, stintid := fstintid, by=id]
@@ -87,7 +93,7 @@ DTall[, HSCol := (educ >= 4) + (educ >= 2)]
 
 
 # compute seam-to-seam status change variable ----------------------------
-setkey(DTall, id,wave,date)
+setkey(DTall, id,wave,date, physical = T)
 DTall[ , seam:= wave != shift(wave,1,type="lead"), by=id ]
 
 DTall[, recIndic_wave := any(recIndic, na.rm=T), by=list(wave,id)]
@@ -97,8 +103,18 @@ DTall[ is.finite(lfstat), lfstat2_wave := any(lfstat==2, na.rm=T), by=list(id,wa
 DTall[ is.finite(lfstat), lfstat_wave := ifelse(lfstat2_wave, 2L, lfstat_wave)] #anytime an unemployment shows up, we count it as such
 DTall[ , lfstat2_wave:=NULL]
 
-DTall[seam==T, linked_wave := is.finite(lfstat_wave) & is.finite( shift(lfstat_wave, 1, type = "lead") ) & lfstat_wave<=3 & shift(lfstat_wave, 1, type = "lead")<=3, by=id]
+DTall[seam==T, linked_wave := is.finite(lfstat_wave) & is.finite( shift(lfstat_wave, 1, type = "lead") ) 
+	 # & is.finite(earnm) & is.finite(shift(earnm, type="lead"))
+	  , by=id]
+
+DTall[seam==T, linked_wave_EE := is.finite(lfstat_wave) & is.finite( shift(lfstat_wave, 1, type = "lead") )
+	 # & is.finite(earnm) & is.finite(shift(earnm,type="lead")) &
+	   & lfstat_wave==1 & shift(lfstat_wave,type="lead")==1, by=id]
+DTall[ , maxwave := max(wave,na.rm=T), by=id]
+DTall[ , minwave := min(wave,na.rm=T), by=id]
+
 DTall[, linked_wave := any(linked_wave==T), by=list(id,wave)]
+DTall[, linked_wave_EE := any(linked_wave_EE==T), by=list(id,wave)]
 
 
 DTall[ linked_wave==T, UE_wave := (lfstat_wave==2L & shift(lfstat_wave,1,type="lead")==1L), by=id] #will only count 1 if seam ==1
@@ -116,6 +132,11 @@ DTall[ linked_wave==T, EE_alt_wave := any(EE_alt_wave), by=list(id,wave)]
 DTall[seam==T & linked_wave==T, EE_wave:= lfstat==1L & shift(lfstat_wave,1,type="lead")==1L & job != shift(job, 1, type = "lead"), by=id]
 #DTall[ is.na(EE_wave) , EE_wave:=F]
 DTall[ , EE_wave := any(EE_wave==T, na.rm=T), by=list(id,wave)]
+
+DTall[ linked_wave!=T, EE_wave := NA]
+DTall[ linked_wave!=T, UE_wave := NA]
+DTall[ linked_wave!=T, EU_wave := NA]
+
 
 DTall[ seam==T & linked_wave==T, EE_lastwave := lfstat_wave==1L & shift(lfstat,1,type="lag")==1L & job != shift(job, 1, type = "lag"), by=id]
 DTall[ is.na(EE_lastwave)           , EE_lastwave:=F]
