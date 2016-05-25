@@ -24,10 +24,14 @@ DTall <- readRDS("./Data/DTall_2.RData")
 
 setkey(DTall, id, date)
 
+DTall[, panelwave := max(wave), by=panelID] #number of waves in a panel
+DTall[ , maxwave:= max(wave), by=id]
 DTall[, linked := is.finite(lfstat) & is.finite( shift(lfstat, 1, type = "lead") )
+	  # & maxwave == panelwave
 	  #	& is.finite(earnm) & is.finite(shift(earnm,type="lead"))
 	  	, by=id]
 DTall[, linked_EE := is.finite(lfstat) & is.finite( shift(lfstat, 1, type = "lead") )
+	  # & maxwave == panelwave
 	  #	& is.finite(earnm) & is.finite(shift(earnm,type="lead"))
 	  	& lfstat==1 & shift(lfstat,type="lead")==1, by=id]
 
@@ -103,33 +107,43 @@ DTall[ is.finite(lfstat), lfstat2_wave := any(lfstat==2, na.rm=T), by=list(id,wa
 DTall[ is.finite(lfstat), lfstat_wave := ifelse(lfstat2_wave, 2L, lfstat_wave)] #anytime an unemployment shows up, we count it as such
 DTall[ , lfstat2_wave:=NULL]
 
+
+DTseams <- DTall[ seam==T, ]
+setkey(DTseams,panelID,id,wave)
+DTseams[ , linked_wave:= is.finite(lfstat_wave) & is.finite( shift(lfstat_wave, type = "lead")), by=id]
+DTseams[lfstat==1L & shift(lfstat_wave,type="lead")==1L , EE_wave := ( job != shift(job, type = "lead")),by=id]
+DTseams[, UE_wave := (lfstat_wave==2L & shift(lfstat_wave,1,type="lead")==1L), by=id]
+DTseams[, EU_wave := (lfstat_wave==1L & shift(lfstat_wave,1,type="lead")==2L), by=id]
+DTseams[, EE_wave := ifelse(EU_wave ==T | UE_wave ==T, F, EE_wave)]
+
+DTall<-merge(DTall, subset(DTseams, select = c("id","date","EE_wave","UE_wave","EU_wave")), by=c("id","date"))
+
+
 DTall[seam==T, linked_wave := is.finite(lfstat_wave) & is.finite( shift(lfstat_wave, 1, type = "lead") ) 
+	   & maxwave == panelwave
 	 # & is.finite(earnm) & is.finite(shift(earnm, type="lead"))
 	  , by=id]
 
 DTall[seam==T, linked_wave_EE := is.finite(lfstat_wave) & is.finite( shift(lfstat_wave, 1, type = "lead") )
+	   & maxwave == panelwave
 	 # & is.finite(earnm) & is.finite(shift(earnm,type="lead")) &
 	   & lfstat_wave==1 & shift(lfstat_wave,type="lead")==1, by=id]
-DTall[ , maxwave := max(wave,na.rm=T), by=id]
-DTall[ , minwave := min(wave,na.rm=T), by=id]
 
 DTall[, linked_wave := any(linked_wave==T), by=list(id,wave)]
 DTall[, linked_wave_EE := any(linked_wave_EE==T), by=list(id,wave)]
-
 
 DTall[ linked_wave==T, UE_wave := (lfstat_wave==2L & shift(lfstat_wave,1,type="lead")==1L), by=id] #will only count 1 if seam ==1
 DTall[ linked_wave==T, UE_wave := any(UE_wave, na.rm = T), by=list(id,wave)] 
 DTall[ linked_wave==T, EU_wave := (lfstat_wave==1L & shift(lfstat_wave,1,type="lead")==2L), by=id] #will only count 1 if seam ==1
 DTall[ linked_wave==T, EU_wave := any(EU_wave, na.rm = T), by=list(id,wave)] 
-#DTall[ is.na(UE_wave), UE_wave:=F]
-#DTall[ is.na(EU_wave), EU_wave:=F]
+
 
 DTall[ linked_wave==T, EE_alt_nwave := any(shift(estlemp & seam==F,type="lead")==F,na.rm=T), by=list(id,wave)] #get whether there was an EE w/in the wave (and not on the edge)
 DTall[ linked_wave==T & seam==T, EE_alt_wave := shift(EE_alt_nwave,type="lead"), by = id]
 DTall[ linked_wave==T, EE_alt_wave := ifelse(seam==T & EE_alt_wave ==F, EE_alt, EE_alt_wave), by = id]
 DTall[ linked_wave==T, EE_alt_wave := any(EE_alt_wave), by=list(id,wave)]
 
-DTall[seam==T & linked_wave==T, EE_wave:= lfstat==1L & shift(lfstat_wave,1,type="lead")==1L & job != shift(job, 1, type = "lead"), by=id]
+DTall[seam==T & linked_wave==T, EE_wave:= lfstat==1L & shift(lfstat_wave,type="lead")==1L & job != shift(job, type = "lead"), by=id]
 #DTall[ is.na(EE_wave) , EE_wave:=F]
 DTall[ , EE_wave := any(EE_wave==T, na.rm=T), by=list(id,wave)]
 

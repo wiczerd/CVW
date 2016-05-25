@@ -88,6 +88,8 @@ setnames(DT96, "occ1990", "occ")
 DT96[, ind:= ind23]
 DT96[, ind23:=NULL]
 
+#create panel ID
+DT96[, panelID:= 1996]
 
 saveRDS(DT96, file("./Data/DT96_1.RData"))
 rm(DT96)
@@ -122,7 +124,8 @@ setnames(DT01, "occ1990", "occ")
 #recode industry as ind23
 DT01[, ind:= ind23]
 DT01[, ind23:=NULL]
-
+#create panel ID
+DT01[, panelID:= 2001]
 
 saveRDS(DT01, file("./Data/DT01_1.RData"))
 rm(DT01)
@@ -165,6 +168,9 @@ DT04 <- merge(DT04,CIC2000_2_CIC1990, by = "ind", all.x=T)
 DT04[ , ind := ind23]
 DT04[, ind23:=NULL]
 
+#create panel ID
+DT04[, panelID:= 2004]
+
 saveRDS(DT04, file("./Data/DT04_1.RData"))
 rm(DT04)
 
@@ -204,6 +210,9 @@ DT08[ , ind23 := NULL]
 DT08 <- merge(DT08,CIC2000_2_CIC1990, by = "ind", all.x=T)
 DT08[ , ind := ind23]
 DT08[, ind23:=NULL]
+
+#create panel ID
+DT08[, panelID:= 2008]
 
 saveRDS(DT08, file("./Data/DT08_1.RData"))
 rm(list=ls())
