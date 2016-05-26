@@ -245,7 +245,7 @@ ggplot(subset(wagechanges,EE), aes(wagechange, weight = balanceweight/groupBalan
 ggsave(filename = "Figures/wagechanges_EErec_cdf.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_EErec_cdf.eps",height= 5,width=10)
 
-## Now use full distribution ##
+## Now use full distribution ##---------------------------------
 rm(wagechanges)
 
 DTall <- readRDS("./Data/DTall_6.RData")
@@ -281,3 +281,50 @@ ggplot(DTall, aes(wagechange_all, weight = balanceweight/groupBalanceWeight_all,
 	xlab("Earnings change") 
 ggsave(filename = "Figures/wagechanges_unc_cdf.png",height= 5,width=10)
 ggsave(filename = "Figures/wagechanges_unc_cdf.eps",height= 5,width=10)	
+
+
+rm(DTall)
+
+# Now use wave-level data----------------------------------
+DTseam <- readRDS("./Data/DTseam.RData")
+
+ggplot(  subset(DTseam, (EE_wave|EU_wave|UE_wave)& !is.na(switchedOcc_wave)), aes(wagechange_wave, linetype = switchedOcc_wave)) +
+	geom_density(stat ="density",size = 1.25) +
+	ylim(c(0,1.2)) +
+	xlim(c(-3,3)) +
+	scale_linetype_manual(values = c("solid", "dashed"),
+						  labels = c("Non-switchers", "Switchers"),
+						  name = "") +
+	theme_bw()+
+	theme(legend.position = c(.2,0.85)) +
+	xlab("Earnings growth")+ylab("")
+ggsave(filename = "Figures/wave_distchng.png",height= 5,width=10)
+ggsave(filename = "Figures/wave_distchng.eps",height= 5,width=10)	
+
+
+ggplot(  subset(DTseam, (EE_wave|EU_wave|UE_wave) & switchedOcc_wave==T), aes(wagechange_wave, color = recIndic_wave)) +
+	geom_density(stat ="density",size = 1.25,linetype="dashed") +
+	ylim(c(0,1.2)) +
+	xlim(c(-3,3)) +
+	scale_color_manual(values = c(hcl(h=seq(30, 390, length=4), l=50, c=100)[1:2]) ,
+						  labels = c("Expansion", "Recession"),
+						  name = "") +
+	theme_bw()+
+	theme(legend.position = c(.2,0.85)) +
+	xlab("Earnings growth")+ylab("")
+ggsave(filename = "Figures/wave_distchng_swrec.png",height= 5,width=10)
+ggsave(filename = "Figures/wave_distchng_swrec.eps",height= 5,width=10)	
+
+
+ggplot(  subset(DTseam, (EE_wave|EU_wave|UE_wave) & switchedOcc_wave==F), aes(wagechange_wave, color = recIndic_wave)) +
+	geom_density(stat ="density",size = 1.25) +
+	ylim(c(0,1.2)) +
+	xlim(c(-3,3)) +
+	scale_color_manual(values = c(hcl(h=seq(30, 390, length=4), l=50, c=100)[1:2]) ,
+					   labels = c("Expansion", "Recession"),
+					   name = "") +
+	theme_bw()+
+	theme(legend.position = c(.2,0.85)) +
+	xlab("Earnings growth")+ylab("")
+ggsave(filename = "Figures/wave_distchng_noswrec.png",height= 5,width=10)
+ggsave(filename = "Figures/wave_distchng_noswrec.eps",height= 5,width=10)	

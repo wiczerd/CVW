@@ -519,19 +519,86 @@ dist_sim_exp  <- rowMeans(MM_waveall_betaE_betaR_cf$wc_exp  )
 
 #take decile averages
 dec_cf  <- array(0.,dim = 10)
+dec_cf_un<- array(0.,dim = 10)
+dec_cf_sw<- array(0.,dim = 10)
 dec_exp <- array(0.,dim = 10)
 dec_rec <- array(0.,dim = 10)
 dec_exp_dat <- array(0.,dim = 10)
 dec_rec_dat <- array(0.,dim = 10)
 for(di in seq(1,10,1)){
-	dec_cf [di] <- mean(dist_cf     [ ((di-1)*10+1):min(di*10,99)])
-	dec_rec[di] <- mean(dist_sim_rec[ ((di-1)*10+1):min(di*10,99)])
-	dec_exp[di] <- mean(dist_sim_exp[ ((di-1)*10+1):min(di*10,99)])
-	dec_rec_dat[di] <- mean(dist_rec[ ((di-1)*10+1):min(di*10,99)])
-	dec_exp_dat[di] <- mean(dist_exp[ ((di-1)*10+1):min(di*10,99)])	
+	dec_cf [di]     <- mean(dist_cf     [ ((di-1)*10+1):min(di*10,99)])
+	dec_rec[di]     <- mean(dist_sim_rec[ ((di-1)*10+1):min(di*10,99)])
+	dec_exp[di]     <- mean(dist_sim_exp[ ((di-1)*10+1):min(di*10,99)])
+	dec_cf_un[di]   <- mean(dist_cf_un  [ ((di-1)*10+1):min(di*10,99)])	
+	dec_cf_sw[di]   <- mean(dist_cf_sw  [ ((di-1)*10+1):min(di*10,99)])	
+	dec_rec_dat[di] <- mean(dist_rec    [ ((di-1)*10+1):min(di*10,99)])
+	dec_exp_dat[di] <- mean(dist_exp    [ ((di-1)*10+1):min(di*10,99)])	
 }
 
-spn_dif_cf_exp <- approx(seq(0.05,0.95,0.1), (dec_cf-dec_exp),xout=seq(0.05,0.95,0.01))$y
+spn_dif_cf_exp  <- spline(seq(0.05,0.95,0.1), (dec_cf   -dec_exp),xout=seq(0.05,0.95,0.01))$y
+spn_dif_rec_exp <- spline(seq(0.05,0.95,0.1), (dec_rec  -dec_exp),xout=seq(0.05,0.95,0.01))$y
+spn_dif_un_exp  <- spline(seq(0.05,0.95,0.1), (dec_cf_un-dec_exp),xout=seq(0.05,0.95,0.01))$y
+spn_dif_sw_exp  <- spline(seq(0.05,0.95,0.1), (dec_cf_sw-dec_exp),xout=seq(0.05,0.95,0.01))$y
+
+dt_mm <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_rec_exp ))
+names(dt_mm) <- c("Quantile","Data")
+dt_mm_melted <- melt(dt_mm, id= "Quantile")
+ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
+	geom_line(size=2) + 
+	ylab("Recession - Expansion Distribution") + 
+	xlab("Earnings Growth Quantile") +
+	scale_color_manual(values = c(hcl(h=seq(15, 375, length=4), l=50, c=100)[1])) +
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.8,0.2),
+		  legend.background = element_rect(linetype = "solid",color = "black"))
+ggsave("./Figures/MMwave_all_data.eps",height=5,width=10)
+ggsave("./Figures/MMwave_all_data.png",height=5,width=10)
+
+
+dt_mm <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_rec_exp,spn_dif_cf_exp ))
+names(dt_mm) <- c("Quantile","Data","Counter Factual")
+dt_mm_melted <- melt(dt_mm, id= "Quantile")
+ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
+	geom_line(size=2) + 
+	ylab("Recession - Expansion Distribution") + 
+	xlab("Earnings Growth Quantile") +
+	scale_color_manual( values = c(hcl(h=seq(15, 375, length=4), l=50, c=100)[1:2]) ) +
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.8,0.2),
+		  legend.background = element_rect(linetype = "solid",color = "black"))
+ggsave("./Figures/MMwave_all.eps",height=5,width=10)
+ggsave("./Figures/MMwave_all.png",height=5,width=10)
+
+dt_mm_un <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_rec_exp,spn_dif_cf_exp,spn_dif_un_exp ))
+names(dt_mm_un) <- c("Quantile","Data","Counter Factual","Recession Switching Coefficients")
+dt_mm_un_melted <- melt(dt_mm_un, id= "Quantile")
+ggplot( dt_mm_un_melted, aes(x=Quantile,y=value,colour=variable) ) + 
+	geom_line(size=2) + 
+	ylab("Recession - Expansion Distribution") + 
+	xlab("Earnings Growth Quantile") +
+	scale_color_manual(values = c(hcl(h=seq(15, 375, length=4), l=50, c=100)[1:3])) +
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.8,0.2),
+		  legend.background = element_rect(linetype = "solid",color = "black"))
+ggsave("./Figures/MMwave_all_un.eps",height=5,width=10)
+ggsave("./Figures/MMwave_all_un.png",height=5,width=10)
+
+dt_mm_sw <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_cf_exp,spn_dif_rec_exp,spn_dif_sw_exp ))
+names(dt_mm_sw) <- c("Quantile","Counter Factual","Data","Only Unemployment Coefficients")
+dt_mm_sw_melted <- melt(dt_mm_sw, id= "Quantile")
+ggplot( dt_mm_sw_melted, aes(x=Quantile,y=value,colour=variable) ) + 
+	geom_line(size=2) + 
+	ylab("Recession - Expansion Distribution") + 
+	xlab("Earnings Growth Quantile") +
+	#scale_color_manual(values = c(hcl(h=seq(15, 375, length=Ndemo+1), l=50, c=100)[1:Ndemo], "black")) +
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.8,0.2),
+		  legend.background = element_rect(linetype = "solid",color = "black"))
+ggsave("./Figures/MMwave_all_sw.eps",height=5,width=10)
+ggsave("./Figures/MMwave_all_sw.png",height=5,width=10)
+
+
+
 
 #dist_pct <- (dist_cf - dist_exp)/(dist_rec - dist_exp)
 dist_pct <- (dist_cf - dist_sim_exp)/(dist_sim_rec - dist_sim_exp)
@@ -551,6 +618,39 @@ distchng_pct    <- (distchng_cf - distchng_exp)/(distchng_rec - distchng_exp)
 distchng_pct    <- (distchng_cf - distchng_sim_exp)/(distchng_sim_rec - distchng_sim_exp)
 distchng_pct_sw <- (distchng_cf_sw - distchng_exp)/(distchng_rec - distchng_exp)
 distchng_pct_un <- (distchng_cf_un - distchng_exp)/(distchng_rec - distchng_exp)
+
+
+#take decile averages
+decchng_cf  <- array(0.,dim = 10)
+decchng_exp <- array(0.,dim = 10)
+decchng_rec <- array(0.,dim = 10)
+decchng_exp_dat <- array(0.,dim = 10)
+decchng_rec_dat <- array(0.,dim = 10)
+for(di in seq(1,10,1)){
+	decchng_cf [di] <- mean(distchng_cf     [ ((di-1)*10+1):min(di*10,99)])
+	decchng_rec[di] <- mean(distchng_sim_rec[ ((di-1)*10+1):min(di*10,99)])
+	decchng_exp[di] <- mean(distchng_sim_exp[ ((di-1)*10+1):min(di*10,99)])
+	decchng_rec_dat[di] <- mean(distchng_rec[ ((di-1)*10+1):min(di*10,99)])
+	decchng_exp_dat[di] <- mean(distchng_exp[ ((di-1)*10+1):min(di*10,99)])	
+}
+
+spn_difchng_cf_exp <- spline(seq(0.05,0.95,0.1), (decchng_cf-decchng_exp),xout=seq(0.05,0.95,0.01))$y
+spn_difchng_rec_exp <- spline(seq(0.05,0.95,0.1), (decchng_rec-decchng_exp),xout=seq(0.05,0.95,0.01))$y
+
+dt_mmchng <- data.table(cbind( seq(0.05,0.95,0.01),spn_difchng_cf_exp,spn_difchng_rec_exp ))
+names(dt_mmchng) <- c("Quantile","Counter Factual","Data")
+dt_mmchng_melted <- melt(dt_mmchng, id= "Quantile")
+ggplot( dt_mmchng_melted, aes(x=Quantile,y=value,colour=variable) ) + 
+	geom_line(size=2) + 
+	ylab("Recession - Expansion Distribution") + 
+	xlab("Earnings Growth Quantile") +
+	#scale_color_manual(values = c(hcl(h=seq(15, 375, length=Ndemo+1), l=50, c=100)[1:Ndemo], "black")) +
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.8,0.2),
+		  legend.background = element_rect(linetype = "solid",
+		  								 color = "black"))
+ggsave("./Figures/MMwave_chng.eps",height=5,width=10)
+ggsave("./Figures/MMwave_chng.png",height=5,width=10)
 
 
 waveshift_share <- DHLdecomp(DTseam,7,"recIndic_wave","wagechange_wave","waveweight")
