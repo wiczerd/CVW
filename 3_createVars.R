@@ -25,20 +25,21 @@ DTall <- readRDS("./Data/DTall_2.RData")
 setkey(DTall, id, date)
 
 DTall[, panelwave := max(wave), by=panelID] #number of waves in a panel
-DTall[ , maxwave:= max(wave), by=id]
+DTall[, maxwave:= max(wave), by=id]
+DTall[is.finite(wave) , nwave:= sum(unique(wave)>0,na.rm=T), by=id]
+
 DTall[, linked := is.finite(lfstat) & is.finite( shift(lfstat, 1, type = "lead") )
-	  # & maxwave == panelwave
+	    & nwave >= panelwave-1
 	  #	& is.finite(earnm) & is.finite(shift(earnm,type="lead"))
 	  	, by=id]
-DTall[, linked_EE := is.finite(lfstat) & is.finite( shift(lfstat, 1, type = "lead") )
-	  # & maxwave == panelwave
-	  #	& is.finite(earnm) & is.finite(shift(earnm,type="lead"))
+DTall[, linked_EE := linked==T
 	  	& lfstat==1 & shift(lfstat,type="lead")==1, by=id]
 
 # create switchedJob dummy
 #DTall[, switchedJob := (job != shift(job, 1, type = "lead")) &
 #    	(shift(job, 1, type = "lag") != shift(job, 1, type = "lead")), by = id]
-DTall[ linked==T , switchedJob := job != shift(job, 1, type = "lead") , by = id]
+DTall[ job>0 , jobpos := job ]
+DTall[ , switchedJob := jobpos != shift(jobpos, 1, type = "lead") , by = id]
 
 # create switchedOcc dummy
 DTall[, switchedOcc := (occ != shift(occ, 1, type = "lead")) &
@@ -59,9 +60,10 @@ DTall[, switchedInd := (ind != shift(ind, 1, type = "lead")) &
 DTall[, EE := lfstat == 1 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T, by = id]
 DTall[, EU := lfstat == 1 & shift(lfstat, 1, type = "lead") == 2 & switchedJob==T, by = id]
 DTall[, UE := lfstat == 2 & shift(lfstat, 1, type = "lead") == 1 & switchedJob==T, by = id]
-DTall[linked==F, EE:= NA]
-DTall[linked==F, EU:= NA]
-DTall[linked==F, UE:= NA]
+DTall[linked!=T, EE:= NA]
+#DTall[linked!=T, EU:= NA]
+#DTall[linked!=T, UE:= NA]
+
 #alternative measures of EE
 DTall[, year := as.integer(format(date, "%Y") )]
 DTall[, month := as.integer(format(date, "%m") )]
@@ -73,13 +75,13 @@ DTall[EU==T, stintid := fstintid, by=id]
 DTall[, fstintid := NULL]
 
 #check
-DTall[UE==T, dupedUE:= duplicated(stintid, na.rm=T), by=id]
-DTall[EU==T, dupedEU:= duplicated(stintid, na.rm=T), by=id]
-#drop the duplicates:
-DTall[ UE==T & dupedUE, UE:=F ]
-DTall[ EU==T & dupedEU, EU:=F ]
-# it is still possible there are lfstat=2|3 that are associated with a duplicate
-DTall[ , c("dupedEU","dupedUE"):=NULL]
+# DTall[UE==T, dupedUE:= duplicated(stintid, na.rm=T), by=id]
+# DTall[EU==T, dupedEU:= duplicated(stintid, na.rm=T), by=id]
+# #drop the duplicates:
+# DTall[ UE==T & dupedUE, UE:=F ]
+# DTall[ EU==T & dupedEU, EU:=F ]
+# # it is still possible there are lfstat=2|3 that are associated with a duplicate
+# DTall[ , c("dupedEU","dupedUE"):=NULL]
 
 # create unemployment duration variable
 DTall[, unempdur := seq_len(.N)-1, by = list(id, stintid)]
@@ -106,7 +108,7 @@ DTall[, HSCol := (educ >= 4) + (educ >= 2)]
 setkey(DTall, id,wave,date, physical = T)
 DTall[ , maxmis:= max(mis), by=id]
 DTall[ , seam:= (wave != shift(wave,1,type="lead") | mis==maxmis) , by=id ]
-
+DTall[ , maxmis:=NULL]
 DTall[, recIndic_wave := any(recIndic, na.rm=T), by=list(wave,id)]
 
 DTall[ is.finite(lfstat), lfstat_wave := max(lfstat,na.rm=T), by=list(id,wave)]
@@ -127,12 +129,13 @@ DTall[ , lfstat2_wave:=NULL]
 
 
 DTall[seam==T, linked_wave := is.finite(lfstat_wave) & is.finite( shift(lfstat_wave, 1, type = "lead") ) 
-	 #  & maxwave >= panelwave
+	  & nwave>= panelwave-1
+	  #  & maxwave >= panelwave
 	 # & is.finite(earnm) & is.finite(shift(earnm, type="lead"))
 	  , by=id]
 
-DTall[seam==T, linked_wave_EE := is.finite(lfstat_wave) & is.finite( shift(lfstat_wave, 1, type = "lead") )
-	 #  & maxwave >= panelwave
+DTall[seam==T, linked_wave_EE := linked_wave==T
+	 # & maxwave >= panelwave
 	 # & is.finite(earnm) & is.finite(shift(earnm,type="lead")) &
 	   & lfstat_wave==1 & shift(lfstat_wave,type="lead")==1, by=id]
 
@@ -151,7 +154,7 @@ DTall[ seam==T, EE_alt_wave := shift(EE_alt_nwave,type="lead"), by = id]
 DTall[ , EE_alt_wave := any(EE_alt_wave==T), by=list(id,wave)]
 DTall[ linked_wave!=T, EE_alt_wave := NA]
 
-DTall[seam==T, EE_wave:=job != shift(job, type = "lead") 
+DTall[seam==T, EE_wave:=jobpos != shift(jobpos, type = "lead") 
 	  & lfstat==1L & shift(lfstat_wave,type="lead")==1L , by=id]
 
 
@@ -202,12 +205,16 @@ DTall[EU_wave==T & EE_wave==T, EE_wave :=F]
 DTall[ , occ_mis1 := occ]
 DTall[ wave==shift(wave), occ_mis1 := 0, by=id]
 DTall[ , occ_mis1 := max(occ_mis1), by=list(id,wave)]
+DTall[ occ_mis1==0, occ_mis1 := NA]
 DTall[ , occ_mis4 := occ]
 DTall[ !(seam==T), occ_mis4 := 0]
 DTall[ , occ_mis4 := max(occ_mis4), by=list(id,wave)]
+DTall[ occ_mis4 == 0, occ_mis4 := NA]
 DTall[ seam==T, nextocc_mis4:= shift(occ_mis4,1,type="lead"), by=id]
 DTall[ seam==T, switchedOcc_wave:= occ_mis1 != nextocc_mis4]
 
+DTall[ linked_wave!=T, switchedOcc_wave:=NA ]
+DTall[ !(EE_wave|UE_wave|EU_wave), switchedOcc_wave:=NA ]
 DTall[, c("nextocc_mis4","occ_mis4","occ_mis1"):= NULL] 
 
 DTall[ lfstat==2, maxunempdur_wave := maxunempdur]

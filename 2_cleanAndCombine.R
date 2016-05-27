@@ -26,17 +26,17 @@ Mode <- function(x) {
 }
 esrRecode <- function(DF){
 	# recode esr into lfstat using monthly status, \exists week of unemployment:
-	#DF[esr == 1 | esr == 2 | esr == 4, lfstat := as.integer(1)] 
-	#DF[esr == 3 | esr == 5 | esr == 6 | esr == 7, lfstat := as.integer(2)] 
-	#DF[esr == 8, lfstat := as.integer(3)]
+	DF[esr >= 1 & esr <= 4, lfstat := as.integer(1)] 
+	DF[esr == 5 | esr == 6 | esr == 7, lfstat := as.integer(2)] 
+	DF[esr == 8, lfstat := as.integer(3)]
 	# monthly status that is a narrower view of unemployment: unemployed for the whole month
 #	DF[esr >= 1 & esr <= 5, lfstat := as.integer(1)] #altenrative esr>=1 & esr<=5
 #	DF[esr == 6 | esr == 7, lfstat := as.integer(2)] #alternative: esr>=6 & esr<=7
 #	DF[esr == 8, lfstat := as.integer(3)]
 	# monthly status that uses only week 2 status, comparable to CPS
-	DF[rwkesr2 >= 1 & rwkesr2 <= 3, lfstat := as.integer(1)] 
-	DF[rwkesr2 == 4, lfstat := as.integer(2)] 
-	DF[rwkesr2 == 5, lfstat := as.integer(3)]
+#	DF[rwkesr2 >= 1 & rwkesr2 <= 3, lfstat := as.integer(1)] 
+#	DF[rwkesr2 == 4, lfstat := as.integer(2)] 
+#	DF[rwkesr2 == 5, lfstat := as.integer(3)]
 	DF[, rwkesr2:= NULL]
 	
 }
