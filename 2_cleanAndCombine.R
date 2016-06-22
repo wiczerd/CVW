@@ -69,6 +69,9 @@ DT96 <- DT96[!is.na(lfstat),]
 # replace soc2d with occ and make sure DT is sorted
 DT96[, occ := soc2d]
 DT96[, soc2d := NULL]
+
+# replace id with unique identifier cross panel
+DT96[ , id := paste0("96",id)]
 setkey(DT96, id, date)
 # create time w/in id (month in sample)
 DT96[, mis := seq_len(.N), by=id]
@@ -142,6 +145,8 @@ DT01 <- DT01[!is.na(lfstat),]
 # replace soc2d with occ and make sure DT is sorted
 DT01[, occ := soc2d]
 DT01[, soc2d := NULL]
+# replace id with unique identifier cross panel
+DT01[ , id := paste0("01",id)]
 setkey(DT01, id, date)
 # create time w/in id (month in sample)
 DT01[, mis := seq_len(.N), by=id]
@@ -210,6 +215,8 @@ DT04 <- DT04[!is.na(lfstat),]
 # replace soc2d with occ and make sure DT is sorted
 DT04[, occ := soc2d]
 DT04[, soc2d := NULL]
+# replace id with unique identifier cross panel
+DT04[ , id := paste0("04",id)]
 setkey(DT04, id, date)
 # create time w/in id (month in sample)
 DT04[, mis := seq_len(.N), by=id]
@@ -277,6 +284,8 @@ DT08 <- DT08[!is.na(lfstat),]
 # replace soc2d with occ and make sure DT is sorted
 DT08[, occ := soc2d]
 DT08[, soc2d := NULL]
+# replace id with unique identifier cross panel
+DT08[ , id := paste0("08",id)]
 setkey(DT08, id, date)
 # create time w/in id (month in sample)
 DT08[, mis := seq_len(.N), by=id]
