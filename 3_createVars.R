@@ -173,13 +173,13 @@ DTall[ seam==T & linked_wave==T, EE_nextwave := shift(EE_wave,1,type="lead"), by
 DTall[ seam==T & linked_wave==T, EE_nextwave := any(EE_nextwave,na.rm = T), by=list(id,wave)]
 DTall[ , EE_maxwave := any(EE==T, na.rm=T), by=list(id,wave)]
 
-DTall[ seam==T & EE ==T, EE_nomatch := (EE_wave ==F) ]
-DTall[ seam==F & EE ==T, EE_lastnomatch := (EE_lastwave ==F) ]
-DTall[ , EE_lastnomatch := any(EE_lastnomatch==T , na.rm=T), by=list(id,wave)]
-DTall[ seam==T , EE_nomatch := ifelse( shift(EE_lastnomatch ==T,1, type="lead"),T, EE_nomatch )]
-DTall[ , EE_nomatch := any(EE_nomatch==T, na.rm=T), by=list(id,wave)]
-
-DTall[ EE_nomatch==T & EE_wave !=T, EE_wave := NA]
+# DTall[ seam==T & EE ==T, EE_nomatch := (EE_wave ==F) ]
+# DTall[ seam==F & EE ==T, EE_lastnomatch := (EE_lastwave ==F) ]
+# DTall[ , EE_lastnomatch := any(EE_lastnomatch==T , na.rm=T), by=list(id,wave)]
+# DTall[ seam==T , EE_nomatch := ifelse( shift(EE_lastnomatch ==T,1, type="lead"),T, EE_nomatch )]
+# DTall[ , EE_nomatch := any(EE_nomatch==T, na.rm=T), by=list(id,wave)]
+# 
+# DTall[ EE_nomatch==T & EE_wave !=T, EE_wave := NA]
 
 
 # only EE if nothing else
