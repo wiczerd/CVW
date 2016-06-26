@@ -35,6 +35,8 @@ toKeep <- c("year",
 	    "esr",
 	    # job variables
 	    "job",
+		"eyear","emonth","syear","smonth",
+		"ersend",
 	    "occ",
 	    "earnm")
 
@@ -122,7 +124,7 @@ sipp$panel <- as.factor(sipp$panel)
 setwd(outputdir)
 saveRDS(sipp, "./sipp.RData")
 
-################################## Prepare data ###################################
+################################## Prepare data  ----------------------------
 
 # load intermediate result if starting from here
 if(!exists("sipp")) {
@@ -130,22 +132,22 @@ if(!exists("sipp")) {
 	sipp <- readRDS("./sipp.RData")
 }
 
-########## date, unique id, months in sample
+########## date, unique id, months in sample ----------------------------
 
 # add date
 sipp <- sipp[!is.na(month) & !is.na(year),]
 sipp[, date := as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")]
 
 # create unique ID across all panels
-sipp[, idpanel := paste(id, panel, sep = "")]
+sipp[, id := paste(id, panel, sep = "")]
 
-# sort by idpanel and date
-setkey(sipp, idpanel, date)
+# sort by id and date
+setkey(sipp, id, date)
 
 # create month in sample variable
-sipp[, mis := seq_len(.N), by = idpanel]
+sipp[, mis := seq_len(.N), by = id]
 
-########## labor force status
+########## labor force status ----------------------------
 
 # recode esr
 sipp[esr <= 3, lfstat := 1]
@@ -153,10 +155,10 @@ sipp[esr >= 4 & esr <= 7, lfstat := 2]
 sipp[esr == 8, lfstat := 3]
 
 # create lag/lead lfstat
-sipp[, last.lfstat := shift(lfstat, 1, type = "lag"), by = idpanel]
-sipp[, next.lfstat := shift(lfstat, 1, type = "lead"), by = idpanel]
+sipp[, last.lfstat := shift(lfstat, 1, type = "lag"), by = id]
+sipp[, next.lfstat := shift(lfstat, 1, type = "lead"), by = id]
 
-########## occupation and job
+########## occupation and job ----------------------------
 
 # replace occ with soc2d (occ will now refer to soc2d)
 sipp[, occ := soc2d]
@@ -167,39 +169,50 @@ sipp[lfstat != 1, job := NA]
 sipp[lfstat != 1, occ := NA]
 
 # replace occ with mode occ over a job spell
-sipp[lfstat == 1, occ := Mode(occ), by = list(idpanel, job)]
+sipp[lfstat == 1, occ := Mode(occ), by = list(id, job)]
 
 # create lag/lead job
-sipp[, last.job := shift(job, 1, type = "lag"), by = idpanel]
-sipp[, next.job := shift(job, 1, type = "lead"), by = idpanel]
+sipp[, last.job := shift(job, 1, type = "lag"), by = id]
+sipp[, next.job := shift(job, 1, type = "lead"), by = id]
 
-########## stint ids
+########## stint ids ----------------------------
 
 # create an employment stint id
 sipp[, newemp := lfstat == 1 & (last.lfstat >= 2 | mis == 1 | job != last.job)]
 sipp[lfstat == 1 & is.na(newemp), newemp := FALSE]
-sipp[newemp == TRUE, estintid := cumsum(newemp), by = idpanel]
-sipp[lfstat == 1, estintid := na.locf(estintid, na.rm = FALSE), by = idpanel]
+sipp[newemp == TRUE, estintid := cumsum(newemp), by = id]
+sipp[lfstat == 1, estintid := na.locf(estintid, na.rm = FALSE), by = id]
 sipp[, newemp := NULL]
 
 # create an unemployment stint id
 sipp[, newunemp := lfstat == 2 & (last.lfstat == 1 | mis == 1)]
-sipp[newunemp == TRUE, ustintid := cumsum(newunemp), by = idpanel]
-sipp[lfstat != 1, ustintid := na.locf(ustintid, na.rm = FALSE), by = idpanel]
+sipp[newunemp == TRUE, ustintid := cumsum(newunemp), by = id]
+sipp[lfstat != 1, ustintid := na.locf(ustintid, na.rm = FALSE), by = id]
 sipp[, newunemp := NULL]
 
 # create unemployment duration variable
-sipp[, unempdur := seq_len(.N) - 1, by = list(idpanel, ustintid)]
+sipp[, unempdur := seq_len(.N) - 1, by = list(id, ustintid)]
 sipp[is.na(ustintid), unempdur := NA]
 
 # fill in occupation with next occupation during unemployment stints
-sipp[, next.occ := shift(occ, 1, type = "lead"), by = idpanel]
-sipp[lfstat != 1, occ := Mode(next.occ), by = list(idpanel, ustintid)]
-sipp[, last.occ := shift(occ, 1, type = "lag"), by = idpanel]
-sipp[lfstat != 1, last.occ := Mode(last.occ), by = list(idpanel, ustintid)]
-sipp[, next2.occ := shift(occ, 2, type = "lead"), by = idpanel]
+sipp[, next.occ := shift(occ, 1, type = "lead"), by = id]
+sipp[lfstat != 1, occ := Mode(next.occ), by = list(id, ustintid)]
+sipp[, last.occ := shift(occ, 1, type = "lag"), by = id]
+sipp[lfstat != 1, last.occ := Mode(last.occ), by = list(id, ustintid)]
+sipp[, next2.occ := shift(occ, 2, type = "lead"), by = id]
 
-########## transitions
+########## transitions ----------------------------
+
+
+# create EU/UE/EE dummies
+sipp[lfstat == 1, EU := (next.lfstat == 2)]
+sipp[lfstat == 2, UE := (next.lfstat == 1)]
+sipp[lfstat == 1 & next.lfstat == 1, EE := (job != next.job)]
+sipp[lfstat == 1 & next.lfstat != 1, EE := NA]
+
+sipp[lfstat == 1 & last.lfstat == 1, StE:= (year==syear & month==smonth)]
+sipp[lfstat == 1 & next.lfstat == 1, EnE:= (year==eyear & month==emonth)]
+
 
 # create switched occupation dummy
 #
@@ -210,14 +223,9 @@ sipp[, next2.occ := shift(occ, 2, type = "lead"), by = idpanel]
 # lfstat == 1 & next.lfstat == 2: EU transition. We pulled occupation forwards, so 
 # this is when the occupation change should happen
 #
-sipp[job != next.job | (lfstat == 1 & next.lfstat != 2), 
-     switchedOcc := (occ != next.occ) & (last.occ != next.occ) & (occ != next2.occ)]
+sipp[job != next.job | (lfstat == 1 & next.lfstat == 2), 
+	 switchedOcc := (occ != next.occ) & (last.occ != next.occ) & (occ != next2.occ)]
 
-# create EU/UE/EE dummies
-sipp[lfstat == 1, EU := (next.lfstat == 2)]
-sipp[lfstat == 2, UE := (next.lfstat == 1)]
-sipp[lfstat == 1 & next.lfstat == 1, EE := (job != next.job)]
-sipp[lfstat == 1 & next.lfstat != 1, EE := FALSE]
 
 # plot transitions time series for sanity check
 EU <- sipp[, .(EU = weighted.mean(EU, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
@@ -230,7 +238,7 @@ ggplot(UE, aes(date, UE, color = panel, group = panel)) +
 	geom_point() +
 	geom_line()
 
-EE <- sipp[, .(EE = weighted.mean(EE, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+EE <- sipp[lfstat==1 & next.lfstat==1, .(EE = weighted.mean(EE, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(EE, aes(date, EE, color = panel, group = panel)) +
 	geom_point() +
 	geom_line()
@@ -241,9 +249,16 @@ ggplot(switchedOcc, aes(date, switchedOcc, color = panel, group = panel)) +
 	geom_point() +
 	geom_line()
 
-rm(list=c("EU", "UE", "EE", "switchedOcc"))
+Umo <- sipp[, .(Umo = weighted.mean(lfstat==2, wpfinwgt, na.rm = TRUE)),
+					by = list(panel, date)]
+ggplot(Umo, aes(date, Umo, color = panel, group = panel)) +
+	geom_point() +
+	geom_line()
 
-########## inflation, unemployment, and recession
+
+#rm(list=c("EU", "UE", "EE", "switchedOcc"))
+
+########## inflation, unemployment, and recession ----------------------------
 
 # create vector of recession dates
 recDates <- as.Date(c("2001-02-01", "2001-12-01","2007-11-01", "2009-07-01"))
@@ -264,13 +279,13 @@ sipp <- merge(sipp, unrate, by = "date", all.x = TRUE)
 rm(list = c("PCE", "unrate"))
 
 # make sure order is preserved after merger
-setkey(sipp, idpanel, date)
+setkey(sipp, id, date)
 
-########## earnings
+########## earnings ----------------------------
 
 # cerate lag/lead earnings
-sipp[, last.earnm := shift(earnm, 1, type = "lag"), by = idpanel]
-sipp[, next.earnm := shift(earnm, 1, type = "lead"), by = idpanel]
+sipp[, last.earnm := shift(earnm, 1, type = "lag"), by = id]
+sipp[, next.earnm := shift(earnm, 1, type = "lead"), by = id]
 
 # remove large jumps in earnings not explained by UE or EU
 sipp[, nomearnm := earnm]
@@ -290,7 +305,95 @@ sipp[, HSCol := (educ >= 4) + (educ >= 2)]
 
 # missing occupation codes cause issues with the occwage regression in step 4.
 # remove them here or there
-sipp <- sipp[!is.na(occ),]
+sipp <- sipp[!is.na(occ)|lfstat>1,]
+
+# save intermediate result
+setwd(outputdir)
+saveRDS(sipp, "./sipp_2.RData")
+
+
+########## compute seam-to-seam status change variable ----------------------------
+
+# load intermediate result if starting from here
+if(!exists("sipp")) {
+	setwd(outputdir)
+	sipp <- readRDS("./sipp_2.RData")
+}
+
+
+setkey(sipp, id,date, physical = T)
+# sorting check on wave:
+sipp[ , wave_sorted:= is.unsorted(wave), by=id]
+if( sipp[ , mean(wave_sorted,na.rm=T)]!=0 ){
+	warning("not sorted on wave")
+}
+sipp[ , wave_sorted:=NULL]
+
+sipp[ , maxmis:= max(mis), by=id]
+sipp[ , seam:= (wave != shift(wave,1,type="lead") | mis==maxmis) , by=id ]
+sipp[ , maxmis:=NULL]
+sipp[, recIndic_wave := any(recIndic, na.rm=T), by=list(wave,id)]
+
+sipp[ , lfstat_wave := max(lfstat,na.rm=T), by=list(id,wave)]
+#sipp[ , lfstat2_wave := any(lfstat==2, na.rm=T), by=list(id,wave)] #anytime an unemployment shows up, we count it as such
+#sipp[ , lfstat_wave := ifelse(lfstat2_wave, 2L, lfstat_wave)] #anytime an unemployment shows up, we count it as such
+#sipp[ , lfstat2_wave:=NULL]
+
+sipp[ seam ==T & is.finite(lfstat), lfstat_seam := lfstat]
+sipp[ , lfstat_seam := max(lfstat_seam,na.rm=T), by=list(id,wave)]
+
+#create leads and lags using subsetted dataset
+sipp_wave <- subset(sipp, seam==T)
+setkey(sipp_wave, id,wave)
+sipp_wave[ , job_wave := job]
+sipp_wave[ lfstat_wave==2 | lfstat_wave ==3, job_wave := NA]
+sipp_wave[ , next.lfstat_wave := shift(lfstat_wave,type="lead"), by=id]
+sipp_wave[ , last.lfstat_wave := shift(lfstat_wave,type="lag") , by=id]
+sipp_wave[ , next.job_wave    := shift(job_wave,type="lead")   , by=id]
+sipp_wave[ , last.job_wave    := shift(job_wave,type="lag")    , by=id]
+sipp_wave[ , next.occ_wave    := shift(occ,type="lead")        , by=id]
+sipp_wave[ , last.occ_wave    := shift(occ,type="lag")         , by=id]
+# create EU/UE/EE dummies
+sipp_wave[lfstat_wave == 1, EU_wave := (next.lfstat_wave == 2)]
+sipp_wave[lfstat_wave == 2, UE_wave := (next.lfstat_wave == 1)]
+sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1, EE_wave := (job_wave != next.job_wave) & (last.job_wave != next.job_wave)]
+sipp_wave[lfstat_wave == 1 & next.lfstat_wave != 1, EE_wave := NA]
+sipp_wave[(EU_wave ==T | UE_wave==T | EE_wave==T) , ]
+
+sipp_wave[job_wave != next.job_wave | (lfstat_wave == 1 & next.lfstat_wave == 2), 
+	 switchedOcc_wave := (occ != next.occ_wave)]
+
+sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","next.job_wave","last.job_wave","job_wave","next.occ_wave","last.occ_wave",
+										"EE_wave","EU_wave","UE_wave","switchedOcc_wave","wave","id"))
+
+sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
+
+# plot transitions time series for sanity check
+EU_wave <- sipp[, .(EU_wave = weighted.mean(EU_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+ggplot(EU_wave, aes(date, EU_wave, color = panel, group = panel)) +
+	geom_point() +ylim(c(0,.1))+
+	geom_line()
+
+UE_wave <- sipp[, .(UE_wave = weighted.mean(UE_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+ggplot(UE_wave, aes(date, UE_wave, color = panel, group = panel)) +
+	geom_point() +
+	geom_line()
+
+EE_wave <- sipp[, .(EE_wave = weighted.mean(EE_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+ggplot(EE_wave, aes(date, EE_wave, color = panel, group = panel)) +
+	geom_point() + ylim(c(0,.1))+
+	geom_line()
+
+U_wave <- sipp[ , .(U_wave =  weighted.mean(lfstat_wave==2, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+ggplot(U_wave, aes(date, U_wave, color = panel, group = panel)) +
+	geom_point() + ylim(c(0,.10))+
+	geom_line()
+U_mo <- sipp[ , .(U_mo =  weighted.mean(lfstat==2, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+ggplot(U_mo, aes(date, U_mo, color = panel, group = panel)) +
+	geom_point() + ylim(c(0,.15))+
+	geom_line()
+
+
 
 ########## save prepared data
 setwd(outputdir)
