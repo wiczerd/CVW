@@ -204,27 +204,30 @@ sipp[, next2.occ := shift(occ, 2, type = "lead"), by = id]
 ########## transitions ----------------------------
 
 
+#use start-date & end-date for EE switches
+sipp[lfstat == 1 & next.lfstat == 1, Eend:= (year==eyear & month==emonth)]
+sipp[is.na(Eend)==T, Eend:= F]
+
+sipp[lfstat == 1 & next.lfstat == 1, Estart:= (year==syear & month==smonth)]
+sipp[is.na(Estart)==T, Estart:= F]
+sipp[ , next.Estart := shift(Estart, type="lead"), by=id]
+
 # create EU/UE/EE dummies
 sipp[lfstat == 1, EU := (next.lfstat == 2)]
 sipp[lfstat == 2, UE := (next.lfstat == 1)]
-sipp[lfstat == 1 & next.lfstat == 1, EE := (job != next.job)]
-sipp[lfstat == 1 & next.lfstat != 1, EE := NA]
+sipp[lfstat == 1 & next.lfstat==1, EE := (Eend==T | next.Estart==T)]
 
-sipp[lfstat == 1 & last.lfstat == 1, StE:= (year==syear & month==smonth)]
-sipp[lfstat == 1 & next.lfstat == 1, EnE:= (year==eyear & month==emonth)]
+# these are not stayers, but also not switchers either... some miscoding somewhere
+sipp[lfstat == 1 & next.lfstat == 1, jobchng := (job != next.job)]
+sipp[lfstat == 1 & next.lfstat != 1, jobchng := NA]
 
 
 # create switched occupation dummy
 #
-# universe:
-#
-# job != next.job: job code changes for those who are continuing employment
-#
-# lfstat == 1 & next.lfstat == 2: EU transition. We pulled occupation forwards, so 
-# this is when the occupation change should happen
-#
-sipp[job != next.job | (lfstat == 1 & next.lfstat == 2), 
-	 switchedOcc := (occ != next.occ) & (last.occ != next.occ) & (occ != next2.occ)]
+sipp[ , occ_wave := Mode(occ), by=list(id,wave)]
+sipp[ srefmon==4, switchedOcc := occ_wave != shift(occ_wave,type="lead")]
+sipp[ , switchedOcc := any(switchedOcc,na.rm=T), by=list(wave,id)]
+#sipp[, switchedOcc := (occ != next.occ) & (last.occ != next.occ) & (occ != next2.occ)]
 
 
 # plot transitions time series for sanity check
@@ -238,12 +241,12 @@ ggplot(UE, aes(date, UE, color = panel, group = panel)) +
 	geom_point() +
 	geom_line()
 
-EE <- sipp[lfstat==1 & next.lfstat==1, .(EE = weighted.mean(EE, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+EE <- sipp[lfstat==1 & next.lfstat==1 & (is.finite(eyear) | is.finite(syear)), .(EE = weighted.mean( EE==T, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(EE, aes(date, EE, color = panel, group = panel)) +
 	geom_point() +
 	geom_line()
 
-switchedOcc <- sipp[, .(switchedOcc = weighted.mean(switchedOcc, wpfinwgt, na.rm = TRUE)),
+switchedOcc <- sipp[EE==T|EU==T|UE==T, .(switchedOcc = weighted.mean(switchedOcc, wpfinwgt, na.rm = TRUE)),
 		    by = list(panel, date)]
 ggplot(switchedOcc, aes(date, switchedOcc, color = panel, group = panel)) +
 	geom_point() +
@@ -338,6 +341,10 @@ sipp[ , lfstat_wave := max(lfstat,na.rm=T), by=list(id,wave)]
 #sipp[ , lfstat2_wave := any(lfstat==2, na.rm=T), by=list(id,wave)] #anytime an unemployment shows up, we count it as such
 #sipp[ , lfstat_wave := ifelse(lfstat2_wave, 2L, lfstat_wave)] #anytime an unemployment shows up, we count it as such
 #sipp[ , lfstat2_wave:=NULL]
+
+sipp[ , Eend_wave:= any(Eend, na.rm=T), by=list(wave,id)]
+sipp[ , Estart_wave:= any(next.Estart, na.rm=T), by=list(wave,id)]
+
 
 sipp[ seam ==T & is.finite(lfstat), lfstat_seam := lfstat]
 sipp[ , lfstat_seam := max(lfstat_seam,na.rm=T), by=list(id,wave)]
