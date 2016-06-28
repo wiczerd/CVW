@@ -13,6 +13,7 @@ library(stats)
 #setwd("G:/Research_Analyst/Eubanks/Occupation Switching")
 wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
+datadir = "~/workspace/CVW/R/Results"
 setwd(wd0)
 
 
@@ -25,7 +26,7 @@ regressors <- c("age",
 		"black", 
 		"hispanic")
 
-DTall <- readRDS("./Data/DTall_3.RData")
+DTall <- readRDS(paste0(datadir,"/DTall_3.RData"))
 
 # create regressor variables
 DTall[, logearnm := log(earnm + sqrt(earnm^2 + 1))]
@@ -57,7 +58,7 @@ DTall[ lfstat>=2, usewage:= 0. ]
 DTall[ lfstat>=2, occwage:= 0. ]
 
 # remove regressor variables
-DTall[, c("race","experience","educ") := NULL]
+DTall[, c("race","experience","educ","unrateNSA","PCEPI","yearsschool") := NULL]
 
-saveRDS(DTall, "./Data/DTall_4.RData")
+saveRDS(DTall, paste0(datadir,"/DTall_4.RData"))
 rm(list=ls())

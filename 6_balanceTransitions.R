@@ -7,6 +7,8 @@ library(Hmisc)
 
 wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
+datadir = "~/workspace/CVW/R/Results"
+
 setwd(wd0)
 Mode <- function(x) {
 	ux <- unique(x[!is.na(x)])
@@ -21,10 +23,10 @@ recallRecodeJobID <- function(DF){
 	#this function just uses job ID to identify recalls, and may miss especially long-term when job id can reset.  
 	DF[job> 0 , jobpos := job]
 	DF[ EmpTmrw==T, nextjob := shift(jobpos,1,type="lead"), by=id]
-	DF[ is.finite(stintid) & (lfstat>=2 | EU==T) , nextjob := Mode(nextjob), by=list(id,stintid)]
+	DF[ is.finite(ustintid) & (lfstat>=2 | EU==T) , nextjob := Mode(nextjob), by=list(id,ustintid)]
 	# will convert all recall stints as lfstat == NA_integer_
 	DF[EU==T , recalled := (jobpos == nextjob) ]
-	DF[is.finite(stintid) &(EU==T | lfstat>=2 ), recalled:=Mode(recalled) , by=list(id,stintid)]
+	DF[is.finite(ustintid) &(EU==T | lfstat>=2 ), recalled:=Mode(recalled) , by=list(id,ustintid)]
 	DF[EU==T & recalled==T, EU:=F]
 	DF[UE==T & recalled==T, UE:=F]
 	DF[lfstat>=2 & recalled==T, lfstat:=0]
@@ -34,7 +36,7 @@ recallRecodeShorTerm <- function(DF){
 	#this function closely follows Fujita & Moscarini for identification of short-term recalls
 	DF[job> 0 , jobpos := job]
 	DF[ EmpTmrw==T, nextjob := shift(jobpos,1,type="lead"), by=id]
-	DF[ is.finite(stintid) & (lfstat>=2 | EU==T) , nextjob := Mode(nextjob), by=list(id,stintid)]
+	DF[ is.finite(ustintid) & (lfstat>=2 | EU==T) , nextjob := Mode(nextjob), by=list(id,ustintid)]
 	# will convert all recall stints as lfstat == NA_integer_
 	DF[ , ENEnoseam := lfstat >=2 & ( shift(lfstat,1,type="lead")==1 & shift(lfstat,1,type="lag")==1
 									  |  (sum(lfstat ==1, na.rm=T)==2 & (shift(lfstat,1,type="lead")==2 |shift(lfstat)==2)) )
@@ -64,7 +66,7 @@ recallRecodeShorTerm <- function(DF){
 	DF[is.na(recalled), recalled := 0.]
 	#get the remaining recalled:
 	DF[EU==T , recalled := ifelse(jobpos == nextjob,1,recalled) ]
-	DF[(lfstat>=2 | EU==T) & !is.na(stintid) & stintid>0, recalled := max(recalled,na.rm=T), by=list(id,stintid)]
+	DF[(lfstat>=2 | EU==T) & !is.na(ustintid) & ustintid>0, recalled := max(recalled,na.rm=T), by=list(id,ustintid)]
 	DF[ , EUrecalled:= ( recalled > 0.75 & EU==T), by=id]
 	DF[ , UErecalled:= ( recalled > 0.75 & UE==T), by=id]
 	
@@ -74,11 +76,11 @@ recallRecodeShorTerm <- function(DF){
 	DF[ , c("jobpos","ENEwseam","ENEnoseam") := NULL]
 }
 
-DTall <- readRDS("./Data/DTall_5.RData")
+DTall <- readRDS(paste0(datadir,"/DTall_5.RData"))
 
 # sum weights for UE, EU, and EE
-UEreadweight <- DTall[UE==T & !is.na(wagechange) & is.finite(stintid), sum(wpfinwgt, na.rm = TRUE)]
-EUreadweight <- DTall[EU==T & !is.na(wagechange) & is.finite(stintid), sum(wpfinwgt, na.rm = TRUE)]
+UEreadweight <- DTall[UE==T & !is.na(wagechange) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
+EUreadweight <- DTall[EU==T & !is.na(wagechange) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
 EEreadweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 
 DTall[lfstat==2, recalled:= F ]
@@ -86,8 +88,8 @@ recallRecodeJobID(DTall)
 #DTall[lfstat==2, recalled:= 0. ]
 #recallRecodeShorTerm(DTall)
 
-UEnorecallweight <- DTall[UE==T & !is.na(wagechange) & is.finite(stintid), sum(wpfinwgt, na.rm = TRUE)]
-EUnorecallweight <- DTall[EU==T & !is.na(wagechange) & is.finite(stintid), sum(wpfinwgt, na.rm = TRUE)]
+UEnorecallweight <- DTall[UE==T & !is.na(wagechange) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
+EUnorecallweight <- DTall[EU==T & !is.na(wagechange) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
 EEnorecallweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 
 #recall rate:
@@ -100,7 +102,7 @@ sum(DTall$wpfinwgt[DTall$UE], na.rm=T)
 
 sum(DTall$wpfinwgt[DTall$EE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
-sum(DTall$wpfinwgt[DTall$UE & is.finite(DTall$stintid)==T], na.rm=T)/sum(DTall$wpfinwgt[is.finite(DTall$stintid)==T], na.rm=T)
+sum(DTall$wpfinwgt[DTall$UE & is.finite(DTall$ustintid)==T], na.rm=T)/sum(DTall$wpfinwgt[is.finite(DTall$ustintid)==T], na.rm=T)
 
 sum(DTall$wpfinwgt[DTall$EE & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
 sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
@@ -210,8 +212,8 @@ wagechanges[UE==T & shift(switchedInd, 1, type = "lag")==T, switchedInd := T, by
 wagechanges[, maxunempdur:= ifelse(UE==T & is.na(maxunempdur), shift(maxunempdur), maxunempdur) , by = id]
 wagechanges[, maxunempdur:= ifelse(UE==T & maxunempdur<shift(maxunempdur), shift(maxunempdur), maxunempdur) , by = id]
 wagechanges[, maxunempdur:= ifelse(EU==T & maxunempdur<shift(maxunempdur,1,type="lead"), shift(maxunempdur,1,type="lead"), maxunempdur) , by = id]
-wagechanges[, stintid := ifelse( EU==T & is.na(stintid), shift(stintid,1,type="lead"), stintid ), by=id]
-wagechanges[, stintid := ifelse( UE==T & is.na(stintid), shift(stintid,1,type="lag"), stintid ), by=id]
+wagechanges[, ustintid := ifelse( EU==T & is.na(ustintid), shift(ustintid,1,type="lead"), ustintid ), by=id]
+wagechanges[, ustintid := ifelse( UE==T & is.na(ustintid), shift(ustintid,1,type="lag"), ustintid ), by=id]
 
 # set HSCol and Young to max over panel to ensure balance
 wagechanges[, HSCol := max(HSCol), by = id]
@@ -289,8 +291,8 @@ wagechanges[UE==T, balanceweightEUE := 0.]
 wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE","maxunempdur","balanceweight","switchedOcc","switchedInd"))
 
 setkey(DTall,id,date)
-DTall[is.finite(stintid), balancedEU := max(UE,na.rm=T)==T & EU==T, by = list(id,stintid)]
-DTall[is.finite(stintid), balancedUE := max(EU,na.rm=T)==T & UE==T, by = list(id,stintid)]
+DTall[is.finite(ustintid), balancedEU := max(UE,na.rm=T)==T & EU==T, by = list(id,ustintid)]
+DTall[is.finite(ustintid), balancedUE := max(EU,na.rm=T)==T & UE==T, by = list(id,ustintid)]
 DTall<- merge(DTall,wagechangesBalanced,by=c("id","date"),all.x=T)
 
 #make the wage changes NA if not-balanced
@@ -299,21 +301,21 @@ DTall[EU==T & balancedEU.y==F, c("wagechange_EUE","wagechange_all","wagechange")
 
 DTall[UE==T, UE := balancedUE.y==T]
 DTall[EU==T, EU := balancedEU.y==T]
-#there are a few from x that don't have stintid, fill these with y.
+#there are a few from x that don't have ustintid, fill these with y.
 
 DTall[ , switchedOcc := switchedOcc.y] 
-DTall[ is.finite(stintid), switchedOcc := Mode(switchedOcc), by=list(id,stintid)]
+DTall[ is.finite(ustintid), switchedOcc := Mode(switchedOcc), by=list(id,ustintid)]
 DTall[ lfstat==1 & !(EE==T|EU==T|UE==T), switchedOcc := switchedOcc.x]
 DTall[ , switchedInd := switchedInd.y] 
-DTall[ is.finite(stintid), switchedInd := Mode(switchedInd), by=list(id,stintid)]
+DTall[ is.finite(ustintid), switchedInd := Mode(switchedInd), by=list(id,ustintid)]
 DTall[ lfstat==1 & !(EE==T|EU==T|UE==T), switchedInd := switchedInd.x]
-DTall[ is.finite(stintid), maxunempdur := max(c(maxunempdur.y, maxunempdur.x), na.rm=T), by=list(id,stintid)]
-#DTall[ is.finite(stintid) , completestintUE:= as.integer(balancedUE.y==T) ] <- this part is unecessary
-#DTall[ is.finite(stintid) , completestintUE:= max(completestintUE) , by = list(id,stintid)]
-#DTall[ is.finite(stintid) , completestintEU:= as.integer(balancedEU.y==T) ]
-#DTall[ is.finite(stintid) , completestintEU:= max(balancedEU.y), by=list(id,stintid) ]
+DTall[ is.finite(ustintid), maxunempdur := max(c(maxunempdur.y, maxunempdur.x), na.rm=T), by=list(id,ustintid)]
+#DTall[ is.finite(ustintid) , completestintUE:= as.integer(balancedUE.y==T) ] <- this part is unecessary
+#DTall[ is.finite(ustintid) , completestintUE:= max(completestintUE) , by = list(id,ustintid)]
+#DTall[ is.finite(ustintid) , completestintEU:= as.integer(balancedEU.y==T) ]
+#DTall[ is.finite(ustintid) , completestintEU:= max(balancedEU.y), by=list(id,ustintid) ]
 DTall[ !is.finite(balanceweight), balanceweight:= 0.]
-DTall[, balanceweight := max(balanceweight, na.rm=T), by=list(id,stintid)]
+DTall[, balanceweight := max(balanceweight, na.rm=T), by=list(id,ustintid)]
 DTall[, c("maxunempdur.x","maxunempdur.y","balancedEU.x","balancedEU.y") := NULL ]
 
 # create weights & EUE specific stuff
