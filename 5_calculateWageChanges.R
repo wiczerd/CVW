@@ -94,9 +94,18 @@ DTall[ , seamwage := Mode(seamwage), by=list(id,wave)]
 DTall[ seam==T, wagechange_wave := shift(wavewage,1,type="lead") - wavewage, by=id]
 DTall[ , wagechange_wave := Mode(wagechange_wave), by= list(id,wave)]
 # wagechange wave =NA for job changers without a transition
-DTall[!(EU_wave|UE_wave|EE_wave) & jobchng_wave==T , wagechange_wave := NA]
+DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave := NA]
+# wagechange wave =NA for gain that revert
+DTall[ seam==T, next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
+DTall[ seam==T, last.wagechange_wave := shift(wagechange_wave, type="lag" ),by=id]
+DTall[ , next.wagechange_wave := Mode(next.wagechange_wave), by= list(id,wave)]
+DTall[ , last.wagechange_wave := Mode(last.wagechange_wave), by= list(id,wave)]
+DTall[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad:= (wagechange_wave>2 & (last.wagechange_wave< -2. | next.wagechange_wave< -2.)) ] #knocks out 42% of large increases and 1.4% of total change obseravations
+# DTall[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad1:=(wagechange_wave< -2. & (last.wagechange_wave> 2. | next.wagechange_wave> 2.)) ] #knocks out 42% of large increases and 1.4% of total change obseravations
 # wagechange wave =NA for loss more than 200% without a transition
-DTall[!(EU_wave|UE_wave|EE_wave) & wagechange_wave< -2. , wagechange_wave := NA]
+DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & wagechange_wave< -2. , wagechange_wave := NA]
+DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & wagechange_wave_bad == T , wagechange_wave := NA]
+DTall[ , wagechange_wave_bad:=NULL]
 
 DTall[ seam==T, wagechange_seam := shift(seamwage,1,type="lead") - seamwage, by =id]
 DTall[ , wagechange_seam := Mode(wagechange_seam), by= list(id,wave)]

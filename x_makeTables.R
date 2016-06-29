@@ -11,6 +11,8 @@ library(ggplot2)
 
 wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
+datadir = "~/workspace/CVW/R/Results"
+outputdir = "~/workspace/CVW/R/Figures"
 setwd(wd0)
 
 CPSunempRt <- readRDS("./InputData/CPSunempRt.RData")
@@ -19,7 +21,7 @@ CPSunempRt$unrt <- CPSunempRt$unrt/100
 
 ##########################################################################################
 # By wave -----------------------
-toKeep_wave <- c("switchedOcc_wave","switchedInd",
+toKeep_wave <- c("switchedOcc_wave",
             "Young",
             "HSCol",
             "recIndic","recIndic_wave",
@@ -29,13 +31,15 @@ toKeep_wave <- c("switchedOcc_wave","switchedInd",
             "EE_wave","EU_wave","UE_wave",
             "unrt","wpfinwgt","waveweight",
             "wave","id")
-DTseam <- readRDS("./Data/DTseam.RData")
+DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
 
 # select toKeep columns only
 DTseam <- DTseam[, toKeep_wave, with = FALSE]
 DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
 DTseam<-DTseam[ is.finite(EE_wave)&is.finite(EU_wave)&is.finite(UE_wave),]
+
+
 
 tabqtls <- c(.1,.25,.5,.75,.9)
 tN <- (length(tabqtls)+1)
@@ -77,7 +81,7 @@ rowtitles <- list( pos=list(0,3,6), command=c("\\hline  \\color{Maroon}{1996-201
 tab_wavedist <- xtable(tab_wavedist, digits=2, 
                        align="l|l|lllll", caption="Distribution of earnings changes \\label{tab:wavedist}")
 print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)), 
-      add.to.row=rowtitles, file="./Figures/wavedist.tex")
+      add.to.row=rowtitles, file=paste0(outputdir,"/wavedist.tex"))
 
 tab_wavevardec <- array(NA_real_,dim=c(2,3))
 

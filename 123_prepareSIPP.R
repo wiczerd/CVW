@@ -193,6 +193,7 @@ sipp[, newunemp := NULL]
 # create unemployment duration variable
 sipp[, unempdur := seq_len(.N) - 1, by = list(id, ustintid)]
 sipp[is.na(ustintid), unempdur := NA]
+sipp[ unempdur >= 0 & is.finite(unempdur), maxunempdur := max(unempdur,na.rm=T), by = list(id, ustintid)]
 
 # fill in occupation with next occupation during unemployment stints
 sipp[, next.occ := shift(occ, 1, type = "lead"), by = id]
@@ -378,9 +379,9 @@ sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := (job_wave !
 sipp_wave[lfstat_wave == 1 & next.lfstat_wave != 1 , jobchng_wave := NA]
 
 sipp_wave[ (EE_wave==T|EU_wave==T|UE_wave==T), switchedOcc_wave := occ_wave != next.occ_wave]
-sipp_wave[ , last.switchedOcc_wave := shift(switchedOcc_wave), by=id]
-sipp_wave[ UE_wave==T, switchedOcc_wave:=last.switchedOcc_wave]
 sipp_wave[ jobchng_wave==T &!(EE_wave|UE_wave|EU_wave), switchedOcc_wave:=NA]
+sipp_wave[ UE_wave==T|EU_wave==T, last.switchedOcc_wave := shift(switchedOcc_wave), by=id]
+sipp_wave[ UE_wave==T, switchedOcc_wave:=last.switchedOcc_wave]
 
 sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(EU_wave) , EU_wave:=F ]
 sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(UE_wave) , UE_wave:=F ]
@@ -390,6 +391,12 @@ sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","n
 										"jobchng_wave","EE_wave","EU_wave","UE_wave","switchedOcc_wave","wave","id"))
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
+
+#create wave-level ustintid_wave
+sipp[, newunemp_wave := lfstat_wave == 2 & (shift(lfstat_wave) == 1 | mis == 1)]
+sipp[newunemp_wave == TRUE, ustintid_wave := cumsum(newunemp_wave), by = id]
+sipp[lfstat_wave != 1, ustintid_wave := na.locf(ustintid_wave, na.rm = FALSE), by = id]
+sipp[, newunemp_wave := NULL]
 
 # plot transitions time series for sanity check
 EU_wave <- sipp[lfstat_wave==1 & is.finite(next.lfstat_wave), .(EU_wave = weighted.mean(EU_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
@@ -403,6 +410,7 @@ ggplot(EU_wave, aes(date, EU_wave)) + theme_bw()+
 	geom_point()+ylim(c(0.,0.05))+
 	geom_line( aes(date,EU_wave_apx)) +xlab("") + ylab("EU wave-frequency")
 ggsave(filename = paste0(outputdir,"/EU_wave.eps"),height= 5,width=10)
+ggsave(filename = paste0(outputdir,"/EU_wave.png"),height= 5,width=10)
 
 
 UE_wave <- sipp[lfstat_wave==2 & is.finite(next.lfstat_wave), .(UE_wave = weighted.mean(UE_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
@@ -416,6 +424,7 @@ ggplot(UE_wave, aes(date, UE_wave)) + theme_bw()+
 	geom_point()+ylim(c(0.,0.5))+
 	geom_line( aes(date,UE_wave_apx)  ) +xlab("") + ylab("UE wave-frequency")
 ggsave(filename = paste0(outputdir,"/UE_wave.eps"),height= 5,width=10)
+ggsave(filename = paste0(outputdir,"/UE_wave.png"),height= 5,width=10)
 
 
 
@@ -430,6 +439,7 @@ ggplot(EE_wave, aes(date, EE_wave)) + theme_bw()+
 	geom_point()+ylim(c(0.,0.035))+
 	geom_line( aes(date,EE_wave_apx)  ) +xlab("") + ylab("EE wave-frequency")
 ggsave(filename = paste0(outputdir,"/EE_wave.eps"),height= 5,width=10)
+ggsave(filename = paste0(outputdir,"/EE_wave.png"),height= 5,width=10)
 
 
 

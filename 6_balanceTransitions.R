@@ -8,6 +8,10 @@ library(Hmisc)
 wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
 datadir = "~/workspace/CVW/R/Results"
+outputdir = "~/workspace/CVW/R/Results"
+
+recall_adj = F
+dur_adj = F
 
 setwd(wd0)
 Mode <- function(x) {
@@ -21,21 +25,34 @@ CPSunempdur <- readRDS("./InputData/CPSunempDurDist.RData")
 
 recallRecodeJobID <- function(DF){
 	#this function just uses job ID to identify recalls, and may miss especially long-term when job id can reset.  
+	DF[ , nextjob := NULL]
 	DF[job> 0 , jobpos := job]
-	DF[ EmpTmrw==T, nextjob := shift(jobpos,1,type="lead"), by=id]
+	DF[lfstat==1 | UE==T , nextjob := shift(jobpos,1,type="lead"), by=id]
 	DF[ is.finite(ustintid) & (lfstat>=2 | EU==T) , nextjob := Mode(nextjob), by=list(id,ustintid)]
 	# will convert all recall stints as lfstat == NA_integer_
 	DF[EU==T , recalled := (jobpos == nextjob) ]
 	DF[is.finite(ustintid) &(EU==T | lfstat>=2 ), recalled:=Mode(recalled) , by=list(id,ustintid)]
-	DF[EU==T & recalled==T, EU:=F]
-	DF[UE==T & recalled==T, UE:=F]
-	DF[lfstat>=2 & recalled==T, lfstat:=0]
+	DF[EU==T & recalled==T, EU:=NA]
+	DF[UE==T & recalled==T, UE:=NA]
+	DF[lfstat>=2 & recalled==T, lfstat:=NA]
+	# do it at wave level:
+	DF[job_wave> 0 , jobpos_wave := job_wave]
+	DF[seam==T & (lfstat_wave==1 | UE_wave==T) , nextjob_wave := shift(jobpos_wave,1,type="lead"), by=id]
+	DF[seam==T & (lfstat_wave>=2 | EU_wave==T) & is.finite(ustintid_wave), 
+	   	nextjob_wave := Mode(nextjob_wave), by=list(id,ustintid_wave)]
+	DF[seam==T & EU_wave==T, recalled_wave := (jobpos_wave == nextjob_wave) ]
+	DF[is.finite(ustintid_wave) &(EU_wave==T | lfstat_wave>=2 ), recalled_wave:=any(recalled_wave,na.rm = T) , by=list(id,ustintid_wave)]
+	DF[EU_wave==T & recalled_wave==T, EU_wave:=NA]
+	DF[UE_wave==T & recalled_wave==T, UE_wave:=NA]
+	DF[lfstat_wave>=2 & recalled_wave==T, lfstat_wave:=NA]
+	
+	DF[ , c("jobpos","jobpos_wave","nextjob","nextjob_wave"):=NULL]
 }
 
 recallRecodeShorTerm <- function(DF){
 	#this function closely follows Fujita & Moscarini for identification of short-term recalls
 	DF[job> 0 , jobpos := job]
-	DF[ EmpTmrw==T, nextjob := shift(jobpos,1,type="lead"), by=id]
+	DF[ lfstat==1 | UE==T, nextjob := shift(jobpos,1,type="lead"), by=id]
 	DF[ is.finite(ustintid) & (lfstat>=2 | EU==T) , nextjob := Mode(nextjob), by=list(id,ustintid)]
 	# will convert all recall stints as lfstat == NA_integer_
 	DF[ , ENEnoseam := lfstat >=2 & ( shift(lfstat,1,type="lead")==1 & shift(lfstat,1,type="lag")==1
@@ -77,23 +94,33 @@ recallRecodeShorTerm <- function(DF){
 }
 
 DTall <- readRDS(paste0(datadir,"/DTall_5.RData"))
-
 # sum weights for UE, EU, and EE
 UEreadweight <- DTall[UE==T & !is.na(wagechange) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
 EUreadweight <- DTall[EU==T & !is.na(wagechange) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
 EEreadweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
 
-DTall[lfstat==2, recalled:= F ]
-recallRecodeJobID(DTall)
-#DTall[lfstat==2, recalled:= 0. ]
-#recallRecodeShorTerm(DTall)
+UEreadweight_wave <- DTall[UE_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
+EUreadweight_wave <- DTall[EU_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
+EEreadweight_wave <- DTall[EE_wave==T & !is.na(wagechange_wave), sum(wpfinwgt, na.rm = TRUE)]
 
-UEnorecallweight <- DTall[UE==T & !is.na(wagechange) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
-EUnorecallweight <- DTall[EU==T & !is.na(wagechange) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
-EEnorecallweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
-
-#recall rate:
-1.-UEnorecallweight/UEreadweight
+if( recall_adj == T){
+	
+	DTall[lfstat==2, recalled:= F ]
+	recallRecodeJobID(DTall)
+	
+	UEnorecallweight <- DTall[UE==T & !is.na(wagechange) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
+	EUnorecallweight <- DTall[EU==T & !is.na(wagechange) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
+	EEnorecallweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+	
+	UEnorecallweight_wave <- DTall[UE_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
+	EUnorecallweight_wave <- DTall[EU_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
+	EEnorecallweight_wave <- DTall[EE_wave==T & !is.na(wagechange_wave), sum(wpfinwgt, na.rm = TRUE)]
+	
+	#recall rate:
+	1.-UEnorecallweight/UEreadweight
+	1.-UEnorecallweight_wave/UEreadweight_wave
+	
+}
 
 #some rates: diagnostic
 sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
@@ -109,87 +136,83 @@ sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DT
 sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)],na.rm=T)/sum(DTall$wpfinwgt[!is.na(DTall$unempdur)],na.rm=T)
 #end diagnostic
 
-DTall[ , maxwave := max(wave,na.rm=T), by=id ]
-DTall[ , EE_wave:= ifelse(wave==maxwave, NA, EE_wave), by=id]
-
 #do some re-weighting to take out seasonality and trend in transitions
-EEdata <- DTall[ seam==T & lfstat_wave ==1, wtd.mean(EE_wave, weights = wpfinwgt), by=date]
-EEdata[, month :=factor(format(date, "%B" ),
-	   levels = month.name)]
-EEdata[, EErt:= V1]
-EEdata[, V1:=NULL]
-EEdata <- cbind( EEdata,DTall[ seam==T & lfstat_wave ==1, sum(wpfinwgt), by=date]$V1 )
+# EEdata <- DTall[ seam==T & lfstat_wave ==1, wtd.mean(EE_wave, weights = wpfinwgt), by=date]
+# EEdata[, month :=factor(format(date, "%B" ),
+# 	   levels = month.name)]
+# EEdata[, EErt:= V1]
+# EEdata[, V1:=NULL]
+# EEdata <- cbind( EEdata,DTall[ seam==T & lfstat_wave ==1, sum(wpfinwgt), by=date]$V1 )
 
 #save only the seams as a 'wave-change' set ---------------------
 DTseam <- subset(DTall, seam==T)
-DTseam[ is.finite(EE_wave) &is.finite(EU_wave)&is.finite((UE_wave)) , ]
-DTseam[ , maxunempdur:= maxunempdur_wave]
-DTseam[ , c("maxunempdur_wave","EE","EU","UE","switchedOcc"):= NULL]
+ 
+DTseam[ , c("EE","EU","UE","switchedOcc"):= NULL]
 #do not allow stayers to have larger than 200% change in earnings plus or minus
-DTseam[ EE_wave==F&EU_wave==F&UE_wave==F, wagechange_wave := ifelse( abs(wagechange_wave)>2., NA,wagechange_wave )]
-#cancel the recalled transitions
-DTseam[ , recalled_wave:=any(recalled,na.rm=T), by=list(id,wave)]
-DTseam[ recalled_wave==T&UE_wave==T, UE_wave:=NA]
-DTseam[ recalled_wave==T&EU_wave==T, EU_wave:=NA]
+#DTseam[ EE_wave==F&EU_wave==F&UE_wave==F, wagechange_wave := ifelse( abs(wagechange_wave)>2., NA,wagechange_wave )]
+
 #balance seams EU and UE
 DTseam[ EU_wave ==T | UE_wave==T, EU_match := shift(UE_wave,1,type = "lead")==T, by=id]
 DTseam[ EU_wave ==T | UE_wave==T, UE_match := shift(EU_wave,1,type = "lag")==T, by=id]
 #re-weighting for the left/right survey truncation
 DTseam[ , EU_nomatch := ((EU_match ==F | is.na(EU_match)) & EU_wave==T)]
 DTseam[ , UE_nomatch := ((UE_match ==F | is.na(UE_match)) & UE_wave==T)]
+DTseam[ EU_match==T, EU_nomatch:= F]
+DTseam[ UE_match==T, UE_nomatch:= F]
 DTseam[, misRemaining := max(mis), by=id]
 DTseam[, misRemaining := misRemaining-mis , by=id]
 EUmult <- DTseam[EU_wave==T & misRemaining<=12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[EU_wave==T & misRemaining> 12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
 UEmult <- DTseam[UE_wave==T & mis         <=12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[UE_wave==T & mis         > 12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
-DTseam[ , EU_wave := (EU_match==T)]
-DTseam[ , UE_wave := (UE_match==T)]
-DTseam[ is.na(EU_wave), EU_wave := F]
-DTseam[ is.na(UE_wave), UE_wave := F]
+DTseam[ EU_nomatch==T & EU_wave ==T, EU_wave := NA]
+DTseam[ UE_nomatch==T & UE_wave ==T, UE_wave := NA]
+#DTseam[ is.na(EU_wave), EU_wave := F]
+#DTseam[ is.na(UE_wave), UE_wave := F]
 DTseam[ EU_wave ==T | UE_wave==T, switchedOcc_wave := ifelse(UE_wave==T,shift(switchedOcc_wave,1,type="lag"),switchedOcc_wave)]
 DTseam[ , perwt:= mean(wpfinwgt), by=id]
 DTseam[ , waveweight := perwt]
 DTseam[ EU_wave==T | UE_wave==T, waveweight := perwt*(1+max(EUmult,UEmult))]
 
+if( dur_adj == T){
+	DTseam[ , maxunempdur:= maxunempdur_wave]
+	DTseam <- merge(DTseam, CPSunempdur, by = "date", all.x = TRUE)
+	#this is the failure rate
+	DTseam[,SIPPmax_LT15  :=wtd.mean( (maxunempdur< 15*12/52)                         , perwt,na.rm=T)]
+	DTseam[,SIPPmax_15_26 :=wtd.mean( (maxunempdur>=15*12/52 & maxunempdur<=26*12/52) , perwt,na.rm=T)]
+	DTseam[,SIPPmax_GT26  :=wtd.mean( (maxunempdur> 26*12/52)                         , perwt,na.rm=T)]
+	#this is the cumulative survival rate
+	DTseam[,CPSsurv_LT15  :=(mean(FRM5_14  ,na.rm=T)+ mean(LT5,na.rm=T))/100]
+	DTseam[,CPSsurv_15_26 :=(mean(FRM15_26 ,na.rm=T))/100]
+	DTseam[,CPSsurv_GT26  :=(mean(GT26     ,na.rm=T))/100]
+	#1-durwt_LT15*SIPPmax_LT15 = CPSsurv_GT26+ CPSsurv_15_26
+	DTseam[(maxunempdur<15*12/52), durwt :=  (1.-CPSsurv_GT26+ CPSsurv_15_26)/SIPPmax_LT15]
+	#durwt_FRM1526*SIPPmax_15_26 = CPSsurv_15_26
+	DTseam[(maxunempdur>=15*12/52 & maxunempdur<=26*12/52), durwt :=  CPSsurv_15_26/SIPPmax_15_26]
+	#durwt_GT26*SIPPmax_GT26 = CPSsurv_GT26
+	DTseam[(maxunempdur>26*12/52), durwt :=  CPSsurv_GT26/SIPPmax_GT26]
+	
+	DTseam[ (maxunempdur<15*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
+	DTseam[ (maxunempdur>=15*12/52 & maxunempdur<=26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
+	DTseam[ (maxunempdur>26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
+	
+	DTseam[ , c("SIPPmax_LT15","SIPPmax_15_26","SIPPmax_GT26","CPSsurv_LT15","CPSsurv_15_26","CPSsurv_GT26")
+	             := NULL]
+	#do not increase the incidence of unemployment
+	balwtEU <- DTseam[EU_wave==T, sum(waveweight, na.rm=T)]
+	balwtUE <- DTseam[UE_wave==T, sum(waveweight, na.rm=T)]
+	
+	DTseam[EU_wave ==T | UE_wave ==T, waveweight:= waveweight*durwt] 
+	DTseam[EU_wave==T, waveweight:= waveweight/sum(waveweight,na.rm=T)*balwtEU ]
+	DTseam[UE_wave==T, waveweight:= waveweight/sum(waveweight,na.rm=T)*balwtUE ]
+	
+	DTseam[,durwt :=NULL]
+	
+	
+	# scale weights back to original total
+	wtscale <- DTseam[, sum(waveweight, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
+	DTseam[, waveweight := waveweight/wtscale]
+}
 
-DTseam <- merge(DTseam, CPSunempdur, by = "date", all.x = TRUE)
-#this is the failure rate
-DTseam[,SIPPmax_LT15  :=wtd.mean( (maxunempdur< 15*12/52)                         , perwt,na.rm=T)]
-DTseam[,SIPPmax_15_26 :=wtd.mean( (maxunempdur>=15*12/52 & maxunempdur<=26*12/52) , perwt,na.rm=T)]
-DTseam[,SIPPmax_GT26  :=wtd.mean( (maxunempdur> 26*12/52)                         , perwt,na.rm=T)]
-#this is the cumulative survival rate
-DTseam[,CPSsurv_LT15  :=(mean(FRM5_14  ,na.rm=T)+ mean(LT5,na.rm=T))/100]
-DTseam[,CPSsurv_15_26 :=(mean(FRM15_26 ,na.rm=T))/100]
-DTseam[,CPSsurv_GT26  :=(mean(GT26     ,na.rm=T))/100]
-#1-durwt_LT15*SIPPmax_LT15 = CPSsurv_GT26+ CPSsurv_15_26
-DTseam[(maxunempdur<15*12/52), durwt :=  (1.-CPSsurv_GT26+ CPSsurv_15_26)/SIPPmax_LT15]
-#durwt_FRM1526*SIPPmax_15_26 = CPSsurv_15_26
-DTseam[(maxunempdur>=15*12/52 & maxunempdur<=26*12/52), durwt :=  CPSsurv_15_26/SIPPmax_15_26]
-#durwt_GT26*SIPPmax_GT26 = CPSsurv_GT26
-DTseam[(maxunempdur>26*12/52), durwt :=  CPSsurv_GT26/SIPPmax_GT26]
-
-DTseam[ (maxunempdur<15*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
-DTseam[ (maxunempdur>=15*12/52 & maxunempdur<=26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
-DTseam[ (maxunempdur>26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
-
-DTseam[ , c("SIPPmax_LT15","SIPPmax_15_26","SIPPmax_GT26","CPSsurv_LT15","CPSsurv_15_26","CPSsurv_GT26")
-             := NULL]
-#do not increase the incidence of unemployment
-balwtEU <- DTseam[EU_wave==T, sum(waveweight, na.rm=T)]
-balwtUE <- DTseam[UE_wave==T, sum(waveweight, na.rm=T)]
-
-DTseam[EU_wave ==T | UE_wave ==T, waveweight:= waveweight*durwt] 
-DTseam[EU_wave==T, waveweight:= waveweight/sum(waveweight,na.rm=T)*balwtEU ]
-DTseam[UE_wave==T, waveweight:= waveweight/sum(waveweight,na.rm=T)*balwtUE ]
-
-DTseam[,durwt :=NULL]
-
-
-# scale weights back to original total
-wtscale <- DTseam[, sum(waveweight, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
-DTseam[, waveweight := waveweight/wtscale]
-
-
-saveRDS(DTseam, "./Data/DTseam.RData")
+saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))
 
 
 
