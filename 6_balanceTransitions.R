@@ -355,7 +355,7 @@ wagechanges[EE==T      , balanceweightEUE:=balanceweight]
 wagechanges[EU==T      , balanceweightEUE:=balanceweight*2]
 wagechanges[UE==T      , balanceweightEUE:=0.]
 
-saveRDS(DTall,"./Data/DTall_6.RData")
+saveRDS(DTall,paste0(outputdir,"/DTall_6.RData"))
 
 
 #- Diagnostics
@@ -386,5 +386,5 @@ wagechanges[UE & switchedOcc, sum(balanceweight, na.rm = TRUE)] ==
  	wagechanges[EU & switchedOcc, sum(balanceweight, na.rm = TRUE)]
 
 # store balanced data
-saveRDS(wagechanges, "./Data/balancedwagechanges.RData")
+saveRDS(wagechanges, paste0(outputdir,"/balancedwagechanges.RData"))
 #rm(list=ls())

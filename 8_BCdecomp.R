@@ -9,11 +9,14 @@ library(quantreg)
 #setwd("G:/Research_Analyst/Eubanks/Occupation Switching")
 wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
+datadir = "~/workspace/CVW/R/Results"
+outputdir = "~/workspace/CVW/R/Results"
+
 setwd(wd0)
 
 keep <- c("wagechange","wagechange_EUE","EU","UE","EE","recIndic","switchedOcc","switchedInd","balanceweight","date")
 
-wagechanges <- readRDS("./Data/balancedwagechanges.RData")
+wagechanges <- readRDS(paste0(datadir,"/balancedwagechanges.RData"))
 wagechanges <- subset(wagechanges, select=keep)
 
 mmtabchngqtls <- seq(0.1,0.9,0.1)
@@ -394,10 +397,6 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 				wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile))
 }
 
-# create vector of recession dates : above 6%
-recDates2 <- as.Date(c("2003-04-01", "2003-10-01","2008-08-01", "2014-09-01"))
-wagechanges[, recIndic2 := (date > recDates2[1] & date < recDates2[2]) | 
-					(date > recDates2[3] & date < recDates2[4])]
 # create vector of recession dates : above 7%
 recDates3 <- as.Date(c("1991-10-01", "1993-07-01","2008-12-01", "2013-11-01"))
 wagechanges[, recIndic3 := (date > recDates3[1] & date < recDates3[2]) | 
@@ -486,12 +485,17 @@ print(MMEUE_tab,include.rownames=F, hline.after= c(0,nrow(MMEUE_tab)), file="./F
 ks.test(wcRec$wagechange_EUE,wcExp$wagechange_EUE,alternative = "greater")
 
 rm(list = c("wcRec","wcExp"))
+
+########################################################################
 ## Seams version -------------------------------
 
 library(ggplot2)
-DTseam <- readRDS("./Data/DTseam.RData")
+DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1, stayer:= T]
+DTseam[(EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
+DTseam <- DTseam[(changer|stayer)]
 
-toKeep <- c("waveweight","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","recIndic_wave")
+toKeep <- c("waveweight","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","recIndic_wave","date")
 
 
 # select toKeep columns only
@@ -502,6 +506,7 @@ DTseam[ , EU := EU_wave]
 DTseam[ , UE := UE_wave]
 DTseam[ , switchedOcc := switchedOcc_wave]
 DTseamchng <- subset(DTseam, EU==T|UE==T|EE==T)
+
 
 MM_wavechng_betaE_betaR_cf    <- MMdecomp(DTseamchng,6,"recIndic_wave","wagechange_wave","waveweight")
 MM_waveall_betaE_betaR_cf <- MMdecomp(DTseam,7,"recIndic_wave","wagechange_wave","waveweight")

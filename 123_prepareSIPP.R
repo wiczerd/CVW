@@ -14,6 +14,7 @@ Mode <- function(x) {
 rootdir <- "~/workspace/CVW/R/"
 datadir <- paste(rootdir, "/InputDataDE", sep = "")
 outputdir <- paste(rootdir, "/Results", sep = "")
+figuredir <- paste(rootdir, "/Figures", sep = "")
 setwd(rootdir)
 
 ############################## Read data, combine panels ##############################
@@ -186,14 +187,17 @@ sipp[, newemp := NULL]
 
 # create an unemployment stint id
 sipp[, newunemp := lfstat == 2 & (last.lfstat == 1 | mis == 1)]
-sipp[newunemp == TRUE, ustintid := cumsum(newunemp), by = id]
-sipp[lfstat != 1, ustintid := na.locf(ustintid, na.rm = FALSE), by = id]
+sipp[newunemp == TRUE, ustintid := seq_len(.N), by = id]
+sipp[lfstat == 1, ustintid := 9999]
+sipp[, ustintid := na.locf(ustintid, na.rm = FALSE), by = id]
+sipp[lfstat == 1 | ustintid  == 9999, ustintid := NA]
 sipp[, newunemp := NULL]
 
 # create unemployment duration variable
 sipp[, unempdur := seq_len(.N) - 1, by = list(id, ustintid)]
 sipp[is.na(ustintid), unempdur := NA]
-sipp[ unempdur >= 0 & is.finite(unempdur), maxunempdur := max(unempdur,na.rm=T), by = list(id, ustintid)]
+# create max unemployment duration
+sipp[, max.unempdur := max(unempdur), by = list(id, ustintid)]
 
 # fill in occupation with next occupation during unemployment stints
 sipp[, next.occ := shift(occ, 1, type = "lead"), by = id]
@@ -277,10 +281,14 @@ ggplot(Umo, aes(date, Umo, color = panel, group = panel)) +
 
 # create vector of recession dates
 recDates <- as.Date(c("2001-02-01", "2001-12-01","2007-11-01", "2009-07-01"))
+# create vector of recession dates : above 6%
+recDates2 <- as.Date(c("2003-04-01", "2003-10-01","2008-08-01", "2014-09-01"))
 
 # create recession indicator
 sipp[, recIndic := (date > recDates[1] & date < recDates[2]) | 
      	(date > recDates[3] & date < recDates[4])]
+sipp[, recIndic2 := (date > recDates2[1] & date < recDates2[2]) | 
+	 	(date > recDates2[3] & date < recDates2[4])]
 
 # get PCE and unemployment rate data
 setwd(datadir)
@@ -348,6 +356,7 @@ sipp[ , maxmis:= max(mis), by=id]
 sipp[ , seam:= (wave != shift(wave,1,type="lead") | mis==maxmis) , by=id ]
 sipp[ , maxmis:=NULL]
 sipp[, recIndic_wave := any(recIndic, na.rm=T), by=list(wave,id)]
+sipp[, recIndic2_wave := any(recIndic2, na.rm=T), by=list(wave,id)]
 
 sipp[ , lfstat_wave := max(lfstat,na.rm=T), by=list(id,wave)]
 #sipp[ , lfstat2_wave := any(lfstat==2, na.rm=T), by=list(id,wave)] #anytime an unemployment shows up, we count it as such
@@ -409,8 +418,8 @@ EU_wave[ , EU_wave_apx:= na.approx(EU_wave,na.rm=F)]
 ggplot(EU_wave, aes(date, EU_wave)) + theme_bw()+
 	geom_point()+ylim(c(0.,0.05))+
 	geom_line( aes(date,EU_wave_apx)) +xlab("") + ylab("EU wave-frequency")
-ggsave(filename = paste0(outputdir,"/EU_wave.eps"),height= 5,width=10)
-ggsave(filename = paste0(outputdir,"/EU_wave.png"),height= 5,width=10)
+ggsave(filename = paste0(figuredir,"/EU_wave.eps"),height= 5,width=10)
+ggsave(filename = paste0(figuredir,"/EU_wave.png"),height= 5,width=10)
 
 
 UE_wave <- sipp[lfstat_wave==2 & is.finite(next.lfstat_wave), .(UE_wave = weighted.mean(UE_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
@@ -423,8 +432,8 @@ UE_wave[ , UE_wave_apx:= na.approx(UE_wave,na.rm=F)]
 ggplot(UE_wave, aes(date, UE_wave)) + theme_bw()+
 	geom_point()+ylim(c(0.,0.5))+
 	geom_line( aes(date,UE_wave_apx)  ) +xlab("") + ylab("UE wave-frequency")
-ggsave(filename = paste0(outputdir,"/UE_wave.eps"),height= 5,width=10)
-ggsave(filename = paste0(outputdir,"/UE_wave.png"),height= 5,width=10)
+ggsave(filename = paste0(figuredir,"/UE_wave.eps"),height= 5,width=10)
+ggsave(filename = paste0(figuredir,"/UE_wave.png"),height= 5,width=10)
 
 
 
@@ -438,8 +447,8 @@ EE_wave[ , EE_wave_apx:= na.approx(EE_wave,na.rm=F)]
 ggplot(EE_wave, aes(date, EE_wave)) + theme_bw()+
 	geom_point()+ylim(c(0.,0.035))+
 	geom_line( aes(date,EE_wave_apx)  ) +xlab("") + ylab("EE wave-frequency")
-ggsave(filename = paste0(outputdir,"/EE_wave.eps"),height= 5,width=10)
-ggsave(filename = paste0(outputdir,"/EE_wave.png"),height= 5,width=10)
+ggsave(filename = paste0(figuredir,"/EE_wave.eps"),height= 5,width=10)
+ggsave(filename = paste0(figuredir,"/EE_wave.png"),height= 5,width=10)
 
 
 
@@ -463,6 +472,8 @@ swOc_wave[ , swOc_wave_apx:= na.approx(swOc_wave,na.rm=F)]
 ggplot(swOc_wave, aes(date, swOc_wave)) +
 	geom_point()  + theme_bw()+ylim(c(0.4,0.6))+
 	geom_line(aes(date,swOc_wave_apx)) + xlab("") + ylab("Occupational Switching Frequency")
+ggsave(filename = paste0(figuredir,"/sWocEE_wave.eps"),height= 5,width=10)
+ggsave(filename = paste0(figuredir,"/sWocEE_wave.png"),height= 5,width=10)
 
 
 
