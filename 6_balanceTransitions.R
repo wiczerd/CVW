@@ -10,7 +10,7 @@ xwalkdir = "~/workspace/CVW/R/Crosswalks"
 datadir = "~/workspace/CVW/R/Results"
 outputdir = "~/workspace/CVW/R/Results"
 
-recall_adj = F
+recall_adj = T
 dur_adj = F
 
 setwd(wd0)
@@ -25,7 +25,6 @@ CPSunempdur <- readRDS("./InputData/CPSunempDurDist.RData")
 
 recallRecodeJobID <- function(DF){
 	#this function just uses job ID to identify recalls, and may miss especially long-term when job id can reset.  
-	DF[ , nextjob := NULL]
 	DF[job> 0 , jobpos := job]
 	DF[lfstat==1 | UE==T , nextjob := shift(jobpos,1,type="lead"), by=id]
 	DF[ is.finite(ustintid) & (lfstat>=2 | EU==T) , nextjob := Mode(nextjob), by=list(id,ustintid)]
@@ -38,15 +37,14 @@ recallRecodeJobID <- function(DF){
 	# do it at wave level:
 	DF[job_wave> 0 , jobpos_wave := job_wave]
 	DF[seam==T & (lfstat_wave==1 | UE_wave==T) , nextjob_wave := shift(jobpos_wave,1,type="lead"), by=id]
-	DF[seam==T & (lfstat_wave>=2 | EU_wave==T) & is.finite(ustintid_wave), 
-	   	nextjob_wave := Mode(nextjob_wave), by=list(id,ustintid_wave)]
-	DF[seam==T & EU_wave==T, recalled_wave := (jobpos_wave == nextjob_wave) ]
+	DF[seam==T & (UE_wave==T | EU_wave==T) , nextjobEU_wave := shift(nextjob_wave,type="lead"), by=id]
+	DF[seam==T & EU_wave==T, recalled_wave := (jobpos_wave == nextjobEU_wave) ]
 	DF[is.finite(ustintid_wave) &(EU_wave==T | lfstat_wave>=2 ), recalled_wave:=any(recalled_wave,na.rm = T) , by=list(id,ustintid_wave)]
 	DF[EU_wave==T & recalled_wave==T, EU_wave:=NA]
 	DF[UE_wave==T & recalled_wave==T, UE_wave:=NA]
 	DF[lfstat_wave>=2 & recalled_wave==T, lfstat_wave:=NA]
 	
-	DF[ , c("jobpos","jobpos_wave","nextjob","nextjob_wave"):=NULL]
+	DF[ , c("jobpos","jobpos_wave","nextjob","nextjob_wave","nextjobEU_wave"):=NULL]
 }
 
 recallRecodeShorTerm <- function(DF){
@@ -231,7 +229,7 @@ wagechanges <- wagechanges[EE | balancedEU | balancedUE,]
 # A: To correct for how we defined the timing of the occupation switch. See 3_createVars.R.
 #    Now both the EU and UE will be considered an occupation switch.
 wagechanges[UE==T & shift(switchedOcc, 1, type = "lag")==T, switchedOcc := T, by = id]
-wagechanges[UE==T & shift(switchedInd, 1, type = "lag")==T, switchedInd := T, by = id]
+#wagechanges[UE==T & shift(switchedInd, 1, type = "lag")==T, switchedInd := T, by = id]
 wagechanges[, maxunempdur:= ifelse(UE==T & is.na(maxunempdur), shift(maxunempdur), maxunempdur) , by = id]
 wagechanges[, maxunempdur:= ifelse(UE==T & maxunempdur<shift(maxunempdur), shift(maxunempdur), maxunempdur) , by = id]
 wagechanges[, maxunempdur:= ifelse(EU==T & maxunempdur<shift(maxunempdur,1,type="lead"), shift(maxunempdur,1,type="lead"), maxunempdur) , by = id]
@@ -329,14 +327,10 @@ DTall[EU==T, EU := balancedEU.y==T]
 DTall[ , switchedOcc := switchedOcc.y] 
 DTall[ is.finite(ustintid), switchedOcc := Mode(switchedOcc), by=list(id,ustintid)]
 DTall[ lfstat==1 & !(EE==T|EU==T|UE==T), switchedOcc := switchedOcc.x]
-DTall[ , switchedInd := switchedInd.y] 
-DTall[ is.finite(ustintid), switchedInd := Mode(switchedInd), by=list(id,ustintid)]
-DTall[ lfstat==1 & !(EE==T|EU==T|UE==T), switchedInd := switchedInd.x]
+#DTall[ , switchedInd := switchedInd.y] 
+#DTall[ is.finite(ustintid), switchedInd := Mode(switchedInd), by=list(id,ustintid)]
+#DTall[ lfstat==1 & !(EE==T|EU==T|UE==T), switchedInd := switchedInd.x]
 DTall[ is.finite(ustintid), maxunempdur := max(c(maxunempdur.y, maxunempdur.x), na.rm=T), by=list(id,ustintid)]
-#DTall[ is.finite(ustintid) , completestintUE:= as.integer(balancedUE.y==T) ] <- this part is unecessary
-#DTall[ is.finite(ustintid) , completestintUE:= max(completestintUE) , by = list(id,ustintid)]
-#DTall[ is.finite(ustintid) , completestintEU:= as.integer(balancedEU.y==T) ]
-#DTall[ is.finite(ustintid) , completestintEU:= max(balancedEU.y), by=list(id,ustintid) ]
 DTall[ !is.finite(balanceweight), balanceweight:= 0.]
 DTall[, balanceweight := max(balanceweight, na.rm=T), by=list(id,ustintid)]
 DTall[, c("maxunempdur.x","maxunempdur.y","balancedEU.x","balancedEU.y") := NULL ]

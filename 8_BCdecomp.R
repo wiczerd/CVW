@@ -16,9 +16,6 @@ setwd(wd0)
 
 keep <- c("wagechange","wagechange_EUE","EU","UE","EE","recIndic","switchedOcc","switchedInd","balanceweight","date")
 
-wagechanges <- readRDS(paste0(datadir,"/balancedwagechanges.RData"))
-wagechanges <- subset(wagechanges, select=keep)
-
 mmtabchngqtls <- seq(0.1,0.9,0.1)
 mmtaballqtls  <- c(seq(.01,.1,.03),seq(0.25,0.75,0.25),seq(.9,.99,.03))
 Nsims = 10
@@ -397,6 +394,12 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 				wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile))
 }
 
+
+
+wagechanges <- readRDS(paste0(datadir,"/balancedwagechanges.RData"))
+wagechanges <- subset(wagechanges, select=keep)
+
+
 # create vector of recession dates : above 7%
 recDates3 <- as.Date(c("1991-10-01", "1993-07-01","2008-12-01", "2013-11-01"))
 wagechanges[, recIndic3 := (date > recDates3[1] & date < recDates3[2]) | 
@@ -542,10 +545,11 @@ for(di in seq(1,10,1)){
 
 spn_dif_cf_exp  <- spline(seq(0.05,0.95,0.1), (dec_cf   -dec_exp),xout=seq(0.05,0.95,0.01))$y
 spn_dif_rec_exp <- spline(seq(0.05,0.95,0.1), (dec_rec  -dec_exp),xout=seq(0.05,0.95,0.01))$y
+spn_dif_rec_exp_dat <- spline(seq(0.05,0.95,0.1), (dec_rec_dat  -dec_exp_dat),xout=seq(0.05,0.95,0.01))$y
 spn_dif_un_exp  <- spline(seq(0.05,0.95,0.1), (dec_cf_un-dec_exp),xout=seq(0.05,0.95,0.01))$y
 spn_dif_sw_exp  <- spline(seq(0.05,0.95,0.1), (dec_cf_sw-dec_exp),xout=seq(0.05,0.95,0.01))$y
 
-dt_mm <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_rec_exp ))
+dt_mm <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_rec_exp_dat ))
 names(dt_mm) <- c("Quantile","Data")
 dt_mm_melted <- melt(dt_mm, id= "Quantile")
 ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -560,7 +564,7 @@ ggsave("./Figures/MMwave_all_data.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_data.png",height=5,width=10)
 
 
-dt_mm <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_rec_exp,spn_dif_cf_exp ))
+dt_mm <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_rec_exp_dat,spn_dif_cf_exp ))
 names(dt_mm) <- c("Quantile","Data","Counter Factual")
 dt_mm_melted <- melt(dt_mm, id= "Quantile")
 ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -574,7 +578,7 @@ ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) +
 ggsave("./Figures/MMwave_all.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all.png",height=5,width=10)
 
-dt_mm_un <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_rec_exp,spn_dif_cf_exp,spn_dif_un_exp ))
+dt_mm_un <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_rec_exp_dat,spn_dif_cf_exp,spn_dif_un_exp ))
 names(dt_mm_un) <- c("Quantile","Data","Counter Factual","Recession Switching Coefficients")
 dt_mm_un_melted <- melt(dt_mm_un, id= "Quantile")
 ggplot( dt_mm_un_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -588,7 +592,7 @@ ggplot( dt_mm_un_melted, aes(x=Quantile,y=value,colour=variable) ) +
 ggsave("./Figures/MMwave_all_un.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_un.png",height=5,width=10)
 
-dt_mm_sw <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_cf_exp,spn_dif_rec_exp,spn_dif_sw_exp ))
+dt_mm_sw <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_rec_exp_dat,spn_dif_rec_exp,spn_dif_sw_exp ))
 names(dt_mm_sw) <- c("Quantile","Counter Factual","Data","Only Unemployment Coefficients")
 dt_mm_sw_melted <- melt(dt_mm_sw, id= "Quantile")
 ggplot( dt_mm_sw_melted, aes(x=Quantile,y=value,colour=variable) ) + 
