@@ -52,6 +52,7 @@ sipp96 <- sipp96[toKeep]
 sipp96 <- subset(sipp96, !is.na(esr) & (age >= 16))
 sipp96 <- data.table(sipp96)
 sipp96$panel <- 1996
+sipp96$ajbocc <- NA
 
 # 2001 panel
 sipp01 <- read.dta("./sippsets01ABD.dta", convert.factors = FALSE)
@@ -59,17 +60,19 @@ sipp01 <- sipp01[toKeep]
 sipp01 <- subset(sipp01, !is.na(esr) & (age >= 16))
 sipp01 <- data.table(sipp01)
 sipp01$panel <- 2001
+sipp01$ajbocc <- NA
 
 # 2004 panel
 sipp04 <- read.dta("./sippsets04ABD.dta", convert.factors = FALSE)
-sipp04 <- sipp04[toKeep]
+sipp04 <- sipp04[c(toKeep,"ajbocc")]
 sipp04 <- subset(sipp04, !is.na(esr) & (age >= 16))
 sipp04 <- data.table(sipp04)
 sipp04$panel <- 2004
 
+
 # 2008 panel
 sipp08 <- read.dta("./sippsets08ABD.dta", convert.factors = FALSE)
-sipp08 <- sipp08[toKeep]
+sipp08 <- sipp08[c(toKeep,"ajbocc")]
 sipp08 <- subset(sipp08, !is.na(esr) & (age >= 16))
 sipp08 <- data.table(sipp08)
 sipp08$panel <- 2008
@@ -165,13 +168,14 @@ sipp[, next.lfstat := shift(lfstat, 1, type = "lead"), by = id]
 # replace occ with soc2d (occ will now refer to soc2d)
 sipp[, coc := occ] #coc is the census occupation code
 sipp[, occ := soc2d]
+sipp[ajbocc>0, occ := NA ]
 
 # make sure job and occ are NA if not employed
 sipp[lfstat != 1, job := NA]
 sipp[lfstat != 1, occ := NA]
 
 # replace occ with mode occ over a job spell.  No internal job switches
-sipp[lfstat == 1, occ := Mode(occ), by = list(id, job)]
+# sipp[lfstat == 1, occ := Mode(occ), by = list(id, job)]
 
 
 ########## stint ids ----------------------------
@@ -462,7 +466,7 @@ ggplot(U_wave, aes(date, U_wave, color = panel, group = panel)) +
 	geom_point() + ylim(c(0,.10))+
 	geom_line()
 
-swOc_wave <- sipp_wave[( EE_wave==T|EU_wave==T|UE_wave==T) & is.finite(occ_wave) & is.finite(next.occ_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+swOc_wave <- sipp[( EE_wave==T|EU_wave==T|UE_wave==T) & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(swOc_wave, aes(date, swOc, color = panel, group = panel)) +
 	geom_point() + 
 	geom_line()
