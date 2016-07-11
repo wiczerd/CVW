@@ -169,6 +169,7 @@ sipp[, next.lfstat := shift(lfstat, 1, type = "lead"), by = id]
 sipp[, coc := occ] #coc is the census occupation code
 sipp[, occ := soc2d]
 sipp[ajbocc>0, occ := NA ]
+sipp[ajbocc>0, coc := NA ]
 
 # make sure job and occ are NA if not employed
 sipp[lfstat != 1, job := NA]
@@ -377,16 +378,22 @@ sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] #knocks out ~7% of th
 
 sipp_wave[ (EE_wave==T|EU_wave==T), switchedOcc_wave := occ_wave != next.occ_wave]
 #clean occupation switching
-sipp_wave[ , next.switchedOcc_wave := shift(switchedOcc_wave,type="lead"), by=id]
-sipp_wave[ is.na(next.switchedOcc_wave), next.switchedOcc_wave := F]
-sipp_wave[ , last.switchedOcc_wave := shift(switchedOcc_wave,type="lag"), by=id]
-sipp_wave[ is.na(last.switchedOcc_wave), last.switchedOcc_wave := F]
+sipp_wave[ , lftrans := (EU_wave==T |EE_wave==T) ]
+sipp_wave[is.na(lftrans) , lftrans := F]
+sipp_wave[ , next.lftrans := shift(lftrans, type="lead") ,by=id]
+sipp_wave[ , last.lftrans := shift(lftrans, type="lag") ,by=id]
+#sipp_wave[ , next.switchedOcc_wave := shift(switchedOcc_wave,type="lead"), by=id]
+#sipp_wave[ , last.switchedOcc_wave := shift(switchedOcc_wave,type="lag"), by=id]
 sipp_wave[ , diffOcc_wave := occ_wave != next.occ_wave]
 sipp_wave[ , next.diffOcc_wave := shift(diffOcc_wave,type="lead"), by=id]
 sipp_wave[ , last.diffOcc_wave := shift(diffOcc_wave,type="lag") , by=id]
-#flip-flop occupations, but not with a transition... about 15% of switches
-sipp_wave[ (last.diffOcc_wave==T&last.switchedOcc_wave==F) | (next.diffOcc_wave==T & next.switchedOcc_wave==F), switchedOcc_wave :=NA]
+#sipp_wave[ is.na(next.switchedOcc_wave) & !is.na(next.diffOcc_wave), next.switchedOcc_wave := F]
+#sipp_wave[ is.na(last.switchedOcc_wave) & !is.na(last.diffOcc_wave), last.switchedOcc_wave := F]
 
+#flip-flop occupations, but not with a transition... about 15% of switches
+sipp_wave[ (last.diffOcc_wave==T & last.lftrans==F) | (next.diffOcc_wave==T & next.lftrans==F), switchedOcc_wave :=F]
+#sipp_wave[ is.na( next.diffOcc_wave ), switchedOcc_wave:= NA ]
+#sipp_wave[ is.na( last.diffOcc_wave ), switchedOcc_wave:= NA ]
 
 sipp_wave[ (EE_wave==T|EU_wave==T), switchedInd_wave := ind_wave != next.ind_wave]
 
@@ -472,7 +479,7 @@ ggplot(U_wave, aes(date, U_wave, color = panel, group = panel)) +
 	geom_point() + ylim(c(0,.10))+
 	geom_line()
 
-swOc_wave <- sipp[( EE_wave==T|EU_wave==T|UE_wave==T) & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+swOc_wave <- sipp[ (EE_wave==T|EU_wave==T|UE_wave==T) & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(swOc_wave, aes(date, swOc, color = panel, group = panel)) +
 	geom_point() + 
 	geom_line()
@@ -480,6 +487,11 @@ swOcEE_wave <- sipp[EE_wave==T & is.finite(switchedOcc_wave), .(swOc = weighted.
 ggplot(swOcEE_wave, aes(date, swOc, color = panel, group = panel)) +
 	geom_point() + 
 	geom_line()
+swOcEUUE_wave <- sipp[(EU_wave==T) & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+ggplot(swOcEUUE_wave, aes(date, swOc, color = panel, group = panel)) +
+	geom_point() + 
+	geom_line()
+
 
 swOc_wave <- sipp[EE_wave==T& is.finite(occ_wave) & is.finite(next.occ_wave) & !(panel=="2004" & (year<2005 | year>=2007)) , .(swOc_wave = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = date]
 setkey(swOc_wave,date)
