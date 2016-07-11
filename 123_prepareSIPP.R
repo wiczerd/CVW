@@ -39,7 +39,7 @@ toKeep <- c("year",
 	    "job",
 		"eyear","emonth","syear","smonth",
 		"ersend","estlemp",
-	    "occ","ind",
+	    "occ","ind","ajbocc",
 	    "earnm")
 
 ########## read in individual panels, extract variables, and subset sample
@@ -48,11 +48,11 @@ setwd(datadir)
 
 # 1996 panel
 sipp96 <- read.dta("./sippsets96ABD.dta", convert.factors = FALSE)
+sipp96$ajbocc <- NA
 sipp96 <- sipp96[toKeep]
 sipp96 <- subset(sipp96, !is.na(esr) & (age >= 16))
 sipp96 <- data.table(sipp96)
 sipp96$panel <- 1996
-sipp96$ajbocc <- NA
 
 # 2001 panel
 sipp01 <- read.dta("./sippsets01ABD.dta", convert.factors = FALSE)
@@ -60,19 +60,17 @@ sipp01 <- sipp01[toKeep]
 sipp01 <- subset(sipp01, !is.na(esr) & (age >= 16))
 sipp01 <- data.table(sipp01)
 sipp01$panel <- 2001
-sipp01$ajbocc <- NA
 
 # 2004 panel
 sipp04 <- read.dta("./sippsets04ABD.dta", convert.factors = FALSE)
-sipp04 <- sipp04[c(toKeep,"ajbocc")]
+sipp04 <- sipp04[toKeep]
 sipp04 <- subset(sipp04, !is.na(esr) & (age >= 16))
 sipp04 <- data.table(sipp04)
 sipp04$panel <- 2004
 
-
 # 2008 panel
 sipp08 <- read.dta("./sippsets08ABD.dta", convert.factors = FALSE)
-sipp08 <- sipp08[c(toKeep,"ajbocc")]
+sipp08 <- sipp08[toKeep]
 sipp08 <- subset(sipp08, !is.na(esr) & (age >= 16))
 sipp08 <- data.table(sipp08)
 sipp08$panel <- 2008
@@ -88,6 +86,7 @@ coc2000_occ1990 <- readRDS("./coc2000_occ1990.RData")
 coc1990_occ1990 <- readRDS("./coc1990_occ1990.RData")
 
 # 1996 panel
+sipp96[, coc:= occ]
 sipp96[, coc90 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
 sipp96 <- merge(sipp96, coc1990_occ1990, by  = "coc90", all.x = TRUE)
 sipp96 <- merge(sipp96, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
@@ -95,6 +94,7 @@ sipp96[, c("occ", "coc90") := NULL]
 setnames(sipp96, "occ1990", "occ")
 
 # 2001 panel
+sipp01[, coc:= occ]
 sipp01[, coc90 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
 sipp01 <- merge(sipp01, coc1990_occ1990, by  = "coc90", all.x = TRUE)
 sipp01 <- merge(sipp01, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
@@ -102,6 +102,7 @@ sipp01[, c("occ", "coc90") := NULL]
 setnames(sipp01, "occ1990", "occ")
 
 # 2004 panel
+sipp04[, coc:= occ]
 sipp04[, coc2000 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
 sipp04 <- merge(sipp04, coc2000_occ1990, by  = "coc2000", all.x = TRUE)
 sipp04 <- merge(sipp04, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
@@ -109,6 +110,7 @@ sipp04[, c("occ", "coc2000") := NULL]
 setnames(sipp04, "occ1990", "occ")
 
 # 2008 panel
+sipp08[, coc:=occ]
 sipp08[, coc2000 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
 sipp08 <- merge(sipp08, coc2000_occ1990, by  = "coc2000", all.x = TRUE)
 sipp08 <- merge(sipp08, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
@@ -166,8 +168,8 @@ sipp[, next.lfstat := shift(lfstat, 1, type = "lead"), by = id]
 ########## occupation and job ----------------------------
 
 # replace occ with soc2d (occ will now refer to soc2d)
-sipp[, coc := occ] #coc is the census occupation code
-sipp[, occ := soc2d]
+sipp[, occ90 := occ] 
+sipp[, occ   := soc2d]
 sipp[ajbocc>0, occ := NA ]
 sipp[ajbocc>0, coc := NA ]
 
@@ -202,6 +204,12 @@ sipp[lfstat==2, unempdur := seq_len(.N) - 1, by = list(id, ustintid)]  #count U 
 sipp[is.na(ustintid), unempdur := NA]
 # create max unemployment duration
 sipp[, max.unempdur := max(unempdur), by = list(id, ustintid)]
+
+# clean weird occupation codes:
+sipp[ , varoccjob := var(occ,na.rm = T), by=list(id,estintid)]
+sipp[ , varjobidjob := var(occ,na.rm = T), by=list(id,estintid)]
+sipp[ varoccjob>0 & varjobidjob==0 & lfstat==1, occ:=NA]
+sipp[ , c("varoccjob","varjobidjob"):=NULL]
 
 # fill in occupation with next occupation during unemployment stints
 sipp[, next.occ := shift(occ, 1, type = "lead"), by = id]
@@ -319,7 +327,7 @@ sipp[, HSCol := (educ >= 4) + (educ >= 2)]
 
 # missing occupation codes cause issues with the occwage regression in step 4.
 # remove them here or there
-sipp <- sipp[!is.na(occ)|lfstat>1,]
+# sipp <- sipp[!is.na(occ)|lfstat>1,]
 
 # save intermediate result
 setwd(outputdir)
@@ -382,18 +390,11 @@ sipp_wave[ , lftrans := (EU_wave==T |EE_wave==T) ]
 sipp_wave[is.na(lftrans) , lftrans := F]
 sipp_wave[ , next.lftrans := shift(lftrans, type="lead") ,by=id]
 sipp_wave[ , last.lftrans := shift(lftrans, type="lag") ,by=id]
-#sipp_wave[ , next.switchedOcc_wave := shift(switchedOcc_wave,type="lead"), by=id]
-#sipp_wave[ , last.switchedOcc_wave := shift(switchedOcc_wave,type="lag"), by=id]
 sipp_wave[ , diffOcc_wave := occ_wave != next.occ_wave]
 sipp_wave[ , next.diffOcc_wave := shift(diffOcc_wave,type="lead"), by=id]
 sipp_wave[ , last.diffOcc_wave := shift(diffOcc_wave,type="lag") , by=id]
-#sipp_wave[ is.na(next.switchedOcc_wave) & !is.na(next.diffOcc_wave), next.switchedOcc_wave := F]
-#sipp_wave[ is.na(last.switchedOcc_wave) & !is.na(last.diffOcc_wave), last.switchedOcc_wave := F]
-
 #flip-flop occupations, but not with a transition... about 15% of switches
 sipp_wave[ (last.diffOcc_wave==T & last.lftrans==F) | (next.diffOcc_wave==T & next.lftrans==F), switchedOcc_wave :=F]
-#sipp_wave[ is.na( next.diffOcc_wave ), switchedOcc_wave:= NA ]
-#sipp_wave[ is.na( last.diffOcc_wave ), switchedOcc_wave:= NA ]
 
 sipp_wave[ (EE_wave==T|EU_wave==T), switchedInd_wave := ind_wave != next.ind_wave]
 
