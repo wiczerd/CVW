@@ -40,7 +40,7 @@ toKeep <- c("year",
 		"eyear","emonth","syear","smonth",
 		"ersend","estlemp",
 	    "occ","ind","ajbocc",
-	    "earnm")
+	    "earnm","earn_imp")
 
 ########## read in individual panels, extract variables, and subset sample
 
@@ -48,7 +48,6 @@ setwd(datadir)
 
 # 1996 panel
 sipp96 <- read.dta("./sippsets96ABD.dta", convert.factors = FALSE)
-sipp96$ajbocc <- NA
 sipp96 <- sipp96[toKeep]
 sipp96 <- subset(sipp96, !is.na(esr) & (age >= 16))
 sipp96 <- data.table(sipp96)
@@ -181,6 +180,42 @@ sipp[lfstat != 1, occ := NA]
 # sipp[lfstat == 1, occ := Mode(occ), by = list(id, job)]
 
 
+########## stint ids ----------------------------
+
+# create an employment stint id
+sipp[, last.job := shift(job, 1, type = "lag"), by = id]
+sipp[, newemp := lfstat == 1 & (last.lfstat >= 2 | mis == 1 | job != last.job)]
+sipp[lfstat == 1 & is.na(newemp), newemp := FALSE]
+sipp[newemp == TRUE, estintid := cumsum(newemp), by = id]
+sipp[lfstat == 1, estintid := na.locf(estintid, na.rm = FALSE), by = id]
+sipp[, newemp := NULL]
+
+# create an unemployment stint id
+sipp[, newunemp := lfstat == 2 & (last.lfstat == 1 | mis == 1)]
+sipp[newunemp == TRUE, ustintid := seq_len(.N), by = id]
+sipp[lfstat == 1, ustintid := 9999]
+sipp[, ustintid := na.locf(ustintid, na.rm = FALSE), by = id]
+sipp[lfstat == 1 | ustintid  == 9999, ustintid := NA]
+sipp[, newunemp := NULL]
+
+# create unemployment duration variable
+sipp[lfstat==2, unempdur := seq_len(.N) - 1, by = list(id, ustintid)]  #count U entries in each ustintid
+sipp[is.na(ustintid), unempdur := NA]
+# create max unemployment duration
+sipp[, max.unempdur := max(unempdur), by = list(id, ustintid)]
+
+# clean weird occupation codes:
+sipp[ , varoccjob := var(occ,na.rm = T), by=list(id,estintid)]
+sipp[ , varjobidjob := var(occ,na.rm = T), by=list(id,estintid)]
+sipp[ varoccjob>0 & varjobidjob==0 & lfstat==1, occ:=NA]
+sipp[ , c("varoccjob","varjobidjob"):=NULL]
+
+# fill in occupation with next occupation during unemployment stints
+sipp[, next.occ := shift(occ, 1, type = "lead"), by = id]
+sipp[lfstat != 1, occ := Mode(next.occ), by = list(id, ustintid)]
+sipp[, last.occ := shift(occ, 1, type = "lag"), by = id]
+sipp[lfstat != 1, last.occ := Mode(last.occ), by = list(id, ustintid)]
+
 ########## transitions ----------------------------
 
 
@@ -204,6 +239,12 @@ sipp[is.finite(lfstat) & is.finite(next.lfstat) & is.na(EE), EE :=F ]
 # create job change id.  Job id measured only at the wave frequency
 # sipp[srefmon==4, next4.job := (job != next.job)]
 # sipp[lfstat == 1 & next.lfstat != 1, jobchng := NA]
+
+#add EU to ustintid
+sipp[ , next.ustintid := shift(ustintid,type="lead"), by=id]
+sipp[ EU==T, ustintid:= next.ustintid]
+sipp[ , next.ustintid:=NULL]
+
 
 # plot transitions time series for sanity check
 EU <- sipp[lfstat==1, .(EU = weighted.mean(EU, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
@@ -231,53 +272,8 @@ ggplot(Umo, aes(date, Umo, color = panel, group = panel)) +
 	geom_point() +
 	geom_line()
 
-#rm(list=c("EU", "UE", "EE", "switchedOcc"))
 
-
-
-########## stint ids ----------------------------
-
-# create an employment stint id
-sipp[, last.EE := shift(EE, type = "lag"), by = id]
-sipp[, newemp := lfstat == 1 & (last.EE==T | last.lfstat>=2 | mis == 1)]
-sipp[lfstat == 1 & is.na(newemp), newemp := FALSE]
-sipp[newemp == TRUE, estintid := seq_len(.N), by = id]
-sipp[lfstat >= 2, estintid := 9999]
-sipp[lfstat == 1, estintid := na.locf(estintid, na.rm = FALSE), by = id]
-sipp[lfstat >= 2 | estintid  == 9999, estintid := NA]
-sipp[, newemp := NULL]
-
-# create an unemployment stint id
-sipp[, newunemp := lfstat == 2 & (last.lfstat == 1 | mis == 1)]
-sipp[newunemp == TRUE, ustintid := seq_len(.N), by = id]
-sipp[lfstat == 1, ustintid := 9999]
-sipp[, ustintid := na.locf(ustintid, na.rm = FALSE), by = id]
-sipp[lfstat == 1 | ustintid  == 9999, ustintid := NA]
-sipp[, newunemp := NULL]
-
-#add EU to ustintid
-sipp[ , next.ustintid := shift(ustintid,type="lead"), by=id]
-sipp[ EU==T, ustintid:= next.ustintid]
-sipp[ , next.ustintid:=NULL]
-
-
-# create unemployment duration variable
-sipp[lfstat==2, unempdur := seq_len(.N) - 1, by = list(id, ustintid)]  #count U entries in each ustintid
-sipp[is.na(ustintid), unempdur := NA]
-# create max unemployment duration
-sipp[, max.unempdur := max(unempdur), by = list(id, ustintid)]
-
-# clean weird occupation codes:
-sipp[ , varoccjob := length(unique(occ)), by=list(id,estintid)]
-sipp[ , varjobidjob := length(unique(job)), by=list(id,estintid)]
-sipp[ varoccjob>0 & varjobidjob==0 & lfstat==1, occ:=Mode(occ), by=list(id,estintid)]
-sipp[ , c("varoccjob","varjobidjob"):=NULL]
-
-# fill in occupation with next occupation during unemployment stints
-sipp[, next.occ := shift(occ, 1, type = "lead"), by = id]
-sipp[lfstat != 1, occ := Mode(next.occ), by = list(id, ustintid)]
-sipp[, last.occ := shift(occ, 1, type = "lag"), by = id]
-sipp[lfstat != 1, last.occ := Mode(last.occ), by = list(id, ustintid)]
+rm(list=c("EU", "UE", "EE"))
 
 ########## inflation, unemployment, and recession ----------------------------
 

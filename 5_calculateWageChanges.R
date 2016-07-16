@@ -52,11 +52,11 @@ DTall[UE == T, wagechange := nextwage - log(1.0)]
 
 # create wagechange_stayer variable------------------------------
 DTall[ !(EE==T|EU==T|UE==T), wagechange_stayer := next.usewage - last.usewage]
-DTall[job == 0 & next.job == 0,
+DTall[job == 0 & shift(job,type="lead") == 0,
       wagechange_stayer := 0.0, by = id]
 
 #do not allow stayers to change job listings without having a marked transition
-DTall[ !(EE==T|EU==T|UE==T) & jobchng ==T, wagechange_stayer:=NA]
+DTall[ !(EE==T|EU==T|UE==T) & jobchng_wave ==T, wagechange_stayer:=NA]
 #do not allow stayers to lose more than 200% change in earnings w/o change in status
 DTall[ !(EE==T|EU==T|UE==T) & wagechange_stayer< -2., wagechange_stayer :=  NA ]
 
@@ -75,12 +75,12 @@ DTall[(EE | UE | EU), wagechange_all := wagechange]
 
 
 # create occwagechange variable
-DTall[, occwagechange := as.numeric(ifelse(switchedOcc & !shift(switchedOcc, 1, type = "lag"), 
-				nextoccwage - shift(occwage, 1, type = "lag"), 
-				0.)), by = id]
-DTall[, occwagechange := as.numeric(ifelse(switchedOcc & shift(switchedOcc, 1, type = "lag"),
-				nextoccwage - occwage, 
-				0.)), by = id]
+#DTall[, occwagechange := as.numeric(ifelse(switchedOcc & !shift(switchedOcc, 1, type = "lag"), 
+#				nextoccwage - shift(occwage, 1, type = "lag"), 
+#				0.)), by = id]
+#DTall[, occwagechange := as.numeric(ifelse(switchedOcc & shift(switchedOcc, 1, type = "lag"),
+#				nextoccwage - occwage, 
+#				0.)), by = id]
 
 # compute seam-to-seam wage change variable ----------------------------
 DTall[!is.na(usewage) , levwage := 1/2*(exp(usewage)-exp(-usewage))]
@@ -95,7 +95,7 @@ DTall[ seam==T, wagechange_wave := shift(wavewage,1,type="lead") - wavewage, by=
 DTall[ , wagechange_wave := Mode(wagechange_wave), by= list(id,wave)]
 # wagechange wave =NA for job changers without a transition
 DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave := NA]
-# wagechange wave =NA for gain that revert
+# wagechange wave =NA for gains that revert
 DTall[ seam==T, next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
 DTall[ seam==T, last.wagechange_wave := shift(wagechange_wave, type="lag" ),by=id]
 DTall[ , next.wagechange_wave := Mode(next.wagechange_wave), by= list(id,wave)]
@@ -107,9 +107,14 @@ DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & wagechange_wave< -2. , wagechange_wa
 DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & wagechange_wave_bad == T , wagechange_wave := NA]
 DTall[ , wagechange_wave_bad:=NULL]
 
+#comparing seams:
 DTall[ seam==T, wagechange_seam := shift(seamwage,1,type="lead") - seamwage, by =id]
 DTall[ , wagechange_seam := Mode(wagechange_seam), by= list(id,wave)]
 
+#looking at occupation-level wage changes
+DTall[ , occwage_wave:= sum(1/2*(exp(occwage)-exp(-occwage)),na.rm=T) , by=list(id,wave)]
+DTall[ , occwage_wave:= log(occwage_wave + (1+occwage_wave^2)^.5)]
+DTall[ seam==T & switchedOcc_wave==T, occwagechange_wave:= shift(occwage_wave,type="lead")-occwage_wave,by=id]
 
 saveRDS(DTall, paste0(datadir,"/DTall_5.RData"))
 rm(list=ls())
