@@ -408,7 +408,7 @@ sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(EE_wave) 
 #save intermediate result:
 saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
 
-sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","next.job_wave","last.job_wave","job_wave","next.occ_wave","last.occ_wave",
+sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","next.job_wave","last.job_wave","job_wave","next.occ_wave","last.occ_wave","occ_wave",
 										"jobchng_wave","EE_wave","EU_wave","UE_wave","switchedOcc_wave","wave","id"))
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
