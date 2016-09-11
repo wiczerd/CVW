@@ -90,11 +90,14 @@ DTall[is.na(usewage)==T, wavewage:=NA_real_]
 DTall[ , levwage:=NULL]
 DTall[ seam==T, seamwage := usewage]
 DTall[ , seamwage := Mode(seamwage), by=list(id,wave)]
+
 #need to add change across waves (use wavewage)
 DTall[ seam==T, wagechange_wave := shift(wavewage,1,type="lead") - wavewage, by=id]
 DTall[ , wagechange_wave := Mode(wagechange_wave), by= list(id,wave)]
+
 # wagechange wave =NA for job changers without a transition
 DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave := NA]
+
 # wagechange wave =NA for gains that revert
 DTall[ seam==T, next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
 DTall[ seam==T, last.wagechange_wave := shift(wagechange_wave, type="lag" ),by=id]
@@ -102,6 +105,7 @@ DTall[ , next.wagechange_wave := Mode(next.wagechange_wave), by= list(id,wave)]
 DTall[ , last.wagechange_wave := Mode(last.wagechange_wave), by= list(id,wave)]
 DTall[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad:= (wagechange_wave>2 & (last.wagechange_wave< -2. | next.wagechange_wave< -2.)) ] #knocks out 42% of large increases and 1.4% of total change obseravations
 # DTall[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad1:=(wagechange_wave< -2. & (last.wagechange_wave> 2. | next.wagechange_wave> 2.)) ] #knocks out 42% of large increases and 1.4% of total change obseravations
+
 # wagechange wave =NA for loss more than 200% without a transition
 DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & wagechange_wave< -2. , wagechange_wave := NA]
 DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & wagechange_wave_bad == T , wagechange_wave := NA]
@@ -118,3 +122,79 @@ DTall[ seam==T & switchedOcc_wave==T, occwagechange_wave:= shift(occwage_wave,ty
 
 saveRDS(DTall, paste0(datadir,"/DTall_5.RData"))
 rm(list=ls())
+
+########## New stuff
+
+# load intermediate result if starting from here
+if(!exists("DTall")) {
+	DTall <- readRDS(paste0(datadir,"/DTall_5.RData"))
+}
+
+DTall[, next.wavewage := shift(wavewage, type="lead", 4), by = id]
+DTall[, next.wavewage := Mode(next.wavewage), by = list(id, wave)]
+
+# create wave-level EUE wage change
+# find wage in period of EU and one period after UE
+DTall[EU_wave == TRUE, wageAtEU := wavewage]
+DTall[, wageAtEU := na.locf(wageAtEU, na.rm = FALSE)]
+DTall[UE_wave == TRUE, wageAfterUE :=  next.wavewage]
+DTall[, wagechangeEUE_wave := wageAfterUE - wageAtEU]
+
+# who's climbing and who's falling
+DTall[, climbingEE := wagechange_wave > 0]
+#DTall[, fallingEE := wagechange_wave < 0]
+DTall[, climbingEUE := wagechangeEUE_wave > 0]
+#DTall[, fallingEUE := wagechangeEUE_wave < 0]
+
+
+# probability of climbing/falling by transition type and demographic
+EE <- DTall[EE_wave == TRUE, .(P_climb = weighted.mean(climbingEE, wpfinwgt, na.rm = TRUE)), 
+	    by = list(switchedOcc_wave, Young, HSCol)]
+EE <- EE[!is.na(switchedOcc_wave),]
+EE <- melt(EE, id.vars = c("switchedOcc_wave", "Young", "HSCol"))
+
+EUE <- DTall[!is.na(wagechangeEUE_wave), .(P_climb = weighted.mean(climbingEUE, wpfinwgt, na.rm = TRUE)), 
+	     by = list(switchedOcc_wave, Young, HSCol)]
+EUE <- EUE[!is.na(switchedOcc_wave),]
+EUE <- melt(EUE, id.vars = c("switchedOcc_wave", "Young", "HSCol"))
+
+library(ggplot2)
+EE$Young <- factor(EE$Young)
+levels(EE$Young) <- c("Old", "Young")
+EE$HSCol <- factor(EE$HSCol)
+levels(EE$HSCol) <- c("Less than High School", "High School", "College")
+postscript("EEladder.eps")
+ggplot(EE, aes(x = variable, y = value, fill = factor(switchedOcc_wave))) +
+	geom_bar(stat = "identity", position = "dodge") +
+       	facet_grid(Young ~ HSCol) +
+	ylim(c(0,.7)) + 
+	xlab("") +
+	ylab("Probability") +
+	theme_bw() +
+	scale_fill_discrete(name = "Occupation Switch",
+			    labels = c("Did not switch occupation", "Switched occupation")) +
+	ggtitle("E-E: Probability of Wage Gain and Wage Loss")
+dev.off()	
+
+EUE$Young <- factor(EUE$Young)
+levels(EUE$Young) <- c("Old", "Young")
+EUE$HSCol <- factor(EUE$HSCol)
+levels(EUE$HSCol) <- c("Less than High School", "High School", "College")
+postscript("EUEladder.eps")
+ggplot(EUE, aes(x = variable, y = value, fill = factor(switchedOcc_wave))) +
+	geom_bar(stat = "identity", position = "dodge") +
+	facet_grid(Young ~ HSCol) +
+	ylim(c(0,.7)) +
+	xlab("") +
+	ylab("Probability") +
+	theme_bw() +
+	scale_fill_discrete(name = "Occupation Switch",
+			    labels = c("Did not switch occupation", "Switched occupation")) +
+	ggtitle("E-U-E: Probability of Wage Gain and Wage Loss")
+dev.off()
+	
+	
+
+
+
+
