@@ -356,18 +356,12 @@ sipp[ , maxmis:=NULL]
 sipp[, recIndic_wave := any(recIndic, na.rm=T), by=list(wave,id)]
 sipp[, recIndic2_wave := any(recIndic2, na.rm=T), by=list(wave,id)]
 
-sipp[ , lfstat_wave := max(lfstat,na.rm=T), by=list(id,wave)]
+sipp[ , lfstat_wave := as.integer(max(lfstat,na.rm=T)), by=list(id,wave)]
+sipp[ lfstat_wave>1, lfstat_wave := 3L-any(lfstat==2), by=list(id,wave)]
+
 sipp[ , Eend_wave:= any(Eend, na.rm=T), by=list(wave,id)]
 sipp[ , Estart_wave:= any(Estart, na.rm=T), by=list(wave,id)]
 
-##create wave-level ustintid_wave
-sipp[ , ustintid_wave := Mode(ustintid), by=list(wave,id)]
-#test: ~0.8% of waves have mutliple spells sipp[ , varustintwave := var(ustintid,na.rm = T), by=list(wave,id)]
-# or compute akin to how we did earlier
-#sipp[, newunemp_wave := lfstat_wave == 2 & (shift(lfstat_wave) == 1 | mis == 1)]
-#sipp[newunemp_wave == TRUE, ustintid2_wave := cumsum(newunemp_wave), by = id]
-#sipp[lfstat_wave != 1, ustintid2_wave := na.locf(ustintid2_wave, na.rm = FALSE), by = id]
-#sipp[, newunemp_wave := NULL]
 
 #create leads and lags using subsetted dataset
 sipp_wave <- subset(sipp, seam==T)
@@ -385,6 +379,20 @@ sipp_wave[ , next.job_wave    := shift(job_wave,type="lead")   , by=id]
 sipp_wave[ , last.job_wave    := shift(job_wave,type="lag")    , by=id]
 
 sipp_wave[ , next.Estart_wave := shift(Estart_wave,type="lead"), by=id]
+
+
+##create wave-level ustintid_wave
+#sipp[ , ustintid_wave := Mode(ustintid), by=list(wave,id)]
+#test: ~0.8% of waves have mutliple spells sipp[ , varustintwave := var(ustintid,na.rm = T), by=list(wave,id)]
+# or compute akin to how we did earlier
+sipp_wave[ , wis := seq_len(.N), by = id]
+sipp_wave[, newunemp_wave := lfstat_wave >1 & (last.lfstat_wave == 1 | wis == 1)]
+sipp_wave[newunemp_wave == T, ustintid_wave := cumsum(newunemp_wave), by = id]
+sipp_wave[lfstat_wave   == 1, ustintid_wave := 9999]
+sipp_wave[                  , ustintid_wave := na.locf(ustintid_wave, na.rm = F), by = id]
+sipp_wave[lfstat_wave == 1 | ustintid_wave  == 9999, ustintid_wave := NA]
+sipp_wave[, newunemp_wave := NULL]
+
 # create EU/UE/EE dummies
 sipp_wave[lfstat_wave == 1, EU_wave := (next.lfstat_wave == 2)]
 sipp_wave[lfstat_wave == 2, UE_wave := (next.lfstat_wave == 1)]
@@ -393,17 +401,14 @@ sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := (job_wave !
 sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] #knocks out ~5% of the changes
 
 #fill in occupation over u spells and compute switching
-sipp_wave[ lfstat_wave>1, occ_wave:= Mode(occ) , by=list(id,ustintid_wave)]
-#one wave stint may incorporate several other stints:
-sipp_wave[ !is.na(ustintid_wave), varoccwave:=var(occ,na.rm = T), by=list(id,ustintid_wave)]
-sipp_wave[ varoccwave>0, maxmis:=max(mis), by=list(id,ustintid_wave)] #take the last occupation they had in this period
-sipp_wave[ varoccwave>0 & mis!=maxmis, occ_wave :=NA]
-sipp_wave[ varoccwave>0 , occ_wave :=Mode(occ_wave), by=list(id,ustintid_wave)]
-sipp_wave[ , c("maxmis","varoccwave"):=NULL]
-
 sipp_wave[ , next.occ_wave    := shift(occ_wave,type="lead")   , by=id]
 sipp_wave[ , last.occ_wave    := shift(occ_wave,type="lag")    , by=id]
 sipp_wave[ , next.ind_wave    := shift(ind_wave,type="lead")   , by=id]
+
+sipp_wave[  UE_wave == T, occ_wave := next.occ_wave]
+sipp_wave[ lfstat_wave>1, occ_wave:= Mode(occ_wave) , by=list(id,ustintid_wave)]
+
+sipp_wave[ , next.occ_wave    := shift(occ_wave,type="lead")   , by=id] #recompute now that I've filled back U-spells
 sipp_wave[ (EE_wave==T|EU_wave==T), switchedOcc_wave := occ_wave != next.occ_wave]
 #clean occupation switching
 sipp_wave[ , lftrans := (EU_wave==T |EE_wave==T) ]
