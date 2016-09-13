@@ -518,11 +518,10 @@ swOcEE_wave <- sipp[EE_wave==T & is.finite(switchedOcc_wave), .(swOcEE = weighte
 ggplot(swOcEE_wave, aes(date, swOcEE, color = panel, group = panel)) +
 	geom_point() + 
 	geom_smooth()
-swOcEUUE_wave <- sipp[(EU_wave==T) & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+swOcEUUE_wave <- sipp[(EU_wave==T|UE_wave==T) & matched_EUUE_wave==T & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(swOcEUUE_wave, aes(date, swOc, color = panel, group = panel)) +
 	geom_point() + 
-	geom_line()
-
+	geom_smooth()
 
 swOc_wave <- sipp[EE_wave==T& is.finite(occ_wave) & is.finite(next.occ_wave) & !(panel=="2004" & (year<2005 | year>=2007)) , .(swOc_wave = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = date]
 setkey(swOc_wave,date)
@@ -533,3 +532,11 @@ ggplot(swOc_wave, aes(date, swOc_wave)) +
 ggsave(filename = paste0(figuredir,"/sWocEE_wave.eps"),height= 5,width=10)
 ggsave(filename = paste0(figuredir,"/sWocEE_wave.png"),height= 5,width=10)
 
+misSwOcEU_wave <- sipp[ EU_wave==T & matched_EUUE_wave==T, .(misSwOcEU_wave = mean(is.na(switchedOcc_wave))), by=list(panel,date)]
+ggplot( misSwOcEU_wave, aes(date, misSwOcEU_wave, color=panel, group=panel) ) +
+	geom_point() +
+	geom_line()
+misSwOcUE_wave <- sipp[ UE_wave==T , .(misSwOcUE_wave = mean(is.na(switchedOcc_wave))), by=list(panel,date)]
+ggplot( misSwOcUE_wave, aes(date, misSwOcUE_wave, color=panel, group=panel) ) +
+	geom_point() +
+	geom_line()
