@@ -409,6 +409,7 @@ sipp_wave[ , last.occ_wave    := shift(occ_wave,type="lag")    , by=id]
 sipp_wave[ , next.ind_wave    := shift(ind_wave,type="lead")   , by=id]
 
 sipp_wave[  UE_wave == T, occ_wave := next.occ_wave]
+sipp_wave[  UE_wave == T & is.na(occ_wave) & !is.na(occ), occ_wave := occ]
 sipp_wave[ lfstat_wave>1, occ_wave:= Mode(occ_wave) , by=list(id,ustintid_wave)]
 
 sipp_wave[ , next.occ_wave    := shift(occ_wave,type="lead")   , by=id] #recompute now that I've filled back U-spells
@@ -433,12 +434,18 @@ sipp_wave[ UE_wave==T, switchedOcc_wave:=last.switchedOcc_wave]
 sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(EU_wave) , EU_wave:=F ]
 sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(UE_wave) , UE_wave:=F ]
 sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(EE_wave) , EE_wave:=F ]
+#add EU_wave to ustintid
+sipp_wave[, next.ustintid_wave := shift(ustintid_wave, type="lead"), by=id]
+sipp_wave[EU_wave==T, ustintid_wave:=next.ustintid_wave]
+sipp_wave[ ustintid_wave>0, matched_UE_wave := any(UE_wave), by=list(id,ustintid_wave)]
+sipp_wave[ ustintid_wave>0, matched_EU_wave := any(EU_wave), by=list(id,ustintid_wave)]
+sipp_wave[ ustintid_wave>0, matched_EUUE_wave := matched_EU_wave & matched_UE_wave]
 
 #save intermediate result:
 saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
 
 sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","next.job_wave","last.job_wave","job_wave","next.occ_wave","last.occ_wave","occ_wave",
-										"jobchng_wave","EE_wave","EU_wave","UE_wave","switchedOcc_wave","wave","id"))
+										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","switchedOcc_wave","wave","id"))
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
