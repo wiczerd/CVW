@@ -172,6 +172,7 @@ EUE <- melt(EUE, id.vars = c("switchedOcc_wave", "Young", "HSCol"))
 
 library(ggplot2)
 EE$Young <- factor(EE$Young)
+levels(EE$variable)<-""
 levels(EE$Young) <- c("Old", "Young")
 EE$HSCol <- factor(EE$HSCol)
 levels(EE$HSCol) <- c("Less than High School", "High School", "College")
@@ -181,16 +182,19 @@ ggplot(EE, aes(x = variable, y = value, fill = factor(switchedOcc_wave))) +
        	facet_grid(Young ~ HSCol) +
 	coord_cartesian(ylim=c(0.3,.7)) +
 	xlab("") +
-	ylab("Probability") +
+	ylab("Probability of Earnings Gain") +
 	theme_bw() +
+	geom_abline(intercept = 0.5, slope=0.)+
 	scale_fill_discrete(name = "Occupation Switch",
 			    labels = c("Did not switch occupation", "Switched occupation")) +
 	ggtitle("E-E: Probability of Wage Gain and Wage Loss")
 ggsave(filename = "EEladder.eps", width = 10,height = 5)
+ggsave(filename = "EEladder.png", width = 10,height = 5)
 #dev.off()	
 
 EUE$Young <- factor(EUE$Young)
 levels(EUE$Young) <- c("Old", "Young")
+levels(EUE$variable)<-""
 EUE$HSCol <- factor(EUE$HSCol)
 levels(EUE$HSCol) <- c("Less than High School", "High School", "College")
 #postscript("EUEladder.eps")
@@ -199,14 +203,15 @@ ggplot(EUE, aes(x = variable, y = value, fill = factor(switchedOcc_wave))) +
 	facet_grid(Young ~ HSCol) +
 	coord_cartesian(ylim=c(0.3,.7)) +
 	xlab("") +
-	ylab("Probability") +
+	ylab("Probability of Earnings Gain") +
 	theme_bw() +
+	geom_abline(intercept = 0.5, slope=0.)+
 	scale_fill_discrete(name = "Occupation Switch",
 			    labels = c("Did not switch occupation", "Switched occupation")) +
 	ggtitle("E-U-E: Probability of Wage Gain and Wage Loss")
 ggsave(filename = "EUEladder.eps", width = 10,height = 5)
+ggsave(filename = "EUEladder.png", width = 10,height = 5)
 #dev.off()
-	
 	
 
 
