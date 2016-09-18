@@ -88,8 +88,8 @@ DTall[ , wavewage := sum(levwage,na.rm=T), by= list(id,wave)]
 DTall[ , wavewage := log(wavewage + (1+wavewage^2)^.5) ]
 DTall[is.na(usewage)==T, wavewage:=NA_real_]
 DTall[ , levwage:=NULL]
-DTall[ seam==T, seamwage := usewage]
-DTall[ , seamwage := Mode(seamwage), by=list(id,wave)]
+#DTall[ seam==T, seamwage := usewage]
+#DTall[ , seamwage := Mode(seamwage), by=list(id,wave)]
 
 #need to add change across waves (use wavewage)
 DTall[ seam==T, wagechange_wave := shift(wavewage,1,type="lead") - wavewage, by=id]
@@ -98,11 +98,24 @@ DTall[ , wagechange_wave := Mode(wagechange_wave), by= list(id,wave)]
 # wagechange wave =NA for job changers without a transition
 DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave := NA]
 
-# wagechange wave =NA for gains that revert
+
 DTall[ seam==T, next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
 DTall[ seam==T, last.wagechange_wave := shift(wagechange_wave, type="lag" ),by=id]
+DTall[ seam==T, next.wavewage := shift(wavewage, type="lead" ),by=id]
 DTall[ , next.wagechange_wave := Mode(next.wagechange_wave), by= list(id,wave)]
 DTall[ , last.wagechange_wave := Mode(last.wagechange_wave), by= list(id,wave)]
+DTall[ , next.wavewage        := Mode(next.wavewage)       , by= list(id,wave)]
+# create wave-level EUE wage change
+# find wage in period of EU and one period after UE
+DTall[seam==T & EU_wave == T, wageAtEU := wavewage]
+DTall[seam==T, wageAtEU := na.locf(wageAtEU, na.rm = F),by=list(ustintid_wave, id)]
+DTall[seam==T & UE_wave == T, wageAfterUE :=  next.wavewage]
+DTall[seam==T & UE_wave == T, wagechangeEUE_wave := wageAfterUE - wageAtEU]
+DTall[, wagechangeEUE_wave:= Mode(wagechangeEUE_wave), by=list(ustintid_wave, id)]
+DTall[ EE_wave==T, wagechangeEUE_wave := wagechange_wave]
+DTall[ , c("wageAtEU","wageAfterUE"):=NULL]
+
+# wagechange wave =NA for gains that revert
 DTall[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad:= (wagechange_wave>2 & (last.wagechange_wave< -2. | next.wagechange_wave< -2.)) ] #knocks out 42% of large increases and 1.4% of total change obseravations
 # DTall[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad1:=(wagechange_wave< -2. & (last.wagechange_wave> 2. | next.wagechange_wave> 2.)) ] #knocks out 42% of large increases and 1.4% of total change obseravations
 
@@ -111,17 +124,26 @@ DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & wagechange_wave< -2. , wagechange_wa
 DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & wagechange_wave_bad == T , wagechange_wave := NA]
 DTall[ , wagechange_wave_bad:=NULL]
 
-#comparing seams:
-DTall[ seam==T, wagechange_seam := shift(seamwage,1,type="lead") - seamwage, by =id]
-DTall[ , wagechange_seam := Mode(wagechange_seam), by= list(id,wave)]
-
 #looking at occupation-level wage changes
 DTall[ , occwage_wave:= sum(1/2*(exp(occwage)-exp(-occwage)),na.rm=T) , by=list(id,wave)]
 DTall[ , occwage_wave:= log(occwage_wave + (1+occwage_wave^2)^.5)]
-DTall[ seam==T & switchedOcc_wave==T, occwagechange_wave:= shift(occwage_wave,type="lead")-occwage_wave,by=id]
+DTall[ , next.occwage_wave := shift(occwage_wave,type="lead"), by=id]
+DTall[ seam==T & switchedOcc_wave==T, occwagechange_wave:= next.occwage_wave-occwage_wave]
+DTall[ seam==T & switchedOcc_wave==F, occwagechange_wave:= 0.]
+DTall[ , occwagechange_wave:= Mode(occwagechange_wave), by=list(id,wave)]
+
+DTall[seam==T & EU_wave == T, occwageAtEU := occwage_wave]
+DTall[seam==T, occwageAtEU := na.locf(occwageAtEU, na.rm = F),by=list(ustintid_wave, id)]
+DTall[seam==T & UE_wave == T, occwageAfterUE :=  next.occwage_wave]
+DTall[seam==T & UE_wave == T, occwagechangeEUE_wave := occwageAfterUE - occwageAtEU]
+DTall[, occwagechangeEUE_wave:= Mode(occwagechangeEUE_wave), by=list(ustintid_wave, id)]
+DTall[ EE_wave==T, occwagechangeEUE_wave:= occwagechange_wave]
+DTall[ , occwagechangeEUE_wave:= Mode(occwagechangeEUE_wave), by=list(id,wave)]
+DTall[ , c("occwageAtEU","occwageAfterUE"):=NULL]
+
 
 saveRDS(DTall, paste0(datadir,"/DTall_5.RData"))
-rm(list=ls())
+
 
 ########## New stuff
 
@@ -129,16 +151,6 @@ rm(list=ls())
 if(!exists("DTall")) {
 	DTall <- readRDS(paste0(datadir,"/DTall_5.RData"))
 }
-
-DTall[, next.wavewage := shift(wavewage, type="lead", 4), by = id]
-DTall[, next.wavewage := Mode(next.wavewage), by = list(id, wave)]
-
-# create wave-level EUE wage change
-# find wage in period of EU and one period after UE
-DTall[EU_wave == TRUE, wageAtEU := wavewage]
-DTall[, wageAtEU := na.locf(wageAtEU, na.rm = FALSE)]
-DTall[UE_wave == TRUE, wageAfterUE :=  next.wavewage]
-DTall[, wagechangeEUE_wave := wageAfterUE - wageAtEU]
 
 # who's climbing and who's falling
 DTall[, climbingEE := wagechange_wave > 0]
@@ -163,35 +175,37 @@ EE$Young <- factor(EE$Young)
 levels(EE$Young) <- c("Old", "Young")
 EE$HSCol <- factor(EE$HSCol)
 levels(EE$HSCol) <- c("Less than High School", "High School", "College")
-postscript("EEladder.eps")
+#postscript("EEladder.eps")
 ggplot(EE, aes(x = variable, y = value, fill = factor(switchedOcc_wave))) +
 	geom_bar(stat = "identity", position = "dodge") +
        	facet_grid(Young ~ HSCol) +
-	ylim(c(0,.7)) + 
+	coord_cartesian(ylim=c(0.3,.7)) +
 	xlab("") +
 	ylab("Probability") +
 	theme_bw() +
 	scale_fill_discrete(name = "Occupation Switch",
 			    labels = c("Did not switch occupation", "Switched occupation")) +
 	ggtitle("E-E: Probability of Wage Gain and Wage Loss")
-dev.off()	
+ggsave(filename = "EEladder.eps", width = 10,height = 5)
+#dev.off()	
 
 EUE$Young <- factor(EUE$Young)
 levels(EUE$Young) <- c("Old", "Young")
 EUE$HSCol <- factor(EUE$HSCol)
 levels(EUE$HSCol) <- c("Less than High School", "High School", "College")
-postscript("EUEladder.eps")
+#postscript("EUEladder.eps")
 ggplot(EUE, aes(x = variable, y = value, fill = factor(switchedOcc_wave))) +
 	geom_bar(stat = "identity", position = "dodge") +
 	facet_grid(Young ~ HSCol) +
-	ylim(c(0,.7)) +
+	coord_cartesian(ylim=c(0.3,.7)) +
 	xlab("") +
 	ylab("Probability") +
 	theme_bw() +
 	scale_fill_discrete(name = "Occupation Switch",
 			    labels = c("Did not switch occupation", "Switched occupation")) +
 	ggtitle("E-U-E: Probability of Wage Gain and Wage Loss")
-dev.off()
+ggsave(filename = "EUEladder.eps", width = 10,height = 5)
+#dev.off()
 	
 	
 

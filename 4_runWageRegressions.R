@@ -49,8 +49,8 @@ DTall[lfstat==1, usewage := const +  residuals(lm(logearnm ~ experience + I(expe
 				       	female + black + hispanic + factor(occ),
 				       na.action = na.exclude, weights = wpfinwgt))]
 
-# occwage (NA observations of occ cause issues -- removed in step 2)
-DTall[lfstat==1, occwage := fitted(lm(logearnm ~ experience + I(experience^2) + factor(educ) +
+# occwage (NA observations of occ cause issues -- ~10% of employed)
+DTall[lfstat==1 & is.finite(occ), occwage := fitted(lm(logearnm ~ experience + I(experience^2) + factor(educ) +
 			     	female + black + hispanic, 
 			     na.action = na.exclude, weights = wpfinwgt)), by = occ]
 

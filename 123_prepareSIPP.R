@@ -15,6 +15,7 @@ rootdir <- "~/workspace/CVW/R/"
 datadir <- paste(rootdir, "/InputDataDE", sep = "")
 outputdir <- paste(rootdir, "/Results", sep = "")
 figuredir <- paste(rootdir, "/Figures", sep = "")
+intermed_plots = F
 setwd(rootdir)
 
 ############################## Read data, combine panels ##############################
@@ -250,33 +251,35 @@ sipp[ , next.ustintid:=NULL]
 
 
 # plot transitions time series for sanity check
-EU <- sipp[lfstat==1, .(EU = weighted.mean(EU, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
-ggplot(EU, aes(date, EU, color = panel, group = panel)) +
-	geom_point() + theme_bw()+
-	geom_line() + xlab("") + ylab("EU monthly rate")
-ggsave(filename=paste0(outputdir,"/EUmo.eps"),height= 5,width=10)
-
-UE <- sipp[lfstat==2, .(UE = weighted.mean(UE, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
-ggplot(UE, aes(date, UE, color = panel, group = panel)) +
-	geom_point() +
-	geom_line()+ xlab("") + ylab("UE monthly rate")+theme_bw()
-ggsave(filename=paste0(outputdir,"/UEmo.eps"),height= 5,width=10)
-
-EE <- sipp[lfstat==1 & next.lfstat==1 & (is.finite(eyear) | is.finite(syear)), .(EE = weighted.mean( EE==T, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
-ggplot(EE, aes(date, EE, color = panel, group = panel)) +
-	geom_point() +
-	geom_line()+xlab("")+ ylab("EE monthly rate")+theme_bw()
-ggsave(filename=paste0(outputdir,"/EEmo.eps"),height= 5,width=10)
-
-
-Umo <- sipp[lfstat<3, .(Umo = weighted.mean(lfstat==2, wpfinwgt, na.rm = TRUE)),
-					by = list(panel, date)]
-ggplot(Umo, aes(date, Umo, color = panel, group = panel)) +
-	geom_point() +
-	geom_line()
-
-
-rm(list=c("EU", "UE", "EE"))
+if(intermed_plots==T){
+	EU <- sipp[lfstat==1, .(EU = weighted.mean(EU, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+	ggplot(EU, aes(date, EU, color = panel, group = panel)) +
+		geom_point() + theme_bw()+
+		geom_line() + xlab("") + ylab("EU monthly rate")
+	ggsave(filename=paste0(outputdir,"/EUmo.eps"),height= 5,width=10)
+	
+	UE <- sipp[lfstat==2, .(UE = weighted.mean(UE, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+	ggplot(UE, aes(date, UE, color = panel, group = panel)) +
+		geom_point() +
+		geom_line()+ xlab("") + ylab("UE monthly rate")+theme_bw()
+	ggsave(filename=paste0(outputdir,"/UEmo.eps"),height= 5,width=10)
+	
+	EE <- sipp[lfstat==1 & next.lfstat==1 & (is.finite(eyear) | is.finite(syear)), .(EE = weighted.mean( EE==T, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+	ggplot(EE, aes(date, EE, color = panel, group = panel)) +
+		geom_point() +
+		geom_line()+xlab("")+ ylab("EE monthly rate")+theme_bw()
+	ggsave(filename=paste0(outputdir,"/EEmo.eps"),height= 5,width=10)
+	
+	
+	Umo <- sipp[lfstat<3, .(Umo = weighted.mean(lfstat==2, wpfinwgt, na.rm = TRUE)),
+						by = list(panel, date)]
+	ggplot(Umo, aes(date, Umo, color = panel, group = panel)) +
+		geom_point() +
+		geom_line()
+	
+	
+	rm(list=c("EU", "UE", "EE"))
+}
 
 ########## inflation, unemployment, and recession ----------------------------
 
@@ -325,6 +328,19 @@ sipp[, c("badearn", "nomearnm") := NULL]
 sipp[, Young := age < 30]
 sipp[, HSCol := (educ >= 4) + (educ >= 2)]
 
+
+
+########## attrition weights
+sipp[ , maxmis:= max(mis), by=id]
+sipp[, panelmaxmis := max(maxmis), by=panel]
+sipp[, attrition := maxmis < 0.9*panelmaxmis]
+# use LPM to model probability of dropping out
+attritionModel <- lm(attrition ~ age + female + earnm + factor(educ) + factor(soc2d),
+					 data=sipp, weights=1/maxmis, na.action=na.exclude)
+#sipp[, probAttrition := predict(attritionModel)]
+#sipp[, attritionWeights := wpfinwgt/(1-probAttrition)]
+#sipp[is.na(attritionWeights), attritionWeights := wpfinwgt]
+
 ########## missing occs
 
 # missing occupation codes cause issues with the occwage regression in step 4.
@@ -352,10 +368,8 @@ if( sipp[ , mean(wave_sorted,na.rm=T)]!=0 ){
 	warning("not sorted on wave")
 }
 sipp[ , wave_sorted:=NULL]
-
-sipp[ , maxmis:= max(mis), by=id]
 sipp[ , seam:= (wave != shift(wave,1,type="lead") | mis==maxmis) , by=id ]
-sipp[ , maxmis:=NULL]
+
 sipp[, recIndic_wave := any(recIndic, na.rm=T), by=list(wave,id)]
 sipp[, recIndic2_wave := any(recIndic2, na.rm=T), by=list(wave,id)]
 
@@ -445,14 +459,14 @@ sipp_wave[ ustintid_wave>0, matched_EUUE_wave := matched_EU_wave & matched_UE_wa
 saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
 
 sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","next.job_wave","last.job_wave","job_wave","next.occ_wave","last.occ_wave","occ_wave",
-										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","switchedOcc_wave","wave","id"))
+										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","ustintid_wave","switchedOcc_wave","wave","id"))
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
 
 ########## save prepared data
 setwd(outputdir)
-saveRDS(sipp, "./preparedSipp.RData")
+#saveRDS(sipp, "./preparedSipp.RData")
 saveRDS(sipp, "./DTall_3.RData")
 
 # plot transitions time series for sanity check
@@ -515,11 +529,11 @@ ggplot(swOc_wave, aes(date, swOc, color = panel, group = panel)) +
 	geom_point() + 
 	geom_smooth()
 swOcEE_wave <- sipp[EE_wave==T & is.finite(switchedOcc_wave), .(swOcEE = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
-ggplot(swOcEE_wave, aes(date, swOcEE, color = panel, group = panel)) +
+ggplot(swOcEE_wave, aes(date, swOcEE, color = panel)) +
 	geom_point() + 
 	geom_smooth()
 swOcEUUE_wave <- sipp[(EU_wave==T|UE_wave==T) & matched_EUUE_wave==T & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
-ggplot(swOcEUUE_wave, aes(date, swOc, color = panel, group = panel)) +
+ggplot(swOcEUUE_wave, aes(date, swOc, color = panel)) +
 	geom_point() + 
 	geom_smooth()
 
@@ -537,6 +551,11 @@ ggplot( misSwOcEU_wave, aes(date, misSwOcEU_wave, color=panel, group=panel) ) +
 	geom_point() +
 	geom_line()
 misSwOcUE_wave <- sipp[ UE_wave==T , .(misSwOcUE_wave = mean(is.na(switchedOcc_wave))), by=list(panel,date)]
+ggplot( misSwOcUE_wave, aes(date, misSwOcUE_wave, color=panel, group=panel) ) +
+	geom_point() +
+	geom_line()
+
+misSwOcUE_wave <- sipp[matched_EUUE_wave==T & UE_wave==T , .(misSwOcUE_wave = mean(is.na(switchedOcc_wave))), by=list(panel,date)]
 ggplot( misSwOcUE_wave, aes(date, misSwOcUE_wave, color=panel, group=panel) ) +
 	geom_point() +
 	geom_line()
