@@ -326,17 +326,20 @@ sipp[, c("badearn", "nomearnm") := NULL]
 ########## demographic indicators
 
 sipp[, Young := age < 30]
+sipp[age < 31, ageGrp := 1]
+sipp[age >= 31 & age < 56, ageGrp := 2]
+sipp[age >= 56, ageGrp := 3]
 sipp[, HSCol := (educ >= 4) + (educ >= 2)]
 
 
 
 ########## attrition weights
 sipp[ , maxmis:= max(mis), by=id]
-sipp[, panelmaxmis := max(maxmis), by=panel]
-sipp[, attrition := maxmis < 0.9*panelmaxmis]
-# use LPM to model probability of dropping out
-attritionModel <- lm(attrition ~ age + female + earnm + factor(educ) + factor(soc2d),
-					 data=sipp, weights=1/maxmis, na.action=na.exclude)
+# sipp[, panelmaxmis := max(maxmis), by=panel]
+# sipp[, attrition := maxmis < 0.9*panelmaxmis]
+# # use LPM to model probability of dropping out
+# attritionModel <- lm(attrition ~ age + female + earnm + factor(educ) + factor(soc2d),
+# 					 data=sipp, weights=1/maxmis, na.action=na.exclude)
 #sipp[, probAttrition := predict(attritionModel)]
 #sipp[, attritionWeights := wpfinwgt/(1-probAttrition)]
 #sipp[is.na(attritionWeights), attritionWeights := wpfinwgt]
@@ -535,7 +538,7 @@ ggplot(swOcEE_wave, aes(date, swOcEE, color = panel)) +
 swOcEUUE_wave <- sipp[(EU_wave==T|UE_wave==T) & matched_EUUE_wave==T & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(swOcEUUE_wave, aes(date, swOc, color = panel)) +
 	geom_point() + 
-	geom_smooth()
+	geom_smooth() + ggtitle("Occupational Switching | EU,UE counted at EU")
 
 swOc_wave <- sipp[EE_wave==T& is.finite(occ_wave) & is.finite(next.occ_wave) & !(panel=="2004" & (year<2005 | year>=2007)) , .(swOc_wave = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = date]
 setkey(swOc_wave,date)
