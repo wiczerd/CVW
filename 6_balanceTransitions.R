@@ -10,7 +10,7 @@ xwalkdir = "~/workspace/CVW/R/Crosswalks"
 datadir = "~/workspace/CVW/R/Results"
 outputdir = "~/workspace/CVW/R/Results"
 
-recall_adj = T
+recall_adj = F
 dur_adj = F
 
 setwd(wd0)
@@ -147,16 +147,19 @@ DTseam <- subset(DTall, seam==T)
  
 DTseam[ , c("EE","EU","UE","switchedOcc"):= NULL]
 #do not allow stayers to have larger than 200% change in earnings plus or minus
-#DTseam[ EE_wave==F&EU_wave==F&UE_wave==F, wagechange_wave := ifelse( abs(wagechange_wave)>2., NA,wagechange_wave )]
 
 #balance seams EU and UE
-DTseam[ EU_wave ==T | UE_wave==T, EU_match := shift(UE_wave,1,type = "lead")==T, by=id]
-DTseam[ EU_wave ==T | UE_wave==T, UE_match := shift(EU_wave,1,type = "lag")==T, by=id]
+#DTseam[ EU_wave ==T | UE_wave==T, EU_match := shift(UE_wave,1,type = "lead")==T, by=id]
+#DTseam[ EU_wave ==T | UE_wave==T, UE_match := shift(EU_wave,1,type = "lag")==T, by=id]
 #re-weighting for the left/right survey truncation
-DTseam[ , EU_nomatch := ((EU_match ==F | is.na(EU_match)) & EU_wave==T)]
-DTseam[ , UE_nomatch := ((UE_match ==F | is.na(UE_match)) & UE_wave==T)]
-DTseam[ EU_match==T, EU_nomatch:= F]
-DTseam[ UE_match==T, UE_nomatch:= F]
+#DTseam[ , EU_nomatch := ((EU_match ==F | is.na(EU_match)) & EU_wave==T)]
+#DTseam[ , UE_nomatch := ((UE_match ==F | is.na(UE_match)) & UE_wave==T)]
+#DTseam[ EU_match==T, EU_nomatch:= F]
+#DTseam[ UE_match==T, UE_nomatch:= F]
+DTseam[ matched_EUUE_wave!=T & EU_wave==T, EU_nomatch:= T]
+DTseam[ is.na(EU_nomatch), EU_nomatch:= F]
+DTseam[ matched_EUUE_wave!=T & UE_wave==T, UE_nomatch:= T]
+DTseam[ is.na(UE_nomatch), UE_nomatch:= F]
 DTseam[, misRemaining := max(mis), by=id]
 DTseam[, misRemaining := misRemaining-mis , by=id]
 EUmult <- DTseam[EU_wave==T & misRemaining<=12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[EU_wave==T & misRemaining> 12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
