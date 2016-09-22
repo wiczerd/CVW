@@ -146,20 +146,20 @@ sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)
 DTseam <- subset(DTall, seam==T)
  
 DTseam[ , c("EE","EU","UE","switchedOcc"):= NULL]
-#do not allow stayers to have larger than 200% change in earnings plus or minus
 
-#balance seams EU and UE
-#DTseam[ EU_wave ==T | UE_wave==T, EU_match := shift(UE_wave,1,type = "lead")==T, by=id]
-#DTseam[ EU_wave ==T | UE_wave==T, UE_match := shift(EU_wave,1,type = "lag")==T, by=id]
-#re-weighting for the left/right survey truncation
-#DTseam[ , EU_nomatch := ((EU_match ==F | is.na(EU_match)) & EU_wave==T)]
-#DTseam[ , UE_nomatch := ((UE_match ==F | is.na(UE_match)) & UE_wave==T)]
-#DTseam[ EU_match==T, EU_nomatch:= F]
-#DTseam[ UE_match==T, UE_nomatch:= F]
-DTseam[ matched_EUUE_wave!=T & EU_wave==T, EU_nomatch:= T]
-DTseam[ is.na(EU_nomatch), EU_nomatch:= F]
-DTseam[ matched_EUUE_wave!=T & UE_wave==T, UE_nomatch:= T]
-DTseam[ is.na(UE_nomatch), UE_nomatch:= F]
+
+##balance seams EU and UE
+DTseam[ EU_wave ==T | UE_wave==T, EU_match := shift(UE_wave,1,type = "lead")==T, by=id]
+DTseam[ EU_wave ==T | UE_wave==T, UE_match := shift(EU_wave,1,type = "lag")==T, by=id]
+##re-weighting for the left/right survey truncation
+DTseam[ , EU_nomatch := ((EU_match ==F | is.na(EU_match)) & EU_wave==T)]
+DTseam[ , UE_nomatch := ((UE_match ==F | is.na(UE_match)) & UE_wave==T)]
+DTseam[ EU_match==T, EU_nomatch:= F]
+DTseam[ UE_match==T, UE_nomatch:= F]
+#DTseam[ matched_EUUE_wave!=T & EU_wave==T, EU_nomatch:= T]
+#DTseam[ is.na(EU_nomatch), EU_nomatch:= F]
+#DTseam[ matched_EUUE_wave!=T & UE_wave==T, UE_nomatch:= T]
+#DTseam[ is.na(UE_nomatch), UE_nomatch:= F]
 DTseam[, misRemaining := max(mis), by=id]
 DTseam[, misRemaining := misRemaining-mis , by=id]
 EUmult <- DTseam[EU_wave==T & misRemaining<=12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[EU_wave==T & misRemaining> 12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
@@ -168,7 +168,7 @@ DTseam[ EU_nomatch==T & EU_wave ==T, EU_wave := NA]
 DTseam[ UE_nomatch==T & UE_wave ==T, UE_wave := NA]
 #DTseam[ is.na(EU_wave), EU_wave := F]
 #DTseam[ is.na(UE_wave), UE_wave := F]
-DTseam[ EU_wave ==T | UE_wave==T, switchedOcc_wave := ifelse(UE_wave==T,shift(switchedOcc_wave,1,type="lag"),switchedOcc_wave)]
+#DTseam[ EU_wave ==T | UE_wave==T, switchedOcc_wave := ifelse(UE_wave==T,shift(switchedOcc_wave,1,type="lag"),switchedOcc_wave)]
 DTseam[ , perwt:= mean(wpfinwgt), by=id]
 DTseam[ , waveweight := perwt]
 DTseam[ EU_wave==T | UE_wave==T, waveweight := perwt*(1+max(EUmult,UEmult))]
