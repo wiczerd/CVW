@@ -18,7 +18,7 @@ setwd(wd0)
 CPSunempRt <- readRDS("./InputData/CPSunempRt.RData")
 CPSunempRt$unrt <- CPSunempRt$unrt/100
 
-recDef <- "recIndic2_wave"
+recDef <- "recIndic_wave"
 ##########################################################################################
 # By wave -----------------------
 toKeep_wave <- c("switchedOcc_wave",
@@ -27,7 +27,6 @@ toKeep_wave <- c("switchedOcc_wave",
             "recIndic","recIndic_wave","recIndic2_wave",
             "wagechange",
             "wagechange_wave", 
-            "wagechange_seam",
             "EE_wave","EU_wave","UE_wave",
             "unrt","wpfinwgt","waveweight",
 			"lfstat_wave","wave","id")

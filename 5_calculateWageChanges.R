@@ -86,61 +86,61 @@ DTall[(EE | UE | EU), wagechange_all := wagechange]
 DTall[!is.na(usewage) , levwage := 1/2*(exp(usewage)-exp(-usewage))]
 DTall[ , wavewage := sum(levwage,na.rm=T), by= list(id,wave)]
 DTall[ , wavewage := log(wavewage + (1+wavewage^2)^.5) ]
-DTall[is.na(usewage)==T, wavewage:=NA_real_]
+#DTall[is.na(usewage)==T, wavewage:=NA_real_]
 DTall[ , levwage:=NULL]
-#DTall[ seam==T, seamwage := usewage]
-#DTall[ , seamwage := Mode(seamwage), by=list(id,wave)]
 
+DTseam <- DTall[ seam==T,]
 #need to add change across waves (use wavewage)
-DTall[ seam==T, wagechange_wave := shift(wavewage,1,type="lead") - wavewage, by=id]
-DTall[ , wagechange_wave := Mode(wagechange_wave), by= list(id,wave)]
-
+DTseam[ , nw:= shift(wavewage,1,type="lead"), by=id]
+DTseam[ is.na(nw) & (shift(job_wave,type="lead")== shift(job_wave,2,type="lead")), nw:= shift(wavewage,2,type="lead"), by=id]
+DTseam[ , wagechange_wave := nw - wavewage, by=id]
 # wagechange wave =NA for job changers without a transition
-DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave := NA]
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave := NA]
 
+DTseam[ , next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
+DTseam[ , last.wagechange_wave := shift(wagechange_wave, type="lag" ),by=id]
+DTseam[ , next.wavewage := shift(wavewage, type="lead" ),by=id]
 
-DTall[ seam==T, next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
-DTall[ seam==T, last.wagechange_wave := shift(wagechange_wave, type="lag" ),by=id]
-DTall[ seam==T, next.wavewage := shift(wavewage, type="lead" ),by=id]
-DTall[ , next.wagechange_wave := Mode(next.wagechange_wave), by= list(id,wave)]
-DTall[ , last.wagechange_wave := Mode(last.wagechange_wave), by= list(id,wave)]
-DTall[ , next.wavewage        := Mode(next.wavewage)       , by= list(id,wave)]
 # create wave-level EUE wage change
 # find wage in period of EU and one period after UE
-DTall[seam==T & EU_wave == T, wageAtEU := wavewage]
-DTall[seam==T, wageAtEU := na.locf(wageAtEU, na.rm = F),by=list(ustintid_wave, id)]
-DTall[seam==T & UE_wave == T, wageAfterUE :=  next.wavewage]
-DTall[seam==T & UE_wave == T, wagechangeEUE_wave := wageAfterUE - wageAtEU]
-DTall[, wagechangeEUE_wave:= Mode(wagechangeEUE_wave), by=list(ustintid_wave, id)]
-DTall[ EE_wave==T, wagechangeEUE_wave := wagechange_wave]
-DTall[ , c("wageAtEU","wageAfterUE"):=NULL]
+DTseam[EU_wave == T, wageAtEU := wavewage]
+DTseam[, wageAtEU := na.locf(wageAtEU, na.rm = F),by=list(ustintid_wave, id)]
+DTseam[UE_wave == T, wageAfterUE :=  next.wavewage]
+DTseam[UE_wave == T, wagechangeEUE_wave := wageAfterUE - wageAtEU]
+DTseam[, wagechangeEUE_wave:= Mode(wagechangeEUE_wave), by=list(ustintid_wave, id)]
+DTseam[ EE_wave==T, wagechangeEUE_wave := wagechange_wave]
+
+DTseam[ , c("wageAtEU","wageAfterUE"):=NULL]
 
 # wagechange wave =NA for gains that revert
-DTall[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad:= (wagechange_wave>2 & (last.wagechange_wave< -2. | next.wagechange_wave< -2.)) ] #knocks out 42% of large increases and 1.4% of total change obseravations
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad:= (wagechange_wave>2 & (last.wagechange_wave< -2. | next.wagechange_wave< -2.)) ] #knocks out 42% of large increases and 1.4% of total change obseravations
 # DTall[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad1:=(wagechange_wave< -2. & (last.wagechange_wave> 2. | next.wagechange_wave> 2.)) ] #knocks out 42% of large increases and 1.4% of total change obseravations
-
 # wagechange wave =NA for loss more than 200% without a transition
-DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & wagechange_wave< -2. , wagechange_wave := NA]
-DTall[!(EU_wave==T|UE_wave==T|EE_wave==T) & wagechange_wave_bad == T , wagechange_wave := NA]
-DTall[ , wagechange_wave_bad:=NULL]
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & wagechange_wave< -2. , wagechange_wave := NA]
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & wagechange_wave_bad == T , wagechange_wave := NA]
+DTseam[ , wagechange_wave_bad:=NULL]
+DTseam<-subset(DTseam, select = c("wagechange_wave","wagechangeEUE_wave","next.wavewage","next.wagechange_wave","id","wave"))
+DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
 #looking at occupation-level wage changes
 DTall[ , occwage_wave:= sum(1/2*(exp(occwage)-exp(-occwage)),na.rm=T) , by=list(id,wave)]
 DTall[ , occwage_wave:= log(occwage_wave + (1+occwage_wave^2)^.5)]
-DTall[ , next.occwage_wave := shift(occwage_wave,type="lead"), by=id]
-DTall[ seam==T & switchedOcc_wave==T, occwagechange_wave:= next.occwage_wave-occwage_wave]
-DTall[ seam==T & switchedOcc_wave==F, occwagechange_wave:= 0.]
-DTall[ , occwagechange_wave:= Mode(occwagechange_wave), by=list(id,wave)]
 
-DTall[seam==T & EU_wave == T, occwageAtEU := occwage_wave]
-DTall[seam==T, occwageAtEU := na.locf(occwageAtEU, na.rm = F),by=list(ustintid_wave, id)]
-DTall[seam==T & UE_wave == T, occwageAfterUE :=  next.occwage_wave]
-DTall[seam==T & UE_wave == T, occwagechangeEUE_wave := occwageAfterUE - occwageAtEU]
-DTall[, occwagechangeEUE_wave:= Mode(occwagechangeEUE_wave), by=list(ustintid_wave, id)]
-DTall[ EE_wave==T, occwagechangeEUE_wave:= occwagechange_wave]
-DTall[ , occwagechangeEUE_wave:= Mode(occwagechangeEUE_wave), by=list(id,wave)]
-DTall[ , c("occwageAtEU","occwageAfterUE"):=NULL]
+DTseam <- DTall[ seam==T]
+DTseam[ , next.occwage_wave := shift(occwage_wave,type="lead"), by=id]
+DTseam[ switchedOcc_wave==T, occwagechange_wave:= next.occwage_wave-occwage_wave]
+DTseam[ switchedOcc_wave==F, occwagechange_wave:= 0.]
 
+DTseam[EU_wave == T, occwageAtEU := occwage_wave]
+DTseam[, occwageAtEU := na.locf(occwageAtEU, na.rm = F),by=list(ustintid_wave, id)]
+DTseam[UE_wave == T, occwageAfterUE :=  next.occwage_wave]
+DTseam[UE_wave == T, occwagechangeEUE_wave := occwageAfterUE - occwageAtEU]
+DTseam[, occwagechangeEUE_wave:= Mode(occwagechangeEUE_wave), by=list(ustintid_wave, id)]
+DTseam[ EE_wave==T, occwagechangeEUE_wave:= occwagechange_wave]
+DTseam[ switchedOcc_wave==F, occwagechangeEUE_wave:= 0.]
+
+DTseam<-subset(DTseam, select = c("occwagechange_wave","occwagechangeEUE_wave","next.occwage_wave","id","wave"))
+DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
 saveRDS(DTall, paste0(datadir,"/DTall_5.RData"))
 

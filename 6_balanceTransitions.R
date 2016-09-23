@@ -259,47 +259,47 @@ multiplier <- (UEnorecallweight/EEnorecallweight)*(EEweight.balanced/UEweight.ba
 
 wagechanges[, balanceweight := ifelse(EU | UE, perwt*multiplier, perwt)]
 
-# change weight among unemployed to match <15 weeks, 15-26 weeks, 27+ from CPS
-wagechanges <- merge(wagechanges, CPSunempdur, by = "date", all.x = TRUE)
-wagechanges$year <-as.integer(format(wagechanges$date, "%Y") )
-wagechanges[ UE ==T | EU==T, year := shift(year,1,type="lag")] # be sure UE is in the same year as EU
-
-#for( yi in seq(min(wagechanges$year, na.rm=T),max(wagechanges$year, na.rm=T)  )){
-	#this is the failure rate
-	wagechanges[,SIPPmax_LT15  :=wtd.mean( (maxunempdur< 15*12/52)                         , perwt,na.rm = T)]
-	wagechanges[,SIPPmax_15_26 :=wtd.mean( (maxunempdur>=15*12/52 & maxunempdur<=26*12/52) , perwt,na.rm = T)]
-	wagechanges[,SIPPmax_GT26  :=wtd.mean( (maxunempdur> 26*12/52)                         , perwt,na.rm = T)]
-	#this is the cumulative survival rate
-	wagechanges[,CPSsurv_LT15  :=(mean(FRM5_14  ,na.rm = T) + mean(LT5,na.rm = T))/100]
-	wagechanges[,CPSsurv_15_26 :=(mean(FRM15_26 ,na.rm = T))/100]
-	wagechanges[,CPSsurv_GT26  :=(mean(GT26     ,na.rm = T))/100]
-	#1-durwt_LT15*SIPPmax_LT15 = CPSsurv_GT26+ CPSsurv_15_26
-	wagechanges[(maxunempdur<15*12/52), durwt := (1.-CPSsurv_GT26+ CPSsurv_15_26)/SIPPmax_LT15]
-	#durwt_FRM1526*SIPPmax_15_26 = CPSsurv_15_26
-	wagechanges[(maxunempdur>=15*12/52 & maxunempdur<=26*12/52), durwt :=  CPSsurv_15_26/SIPPmax_15_26]
-	#durwt_GT26*SIPPmax_GT26 = CPSsurv_GT26
-	wagechanges[(maxunempdur>26*12/52), durwt :=  CPSsurv_GT26/SIPPmax_GT26]
-#}
-wagechanges[ (maxunempdur<15*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
-wagechanges[ (maxunempdur>=15*12/52 & maxunempdur<=26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
-wagechanges[ (maxunempdur>26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
-
-wagechanges[ , c("SIPPmax_LT15","SIPPmax_15_26","SIPPmax_GT26","CPSsurv_LT15","CPSsurv_15_26","CPSsurv_GT26")
-			:= NULL]
-
-#wagechanges[is.na(durwt), durwt := 1.]
-wagechanges[, durwt := 1.]
-#do not increase the incidence of unemployment
-balwtEU <- sum(wagechanges$balanceweight[wagechanges$EU], na.rm=T)
-balwtUE <- sum(wagechanges$balanceweight[wagechanges$UE], na.rm=T)
-
-wagechanges$balanceweight <- wagechanges$balanceweight*wagechanges$durwt
-wagechanges$balanceweight[wagechanges$EU] <- wagechanges$balanceweight[wagechanges$EU]/
-	sum(wagechanges$balanceweight[wagechanges$EU], na.rm=T)*balwtEU
-wagechanges$balanceweight[wagechanges$UE] <- wagechanges$balanceweight[wagechanges$UE]/
-	sum(wagechanges$balanceweight[wagechanges$UE], na.rm=T)*balwtUE
-
-wagechanges[,c("year","durwt"):=NULL]
+if(dur_adj==T){
+	
+	# change weight among unemployed to match <15 weeks, 15-26 weeks, 27+ from CPS
+	wagechanges <- merge(wagechanges, CPSunempdur, by = "date", all.x = TRUE)
+	wagechanges$year <-as.integer(format(wagechanges$date, "%Y") )
+	wagechanges[ UE ==T | EU==T, year := shift(year,1,type="lag")] # be sure UE is in the same year as EU
+	
+	#for( yi in seq(min(wagechanges$year, na.rm=T),max(wagechanges$year, na.rm=T)  )){
+		#this is the failure rate
+		wagechanges[,SIPPmax_LT15  :=wtd.mean( (maxunempdur< 15*12/52)                         , perwt,na.rm = T)]
+		wagechanges[,SIPPmax_15_26 :=wtd.mean( (maxunempdur>=15*12/52 & maxunempdur<=26*12/52) , perwt,na.rm = T)]
+		wagechanges[,SIPPmax_GT26  :=wtd.mean( (maxunempdur> 26*12/52)                         , perwt,na.rm = T)]
+		#this is the cumulative survival rate
+		wagechanges[,CPSsurv_LT15  :=(mean(FRM5_14  ,na.rm = T) + mean(LT5,na.rm = T))/100]
+		wagechanges[,CPSsurv_15_26 :=(mean(FRM15_26 ,na.rm = T))/100]
+		wagechanges[,CPSsurv_GT26  :=(mean(GT26     ,na.rm = T))/100]
+		#1-durwt_LT15*SIPPmax_LT15 = CPSsurv_GT26+ CPSsurv_15_26
+		wagechanges[(maxunempdur<15*12/52), durwt := (1.-CPSsurv_GT26+ CPSsurv_15_26)/SIPPmax_LT15]
+		#durwt_FRM1526*SIPPmax_15_26 = CPSsurv_15_26
+		wagechanges[(maxunempdur>=15*12/52 & maxunempdur<=26*12/52), durwt :=  CPSsurv_15_26/SIPPmax_15_26]
+		#durwt_GT26*SIPPmax_GT26 = CPSsurv_GT26
+		wagechanges[(maxunempdur>26*12/52), durwt :=  CPSsurv_GT26/SIPPmax_GT26]
+	#}
+	wagechanges[ (maxunempdur<15*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
+	wagechanges[ (maxunempdur>=15*12/52 & maxunempdur<=26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
+	wagechanges[ (maxunempdur>26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
+	
+	wagechanges[ , c("SIPPmax_LT15","SIPPmax_15_26","SIPPmax_GT26","CPSsurv_LT15","CPSsurv_15_26","CPSsurv_GT26")
+				:= NULL]
+	#do not increase the incidence of unemployment
+	balwtEU <- sum(wagechanges$balanceweight[wagechanges$EU], na.rm=T)
+	balwtUE <- sum(wagechanges$balanceweight[wagechanges$UE], na.rm=T)
+	
+	wagechanges$balanceweight <- wagechanges$balanceweight*wagechanges$durwt
+	wagechanges$balanceweight[wagechanges$EU] <- wagechanges$balanceweight[wagechanges$EU]/
+		sum(wagechanges$balanceweight[wagechanges$EU], na.rm=T)*balwtEU
+	wagechanges$balanceweight[wagechanges$UE] <- wagechanges$balanceweight[wagechanges$UE]/
+		sum(wagechanges$balanceweight[wagechanges$UE], na.rm=T)*balwtUE
+	
+	wagechanges[,c("year","durwt"):=NULL]
+}
 
 
 # scale weights back to original total
