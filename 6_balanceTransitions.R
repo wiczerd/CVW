@@ -121,17 +121,15 @@ if( recall_adj == T){
 }
 
 #some rates: diagnostic
-sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
-sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
-sum(DTall$wpfinwgt[DTall$UE], na.rm=T)
-
-sum(DTall$wpfinwgt[DTall$EE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
-sum(DTall$wpfinwgt[DTall$EU], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
-sum(DTall$wpfinwgt[DTall$UE & is.finite(DTall$ustintid)==T], na.rm=T)/sum(DTall$wpfinwgt[is.finite(DTall$ustintid)==T], na.rm=T)
-
-sum(DTall$wpfinwgt[DTall$EE & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
-sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
-sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)],na.rm=T)/sum(DTall$wpfinwgt[!is.na(DTall$unempdur)],na.rm=T)
+# sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
+# sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
+# sum(DTall$wpfinwgt[DTall$UE], na.rm=T)
+# 
+# sum(DTall$wpfinwgt[DTall$EE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
+# sum(DTall$wpfinwgt[DTall$EU], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
+# sum(DTall$wpfinwgt[DTall$UE & is.finite(DTall$ustintid)==T], na.rm=T)/sum(DTall$wpfinwgt[is.finite(DTall$ustintid)==T], na.rm=T)
+# 
+# sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)],na.rm=T)/sum(DTall$wpfinwgt[!is.na(DTall$unempdur)],na.rm=T)
 #end diagnostic
 
 #save only the seams as a 'wave-change' set ---------------------
@@ -159,11 +157,10 @@ EUmult <- DTseam[EU_wave==T & misRemaining<=12, wtd.mean(EU_nomatch,weights = wp
 UEmult <- DTseam[UE_wave==T & mis         <=12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[UE_wave==T & mis         > 12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
 DTseam[ EU_nomatch==T & EU_wave ==T, EU_wave := NA]
 DTseam[ UE_nomatch==T & UE_wave ==T, UE_wave := NA]
+DTseam[ , misRemaining:=NULL]
 
 DTseam[ , perwt:= mean(wpfinwgt), by=id]
 DTseam[ , waveweight := perwt]
-# should I also correct for left and right truncation?
-#DTseam[ EU_wave==T | UE_wave==T, waveweight := perwt*(1+max(EUmult,UEmult))]
 
 #do some re-weighting 
 for(ri in c(T,F)){
@@ -179,6 +176,9 @@ for(ri in c(T,F)){
 		DTseam[ recIndic_wave==ri & UE_wave==T & switchedOcc_wave==si & !is.na(wagechange_wave), waveweight := waveweight*wt0/wt1]
 	}
 }
+# should I also correct for left and right truncation?
+DTseam[ EU_wave==T | UE_wave==T, wavetruncweight := waveweight*(1+max(EUmult,UEmult))]
+DTseam[ !(EU_wave==T | UE_wave==T), wavetruncweight := waveweight]
 
 
 if( dur_adj == T){
@@ -235,12 +235,9 @@ wagechanges[, balancedEU := EU & shift(UE, 1, type = "lead"), by = id]
 wagechanges[, balancedUE := UE & shift(EU, 1, type = "lag"), by = id]
 wagechanges <- wagechanges[EE | balancedEU | balancedUE,]
 
-# change switchedocc to TRUE for UE if switchedocc is TRUE for corresponding EU
-# Q: Why?
-# A: To correct for how we defined the timing of the occupation switch. See 3_createVars.R.
-#    Now both the EU and UE will be considered an occupation switch.
-wagechanges[UE==T & shift(switchedOcc, 1, type = "lag")==T, switchedOcc := T, by = id]
-#wagechanges[UE==T & shift(switchedInd, 1, type = "lag")==T, switchedInd := T, by = id]
+# take switchedocc from wave-levle data
+wagechanges[ , switchedOcc :=switchedOcc_wave]
+
 wagechanges[, maxunempdur:= ifelse(UE==T & is.na(maxunempdur), shift(maxunempdur), maxunempdur) , by = id]
 wagechanges[, maxunempdur:= ifelse(UE==T & maxunempdur<shift(maxunempdur), shift(maxunempdur), maxunempdur) , by = id]
 wagechanges[, maxunempdur:= ifelse(EU==T & maxunempdur<shift(maxunempdur,1,type="lead"), shift(maxunempdur,1,type="lead"), maxunempdur) , by = id]
@@ -263,7 +260,8 @@ EEweight.balanced <- wagechanges[EE & !is.na(wagechange), sum(perwt, na.rm = TRU
 
 # re-inflate weights for workers who enter and leave as unemployed & divide by 2 for the whole transition
 # this should take the UE, because many EU will leave sample by exit LF
-multiplier <- (UEnorecallweight/EEnorecallweight)*(EEweight.balanced/UEweight.balanced)
+#multiplier <- (UEnorecallweight/EEnorecallweight)*(EEweight.balanced/UEweight.balanced)
+mutliplier <- max(UEmult,EUmult)+1
 
 wagechanges[, balanceweight := ifelse(EU | UE, perwt*multiplier, perwt)]
 
@@ -320,7 +318,7 @@ wagechanges[EU==T, balanceweightEUE := balanceweight*2]
 wagechanges[UE==T, balanceweightEUE := 0.]
 
 
-wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE","maxunempdur","balanceweight","switchedOcc","switchedInd"))
+wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE","maxunempdur","balanceweight","switchedOcc"))
 
 setkey(DTall,id,date)
 DTall[is.finite(ustintid), balancedEU := max(UE,na.rm=T)==T & EU==T, by = list(id,ustintid)]

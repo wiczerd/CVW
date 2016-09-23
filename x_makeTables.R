@@ -28,7 +28,7 @@ toKeep_wave <- c("switchedOcc_wave",
             "wagechange",
             "wagechange_wave", 
             "EE_wave","EU_wave","UE_wave",
-            "unrt","wpfinwgt","waveweight",
+            "unrt","wpfinwgt","waveweight","wavetruncweight",
 			"lfstat_wave","wave","id")
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
@@ -46,21 +46,21 @@ tN <- (length(tabqtls)+1)
 
 
 tab_wavedist <- array(0., dim=c(9,length(tabqtls)+1))
-tab_wavedist[1,1]    <- DTseam[(stayer|changer),     wtd.mean(wagechange_wave,na.rm=T,weights=waveweight)]
-tab_wavedist[1,2:tN] <- DTseam[(stayer|changer), wtd.quantile(wagechange_wave,na.rm=T,weights=waveweight, probs=tabqtls)]
-tab_wavedist[2,1]    <- DTseam[  stayer ==T    ,     wtd.mean(wagechange_wave,na.rm=T,weights=waveweight)]
-tab_wavedist[2,2:tN] <- DTseam[  stayer ==T    , wtd.quantile(wagechange_wave,na.rm=T,weights=waveweight, probs=tabqtls)]
-tab_wavedist[3,1]    <- DTseam[  changer==T    ,     wtd.mean(wagechange_wave,na.rm=T,weights=waveweight)]
-tab_wavedist[3,2:tN] <- DTseam[  changer==T    , wtd.quantile(wagechange_wave,na.rm=T,weights=waveweight, probs=tabqtls)]
+tab_wavedist[1,1]    <- DTseam[(stayer|changer),     wtd.mean(wagechange_wave,na.rm=T,weights=wavetruncweight)]
+tab_wavedist[1,2:tN] <- DTseam[(stayer|changer), wtd.quantile(wagechange_wave,na.rm=T,weights=wavetruncweight, probs=tabqtls)]
+tab_wavedist[2,1]    <- DTseam[  stayer ==T    ,     wtd.mean(wagechange_wave,na.rm=T,weights=wavetruncweight)]
+tab_wavedist[2,2:tN] <- DTseam[  stayer ==T    , wtd.quantile(wagechange_wave,na.rm=T,weights=wavetruncweight, probs=tabqtls)]
+tab_wavedist[3,1]    <- DTseam[  changer==T    ,     wtd.mean(wagechange_wave,na.rm=T,weights=wavetruncweight)]
+tab_wavedist[3,2:tN] <- DTseam[  changer==T    , wtd.quantile(wagechange_wave,na.rm=T,weights=wavetruncweight, probs=tabqtls)]
 #expansion/recession
 for(rI in c(T,F)){
   rix = rI*3+3
-  tab_wavedist[1+rix,1]   <- DTseam[eval(as.name(recDef)) == rI & (stayer|changer),     wtd.mean(wagechange_wave,na.rm=T,weights=waveweight)]
-  tab_wavedist[1+rix,2:tN]<- DTseam[eval(as.name(recDef)) == rI & (stayer|changer), wtd.quantile(wagechange_wave,na.rm=T,weights=waveweight, probs=tabqtls)]
-  tab_wavedist[2+rix,1]   <- DTseam[eval(as.name(recDef)) == rI & stayer ==T      ,     wtd.mean(wagechange_wave,na.rm=T,weights=waveweight)]
-  tab_wavedist[2+rix,2:tN]<- DTseam[eval(as.name(recDef)) == rI & stayer ==T      , wtd.quantile(wagechange_wave,na.rm=T,weights=waveweight, probs=tabqtls)]
-  tab_wavedist[3+rix,1]   <- DTseam[eval(as.name(recDef)) == rI & changer==T      ,     wtd.mean(wagechange_wave,na.rm=T,weights=waveweight)]
-  tab_wavedist[3+rix,2:tN]<- DTseam[eval(as.name(recDef)) == rI & changer==T      , wtd.quantile(wagechange_wave,na.rm=T,weights=waveweight, probs=tabqtls)]
+  tab_wavedist[1+rix,1]   <- DTseam[eval(as.name(recDef)) == rI & (stayer|changer),     wtd.mean(wagechange_wave,na.rm=T,weights=wavetruncweight)]
+  tab_wavedist[1+rix,2:tN]<- DTseam[eval(as.name(recDef)) == rI & (stayer|changer), wtd.quantile(wagechange_wave,na.rm=T,weights=wavetruncweight, probs=tabqtls)]
+  tab_wavedist[2+rix,1]   <- DTseam[eval(as.name(recDef)) == rI & stayer ==T      ,     wtd.mean(wagechange_wave,na.rm=T,weights=wavetruncweight)]
+  tab_wavedist[2+rix,2:tN]<- DTseam[eval(as.name(recDef)) == rI & stayer ==T      , wtd.quantile(wagechange_wave,na.rm=T,weights=wavetruncweight, probs=tabqtls)]
+  tab_wavedist[3+rix,1]   <- DTseam[eval(as.name(recDef)) == rI & changer==T      ,     wtd.mean(wagechange_wave,na.rm=T,weights=wavetruncweight)]
+  tab_wavedist[3+rix,2:tN]<- DTseam[eval(as.name(recDef)) == rI & changer==T      , wtd.quantile(wagechange_wave,na.rm=T,weights=wavetruncweight, probs=tabqtls)]
 }
 
 
