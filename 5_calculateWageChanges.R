@@ -84,16 +84,19 @@ DTall[(EE | UE | EU), wagechange_all := wagechange]
 
 # compute seam-to-seam wage change variable ----------------------------
 DTall[!is.na(usewage) , levwage := 1/2*(exp(usewage)-exp(-usewage))]
-DTall[ , wavewage := sum(levwage,na.rm=T), by= list(id,wave)]
+DTall[ , wavewage := mean(levwage,na.rm=T)*4, by= list(id,wave)] #if one month is missing, give it the average of the other 3
 DTall[ , wavewage := log(wavewage + (1+wavewage^2)^.5) ]
-#DTall[is.na(usewage)==T, wavewage:=NA_real_]
-DTall[ , levwage:=NULL]
+DTall[ , nawavewage:= all(is.na(usewage) ),by= list(id,wave)]
+DTall[ nawavewage==T, wavewage:=NA_real_]
+DTall[ , c("levwage","nawavewage"):=NULL]
 
 DTseam <- DTall[ seam==T,]
 #need to add change across waves (use wavewage)
 DTseam[ , nw:= shift(wavewage,1,type="lead"), by=id]
 DTseam[ is.na(nw) & (shift(job_wave,type="lead")== shift(job_wave,2,type="lead")), nw:= shift(wavewage,2,type="lead"), by=id]
-DTseam[ , wagechange_wave := nw - wavewage, by=id]
+DTseam[ , tw:= wavewage]
+DTseam[ is.na(tw) & (shift(job_wave,type="lag")== job_wave), tw:= shift(wavewage,type="lag"), by=id]
+DTseam[ , wagechange_wave := nw - tw, by=id]
 # wagechange wave =NA for job changers without a transition
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave := NA]
 
@@ -125,6 +128,8 @@ DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 #looking at occupation-level wage changes
 DTall[ , occwage_wave:= sum(1/2*(exp(occwage)-exp(-occwage)),na.rm=T) , by=list(id,wave)]
 DTall[ , occwage_wave:= log(occwage_wave + (1+occwage_wave^2)^.5)]
+DTall[ , nawavewage:= all(is.na(occwage) ),by= list(id,wave)]
+DTall[ nawavewage==T, occwage_wave:=NA_real_]
 
 DTseam <- DTall[ seam==T]
 DTseam[ , next.occwage_wave := shift(occwage_wave,type="lead"), by=id]

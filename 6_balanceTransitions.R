@@ -134,14 +134,6 @@ sum(DTall$wpfinwgt[DTall$EU & DTall$switchedOcc], na.rm=T)/sum(DTall$wpfinwgt[DT
 sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)],na.rm=T)/sum(DTall$wpfinwgt[!is.na(DTall$unempdur)],na.rm=T)
 #end diagnostic
 
-#do some re-weighting to take out seasonality and trend in transitions
-# EEdata <- DTall[ seam==T & lfstat_wave ==1, wtd.mean(EE_wave, weights = wpfinwgt), by=date]
-# EEdata[, month :=factor(format(date, "%B" ),
-# 	   levels = month.name)]
-# EEdata[, EErt:= V1]
-# EEdata[, V1:=NULL]
-# EEdata <- cbind( EEdata,DTall[ seam==T & lfstat_wave ==1, sum(wpfinwgt), by=date]$V1 )
-
 #save only the seams as a 'wave-change' set ---------------------
 DTseam <- subset(DTall, seam==T)
  
@@ -156,6 +148,7 @@ DTseam[ , EU_nomatch := ((EU_match ==F | is.na(EU_match)) & EU_wave==T)]
 DTseam[ , UE_nomatch := ((UE_match ==F | is.na(UE_match)) & UE_wave==T)]
 DTseam[ EU_match==T, EU_nomatch:= F]
 DTseam[ UE_match==T, UE_nomatch:= F]
+# these are equivalent to find non-matches:
 #DTseam[ matched_EUUE_wave!=T & EU_wave==T, EU_nomatch:= T]
 #DTseam[ is.na(EU_nomatch), EU_nomatch:= F]
 #DTseam[ matched_EUUE_wave!=T & UE_wave==T, UE_nomatch:= T]
@@ -166,12 +159,27 @@ EUmult <- DTseam[EU_wave==T & misRemaining<=12, wtd.mean(EU_nomatch,weights = wp
 UEmult <- DTseam[UE_wave==T & mis         <=12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[UE_wave==T & mis         > 12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
 DTseam[ EU_nomatch==T & EU_wave ==T, EU_wave := NA]
 DTseam[ UE_nomatch==T & UE_wave ==T, UE_wave := NA]
-#DTseam[ is.na(EU_wave), EU_wave := F]
-#DTseam[ is.na(UE_wave), UE_wave := F]
-#DTseam[ EU_wave ==T | UE_wave==T, switchedOcc_wave := ifelse(UE_wave==T,shift(switchedOcc_wave,1,type="lag"),switchedOcc_wave)]
+
 DTseam[ , perwt:= mean(wpfinwgt), by=id]
 DTseam[ , waveweight := perwt]
-DTseam[ EU_wave==T | UE_wave==T, waveweight := perwt*(1+max(EUmult,UEmult))]
+# should I also correct for left and right truncation?
+#DTseam[ EU_wave==T | UE_wave==T, waveweight := perwt*(1+max(EUmult,UEmult))]
+
+#do some re-weighting 
+for(ri in c(T,F)){
+	for(si in c(T,F)){
+		wt0 = DTseam[ recIndic_wave==ri & EE_wave==T & switchedOcc_wave==si, sum(waveweight)]
+		wt1 = DTseam[ recIndic_wave==ri & EE_wave==T & switchedOcc_wave==si & !is.na(wagechange_wave), sum(waveweight)]
+		DTseam[ recIndic_wave==ri & EE_wave==T & switchedOcc_wave==si & !is.na(wagechange_wave), waveweight := waveweight*wt0/wt1]
+		wt0 = DTseam[ recIndic_wave==ri & EU_wave==T & switchedOcc_wave==si, sum(waveweight)]
+		wt1 = DTseam[ recIndic_wave==ri & EU_wave==T & switchedOcc_wave==si & !is.na(wagechange_wave), sum(waveweight)]
+		DTseam[ recIndic_wave==ri & EU_wave==T & switchedOcc_wave==si & !is.na(wagechange_wave), waveweight := waveweight*wt0/wt1]
+		wt0 = DTseam[ recIndic_wave==ri & UE_wave==T & switchedOcc_wave==si, sum(waveweight)]
+		wt1 = DTseam[ recIndic_wave==ri & UE_wave==T & switchedOcc_wave==si & !is.na(wagechange_wave), sum(waveweight)]
+		DTseam[ recIndic_wave==ri & UE_wave==T & switchedOcc_wave==si & !is.na(wagechange_wave), waveweight := waveweight*wt0/wt1]
+	}
+}
+
 
 if( dur_adj == T){
 	DTseam[ , maxunempdur:= maxunempdur_wave]
