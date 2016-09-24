@@ -260,9 +260,10 @@ EEweight.balanced <- wagechanges[EE & !is.na(wagechange), sum(perwt, na.rm = TRU
 # re-inflate weights for workers who enter and leave as unemployed & divide by 2 for the whole transition
 # this should take the UE, because many EU will leave sample by exit LF
 #multiplier <- (UEnorecallweight/EEnorecallweight)*(EEweight.balanced/UEweight.balanced)
-mutliplier <- max(UEmult,EUmult)+1
+multiplier <- max(UEmult,EUmult)+1
 
-wagechanges[, balanceweight := ifelse(EU | UE, perwt*multiplier, perwt)]
+wagechanges[EU | UE, balanceweight := perwt*multiplier]
+wagechanges[!(EU | UE), balanceweight := perwt]
 
 if(dur_adj==T){
 	
@@ -320,8 +321,8 @@ wagechanges[UE==T, balanceweightEUE := 0.]
 wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE","max.unempdur","balanceweight","switchedOcc"))
 
 setkey(DTall,id,date)
-DTall[is.finite(ustintid), balancedEU := max(UE,na.rm=T)==T & EU==T, by = list(id,ustintid)]
-DTall[is.finite(ustintid), balancedUE := max(EU,na.rm=T)==T & UE==T, by = list(id,ustintid)]
+DTall[is.finite(ustintid), balancedEU := any(UE,na.rm=T)==T & EU==T, by = list(id,ustintid)]
+DTall[is.finite(ustintid), balancedUE := any(EU,na.rm=T)==T & UE==T, by = list(id,ustintid)]
 DTall<- merge(DTall,wagechangesBalanced,by=c("id","date"),all.x=T)
 
 #make the wage changes NA if not-balanced
@@ -332,12 +333,8 @@ DTall[UE==T, UE := balancedUE.y==T]
 DTall[EU==T, EU := balancedEU.y==T]
 #there are a few from x that don't have ustintid, fill these with y.
 
-DTall[ , switchedOcc := switchedOcc.y] 
 DTall[ is.finite(ustintid), switchedOcc := Mode(switchedOcc), by=list(id,ustintid)]
-DTall[ lfstat==1 & !(EE==T|EU==T|UE==T), switchedOcc := switchedOcc.x]
-#DTall[ , switchedInd := switchedInd.y] 
-#DTall[ is.finite(ustintid), switchedInd := Mode(switchedInd), by=list(id,ustintid)]
-#DTall[ lfstat==1 & !(EE==T|EU==T|UE==T), switchedInd := switchedInd.x]
+
 DTall[ is.finite(ustintid), max.unempdur := max(c(max.unempdur.y, max.unempdur.x), na.rm=T), by=list(id,ustintid)]
 DTall[ !is.finite(balanceweight), balanceweight:= 0.]
 DTall[, balanceweight := max(balanceweight, na.rm=T), by=list(id,ustintid)]
