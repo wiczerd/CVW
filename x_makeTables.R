@@ -26,7 +26,7 @@ toKeep_wave <- c("switchedOcc_wave",
             "HSCol",
             "recIndic","recIndic_wave","recIndic2_wave",
             "wagechange",
-            "wagechange_wave", 
+            "wagechange_wave", "wagechange_wave_bad",
             "EE_wave","EU_wave","UE_wave",
             "unrt","wpfinwgt","waveweight","wavetruncweight",
 			"lfstat_wave","wave","id")
@@ -37,8 +37,8 @@ DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
 DTseam <- DTseam[, toKeep_wave, with = FALSE]
 DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
 DTseam<-DTseam[ is.finite(EE_wave)&is.finite(EU_wave)&is.finite(UE_wave),]
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1, stayer:= T]
-DTseam[(EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
+DTseam[wagechange_wave_bad==F & !(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1, stayer:= T]
+DTseam[wagechange_wave_bad==F &  (EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
 
 
 tabqtls <- c(.1,.25,.5,.75,.9)

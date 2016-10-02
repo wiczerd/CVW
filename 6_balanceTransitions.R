@@ -338,6 +338,7 @@ DTall[ is.finite(ustintid), switchedOcc := Mode(switchedOcc), by=list(id,ustinti
 DTall[ is.finite(ustintid), max.unempdur := max(c(max.unempdur.y, max.unempdur.x), na.rm=T), by=list(id,ustintid)]
 DTall[ !is.finite(balanceweight), balanceweight:= 0.]
 DTall[, balanceweight := max(balanceweight, na.rm=T), by=list(id,ustintid)]
+
 DTall[, c("max.unempdur.x","max.unempdur.y","balancedEU.x","balancedEU.y") := NULL ]
 
 # create weights & EUE specific stuff
