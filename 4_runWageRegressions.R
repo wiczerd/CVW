@@ -44,7 +44,7 @@ DTall[, hispanic := race == 3]
 
 # run regressions
 # usewage
-const <- with(DTall, sum(logearnm * wpfinwgt, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE))
+const <- DTall[ is.finite(logearnm), sum(logearnm * wpfinwgt, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
 DTall[lfstat==1, usewage := const +  residuals(lm(logearnm ~ experience + I(experience^2) + factor(educ) + 
 				       	female + black + hispanic + factor(occ),
 				       na.action = na.exclude, weights = wpfinwgt))]

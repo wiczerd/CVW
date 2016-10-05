@@ -310,7 +310,7 @@ setkey(sipp, id, date)
 
 ########## earnings ----------------------------
 
-# cerate lag/lead earnings
+# create lag/lead earnings
 sipp[, last.earnm := shift(earnm, 1, type = "lag"), by = id]
 sipp[, next.earnm := shift(earnm, 1, type = "lead"), by = id]
 

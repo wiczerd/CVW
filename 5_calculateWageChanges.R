@@ -119,11 +119,14 @@ DTseam[ EE_wave==T, wagechangeEUE_wave := wagechange_wave]
 
 DTseam[ , c("wageAtEU","wageAfterUE"):=NULL]
 
-# wagechange wave =NA for gains that revert
+# wagechange wave =NA for large gains or losses that revert
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad := (wagechange_wave>2) &(last.wagechange_wave<-2.)&(lfstat_wave==1)&(last.lfstat_wave==1)] 
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange_wave>2 )&(next.wagechange_wave<-2.)&(lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad==T] 
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange_wave<-2)&(last.wagechange_wave> 2.)&(lfstat_wave==1)&(last.lfstat_wave==1 ))| wagechange_wave_bad==T] 
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange_wave<-2)&(next.wagechange_wave> 2.)&(lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad==T] 
+
+#wagechange between 2 0's:
+DTseam[lfstat_wave>=2 & next.lfstat_wave>=2  , wagechange_wave_bad := T] 
 
 # old way of doing it:
 #DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad := (wagechange_wave>2 & (last.wagechange_wave< -2. | next.wagechange_wave< -2.)) ] #knocks out 42% of large increases and 1.4% of total change obseravations
@@ -132,7 +135,6 @@ DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange
 
 DTseam[ is.na(wagechange_wave_bad)  , wagechange_wave_bad :=F] 
 
-DTseam[ , wagechange_wave_bad :=NULL]
 DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_bad","wagechangeEUE_wave","next.wavewage","next.wagechange_wave","id","wave"))
 DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
