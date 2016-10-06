@@ -152,8 +152,12 @@ DTseam[ UE_match==T, UE_nomatch:= F]
 #DTseam[ is.na(UE_nomatch), UE_nomatch:= F]
 DTseam[, misRemaining := max(mis), by=id]
 DTseam[, misRemaining := misRemaining-mis , by=id]
-EUmult <- DTseam[EU_wave==T & misRemaining<=12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[EU_wave==T & misRemaining> 12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
-UEmult <- DTseam[UE_wave==T & mis         <=12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[UE_wave==T & mis         > 12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
+#EUmult <- DTseam[EU_wave==T & misRemaining<=12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[EU_wave==T & misRemaining> 12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
+#UEmult <- DTseam[UE_wave==T & mis         <=12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[UE_wave==T & mis         > 12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
+EUtrunomatchrt <- DTseam[EU_wave==T & misRemaining> 12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
+UEtrunomatchrt <- DTseam[UE_wave==T & mis         > 12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
+EUmult <- (1.-EUtrunomatchrt)/(1.-DTseam[EU_wave==T, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)])
+UEmult <- (1.-UEtrunomatchrt)/(1.-DTseam[UE_wave==T, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)])
 DTseam[ EU_nomatch==T & EU_wave ==T, EU_wave := NA]
 DTseam[ UE_nomatch==T & UE_wave ==T, UE_wave := NA]
 DTseam[ , misRemaining:=NULL]
@@ -176,7 +180,7 @@ for(ri in c(T,F)){
 	}
 }
 # should I also correct for left and right truncation?
-DTseam[ EU_wave==T | UE_wave==T, wavetruncweight := waveweight*(1+max(EUmult,UEmult))]
+DTseam[ EU_wave==T | UE_wave==T, wavetruncweight := waveweight*(mean(EUmult,UEmult))]
 DTseam[ !(EU_wave==T | UE_wave==T), wavetruncweight := waveweight]
 
 
