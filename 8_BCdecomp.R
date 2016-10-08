@@ -222,7 +222,14 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 	betaptsE = t(rhere$coefficients)
 	rm(rhere)
 
-
+	if(NS==6){
+		colnames(betaptsE) <-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw")
+		colnames(betaptsR) <-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw")
+	}else if(NS==7){
+		colnames(betaptsE) <-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay")
+		colnames(betaptsR) <-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay")
+	}
+	
 	qtlgridOut <- seq(0.01,0.99,0.01)
 	betaE <- array(0.,dim=c(NS,length(qtlgridOut)) )
 	betaR <- array(0.,dim=c(NS,length(qtlgridOut)) )
@@ -494,8 +501,10 @@ rm(list = c("wcRec","wcExp"))
 
 library(ggplot2)
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1, stayer:= T]
-DTseam[(EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
+DTseam[wagechange_wave_bad==F &  !(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1, stayer:= T]
+DTseam[wagechange_wave_bad==F &  (EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
+DTseam[changer==T, stayer:= F]
+DTseam[stayer==T , changer:=F]
 DTseam <- DTseam[(changer|stayer)]
 
 toKeep <- c("waveweight","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","recIndic_wave","date")
