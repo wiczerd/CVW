@@ -20,11 +20,13 @@ setwd(rootdir)
 sipp <- readRDS(paste0(outputdir,"/sipp_2.RData"))
 
 # select relevant variables, exclude recessions
-sipp <- sipp[!(recIndic), c("panel","year","month","id","earnm", "wpfinwgt"), with=FALSE]
+sipp <- sipp[!(recIndic), c("panel","year","month","id","earnm","lfstat","wpfinwgt"), with=FALSE]
 
 # only keep those there for a full year (take away all recession years entirely?)
 sipp[, monthsInYr := .N, by=list(id,year)]
-sipp <- sipp[monthsInYr == 12,]
+sipp[, monthsInLF := sum(lfstat==1 & earnm>0), by=list(id,year)]
+
+sipp <- sipp[monthsInYr == 12 & monthsInLF>=3,]
 
 # collapse to yearly frequency (sum of earnm, mean of weights)
 sipp <- sipp[, list(earnm = sum(earnm, na.rm=TRUE),
@@ -36,22 +38,39 @@ sipp[, earnmQ := round(rank(earnm)/.N,2), by=year]
 
 # get year to year earnings change
 sipp[, next.earnm := shift(earnm, 1, type="lead"), by=id]
-sipp[, earnmChg := (next.earnm/earnm - 1)*100]
+sipp[, earnmChg := (next.earnm/earnm - 1)]
 
 # get average earnm by earnm quantile, remove 0 earnings
 df <- sipp[, .(earnmChg = wtd.quantile(earnmChg, weights=wpfinwgt, probs=c(.1,.5,.9), na.rm=T)), by=earnmQ]
-df$qtl <- rep(c(.1,.5,.9),101)
+df$qtl <- rep(c(10L,50L,90L),101)
 
 # plot
-ggplot(df[earnmQ>=.05 & earnmQ<=.95,], aes(earnmQ, earnmChg,color=qtl,group=qtl)) + 
+ggplot(df[earnmQ>=.05 & earnmQ<=1.0,], aes(earnmQ, earnmChg,color=factor(qtl),group=factor(qtl))) + 
 	geom_point() + 
 	geom_line() +
-	ylim(c(-25,200)) +
+	ylim(c(-1,2)) +
 	geom_hline(yintercept=0) +
-	ggtitle("Average Annual Earnings Change by Percentile") +
+	ggtitle("Percentiles of Annual Earnings Change by Base-Percentile") +
 	xlab("Earnm percentile in base year") +
-	ylab("Average percent change")
+	ylab("Average percent change")+
+	scale_color_manual(values = c("steelblue","black", "violetred"),
+					   labels = c("10","Median","90"),
+					   name = "")
 ggsave(paste0(figuredir, "/earnmPctile_trunc2.png"))
+
+# get average earnm by earnm quantile, remove 0 earnings
+df2 <- sipp[, .(earnmStd = (wtd.var(earnmChg, weights=wpfinwgt, na.rm=T))^.5 ), by=earnmQ]
+# plot
+ggplot(df2[earnmQ>=.05 & earnmQ<=1.0,], aes(earnmQ, earnmStd)) + 
+	geom_point() + 
+	geom_line() +
+	ylim(c(0,1.50)) +
+	geom_hline(yintercept=0) +
+	ggtitle("Std of Annual Earnings Change by Base-Percentile") +
+	xlab("Earnm percentile in base year") +
+	ylab("Std dev of average percent change")
+ggsave(paste0(figuredir, "/earnmStd_trunc2.png"))
+
 
 # check that distribution is as expected
 df <- sipp[, .(earnm = mean(earnm, na.rm=TRUE)), by=list(year,earnmQ)]
