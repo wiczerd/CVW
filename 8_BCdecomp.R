@@ -507,7 +507,7 @@ DTseam[changer==T, stayer:= F]
 DTseam[stayer==T , changer:=F]
 DTseam <- DTseam[(changer|stayer)]
 
-toKeep <- c("waveweight","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","recIndic_wave","date")
+toKeep <- c("waveweight","wavetruncweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","recIndic_wave","date")
 
 
 # select toKeep columns only
@@ -520,14 +520,14 @@ DTseam[ , switchedOcc := switchedOcc_wave]
 DTseamchng <- subset(DTseam, EU==T|UE==T|EE==T)
 
 
-MM_wavechng_betaE_betaR_cf    <- MMdecomp(DTseamchng,6,"recIndic_wave","wagechange_wave","waveweight")
-MM_waveall_betaE_betaR_cf <- MMdecomp(DTseam,7,"recIndic_wave","wagechange_wave","waveweight")
+MM_wavechng_betaE_betaR_cf    <- MMdecomp(DTseamchng,6,"recIndic_wave","wagechange_wave","wavetruncweight")
+MM_waveall_betaE_betaR_cf <- MMdecomp(DTseam,7,"recIndic_wave","wagechange_wave","wavetruncweight")
 
 
 wcExp <- subset(DTseam,recIndic_wave==F)
 wcRec <- subset(DTseam,recIndic_wave==T)
-dist_exp      <- wcExp[ , wtd.quantile(wagechange_wave,probs=seq(0.01,.99,0.01),weights=waveweight, na.rm=T)]
-dist_rec      <- wcRec[ , wtd.quantile(wagechange_wave,probs=seq(0.01,.99,0.01),weights=waveweight, na.rm=T)]
+dist_exp      <- wcExp[ , wtd.quantile(wagechange_wave,probs=seq(0.01,.99,0.01),weights=wavetruncweight, na.rm=T)]
+dist_rec      <- wcRec[ , wtd.quantile(wagechange_wave,probs=seq(0.01,.99,0.01),weights=wavetruncweight, na.rm=T)]
 dist_cf       <- rowMeans(MM_waveall_betaE_betaR_cf$wc_cf   )
 dist_cf_sw    <- rowMeans(MM_waveall_betaE_betaR_cf$wc_cf_un)
 dist_cf_un    <- rowMeans(MM_waveall_betaE_betaR_cf$wc_cf_sw)
@@ -552,11 +552,11 @@ for(di in seq(1,10,1)){
 	dec_exp_dat[di] <- mean(dist_exp    [ ((di-1)*10+1):min(di*10,99)])	
 }
 
-spn_dif_cf_exp  <- spline(seq(0.05,0.95,0.1), (dec_cf   -dec_exp),xout=seq(0.05,0.95,0.01))$y
-spn_dif_rec_exp <- spline(seq(0.05,0.95,0.1), (dec_rec  -dec_exp),xout=seq(0.05,0.95,0.01))$y
-spn_dif_rec_exp_dat <- spline(seq(0.05,0.95,0.1), (dec_rec_dat  -dec_exp_dat),xout=seq(0.05,0.95,0.01))$y
-spn_dif_un_exp  <- spline(seq(0.05,0.95,0.1), (dec_cf_un-dec_exp),xout=seq(0.05,0.95,0.01))$y
-spn_dif_sw_exp  <- spline(seq(0.05,0.95,0.1), (dec_cf_sw-dec_exp),xout=seq(0.05,0.95,0.01))$y
+spn_dif_cf_exp  <- approx(seq(0.05,0.95,0.1), (dec_cf   -dec_exp),xout=seq(0.05,0.95,0.01))$y
+spn_dif_rec_exp <- approx(seq(0.05,0.95,0.1), (dec_rec  -dec_exp),xout=seq(0.05,0.95,0.01))$y
+spn_dif_rec_exp_dat <- approx(seq(0.05,0.95,0.1), (dec_rec_dat  -dec_exp_dat),xout=seq(0.05,0.95,0.01))$y
+spn_dif_un_exp  <- approx(seq(0.05,0.95,0.1), (dec_cf_un-dec_exp),xout=seq(0.05,0.95,0.01))$y
+spn_dif_sw_exp  <- approx(seq(0.05,0.95,0.1), (dec_cf_sw-dec_exp),xout=seq(0.05,0.95,0.01))$y
 
 dt_mm <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_rec_exp_dat ))
 names(dt_mm) <- c("Quantile","Data")
@@ -596,7 +596,7 @@ ggplot( dt_mm_un_melted, aes(x=Quantile,y=value,colour=variable) ) +
 	xlab("Earnings Growth Quantile") +
 	scale_color_manual(values = c(hcl(h=seq(15, 375, length=4), l=50, c=100)[1:3])) +
 	theme(legend.title = element_blank(),
-		  legend.position = c(0.8,0.2),
+		  legend.position = c(0.6,0.2),
 		  legend.background = element_rect(linetype = "solid",color = "black"))
 ggsave("./Figures/MMwave_all_un.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_un.png",height=5,width=10)
