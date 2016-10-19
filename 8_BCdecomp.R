@@ -402,100 +402,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname){
 }
 
 
-
-wagechanges <- readRDS(paste0(datadir,"/balancedwagechanges.RData"))
-wagechanges <- subset(wagechanges, select=keep)
-
-
-# create vector of recession dates : above 7%
-recDates3 <- as.Date(c("1991-10-01", "1993-07-01","2008-12-01", "2013-11-01"))
-wagechanges[, recIndic3 := (date > recDates3[1] & date < recDates3[2]) | 
-					(date > recDates3[3] & date < recDates3[4])]
-
-
-shift_share <- DHLdecomp(wagechanges,6,"recIndic","wagechange","balanceweight")
-pct_share <- shift_share[[3]]/shift_share[[1]]
-pct_shift <- shift_share[[2]]/matrix(shift_share[[1]],nrow=9,ncol=6 )
-
-shift_share_EUE <- DHLdecomp(wagechanges,4,"recIndic","wagechange_EUE","balanceweightEUE")
-pct_share_EUE <- shift_share_EUE[[3]]/shift_share_EUE[[1]]
-pct_shift_EUE <- shift_share_EUE[[2]]/matrix(shift_share_EUE[[1]],nrow=9,ncol=4 )
-
-MM_betaE_betaR_cf <- MMdecomp(wagechanges,6,"recIndic","wagechange","balanceweight")
-
-MMEUE_betaE_betaR_cf <- MMdecomp(subset(wagechanges,EE==T|EU==T),4,"recIndic","wagechange_EUE","balanceweightEUE")
-
-mmtabqtls <- seq(0.1,0.9,0.1)
-wcExp <- subset(wagechanges,recIndic==F)
-wcRec <- subset(wagechanges,recIndic==T)
-distEUE_exp <- wcExp[EE==T | EU==T, wtd.quantile(wagechange_EUE,probs=mmtabqtls,weights=balanceweightEUE, na.rm=T)]
-distEUE_rec <- wcRec[EE==T | EU==T, wtd.quantile(wagechange_EUE,probs=mmtabqtls,weights=balanceweightEUE, na.rm=T)]
-distEUE_cf  <- MMEUE_betaE_betaR_cf$wc_cf[mmtabqtls*100] 
-distEUE_cf_sw  <- MMEUE_betaE_betaR_cf$wc_cf_un[mmtabqtls*100]
-distEUE_cf_un  <- MMEUE_betaE_betaR_cf$wc_cf_sw[mmtabqtls*100]
-distEUE_pct <- (distEUE_cf - distEUE_exp)/(distEUE_rec - distEUE_exp)
-distEUE_pct_sw <- (distEUE_cf_sw - distEUE_exp)/(distEUE_rec - distEUE_exp)
-distEUE_pct_un <- (distEUE_cf_un - distEUE_exp)/(distEUE_rec - distEUE_exp)
-
-dist_exp <- wtd.quantile(wcExp$wagechange,probs=mmtabqtls,weights=wcExp$balanceweight, na.rm=T)
-dist_rec <- wtd.quantile(wcRec$wagechange,probs=mmtabqtls,weights=wcRec$balanceweight, na.rm=T)
-dist_cf  <- MM_betaE_betaR_cf$wc_cf[mmtabqtls*100]
-dist_cf_sw  <- MM_betaE_betaR_cf$wc_cf_sw[mmtabqtls*100]
-dist_cf_un  <- MM_betaE_betaR_cf$wc_cf_un[mmtabqtls*100] 
-dist_pct <- (dist_cf - dist_exp)/(dist_rec - dist_exp)
-dist_pct_sw <- (dist_cf_sw - dist_exp)/(dist_rec - dist_exp)
-dist_pct_un <- (dist_cf_un - dist_exp)/(dist_rec - dist_exp)
-
-
-#-- spit these out into tables
-
-#DHW: EE, EU, UE
-pct_share_shift <- data.table(cbind(seq(0.1,0.9,0.1),pct_share,pct_shift))
-names(pct_share_shift) <- c("Decile","Share","EE","UE","EU","EE","UE","EU")
-addswitched <-list(pos = list(-1),command="\\hline\\hline& & \\multicolumn{3}{c}{Switched Occ} & \\multicolumn{3}{c}{Not Switched Occ} \\\\ ")
-pct_share_shift <- xtable(pct_share_shift, label="tab:pct_share_shift", digits=2, 
-						  align="ll|l|lll|lll", caption="Shift-Share (DHL) decomposition, including unemployment")
-print(pct_share_shift,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="./Figures/pct_share_shift.tex")
-
-#DHW: EE, EUE
-pct_share_shift_EUE <- data.table(cbind(seq(0.1,0.9,0.1),pct_share_EUE,pct_shift_EUE))
-names(pct_share_shift_EUE) <- c("Decile","Share","EE","EUE","EE","EUE")
-addswitched <-list(pos = list(-1),command="\\hline\\hline& & \\multicolumn{2}{c}{Switched Occ} & \\multicolumn{2}{c}{Not Switched Occ} \\\\ ")
-pct_share_shift_EUE <- xtable(pct_share_shift_EUE, label="tab:pct_share_shift_EUE", digits=2, 
-						  align="ll|l|ll|ll", caption="Shift-Share (DHL) decomposition, connecting across unemployment")
-print(pct_share_shift_EUE,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="./Figures/pct_share_shift_EUE.tex")
-
-#MM : EE, EU, UE
-MM_tab <- data.table(cbind( mmtabqtls,(dist_cf),dist_rec,dist_exp,dist_rec- dist_exp, 
-							dist_pct,dist_pct_sw,dist_pct_un))
-names(MM_tab) <- c("Quantile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
-rownames(MM_tab) <- mmtabqtls
-MM_tab <- xtable(MM_tab, digits=2, 
-					align="ll|lll|l|lll", caption="Machado-Mata, including unemployment \\label{tab:MM_tab}")
-print(MM_tab,include.rownames=T, hline.after= c(0,nrow(MM_tab)), file="./Figures/MM.tex")
-ks.test(wcRec$wagechange,wcExp$wagechange,alternative = "greater")
-# plot the coefficients
-MMcoef <- data.table(cbind( mmtabqtls,MM_betaE_betaR_cf$betaptsE,MM_betaE_betaR_cf$betaptsE))
-names(MMcoef) <- c("Quantiles","ExpSwEE","ExpSwUE","ExpSwEU","ExpNSwEE","ExpNSwUE","ExpNSwEU","RecSwEE","RecSwUE","RecSwEU","RecNSwEE","RecNSwUE","RecNSwEU")
-EUfrac <- wagechanges[recIndic==F, wtd.mean(EU,na.rm=T,weights=balanceweight)]
-UEfrac <- wagechanges[recIndic==F, wtd.mean(UE,na.rm=T,weights=balanceweight)]
-EEfrac <- wagechanges[recIndic==F, wtd.mean(EE,na.rm=T,weights=balanceweight)]
-Swfrac <- wagechanges[recIndic==F, wtd.mean(switchedOcc,na.rm=T,weights=balanceweight)]
-
-
-#MM : EE,EUE
-MMEUE_tab <- data.table(cbind( mmtabqtls,(distEUE_cf),distEUE_rec,distEUE_exp,distEUE_rec- distEUE_exp, 
-							   distEUE_pct,distEUE_pct_sw,distEUE_pct_un ))
-names(MMEUE_tab) <- c("Quantile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
-rownames(MMEUE_tab) <- mmtabqtls
-MMEUE_tab <- xtable(MMEUE_tab, digits=2, 
-						  align="ll|lll|l|lll", caption="Machado-Mata, connecting across unemployment \\label{tab:MMEUE_tab}")
-print(MMEUE_tab,include.rownames=F, hline.after= c(0,nrow(MMEUE_tab)), file="./Figures/MMEUE.tex")
-
-ks.test(wcRec$wagechange_EUE,wcExp$wagechange_EUE,alternative = "greater")
-
-rm(list = c("wcRec","wcExp"))
-
+########################################################################
 ########################################################################
 ## Seams version -------------------------------
 
@@ -507,7 +414,7 @@ DTseam[changer==T, stayer:= F]
 DTseam[stayer==T , changer:=F]
 DTseam <- DTseam[(changer|stayer)]
 
-toKeep <- c("waveweight","wavetruncweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","recIndic_wave","date")
+toKeep <- c("waveweight","wavetruncweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","wagechangeEUE_wave","recIndic_wave","date")
 
 
 # select toKeep columns only
@@ -522,8 +429,9 @@ DTseamchng <- subset(DTseam, EU==T|UE==T|EE==T)
 
 MM_wavechng_betaE_betaR_cf    <- MMdecomp(DTseamchng,6,"recIndic_wave","wagechange_wave","wavetruncweight")
 MM_waveall_betaE_betaR_cf <- MMdecomp(DTseam,7,"recIndic_wave","wagechange_wave","wavetruncweight")
+MM_waveallEUE_betaE_betaR_cf <- MMdecomp(DTseam,5,"recIndic_wave","wagechangeEUE_wave","wavetruncweight")
 
-
+#all observations (7 categories)
 wcExp <- subset(DTseam,recIndic_wave==F)
 wcRec <- subset(DTseam,recIndic_wave==T)
 dist_exp      <- wcExp[ , wtd.quantile(wagechange_wave,probs=seq(0.01,.99,0.01),weights=wavetruncweight, na.rm=T)]
@@ -534,31 +442,69 @@ dist_cf_un    <- rowMeans(MM_waveall_betaE_betaR_cf$wc_cf_sw)
 dist_sim_rec  <- rowMeans(MM_waveall_betaE_betaR_cf$wc_rec  )
 dist_sim_exp  <- rowMeans(MM_waveall_betaE_betaR_cf$wc_exp  )
 
-#take decile averages
-dec_cf  <- array(0.,dim = 10)
-dec_cf_un<- array(0.,dim = 10)
-dec_cf_sw<- array(0.,dim = 10)
-dec_exp <- array(0.,dim = 10)
-dec_rec <- array(0.,dim = 10)
-dec_exp_dat <- array(0.,dim = 10)
-dec_rec_dat <- array(0.,dim = 10)
-for(di in seq(1,10,1)){
-	dec_cf [di]     <- mean(dist_cf     [ ((di-1)*10+1):min(di*10,99)])
-	dec_rec[di]     <- mean(dist_sim_rec[ ((di-1)*10+1):min(di*10,99)])
-	dec_exp[di]     <- mean(dist_sim_exp[ ((di-1)*10+1):min(di*10,99)])
-	dec_cf_un[di]   <- mean(dist_cf_un  [ ((di-1)*10+1):min(di*10,99)])	
-	dec_cf_sw[di]   <- mean(dist_cf_sw  [ ((di-1)*10+1):min(di*10,99)])	
-	dec_rec_dat[di] <- mean(dist_rec    [ ((di-1)*10+1):min(di*10,99)])
-	dec_exp_dat[di] <- mean(dist_exp    [ ((di-1)*10+1):min(di*10,99)])	
+#moving window to summarize the quantiles
+win_cf      <- array(0.,dim=89)
+win_cf_un   <- array(0.,dim=89)
+win_cf_sw   <- array(0.,dim=89)
+win_exp     <- array(0.,dim=89)
+win_rec     <- array(0.,dim=89)
+win_rec_dat <- array(0.,dim=89)
+win_exp_dat <- array(0.,dim=89)
+di = 1
+for(lb in seq(1,89,1)){
+	ub = lb+10
+	win_cf[di]      <- mean(dist_cf     [ lb:ub ])
+	win_rec[di]     <- mean(dist_sim_rec[ lb:ub ])
+	win_exp[di]     <- mean(dist_sim_exp[ lb:ub ])
+	win_cf_un[di]   <- mean(dist_cf_un  [ lb:ub ])
+	win_cf_sw[di]   <- mean(dist_cf_sw  [ lb:ub ])	
+	win_rec_dat[di] <- mean(dist_rec    [ lb:ub ])
+	win_exp_dat[di] <- mean(dist_exp    [ lb:ub ])	
+	di= di+1
 }
+win_dif_rec_exp_dat <- win_rec_dat - win_exp_dat
+win_dif_rec_exp     <- win_rec     - win_exp
+win_dif_cf_exp      <- win_cf      - win_exp
 
-spn_dif_cf_exp  <- approx(seq(0.05,0.95,0.1), (dec_cf   -dec_exp),xout=seq(0.05,0.95,0.01))$y
-spn_dif_rec_exp <- approx(seq(0.05,0.95,0.1), (dec_rec  -dec_exp),xout=seq(0.05,0.95,0.01))$y
-spn_dif_rec_exp_dat <- approx(seq(0.05,0.95,0.1), (dec_rec_dat  -dec_exp_dat),xout=seq(0.05,0.95,0.01))$y
-spn_dif_un_exp  <- approx(seq(0.05,0.95,0.1), (dec_cf_un-dec_exp),xout=seq(0.05,0.95,0.01))$y
-spn_dif_sw_exp  <- approx(seq(0.05,0.95,0.1), (dec_cf_sw-dec_exp),xout=seq(0.05,0.95,0.01))$y
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#EUE wage changes  observations (5 categories)
+distEUE_exp      <- wcExp[ , wtd.quantile(wagechangeEUE_wave,probs=seq(0.01,.99,0.01),weights=wavetruncweight, na.rm=T)]
+distEUE_rec      <- wcRec[ , wtd.quantile(wagechangeEUE_wave,probs=seq(0.01,.99,0.01),weights=wavetruncweight, na.rm=T)]
+distEUE_cf       <- rowMeans(MM_waveallEUE_betaE_betaR_cf$wc_cf   )
+distEUE_cf_sw    <- rowMeans(MM_waveallEUE_betaE_betaR_cf$wc_cf_un)
+distEUE_cf_un    <- rowMeans(MM_waveallEUE_betaE_betaR_cf$wc_cf_sw)
+distEUE_sim_rec  <- rowMeans(MM_waveallEUE_betaE_betaR_cf$wc_rec  )
+distEUE_sim_exp  <- rowMeans(MM_waveallEUE_betaE_betaR_cf$wc_exp  )
 
-dt_mm <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_rec_exp_dat ))
+#moving window to summarize the quantiles
+winEUE_cf      <- array(0.,dim=89)
+winEUE_cf_un   <- array(0.,dim=89)
+winEUE_cf_sw   <- array(0.,dim=89)
+winEUE_exp     <- array(0.,dim=89)
+winEUE_rec     <- array(0.,dim=89)
+winEUE_rec_dat <- array(0.,dim=89)
+winEUE_exp_dat <- array(0.,dim=89)
+di = 1
+for(lb in seq(1,89,1)){
+	ub = lb+10
+	winEUE_cf[di]      <- mean(distEUE_cf     [ lb:ub ])
+	winEUE_rec[di]     <- mean(distEUE_sim_rec[ lb:ub ])
+	winEUE_exp[di]     <- mean(distEUE_sim_exp[ lb:ub ])
+	winEUE_cf_un[di]   <- mean(distEUE_cf_un  [ lb:ub ])
+	winEUE_cf_sw[di]   <- mean(distEUE_cf_sw  [ lb:ub ])	
+	winEUE_rec_dat[di] <- mean(distEUE_rec    [ lb:ub ])
+	winEUE_exp_dat[di] <- mean(distEUE_exp    [ lb:ub ])	
+	di= di+1
+}
+winEUE_dif_rec_exp_dat <- winEUE_rec_dat - winEUE_exp_dat
+winEUE_dif_rec_exp     <- winEUE_rec     - winEUE_exp
+winEUE_dif_cf_exp      <- winEUE_cf      - winEUE_exp
+
+
+##################################################
+### plot stuff
+##################################################
+dt_mm <- data.table(cbind( seq(0.06,0.94,0.01),win_dif_rec_exp_dat ))
 names(dt_mm) <- c("Quantile","Data")
 dt_mm_melted <- melt(dt_mm, id= "Quantile")
 ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -573,7 +519,7 @@ ggsave("./Figures/MMwave_all_data.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_data.png",height=5,width=10)
 
 
-dt_mm <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_rec_exp_dat,spn_dif_cf_exp ))
+dt_mm <- data.table(cbind( seq(0.06,0.94,0.01),win_dif_rec_exp_dat,win_dif_cf_exp ))
 names(dt_mm) <- c("Quantile","Data","Counter Factual")
 dt_mm_melted <- melt(dt_mm, id= "Quantile")
 ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -616,12 +562,6 @@ ggsave("./Figures/MMwave_all_sw.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_sw.png",height=5,width=10)
 
 
-
-
-#dist_pct <- (dist_cf - dist_exp)/(dist_rec - dist_exp)
-dist_pct <- (dist_cf - dist_sim_exp)/(dist_sim_rec - dist_sim_exp)
-dist_pct_sw <- (dist_cf_sw - dist_sim_exp)/(dist_sim_rec - dist_sim_exp)
-dist_pct_un <- (dist_cf_un - dist_sim_exp)/(dist_sim_rec - dist_sim_exp)
 
 wcExp <- subset(DTseamchng,recIndic_wave==F)
 wcRec <- subset(DTseamchng,recIndic_wave==T)
@@ -692,6 +632,106 @@ rownames(MM_allEUE_tab) <- mmtabqtls
 MM_allEUE_tab <- xtable(MM_allEUE_tab, digits=2, 
 					 align="ll|lll|l|lll", caption="Machado-Mata, connecting unemployment spells \\label{tab:MM_allEUE_tab}")
 print(MM_allEUE_tab,include.rownames=T, hline.after= c(0,nrow(MM_allEUE_tab)), file="./Figures/MM_allEUE.tex")
+
+
+
+#-------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------
+# only month changes data set
+#-------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------
+wagechanges <- readRDS(paste0(datadir,"/balancedwagechanges.RData"))
+wagechanges <- subset(wagechanges, select=keep)
+
+
+# create vector of recession dates : above 7%
+recDates3 <- as.Date(c("1991-10-01", "1993-07-01","2008-12-01", "2013-11-01"))
+wagechanges[, recIndic3 := (date > recDates3[1] & date < recDates3[2]) | 
+				(date > recDates3[3] & date < recDates3[4])]
+
+
+shift_share <- DHLdecomp(wagechanges,6,"recIndic","wagechange","balanceweight")
+pct_share <- shift_share[[3]]/shift_share[[1]]
+pct_shift <- shift_share[[2]]/matrix(shift_share[[1]],nrow=9,ncol=6 )
+
+shift_share_EUE <- DHLdecomp(wagechanges,4,"recIndic","wagechange_EUE","balanceweightEUE")
+pct_share_EUE <- shift_share_EUE[[3]]/shift_share_EUE[[1]]
+pct_shift_EUE <- shift_share_EUE[[2]]/matrix(shift_share_EUE[[1]],nrow=9,ncol=4 )
+
+MM_betaE_betaR_cf <- MMdecomp(wagechanges,6,"recIndic","wagechange","balanceweight")
+
+MMEUE_betaE_betaR_cf <- MMdecomp(subset(wagechanges,EE==T|EU==T),4,"recIndic","wagechange_EUE","balanceweightEUE")
+
+mmtabqtls <- seq(0.1,0.9,0.1)
+wcExp <- subset(wagechanges,recIndic==F)
+wcRec <- subset(wagechanges,recIndic==T)
+distEUE_exp <- wcExp[EE==T | EU==T, wtd.quantile(wagechange_EUE,probs=mmtabqtls,weights=balanceweightEUE, na.rm=T)]
+distEUE_rec <- wcRec[EE==T | EU==T, wtd.quantile(wagechange_EUE,probs=mmtabqtls,weights=balanceweightEUE, na.rm=T)]
+distEUE_cf  <- MMEUE_betaE_betaR_cf$wc_cf[mmtabqtls*100] 
+distEUE_cf_sw  <- MMEUE_betaE_betaR_cf$wc_cf_un[mmtabqtls*100]
+distEUE_cf_un  <- MMEUE_betaE_betaR_cf$wc_cf_sw[mmtabqtls*100]
+distEUE_pct <- (distEUE_cf - distEUE_exp)/(distEUE_rec - distEUE_exp)
+distEUE_pct_sw <- (distEUE_cf_sw - distEUE_exp)/(distEUE_rec - distEUE_exp)
+distEUE_pct_un <- (distEUE_cf_un - distEUE_exp)/(distEUE_rec - distEUE_exp)
+
+dist_exp <- wtd.quantile(wcExp$wagechange,probs=mmtabqtls,weights=wcExp$balanceweight, na.rm=T)
+dist_rec <- wtd.quantile(wcRec$wagechange,probs=mmtabqtls,weights=wcRec$balanceweight, na.rm=T)
+dist_cf  <- MM_betaE_betaR_cf$wc_cf[mmtabqtls*100]
+dist_cf_sw  <- MM_betaE_betaR_cf$wc_cf_sw[mmtabqtls*100]
+dist_cf_un  <- MM_betaE_betaR_cf$wc_cf_un[mmtabqtls*100] 
+dist_pct <- (dist_cf - dist_exp)/(dist_rec - dist_exp)
+dist_pct_sw <- (dist_cf_sw - dist_exp)/(dist_rec - dist_exp)
+dist_pct_un <- (dist_cf_un - dist_exp)/(dist_rec - dist_exp)
+
+
+#-- spit these out into tables
+
+#DHW: EE, EU, UE
+pct_share_shift <- data.table(cbind(seq(0.1,0.9,0.1),pct_share,pct_shift))
+names(pct_share_shift) <- c("Decile","Share","EE","UE","EU","EE","UE","EU")
+addswitched <-list(pos = list(-1),command="\\hline\\hline& & \\multicolumn{3}{c}{Switched Occ} & \\multicolumn{3}{c}{Not Switched Occ} \\\\ ")
+pct_share_shift <- xtable(pct_share_shift, label="tab:pct_share_shift", digits=2, 
+						  align="ll|l|lll|lll", caption="Shift-Share (DHL) decomposition, including unemployment")
+print(pct_share_shift,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="./Figures/pct_share_shift.tex")
+
+#DHW: EE, EUE
+pct_share_shift_EUE <- data.table(cbind(seq(0.1,0.9,0.1),pct_share_EUE,pct_shift_EUE))
+names(pct_share_shift_EUE) <- c("Decile","Share","EE","EUE","EE","EUE")
+addswitched <-list(pos = list(-1),command="\\hline\\hline& & \\multicolumn{2}{c}{Switched Occ} & \\multicolumn{2}{c}{Not Switched Occ} \\\\ ")
+pct_share_shift_EUE <- xtable(pct_share_shift_EUE, label="tab:pct_share_shift_EUE", digits=2, 
+							  align="ll|l|ll|ll", caption="Shift-Share (DHL) decomposition, connecting across unemployment")
+print(pct_share_shift_EUE,add.to.row=addswitched, include.rownames=F, hline.after= c(0,nrow(pct_shift)), file="./Figures/pct_share_shift_EUE.tex")
+
+#MM : EE, EU, UE
+MM_tab <- data.table(cbind( mmtabqtls,(dist_cf),dist_rec,dist_exp,dist_rec- dist_exp, 
+							dist_pct,dist_pct_sw,dist_pct_un))
+names(MM_tab) <- c("Quantile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
+rownames(MM_tab) <- mmtabqtls
+MM_tab <- xtable(MM_tab, digits=2, 
+				 align="ll|lll|l|lll", caption="Machado-Mata, including unemployment \\label{tab:MM_tab}")
+print(MM_tab,include.rownames=T, hline.after= c(0,nrow(MM_tab)), file="./Figures/MM.tex")
+ks.test(wcRec$wagechange,wcExp$wagechange,alternative = "greater")
+# plot the coefficients
+MMcoef <- data.table(cbind( mmtabqtls,MM_betaE_betaR_cf$betaptsE,MM_betaE_betaR_cf$betaptsE))
+names(MMcoef) <- c("Quantiles","ExpSwEE","ExpSwUE","ExpSwEU","ExpNSwEE","ExpNSwUE","ExpNSwEU","RecSwEE","RecSwUE","RecSwEU","RecNSwEE","RecNSwUE","RecNSwEU")
+EUfrac <- wagechanges[recIndic==F, wtd.mean(EU,na.rm=T,weights=balanceweight)]
+UEfrac <- wagechanges[recIndic==F, wtd.mean(UE,na.rm=T,weights=balanceweight)]
+EEfrac <- wagechanges[recIndic==F, wtd.mean(EE,na.rm=T,weights=balanceweight)]
+Swfrac <- wagechanges[recIndic==F, wtd.mean(switchedOcc,na.rm=T,weights=balanceweight)]
+
+
+#MM : EE,EUE
+MMEUE_tab <- data.table(cbind( mmtabqtls,(distEUE_cf),distEUE_rec,distEUE_exp,distEUE_rec- distEUE_exp, 
+							   distEUE_pct,distEUE_pct_sw,distEUE_pct_un ))
+names(MMEUE_tab) <- c("Quantile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
+rownames(MMEUE_tab) <- mmtabqtls
+MMEUE_tab <- xtable(MMEUE_tab, digits=2, 
+					align="ll|lll|l|lll", caption="Machado-Mata, connecting across unemployment \\label{tab:MMEUE_tab}")
+print(MMEUE_tab,include.rownames=F, hline.after= c(0,nrow(MMEUE_tab)), file="./Figures/MMEUE.tex")
+
+ks.test(wcRec$wagechange_EUE,wcExp$wagechange_EUE,alternative = "greater")
+
+rm(list = c("wcRec","wcExp"))
 
 
 rm(list=ls())
