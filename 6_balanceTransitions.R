@@ -152,8 +152,7 @@ DTseam[ UE_match==T, UE_nomatch:= F]
 #DTseam[ is.na(UE_nomatch), UE_nomatch:= F]
 DTseam[, misRemaining := max(mis), by=id]
 DTseam[, misRemaining := misRemaining-mis , by=id]
-#EUmult <- DTseam[EU_wave==T & misRemaining<=12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[EU_wave==T & misRemaining> 12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
-#UEmult <- DTseam[UE_wave==T & mis         <=12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)] - DTseam[UE_wave==T & mis         > 12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
+
 EUtrunomatchrt <- DTseam[EU_wave==T & misRemaining> 12, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
 UEtrunomatchrt <- DTseam[UE_wave==T & mis         > 12, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
 EUmult <- (1.-EUtrunomatchrt)/(1.-DTseam[EU_wave==T, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)])
@@ -238,7 +237,7 @@ wagechanges[, balancedEU := EU & shift(UE, 1, type = "lead"), by = id]
 wagechanges[, balancedUE := UE & shift(EU, 1, type = "lag"), by = id]
 wagechanges <- wagechanges[EE | balancedEU | balancedUE,]
 
-# take switchedocc from wave-levle data
+# take switchedocc from wave-level data
 wagechanges[ , switchedOcc :=switchedOcc_wave]
 
 wagechanges[, max.unempdur:= ifelse(UE==T & is.na(max.unempdur), shift(max.unempdur), max.unempdur) , by = id]

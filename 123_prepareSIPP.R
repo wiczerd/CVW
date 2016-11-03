@@ -161,6 +161,10 @@ sipp[esr <= 3, lfstat := 1]
 sipp[esr >= 4 & esr <= 7, lfstat := 2]
 sipp[esr == 8, lfstat := 3]
 
+
+#clean the 2->3 and 3->2 into 2
+#sipp[ lfstat==3 & (shift(lfstat, 1, type = "lag")==2 | shift(lfstat, 1, type = "lead")), lfstat:=2, by=id]
+
 # create lag/lead lfstat
 sipp[, last.lfstat := shift(lfstat, 1, type = "lag"), by = id]
 sipp[, next.lfstat := shift(lfstat, 1, type = "lead"), by = id]
@@ -192,7 +196,7 @@ sipp[lfstat == 1, estintid := na.locf(estintid, na.rm = FALSE), by = id]
 sipp[, newemp := NULL]
 
 # create an unemployment stint id
-sipp[, newunemp := lfstat == 2 & (last.lfstat == 1 | mis == 1)]
+sipp[, newunemp := lfstat >= 2 & (last.lfstat == 1 | mis == 1)]
 sipp[newunemp == TRUE, ustintid := seq_len(.N), by = id]
 sipp[lfstat == 1, ustintid := 9999]
 sipp[, ustintid := na.locf(ustintid, na.rm = FALSE), by = id]
@@ -230,6 +234,7 @@ sipp[is.na(Eend)==T, Eend:= F]
 sipp[lfstat == 1 & next.lfstat == 1, Estart:= (year==syear & month==smonth)]
 sipp[is.na(Estart)==T, Estart:= F]
 sipp[ , next.Estart := shift(Estart, type="lead"), by=id]
+
 
 # create EU/UE/EE dummies
 sipp[lfstat == 1, EU := (next.lfstat == 2)]
@@ -344,13 +349,7 @@ sipp[ , maxmis:= max(mis), by=id]
 #sipp[, attritionWeights := wpfinwgt/(1-probAttrition)]
 #sipp[is.na(attritionWeights), attritionWeights := wpfinwgt]
 
-########## missing occs
 
-# missing occupation codes cause issues with the occwage regression in step 4.
-# remove them here or there
-# sipp <- sipp[!is.na(occ)|lfstat>1,]
-
-# save intermediate result
 setwd(outputdir)
 saveRDS(sipp, "./sipp_2.RData")
 
@@ -397,9 +396,7 @@ sipp_wave[ , next.lfstat_wave := shift(lfstat_wave,type="lead"), by=id]
 sipp_wave[ , last.lfstat_wave := shift(lfstat_wave,type="lag") , by=id]
 sipp_wave[ , next.job_wave    := shift(job_wave,type="lead")   , by=id]
 sipp_wave[ , last.job_wave    := shift(job_wave,type="lag")    , by=id]
-
 sipp_wave[ , next.Estart_wave := shift(Estart_wave,type="lead"), by=id]
-
 
 ##create wave-level ustintid_wave
 #sipp[ , ustintid_wave := Mode(ustintid), by=list(wave,id)]
@@ -420,6 +417,7 @@ sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , EE_wave := (Eend_wave == T 
 sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := (job_wave != next.job_wave) ] #& (last.job_wave != next.job_wave)
 sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] #knocks out ~5% of the changes
 
+
 #fill in occupation over u spells and compute switching
 sipp_wave[ , next.occ_wave    := shift(occ_wave,type="lead")   , by=id]
 sipp_wave[ , last.occ_wave    := shift(occ_wave,type="lag")    , by=id]
@@ -432,13 +430,13 @@ sipp_wave[ lfstat_wave>1, occ_wave:= Mode(occ_wave) , by=list(id,ustintid_wave)]
 sipp_wave[ , next.occ_wave    := shift(occ_wave,type="lead")   , by=id] #recompute now that I've filled back U-spells
 sipp_wave[ (EE_wave==T|EU_wave==T), switchedOcc_wave := occ_wave != next.occ_wave]
 #clean occupation switching
-sipp_wave[ , lftrans := (EU_wave==T |EE_wave==T) ]
-sipp_wave[is.na(lftrans) , lftrans := F]
-sipp_wave[ , next.lftrans := shift(lftrans, type="lead") ,by=id]
-sipp_wave[ , last.lftrans := shift(lftrans, type="lag") ,by=id]
-sipp_wave[ , diffOcc_wave := occ_wave != next.occ_wave]
-sipp_wave[ , next.diffOcc_wave := shift(diffOcc_wave,type="lead"), by=id]
-sipp_wave[ , last.diffOcc_wave := shift(diffOcc_wave,type="lag") , by=id]
+#sipp_wave[ , lftrans := (EU_wave==T |EE_wave==T) ]
+#sipp_wave[is.na(lftrans) , lftrans := F]
+#sipp_wave[ , next.lftrans := shift(lftrans, type="lead") ,by=id]
+#sipp_wave[ , last.lftrans := shift(lftrans, type="lag") ,by=id]
+#sipp_wave[ , diffOcc_wave := occ_wave != next.occ_wave]
+#sipp_wave[ , next.diffOcc_wave := shift(diffOcc_wave,type="lead"), by=id]
+#sipp_wave[ , last.diffOcc_wave := shift(diffOcc_wave,type="lag") , by=id]
 #flip-flop occupations, but not with a transition... about 15% of switches
 #sipp_wave[ (last.diffOcc_wave==T & last.lftrans==F) | (next.diffOcc_wave==T & next.lftrans==F), switchedOcc_wave :=NA]
 
@@ -466,6 +464,16 @@ sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","n
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
+#now check EU, UE, EE as max over months in the wave
+sipp[ , UE_max := any(UE,na.rm=T), by=list(id,wave)]
+sipp[ , EU_max := any(EU,na.rm=T), by=list(id,wave)]
+sipp[ , EE_max := any(EE,na.rm=T), by=list(id,wave)]
+sipp[ seam==T & (EE_max==T|EU_max==T), switchedOcc_max := occ_wave != next.occ_wave]
+sipp[ seam==T & (UE_max==T|EU_max==T), last.switchedOcc_max := shift(switchedOcc_max), by=id]
+sipp[ seam==T & UE_max==T, switchedOcc_max:=last.switchedOcc_max]
+sipp[ , switchedOcc_max := any(switchedOcc_max), by=list(id,wave)]
+sipp[ is.na(switchedOcc_max), switchedOcc_max := F]
+
 
 ########## save prepared data
 setwd(outputdir)
@@ -477,6 +485,11 @@ EU_wave <- sipp[lfstat_wave==1 & is.finite(next.lfstat_wave), .(EU_wave = weight
 ggplot(EU_wave, aes(date, EU_wave, color = panel, group = panel)) +
 	geom_point()+
 	geom_line() +xlab("") + ylab("EU wave-frequency")
+EU_max <- sipp[lfstat_wave==1 & is.finite(next.lfstat_wave), .(EU_max = weighted.mean(EU_max, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+ggplot(EU_max, aes(date, EU_max, color = panel, group = panel)) +
+	geom_point()+
+	geom_line() +xlab("") + ylab("EU max-wave")
+
 EU_wave <- sipp[lfstat_wave==1 & is.finite(next.lfstat_wave), .(EU_wave = weighted.mean(EU_wave, wpfinwgt, na.rm = TRUE)), by = list(date)]
 setkey(EU_wave,date)
 EU_wave[ , EU_wave_apx:= na.approx(EU_wave,na.rm=F)]
@@ -491,6 +504,11 @@ UE_wave <- sipp[lfstat_wave==2 & is.finite(next.lfstat_wave), .(UE_wave = weight
 ggplot(UE_wave, aes(date, UE_wave, color = panel, group = panel)) +
 	geom_point() +
 	geom_line() +xlab("") + ylab("UE wave-frequency")
+UE_max <- sipp[lfstat_wave==2 & is.finite(next.lfstat_wave), .(UE_max = weighted.mean(UE_max, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+ggplot(UE_max, aes(date, UE_max, color = panel, group = panel)) +
+	geom_point() +
+	geom_line() +xlab("") + ylab("UE max-wave")
+
 UE_wave <- sipp[lfstat_wave==2 & is.finite(next.lfstat_wave), .(UE_wave = weighted.mean(UE_wave, wpfinwgt, na.rm = TRUE)), by = list(date)]
 setkey(UE_wave,date)
 UE_wave[ , UE_wave_apx:= na.approx(UE_wave,na.rm=F)]
@@ -506,6 +524,11 @@ EE_wave <- sipp[lfstat_wave==1 & next.lfstat_wave==1 & !(panel==2004 & year<2005
 ggplot(EE_wave, aes(date, EE_wave, color = panel, group = panel)) +
 	geom_point() +
 	geom_line() +xlab("") + ylab("EE wave-frequency")
+EE_max <- sipp[lfstat_wave==1 & next.lfstat_wave==1 , .(EE_max = weighted.mean(EE_max, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+ggplot(EE_max, aes(date, EE_max, color = panel, group = panel)) +
+	geom_point() +
+	geom_line() +xlab("") + ylab("EE max-wave")
+
 EE_wave <- sipp[lfstat_wave==1 & next.lfstat_wave==1 & !(panel==2004 & year<2005), .(EE_wave = weighted.mean(EE_wave, wpfinwgt, na.rm = TRUE)), by = list(date)]
 setkey(EE_wave,date)
 EE_wave[ , EE_wave_apx:= na.approx(EE_wave,na.rm=F)]
@@ -531,10 +554,17 @@ swOc_wave <- sipp[ (EE_wave==T|EU_wave==T|UE_wave==T) & is.finite(switchedOcc_wa
 ggplot(swOc_wave, aes(date, swOc, color = panel, group = panel)) +
 	geom_point() + 
 	geom_smooth()
+swOc_max <- sipp[ (EE_max==T|EU_max==T|UE_max==T) & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+ggplot(swOc_max, aes(date, swOc, color = panel, group = panel)) +
+	geom_point() + 
+	geom_smooth()
+
 swOcEE_wave <- sipp[EE_wave==T & is.finite(switchedOcc_wave), .(swOcEE = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(swOcEE_wave, aes(date, swOcEE, color = panel)) +
 	geom_point() + 
 	geom_smooth()
+
+
 swOcEUUE_wave <- sipp[(EU_wave==T|UE_wave==T) & matched_EUUE_wave==T & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(swOcEUUE_wave, aes(date, swOc, color = panel)) +
 	geom_point() + 

@@ -29,7 +29,7 @@ toKeep_wave <- c("switchedOcc_wave",
             "wagechange_wave", "wagechange_wave_bad",
             "EE_wave","EU_wave","UE_wave",
             "unrt","wpfinwgt","waveweight","wavetruncweight",
-			"lfstat_wave","wave","id")
+			"lfstat_wave","next.lfstat_wave","wave","id")
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
 
@@ -38,12 +38,14 @@ wt <- "wavetruncweight"
 # select toKeep columns only
 DTseam <- DTseam[, toKeep_wave, with = FALSE]
 DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
-DTseam<-DTseam[ is.finite(EE_wave)&is.finite(EU_wave)&is.finite(UE_wave),]
+DTseam<-DTseam[ is.finite(EE_wave)&is.finite(EU_wave)&is.finite(UE_wave), ]
 DTseam[wagechange_wave_bad==F &  !(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1, stayer:= T]
+# there are many lfstat==2 and next.lfstat==2 but still a month, freq transition happened
+DTseam[ lfstat_wave==2 & next.lfstat_wave==2, highfreq_U := wagechange_wave>0 |  wagechange_wave<0]
 DTseam[wagechange_wave_bad==F &  (EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
 DTseam[changer==T, stayer:= F]
-DTseam[stayer==T , changer:=F]
-
+DTseam[stayer ==T, changer:=F]
+DTseam[ , useobs := is.finite(EU_wave) & is.finite(UE_wave) & is.finite(EE_wave) ]
 
 tabqtls <- c(.1,.25,.5,.75,.9)
 tN <- (length(tabqtls)+1)
