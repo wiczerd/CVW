@@ -120,21 +120,18 @@ if( recall_adj == T){
 	
 }
 
-#some rates: diagnostic
-# sum(DTall$wpfinwgt[DTall$EE], na.rm=T)
-# sum(DTall$wpfinwgt[DTall$EU], na.rm=T)
-# sum(DTall$wpfinwgt[DTall$UE], na.rm=T)
-# 
-# sum(DTall$wpfinwgt[DTall$EE], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
-# sum(DTall$wpfinwgt[DTall$EU], na.rm=T)/sum(DTall$wpfinwgt[DTall$lfstat ==1], na.rm=T)
-# sum(DTall$wpfinwgt[DTall$UE & is.finite(DTall$ustintid)==T], na.rm=T)/sum(DTall$wpfinwgt[is.finite(DTall$ustintid)==T], na.rm=T)
-# 
-# sum(DTall$wpfinwgt[!is.na(DTall$unempdur)]*DTall$unempdur[!is.na(DTall$unempdur)],na.rm=T)/sum(DTall$wpfinwgt[!is.na(DTall$unempdur)],na.rm=T)
-#end diagnostic
+
+#deal with all of the un-counted transitions:
+DTall[ , EE_max := any(EE,na.rm = T), by=list(wave,id)]
+DTall[ EE_max==T & EE_wave!=T & jobchng_wave==F, EE_wave:=NA]
+DTall[ lfstat_wave==2 & next.lfstat_wave==2 & wagechange_wave<0., EU_wave2 := (wagechange_wave<0.)]
+DTall[ lfstat_wave==2 & next.lfstat_wave==2 & wagechange_wave>0., UE_wave2 := (wagechange_wave>0.)]
+DTall[ (lfstat_wave==2 & !is.finite(EU_wave2))|lfstat_wave==1, EU_wave2 := F]
+DTall[ (lfstat_wave==2 & !is.finite(UE_wave2))|lfstat_wave==1, UE_wave2 := F]
 
 #save only the seams as a 'wave-change' set ---------------------
 DTseam <- subset(DTall, seam==T)
- 
+ # 
 DTseam[ , c("EE","EU","UE","switchedOcc"):= NULL]
 
 ##balance seams EU and UE
@@ -222,6 +219,25 @@ if( dur_adj == T){
 	wtscale <- DTseam[, sum(waveweight, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
 	DTseam[, waveweight := waveweight/wtscale]
 }
+
+
+#add in the EU_wave2, UE_wave2
+DTseam[ EU_wave2==T, EU_wave:=T]
+DTseam[ UE_wave2==T, UE_wave:=T]
+DTall[ EU_wave2==T, EU_wave:=T]
+DTall[ UE_wave2==T, UE_wave:=T]
+
+#cleaning:
+# wagechange wave =NA for large gains or losses that revert
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad := (wagechange_wave>2) &(last.wagechange_wave<-2.)&(lfstat_wave==1)&(last.lfstat_wave==1)] 
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange_wave>2 )&(next.wagechange_wave<-2.)&(lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad==T] 
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange_wave<-2)&(last.wagechange_wave> 2.)&(lfstat_wave==1)&(last.lfstat_wave==1 ))| wagechange_wave_bad==T] 
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange_wave<-2)&(next.wagechange_wave> 2.)&(lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad==T] 
+
+#wagechange between 2 0's:
+DTseam[lfstat_wave>=2 & next.lfstat_wave>=2  , wagechange_wave_bad := T] 
+DTseam[ is.na(wagechange_wave_bad)  , wagechange_wave_bad :=F] 
+
 
 saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))
 

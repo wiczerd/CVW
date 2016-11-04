@@ -520,7 +520,7 @@ ggsave(filename = paste0(figuredir,"/UE_wave.png"),height= 5,width=10)
 
 
 
-EE_wave <- sipp[lfstat_wave==1 & next.lfstat_wave==1 & !(panel==2004 & year<2005), .(EE_wave = weighted.mean(EE_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+EE_wave <- sipp[lfstat_wave==1 & next.lfstat_wave==1 , .(EE_wave = weighted.mean(EE_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(EE_wave, aes(date, EE_wave, color = panel, group = panel)) +
 	geom_point() +
 	geom_line() +xlab("") + ylab("EE wave-frequency")
@@ -559,7 +559,7 @@ ggplot(swOc_max, aes(date, swOc, color = panel, group = panel)) +
 	geom_point() + 
 	geom_smooth()
 
-swOcEE_wave <- sipp[EE_wave==T & is.finite(switchedOcc_wave), .(swOcEE = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+swOcEE_wave <- sipp[EE_wave==T & is.finite(switchedOcc_wave) , .(swOcEE = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(swOcEE_wave, aes(date, swOcEE, color = panel)) +
 	geom_point() + 
 	geom_smooth()
