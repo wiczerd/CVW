@@ -33,7 +33,7 @@ toKeep_wave <- c("switchedOcc_wave",
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
 
-wt <- "wavetruncweight"
+wt <- "waveweight"
 
 # select toKeep columns only
 DTseam <- DTseam[, toKeep_wave, with = FALSE]
@@ -131,7 +131,7 @@ for(ri in seq(1,nrow(tab_waveqtldec))){
 tab_chngvarqtldec <- data.table(rbind(tab_wavevardec[1,],tab_waveqtldec[1:Ndifs,]) )
 names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EU,UE")
 #rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
-rownames(tab_chngvarqtldec) <- c("Variance","0.95-0.05","0.9-0.1","0.75-0.25", "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
+rownames(tab_chngvarqtldec) <- c("Variance","0.95-0.05","0.9-0.1","0.75-0.25")# "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
 
 tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=2, 
                             align="l|l|ll", caption="Decomposition of earnings change dispersion \\label{tab:wavechngvarqtldec}")

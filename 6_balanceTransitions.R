@@ -132,7 +132,7 @@ DTall[ (lfstat_wave==2 & !is.finite(UE_wave2))|lfstat_wave==1, UE_wave2 := F]
 #save only the seams as a 'wave-change' set ---------------------
 DTseam <- subset(DTall, seam==T)
  # 
-DTseam[ , c("EE","EU","UE","switchedOcc"):= NULL]
+DTseam[ , c("EE","EU","UE"):= NULL]
 
 ##balance seams EU and UE
 DTseam[ EU_wave ==T | UE_wave==T, EU_match := shift(UE_wave,1,type = "lead")==T, by=id]
@@ -238,6 +238,9 @@ DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange
 DTseam[lfstat_wave>=2 & next.lfstat_wave>=2  , wagechange_wave_bad := T] 
 DTseam[ is.na(wagechange_wave_bad)  , wagechange_wave_bad :=F] 
 
+#lowest wages out:
+lowwageqtls= DTseam[ lfstat_wave==1, quantile(wavewage, na.rm = T, probs=c(.01,.02,.05))]
+DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=wavewage<lowwageqtls[2] | next.wavewage<lowwageqtls[2] ]
 
 saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))
 
