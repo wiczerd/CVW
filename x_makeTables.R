@@ -33,7 +33,7 @@ toKeep_wave <- c("switchedOcc_wave",
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
 
-wt <- "waveweight"
+wt <- "wavetruncweight"
 
 # select toKeep columns only
 DTseam <- DTseam[, toKeep_wave, with = FALSE]

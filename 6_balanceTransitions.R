@@ -222,10 +222,10 @@ if( dur_adj == T){
 
 
 #add in the EU_wave2, UE_wave2
-DTseam[ EU_wave2==T, EU_wave:=T]
-DTseam[ UE_wave2==T, UE_wave:=T]
-DTall[ EU_wave2==T, EU_wave:=T]
-DTall[ UE_wave2==T, UE_wave:=T]
+#DTseam[ EU_wave2==T, EU_wave:=T]
+#DTseam[ UE_wave2==T, UE_wave:=T]
+#DTall[ EU_wave2==T, EU_wave:=T]
+#DTall[ UE_wave2==T, UE_wave:=T]
 
 #cleaning:
 # wagechange wave =NA for large gains or losses that revert
