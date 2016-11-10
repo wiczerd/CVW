@@ -223,6 +223,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 		Nsims = 1
 	}
 
+	
+	qtlgridOut <- seq(0.01,0.99,0.01)
 	seedint = 941987
 	set.seed(seedint)
 	#draw the sample
@@ -276,7 +278,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 			colnames(betaptsR) <-c("EE_sw","EU_sw","EE_nosw","EU_nosw")
 		}
 		
-		qtlgridOut <- seq(0.01,0.99,0.01)
+		
 		betaE <- array(0.,dim=c(NS,length(qtlgridOut)) )
 		betaR <- array(0.,dim=c(NS,length(qtlgridOut)) )
 		for(si in seq(1,NS)){
