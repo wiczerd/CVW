@@ -486,9 +486,9 @@ MM_wavechng_betaE_betaR_IR    <- MMdecomp(DTseamchng,6,"recIndic_wave","wagechan
 MM_waveall_betaE_betaR_IR <- MMdecomp(DTseam,7,"recIndic_wave","wagechange_wave","wavetruncweight",std_errs = T)
 MM_waveallEUE_betaE_betaR_IR <- MMdecomp(DTseam,5,"recIndic_wave","wagechangeEUE_wave","wavetruncweight",std_errs = T)
 
-saveRDS(MM_waveall_betaE_betaR_IR,paste0(outputdir,"MM_waveall.RData"))
-saveRDS(MM_wavechng_betaE_betaR_IR,paste0(outputdir,"MM_wavechng.RData"))
-saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"MM_waveallEUE.RData"))
+saveRDS(MM_waveall_betaE_betaR_IR,paste0(outputdir,"./MM_waveall.RData"))
+saveRDS(MM_wavechng_betaE_betaR_IR,paste0(outputdir,"./MM_wavechng.RData"))
+saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"./MM_waveallEUE.RData"))
 
 
 #all observations (7 categories)
@@ -497,6 +497,7 @@ wcRec <- subset(DTseam,recIndic_wave==T)
 dist_exp      <- wcExp[ , wtd.quantile(wagechange_wave,probs=seq(0.01,.99,0.01),weights=wavetruncweight, na.rm=T)]
 dist_rec      <- wcRec[ , wtd.quantile(wagechange_wave,probs=seq(0.01,.99,0.01),weights=wavetruncweight, na.rm=T)]
 dist_IR       <- rowMeans(MM_waveall_betaE_betaR_IR$wc_IR   )
+CI_IR         <- apply(MM_waveall_betaE_betaR_IR$wc_IR,1,quantile,0.95) - apply(MM_waveall_betaE_betaR_IR$wc_IR,1,quantile,0.05)
 dist_BR       <- rowMeans(MM_waveall_betaE_betaR_IR$wc_BR   )
 dist_IR_sw    <- rowMeans(MM_waveall_betaE_betaR_IR$wc_IR_un)
 dist_IR_un    <- rowMeans(MM_waveall_betaE_betaR_IR$wc_IR_sw)
