@@ -67,7 +67,7 @@ recallRecodeShorTerm <- function(DF){
 	   	(wave != shift(wave) | wave != shift(wave,1,type="lead")) ,by=id]
 	DF[is.na(ENEwseam), ENEwseam:=F]
 	predrecall <- glm( recalled ~ wagechange_EUE + I(wagechange_EUE^2) + recIndic + factor(esr) + union + 
-					   	factor(HSCol) + factor(Young)  + I(wagechange_EUE>-.5) + I(wagechange_EUE<.5 & wagechange_EUE>-.5)
+					   	factor(HSCol) + factor(Young)  + I(wagechange_EUE>(-.5)) + I(wagechange_EUE<.5 & wagechange_EUE>(-.5))
 					   + switchedOcc + switchedAddress, 
 					   na.action = na.exclude, data= subset(DF,ENEnoseam),family=binomial(link="probit"))
 	DF[ (ENEwseam | ENEnoseam), 
@@ -186,11 +186,8 @@ for(ri in c(T,F)){
 	}
 }
 
-DTseam[ , waveweight := cycweight]
-
 # should I also correct for left and right truncation?
-DTseam[ EU_wave==T | UE_wave==T, wavetruncweight := waveweight*truncweight/perwt]
-DTseam[ !(EU_wave==T | UE_wave==T), wavetruncweight := waveweight]
+DTseam[ , cyctruncweight := cycweight*truncweight/perwt]
 
 
 if( dur_adj == T){
@@ -239,21 +236,6 @@ if( dur_adj == T){
 #DTseam[ UE_wave2==T, UE_wave:=T]
 #DTall[ EU_wave2==T, EU_wave:=T]
 #DTall[ UE_wave2==T, UE_wave:=T]
-
-#cleaning:
-# wagechange wave =NA for large gains or losses that revert
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad := (wagechange_wave>2) &(last.wagechange_wave<-2.)&(lfstat_wave==1)&(last.lfstat_wave==1)] 
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange_wave>2 )&(next.wagechange_wave<-2.)&(lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad==T] 
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange_wave<-2)&(last.wagechange_wave> 2.)&(lfstat_wave==1)&(last.lfstat_wave==1 ))| wagechange_wave_bad==T] 
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange_wave<-2)&(next.wagechange_wave> 2.)&(lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad==T] 
-
-#wagechange between 2 0's:
-DTseam[lfstat_wave>=2 & next.lfstat_wave>=2  , wagechange_wave_bad := T] 
-DTseam[ is.na(wagechange_wave_bad)  , wagechange_wave_bad :=F] 
-
-#lowest wages out:
-lowwageqtls= DTseam[ lfstat_wave==1, quantile(wavewage, na.rm = T, probs=c(.01,.02,.05))]
-DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=wavewage<lowwageqtls[2] | next.wavewage<lowwageqtls[2] ]
 
 saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))
 
