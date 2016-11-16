@@ -5,6 +5,7 @@ library(zoo)
 library(xtable)
 library(Hmisc)
 library(quantreg)
+library(ggplot2)
 
 #setwd("G:/Research_Analyst/Eubanks/Occupation Switching")
 wd0 = "~/workspace/CVW/R"
@@ -17,9 +18,8 @@ setwd(wd0)
 keep <- c("wagechange","wagechange_EUE","EU","UE","EE","recIndic","switchedOcc","switchedInd","balanceweight","date")
 
 mmtabchngqtls <- seq(0.1,0.9,0.1)
-mmtaballqtls  <- c(seq(.01,.1,.03),seq(0.25,0.75,0.25),seq(.9,.99,.03))
-Nsims = 3
-
+mmtaballqtls  <- c(seq(.02,.1,.02),seq(0.2,0.8,0.1),seq(.9,.98,.02))
+MMstd_errs = T
 #recession counter-factual returns beta^E * recession inidcators and beta^R * expansion indicators
 
 DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
@@ -199,7 +199,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
 		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
 		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
-		wcDF[!is.na(wcDF$s), s5 := ifelse(s==4,1,0)]		
+		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]		
 	}
 	wcDF<- subset(wcDF,is.finite(wcDF$s))
 	wcRec <- subset(wcDF, rec==T)
@@ -207,9 +207,9 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 	
 	# run quantile regressions on a relatively coarse grid (have to run 8 regressions)
 	if(NS == 5 | NS==7){
-		qtlgridEst <- c( .01,.04,.07, seq(.1,.9,.1),.93,.96,.99 )
+		qtlgridEst <- mmtaballqtls #c( .01,.04,.07, seq(.1,.9,.1),.93,.96,.99 )
 	}else{
-		qtlgridEst <- c(0.01,0.05,mmtabchngqtls,0.95,0.99)
+		qtlgridEst <- mmtaballqtls #c(0.01,0.05,mmtabchngqtls,0.95,0.99)
 	}
 	#qtlgrid <- seq(0.01,0.99,0.01)
 	
@@ -224,7 +224,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 	}
 
 	
-	qtlgridOut <- seq(0.01,0.99,0.01)
+	qtlgridOut <- seq(0.02,0.98,0.01)
 	seedint = 941987
 	set.seed(seedint)
 	#draw the sample
@@ -250,16 +250,18 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 		set.seed(seedint+simiter*Nsims)		
 		
 		wcRec <- subset(wcDF, rec==T)
-		datsampR <- sample(nrow(wcRec),nrow(wcRec),replace=T,prob=wcRec$wt)
-		wcRec <- wcRec[datsampR,]
 		wcExp <- subset(wcDF, rec==F)
-		datsampE <- sample(nrow(wcExp),nrow(wcExp),replace=T,prob=wcExp$wt)
-		wcExp <- wcExp[datsampE,]
+		if(std_errs == T){
+			datsampR <- sample(nrow(wcRec),nrow(wcRec),replace=T,prob=wcRec$wt)
+			datsampE <- sample(nrow(wcExp),nrow(wcExp),replace=T,prob=wcExp$wt)
+			wcRec <- wcRec[datsampR,]
+			wcExp <- wcExp[datsampE,]
+		}
 		
-		rhere <- rq( wc ~ factor(s)+0 ,tau= qtlgridEst, wcRec, weights = wt, method="br")
+		rhere <- rq( wc ~ factor(s)+0 ,tau= qtlgridEst, wcRec, weights = wt, method="fn")
 		betaptsR = t(rhere$coefficients)
 	
-		rhere <- rq( wc ~factor(s) +0,tau= qtlgridEst, data=wcExp, weights = wt, method="br")
+		rhere <- rq( wc ~factor(s) +0,tau= qtlgridEst, data=wcExp, weights = wt, method="fn")
 		betaptsE = t(rhere$coefficients)
 		rm(rhere)
 	
@@ -282,8 +284,15 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 		betaE <- array(0.,dim=c(NS,length(qtlgridOut)) )
 		betaR <- array(0.,dim=c(NS,length(qtlgridOut)) )
 		for(si in seq(1,NS)){
-			betaE[si,] <- spline(x=qtlgridEst, y=betaptsE[,si], method="hyman", xout=qtlgridOut)$y
-			betaR[si,] <- spline(x=qtlgridEst, y=betaptsR[,si], method="hyman", xout=qtlgridOut)$y
+			if(min(qtlgridOut)<min(qtlgridEst) | max(qtlgridOut)>max(qtlgridEst)){
+				betaE[si,] <- spline(x=c(min(qtlgridEst) ,qtlgridEst, max(min(qtlgridEst))), 
+									 y=c(min(betaptsE[,si]), betaptsE[,si],max(betaptsE[,si])), method="hyman", xout=qtlgridOut)$y
+				betaR[si,] <- spline(x=c(min(qtlgridEst) ,qtlgridEst, max(min(qtlgridEst))), 
+									 y=c(min(betaptsR[,si]),betaptsR[,si],max(betaptsR[,si])), method="hyman", xout=qtlgridOut)$y	
+			}else{
+				betaE[si,] <- spline(x=qtlgridEst, y=betaptsE[,si], method="hyman", xout=qtlgridOut)$y
+				betaR[si,] <- spline(x=qtlgridEst, y=betaptsR[,si], method="hyman", xout=qtlgridOut)$y
+			}
 		}
 		
 		qtlgrid <- qtlgridOut
@@ -304,11 +313,11 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
 						betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
 						betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 + 
-						betaE[7,qi]*s7]
+						betaR[7,qi]*s7]
 				wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
 						betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
 						betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 + 
-						betaR[7,qi]*s7]
+						betaE[7,qi]*s7]
 			}else if(NS==4){
 				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
 						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
@@ -321,11 +330,11 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
 						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
 						betaE[3,qi]*s3 + betaE[4,qi]*s4 +
-						betaE[5,qi]*s5	]
+						betaR[5,qi]*s5	]
 				wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
 						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
 						betaR[3,qi]*s3 + betaR[4,qi]*s4 +
-						betaR[5,qi]*s5	]
+						betaE[5,qi]*s5	]
 			}
 			qi = qi+1
 		}
@@ -347,7 +356,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 				wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
 							betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
 							betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 + 
-							betaE[7,qi]*s7]
+							betaR[7,qi]*s7]
 			}else if(NS==4){
 				wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
 							betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
@@ -356,7 +365,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 				wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
 							betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
 							betaR[3,qi]*s3 + betaR[4,qi]*s4 + 
-							betaE[5,qi]*s5]
+							betaR[5,qi]*s5]
 			}
 			qi = qi+1
 		}
@@ -461,7 +470,6 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 ########################################################################
 ## Seams version -------------------------------
 
-library(ggplot2)
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 DTseam[wagechange_wave_bad==F &  !(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1, stayer:= T]
 DTseam[wagechange_wave_bad==F &  (EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
@@ -469,7 +477,7 @@ DTseam[changer==T, stayer:= F]
 DTseam[stayer==T , changer:=F]
 DTseam <- DTseam[(changer|stayer)]
 
-toKeep <- c("waveweight","wavetruncweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","wagechangeEUE_wave","recIndic_wave","date")
+toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","wagechangeEUE_wave","recIndic_wave","date")
 
 
 # select toKeep columns only
@@ -479,12 +487,12 @@ DTseam[ , EE := EE_wave]
 DTseam[ , EU := EU_wave]
 DTseam[ , UE := UE_wave]
 DTseam[ , switchedOcc := switchedOcc_wave]
-DTseamchng <- subset(DTseam, EU==T|UE==T|EE==T)
+DTseamchng <- subset(DTseam, EU_wave==T|UE_wave==T|EE_wave==T)
 
 
-MM_wavechng_betaE_betaR_IR    <- MMdecomp(DTseamchng,6,"recIndic_wave","wagechange_wave","wavetruncweight",std_errs = T)
-MM_waveall_betaE_betaR_IR <- MMdecomp(DTseam,7,"recIndic_wave","wagechange_wave","wavetruncweight",std_errs = T)
-MM_waveallEUE_betaE_betaR_IR <- MMdecomp(DTseam,5,"recIndic_wave","wagechangeEUE_wave","wavetruncweight",std_errs = T)
+MM_wavechng_betaE_betaR_IR    <- MMdecomp(DTseamchng,6,"recIndic_wave","wagechange_wave","truncweight",std_errs = MMstd_errs)
+MM_waveall_betaE_betaR_IR <- MMdecomp(DTseam,7,"recIndic_wave","wagechange_wave","truncweight",std_errs = MMstd_errs)
+MM_waveallEUE_betaE_betaR_IR <- MMdecomp(DTseam,5,"recIndic_wave","wagechangeEUE_wave","truncweight",std_errs = MMstd_errs)
 
 saveRDS(MM_waveall_betaE_betaR_IR,paste0(outputdir,"./MM_waveall.RData"))
 saveRDS(MM_wavechng_betaE_betaR_IR,paste0(outputdir,"./MM_wavechng.RData"))
@@ -494,10 +502,12 @@ saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"./MM_waveallEUE.RData"))
 #all observations (7 categories)
 wcExp <- subset(DTseam,recIndic_wave==F)
 wcRec <- subset(DTseam,recIndic_wave==T)
-dist_exp      <- wcExp[ , wtd.quantile(wagechange_wave,probs=seq(0.01,.99,0.01),weights=wavetruncweight, na.rm=T)]
-dist_rec      <- wcRec[ , wtd.quantile(wagechange_wave,probs=seq(0.01,.99,0.01),weights=wavetruncweight, na.rm=T)]
+dist_exp      <- wcExp[ , wtd.quantile(wagechange_wave,probs=seq(0.02,.98,0.01),weights=truncweight, na.rm=T)]
+dist_rec      <- wcRec[ , wtd.quantile(wagechange_wave,probs=seq(0.02,.98,0.01),weights=truncweight, na.rm=T)]
 dist_IR       <- rowMeans(MM_waveall_betaE_betaR_IR$wc_IR   )
-CI_IR         <- apply(MM_waveall_betaE_betaR_IR$wc_IR,1,quantile,0.95) - apply(MM_waveall_betaE_betaR_IR$wc_IR,1,quantile,0.05)
+if(MMstd_errs ==T){
+	CI_IR         <- apply(MM_waveall_betaE_betaR_IR$wc_IR,1,quantile,0.95) - apply(MM_waveall_betaE_betaR_IR$wc_IR,1,quantile,0.05)
+}
 dist_BR       <- rowMeans(MM_waveall_betaE_betaR_IR$wc_BR   )
 dist_IR_sw    <- rowMeans(MM_waveall_betaE_betaR_IR$wc_IR_un)
 dist_IR_un    <- rowMeans(MM_waveall_betaE_betaR_IR$wc_IR_sw)
@@ -505,16 +515,17 @@ dist_sim_rec  <- rowMeans(MM_waveall_betaE_betaR_IR$wc_rec  )
 dist_sim_exp  <- rowMeans(MM_waveall_betaE_betaR_IR$wc_exp  )
 
 #moving window to summarize the quantiles
-win_IR      <- array(0.,dim=89)
-win_BR      <- array(0.,dim=89)
-win_IR_un   <- array(0.,dim=89)
-win_IR_sw   <- array(0.,dim=89)
-win_exp     <- array(0.,dim=89)
-win_rec     <- array(0.,dim=89)
-win_rec_dat <- array(0.,dim=89)
-win_exp_dat <- array(0.,dim=89)
+Nwin = 87
+win_IR      <- array(0.,dim=Nwin)
+win_BR      <- array(0.,dim=Nwin)
+win_IR_un   <- array(0.,dim=Nwin)
+win_IR_sw   <- array(0.,dim=Nwin)
+win_exp     <- array(0.,dim=Nwin)
+win_rec     <- array(0.,dim=Nwin)
+win_rec_dat <- array(0.,dim=Nwin)
+win_exp_dat <- array(0.,dim=Nwin)
 di = 1
-for(lb in seq(1,89,1)){
+for(lb in seq(1,Nwin,1)){
 	ub = lb+10
 	win_IR[di]      <- mean(dist_IR     [ lb:ub ])
 	win_BR[di]      <- mean(dist_BR     [ lb:ub ])
@@ -527,32 +538,35 @@ for(lb in seq(1,89,1)){
 	di= di+1
 }
 win_dif_rec_exp_dat <- win_rec_dat - win_exp_dat
-win_dif_rec_exp     <- win_rec     - win_exp
+win_dif_rec_exp_sim <- win_rec     - win_exp
 win_dif_IR_exp      <- win_IR      - win_exp
 win_dif_BR_exp      <- win_BR      - win_exp
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #EUE wage changes  observations (5 categories)
-distEUE_exp      <- wcExp[ , wtd.quantile(wagechangeEUE_wave,probs=seq(0.01,.99,0.01),weights=wavetruncweight, na.rm=T)]
-distEUE_rec      <- wcRec[ , wtd.quantile(wagechangeEUE_wave,probs=seq(0.01,.99,0.01),weights=wavetruncweight, na.rm=T)]
+distEUE_exp      <- wcExp[ , wtd.quantile(wagechangeEUE_wave,probs=seq(0.02,.98,0.01),weights=truncweight, na.rm=T)]
+distEUE_rec      <- wcRec[ , wtd.quantile(wagechangeEUE_wave,probs=seq(0.02,.98,0.01),weights=truncweight, na.rm=T)]
 distEUE_IR       <- rowMeans(MM_waveallEUE_betaE_betaR_IR$wc_IR   )
+distEUE_BR       <- rowMeans(MM_waveallEUE_betaE_betaR_IR$wc_BR   )
 distEUE_IR_sw    <- rowMeans(MM_waveallEUE_betaE_betaR_IR$wc_IR_un)
 distEUE_IR_un    <- rowMeans(MM_waveallEUE_betaE_betaR_IR$wc_IR_sw)
 distEUE_sim_rec  <- rowMeans(MM_waveallEUE_betaE_betaR_IR$wc_rec  )
 distEUE_sim_exp  <- rowMeans(MM_waveallEUE_betaE_betaR_IR$wc_exp  )
 
 #moving window to summarize the quantiles
-winEUE_IR      <- array(0.,dim=89)
-winEUE_IR_un   <- array(0.,dim=89)
-winEUE_IR_sw   <- array(0.,dim=89)
-winEUE_exp     <- array(0.,dim=89)
-winEUE_rec     <- array(0.,dim=89)
-winEUE_rec_dat <- array(0.,dim=89)
-winEUE_exp_dat <- array(0.,dim=89)
+winEUE_IR      <- array(0.,dim=Nwin)
+winEUE_BR      <- array(0.,dim=Nwin)
+winEUE_IR_un   <- array(0.,dim=Nwin)
+winEUE_IR_sw   <- array(0.,dim=Nwin)
+winEUE_exp     <- array(0.,dim=Nwin)
+winEUE_rec     <- array(0.,dim=Nwin)
+winEUE_rec_dat <- array(0.,dim=Nwin)
+winEUE_exp_dat <- array(0.,dim=Nwin)
 di = 1
-for(lb in seq(1,89,1)){
+for(lb in seq(1,Nwin,1)){
 	ub = lb+10
 	winEUE_IR[di]      <- mean(distEUE_IR     [ lb:ub ])
+	winEUE_BR[di]      <- mean(distEUE_BR     [ lb:ub ])
 	winEUE_rec[di]     <- mean(distEUE_sim_rec[ lb:ub ])
 	winEUE_exp[di]     <- mean(distEUE_sim_exp[ lb:ub ])
 	winEUE_IR_un[di]   <- mean(distEUE_IR_un  [ lb:ub ])
@@ -564,11 +578,12 @@ for(lb in seq(1,89,1)){
 winEUE_dif_rec_exp_dat <- winEUE_rec_dat - winEUE_exp_dat
 winEUE_dif_rec_exp     <- winEUE_rec     - winEUE_exp
 winEUE_dif_IR_exp      <- winEUE_IR      - winEUE_exp
+winEUE_dif_BR_exp      <- winEUE_BR      - winEUE_exp
 
 ##################################################
 ### plot stuff
 ##################################################
-dt_mm <- data.table(cbind( seq(0.06,0.94,0.01),win_dif_rec_exp_dat ))
+dt_mm <- data.table(cbind( seq(0.06,0.94,0.01),win_dif_rec_exp_sim ))
 names(dt_mm) <- c("Quantile","Data")
 dt_mm_melted <- melt(dt_mm, id= "Quantile")
 ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -583,7 +598,7 @@ ggsave("./Figures/MMwave_all_data.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_data.png",height=5,width=10)
 
 
-dt_mm <- data.table(cbind( seq(0.06,0.94,0.01),win_dif_rec_exp_dat,win_dif_BR_exp ))
+dt_mm <- data.table(cbind( seq(0.06,0.94,0.01),win_dif_rec_exp_sim,win_dif_IR_exp ))
 names(dt_mm) <- c("Quantile","Data","Counter Factual")
 dt_mm_melted <- melt(dt_mm, id= "Quantile")
 ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
