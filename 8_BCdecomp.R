@@ -540,6 +540,8 @@ for(lb in seq(1,Nwin,1)){
 win_dif_rec_exp_dat <- win_rec_dat - win_exp_dat
 win_dif_rec_exp_sim <- win_rec     - win_exp
 win_dif_IR_exp      <- win_IR      - win_exp
+win_dif_IR_un_exp   <- win_IR_un   - win_exp
+win_dif_IR_sw_exp   <- win_IR_sw   - win_exp
 win_dif_BR_exp      <- win_BR      - win_exp
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -576,14 +578,14 @@ for(lb in seq(1,Nwin,1)){
 	di= di+1
 }
 winEUE_dif_rec_exp_dat <- winEUE_rec_dat - winEUE_exp_dat
-winEUE_dif_rec_exp     <- winEUE_rec     - winEUE_exp
+winEUE_dif_rec_exp_sim <- winEUE_rec     - winEUE_exp
 winEUE_dif_IR_exp      <- winEUE_IR      - winEUE_exp
 winEUE_dif_BR_exp      <- winEUE_BR      - winEUE_exp
 
 ##################################################
 ### plot stuff
 ##################################################
-dt_mm <- data.table(cbind( seq(0.06,0.94,0.01),win_dif_rec_exp_sim ))
+dt_mm <- data.table(cbind( seq(0.07,0.93,0.01),win_dif_rec_exp_sim ))
 names(dt_mm) <- c("Quantile","Data")
 dt_mm_melted <- melt(dt_mm, id= "Quantile")
 ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -598,7 +600,7 @@ ggsave("./Figures/MMwave_all_data.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_data.png",height=5,width=10)
 
 
-dt_mm <- data.table(cbind( seq(0.06,0.94,0.01),win_dif_rec_exp_sim,win_dif_IR_exp ))
+dt_mm <- data.table(cbind( seq(0.07,0.93,0.01),win_dif_rec_exp_sim,win_dif_IR_exp ))
 names(dt_mm) <- c("Quantile","Data","Counter Factual")
 dt_mm_melted <- melt(dt_mm, id= "Quantile")
 ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -612,7 +614,7 @@ ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) +
 ggsave("./Figures/MMwave_all.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all.png",height=5,width=10)
 
-dt_mm_un <- data.table(cbind( seq(0.05,0.95,0.01),spn_dif_rec_exp_dat,spn_dif_IR_exp,spn_dif_un_exp ))
+dt_mm_un <- data.table(cbind( seq(0.07,0.93,0.01),win_dif_rec_exp_sim,win_dif_IR_exp,win_dif_IR_un_exp ))
 names(dt_mm_un) <- c("Quantile","Data","Counter Factual","Recession Switching Coefficients")
 dt_mm_un_melted <- melt(dt_mm_un, id= "Quantile")
 ggplot( dt_mm_un_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -640,59 +642,48 @@ ggplot( dt_mm_sw_melted, aes(x=Quantile,y=value,colour=variable) ) +
 ggsave("./Figures/MMwave_all_sw.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_sw.png",height=5,width=10)
 
-
-
-wcExp <- subset(DTseamchng,recIndic_wave==F)
-wcRec <- subset(DTseamchng,recIndic_wave==T)
-distchng_exp    <- wcExp[, wtd.quantile(wagechange_wave,probs=mmtabchngqtls,weights=waveweight, na.rm=T)]
-distchng_rec    <- wcRec[, wtd.quantile(wagechange_wave,probs=mmtabchngqtls,weights=wcRec$allwt, na.rm=T)]
-distchng_sim_rec<- rowMeans(MM_wavechng_betaE_betaR_IR$wc_rec)
-distchng_sim_exp<- rowMeans(MM_wavechng_betaE_betaR_IR$wc_exp)
-distchng_IR     <- rowMeans(MM_wavechng_betaE_betaR_IR$wc_IR)
-distchng_IR_sw  <- rowMeans(MM_wavechng_betaE_betaR_IR$wc_IR_sw)
-distchng_IR_un  <- rowMeans(MM_wavechng_betaE_betaR_IR$wc_IR_un)
-distchng_pct    <- (distchng_IR - distchng_exp)/(distchng_rec - distchng_exp)
-distchng_pct    <- (distchng_IR - distchng_sim_exp)/(distchng_sim_rec - distchng_sim_exp)
-distchng_pct_sw <- (distchng_IR_sw - distchng_exp)/(distchng_rec - distchng_exp)
-distchng_pct_un <- (distchng_IR_un - distchng_exp)/(distchng_rec - distchng_exp)
-
-
-#take decile averages
-decchng_IR  <- array(0.,dim = 10)
-decchng_exp <- array(0.,dim = 10)
-decchng_rec <- array(0.,dim = 10)
-decchng_exp_dat <- array(0.,dim = 10)
-decchng_rec_dat <- array(0.,dim = 10)
-for(di in seq(1,10,1)){
-	decchng_IR [di] <- mean(distchng_IR     [ ((di-1)*10+1):min(di*10,99)])
-	decchng_rec[di] <- mean(distchng_sim_rec[ ((di-1)*10+1):min(di*10,99)])
-	decchng_exp[di] <- mean(distchng_sim_exp[ ((di-1)*10+1):min(di*10,99)])
-	decchng_rec_dat[di] <- mean(distchng_rec[ ((di-1)*10+1):min(di*10,99)])
-	decchng_exp_dat[di] <- mean(distchng_exp[ ((di-1)*10+1):min(di*10,99)])	
-}
-
-spn_difchng_IR_exp <- spline(seq(0.05,0.95,0.1), (decchng_IR-decchng_exp),xout=seq(0.05,0.95,0.01))$y
-spn_difchng_rec_exp <- spline(seq(0.05,0.95,0.1), (decchng_rec-decchng_exp),xout=seq(0.05,0.95,0.01))$y
-
-dt_mmchng <- data.table(cbind( seq(0.05,0.95,0.01),spn_difchng_IR_exp,spn_difchng_rec_exp ))
-names(dt_mmchng) <- c("Quantile","Counter Factual","Data")
-dt_mmchng_melted <- melt(dt_mmchng, id= "Quantile")
-ggplot( dt_mmchng_melted, aes(x=Quantile,y=value,colour=variable) ) + 
+#some coefficients:
+dt_co_stay <- data.table(cbind( mmtaballqtls,MM_waveall_betaE_betaR_IR$betaptsE[,7], MM_waveall_betaE_betaR_IR$betaptsR[,7]))
+names(dt_co_stay) <- c("Quantile","Expansion","Recession")
+dt_co_stay_melted<-melt(dt_co_stay,id="Quantile")
+ggplot( dt_co_stay_melted, aes(x=Quantile,y=value,colour=variable) ) + 
 	geom_line(size=2) + 
-	ylab("Recession - Expansion Distribution") + 
+	ylab("Coefficient Value") + 
 	xlab("Earnings Growth Quantile") +
-	#scale_color_manual(values = c(hcl(h=seq(15, 375, length=Ndemo+1), l=50, c=100)[1:Ndemo], "black")) +
+	scale_color_manual(values = c("blue","red")) +
 	theme(legend.title = element_blank(),
-		  legend.position = c(0.8,0.2),
-		  legend.background = element_rect(linetype = "solid",
-		  								 color = "black"))
-ggsave("./Figures/MMwave_chng.eps",height=5,width=10)
-ggsave("./Figures/MMwave_chng.png",height=5,width=10)
+		  legend.position = c(0.6,0.2),
+		  legend.background = element_rect(linetype = "solid",color = "black"))
+ggsave("./Figures/MMwave_all_costay.eps",height=5,width=10)
+ggsave("./Figures/MMwave_all_costay.png",height=5,width=10)
 
+dt_co_EEnos <- data.table(cbind( mmtaballqtls,MM_waveall_betaE_betaR_IR$betaptsE[,4], MM_waveall_betaE_betaR_IR$betaptsR[,4]))
+names(dt_co_EEnos) <- c("Quantile","Expansion","Recession")
+dt_co_EEnos_melted<-melt(dt_co_EEnos,id="Quantile")
+ggplot( dt_co_EEnos_melted, aes(x=Quantile,y=value,colour=variable) ) + 
+	geom_line(size=2) + 
+	ylab("Coefficient Value") + 
+	xlab("Earnings Growth Quantile") +ylim(c(-2.5,2.5))+
+	scale_color_manual(values = c("blue","red")) +
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.6,0.2),
+		  legend.background = element_rect(linetype = "solid",color = "black"))
+ggsave("./Figures/MMwave_all_coEEnosw.eps",height=5,width=10)
+ggsave("./Figures/MMwave_all_coEEnosw.png",height=5,width=10)
 
-waveshift_share <- DHLdecomp(DTseam,7,"recIndic_wave","wagechange_wave","waveweight")
-wave_pct_share <- waveshift_share[[3]]/waveshift_share[[1]]
-wave_pct_shift <- waveshift_share[[2]]/matrix(waveshift_share[[1]],nrow=9,ncol=7 )
+dt_co_EEs <- data.table(cbind( mmtaballqtls,MM_waveall_betaE_betaR_IR$betaptsE[,1], MM_waveall_betaE_betaR_IR$betaptsR[,1]))
+names(dt_co_EEs) <- c("Quantile","Expansion","Recession")
+dt_co_EEs_melted<-melt(dt_co_EEs,id="Quantile")
+ggplot( dt_co_EEs_melted, aes(x=Quantile,y=value,colour=variable) ) + 
+	geom_line(size=2) + 
+	ylab("Coefficient Value") + 
+	xlab("Earnings Growth Quantile")  +ylim(c(-2.5,2.5))+
+	scale_color_manual(values = c("blue","red")) +
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.6,0.2),
+		  legend.background = element_rect(linetype = "solid",color = "black"))
+ggsave("./Figures/MMwave_all_coEEsw.eps",height=5,width=10)
+ggsave("./Figures/MMwave_all_coEEsw.png",height=5,width=10)
 
 #table out:
 MM_all_tab <- data.table(cbind( mmtabqtls,(dist_IR),dist_rec,dist_exp,dist_rec- dist_exp, 
