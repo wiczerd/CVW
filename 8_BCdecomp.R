@@ -482,7 +482,7 @@ toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","
 
 # select toKeep columns only
 DTseam <- DTseam[, toKeep, with = FALSE]
-DTseam <- subset(DTseam, is.finite(waveweight) & is.finite(wagechange_wave) & is.finite(EU_wave) & is.finite(UE_wave)& is.finite(EE_wave))
+DTseam <- subset(DTseam, is.finite(wagechange_wave) & is.finite(EU_wave) & is.finite(UE_wave)& is.finite(EE_wave))
 DTseam[ , EE := EE_wave]
 DTseam[ , EU := EU_wave]
 DTseam[ , UE := UE_wave]
@@ -490,12 +490,12 @@ DTseam[ , switchedOcc := switchedOcc_wave]
 DTseamchng <- subset(DTseam, EU_wave==T|UE_wave==T|EE_wave==T)
 
 
-MM_wavechng_betaE_betaR_IR    <- MMdecomp(DTseamchng,6,"recIndic_wave","wagechange_wave","truncweight",std_errs = MMstd_errs)
+#MM_wavechng_betaE_betaR_IR    <- MMdecomp(DTseamchng,6,"recIndic_wave","wagechange_wave","truncweight",std_errs = MMstd_errs)
 MM_waveall_betaE_betaR_IR <- MMdecomp(DTseam,7,"recIndic_wave","wagechange_wave","truncweight",std_errs = MMstd_errs)
 MM_waveallEUE_betaE_betaR_IR <- MMdecomp(DTseam,5,"recIndic_wave","wagechangeEUE_wave","truncweight",std_errs = MMstd_errs)
 
 saveRDS(MM_waveall_betaE_betaR_IR,paste0(outputdir,"./MM_waveall.RData"))
-saveRDS(MM_wavechng_betaE_betaR_IR,paste0(outputdir,"./MM_wavechng.RData"))
+#saveRDS(MM_wavechng_betaE_betaR_IR,paste0(outputdir,"./MM_wavechng.RData"))
 saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"./MM_waveallEUE.RData"))
 
 

@@ -117,6 +117,7 @@ DTseam[UE_wave == T, wageAfterUE :=  next.wavewage]
 DTseam[UE_wave == T, wagechangeEUE_wave := wageAfterUE - wageAtEU]
 DTseam[, wagechangeEUE_wave:= Mode(wagechangeEUE_wave), by=list(ustintid_wave, id)]
 DTseam[ EE_wave==T, wagechangeEUE_wave := wagechange_wave]
+DTseam[ is.na(wagechangeEUE_wave), wagechangeEUE_wave := wagechange_wave]
 
 DTseam[ , c("wageAtEU","wageAfterUE"):=NULL]
 
@@ -140,8 +141,7 @@ DTseam[lfstat_wave>=2 & next.lfstat_wave>=2  , wagechange_wave_bad := T]
 #lowest wages out:
 lowwageqtls= DTseam[ lfstat_wave==1, quantile(wavewage, na.rm = T, probs=c(.01,.02,.05))]
 DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=wavewage<lowwageqtls[2] | next.wavewage<lowwageqtls[2] ]
-
-
+DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad2 :=wavewage<lowwageqtls[2] | next.wavewage<lowwageqtls[2] ]
 
 DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_bad","wagechange_wave_bad2","wagechangeEUE_wave","next.wavewage","last.wagechange_wave","next.wagechange_wave","id","wave"))
 DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
