@@ -97,12 +97,12 @@ DTall[ , c("levwage","nawavewage"):=NULL]
 DTseam <- DTall[ seam==T,]
 #need to add change across waves (use wavewage)
 DTseam[ , nw:= shift(wavewage,1,type="lead"), by=id]
-DTseam[ is.na(nw) & (shift(job_wave,type="lead")== shift(job_wave,2,type="lead")), nw:= shift(wavewage,2,type="lead"), by=id]
 DTseam[ , tw:= wavewage]
-DTseam[ is.na(tw) & (shift(job_wave,type="lag")== job_wave), tw:= shift(wavewage,type="lag"), by=id]
+# fill in if missing?
+#DTseam[ is.na(nw) & (shift(job_wave,type="lead")== shift(job_wave,2,type="lead")), nw:= shift(wavewage,2,type="lead"), by=id]
+#DTseam[ is.na(tw) & (shift(job_wave,type="lag")== job_wave), tw:= shift(wavewage,type="lag"), by=id]
 DTseam[ , wagechange_wave := nw - tw, by=id]
-# wagechange wave =NA for job changers without a transition
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave := NA]
+
 
 DTseam[ , next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
 DTseam[ , last.wagechange_wave := shift(wagechange_wave, type="lag" ),by=id]
@@ -130,7 +130,6 @@ DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange_wave<(-2))&(next.wagechange_wave> 2.)&(lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad==T] 
 DTseam[ is.na(wagechange_wave_bad)  , wagechange_wave_bad :=F] 
 
-
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad2 := (wagechange_wave>2) & abs(next.wavewage - last.wavewage)<.1 &(lfstat_wave==1)&(last.lfstat_wave==1)] 
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad2 :=((wagechange_wave<(-2))& abs(next.wavewage - last.wavewage)<.1 &(lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad2==T] 
 DTseam[ is.na(wagechange_wave_bad2)  , wagechange_wave_bad2 :=F] 
@@ -138,12 +137,21 @@ DTseam[ is.na(wagechange_wave_bad2)  , wagechange_wave_bad2 :=F]
 #wagechange between 2 0's:
 DTseam[lfstat_wave>=2 & next.lfstat_wave>=2  , wagechange_wave_bad := T] 
 
-#lowest wages out:
-lowwageqtls= DTseam[ lfstat_wave==1, quantile(wavewage, na.rm = T, probs=c(.01,.02,.05))]
-DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=wavewage<lowwageqtls[2] | next.wavewage<lowwageqtls[2] ]
-DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad2 :=wavewage<lowwageqtls[2] | next.wavewage<lowwageqtls[2] ]
+# wagechange wave =NA for job changers without a transition
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave_jcbad := T]
+DTseam[is.na(wagechange_wave_jcbad )==T , wagechange_wave_jcbad := F]
 
-DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_bad","wagechange_wave_bad2","wagechangeEUE_wave","next.wavewage","last.wagechange_wave","next.wagechange_wave","id","wave"))
+
+#lowest/highest wages out:
+lowwageqtls= DTseam[ lfstat_wave==1, quantile(wavewage, na.rm = T, probs=c(.01,.02,.05))]
+DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_low :=wavewage<lowwageqtls[2] | next.wavewage<lowwageqtls[2] ]
+highwageqtls= DTseam[ lfstat_wave==1, quantile(wavewage, na.rm = T, probs=c(.95,.98,.99))]
+DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_high :=wavewage>highwageqtls[2] | next.wavewage>highwageqtls[2] ]
+
+
+
+DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_bad","wagechange_wave_jcbad","wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high"
+								  ,"wagechangeEUE_wave","next.wavewage","last.wagechange_wave","next.wagechange_wave","id","wave"))
 DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
 DTall[ , wageimputed_wave := any(earn_imp==1,na.rm = T), by=list(id,wave)]

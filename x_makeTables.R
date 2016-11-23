@@ -20,7 +20,7 @@ CPSunempRt$unrt <- CPSunempRt$unrt/100
 
 recDef <- "recIndic_wave"
 wt <- "truncweight"
-wc <- "wagechangeEUE_wave"
+wc <- "wagechange_wave"
 
 ##########################################################################################
 # By wave -----------------------
@@ -29,7 +29,7 @@ toKeep_wave <- c("switchedOcc_wave",
             "HSCol",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint",
             "wagechange","wagechange_wave","wagechangeEUE_wave",
-            "wagechange_wave_bad","wagechange_wave_bad2",
+            "wagechange_wave_bad","wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad","EUUE_inner2",
             "EE_wave","EU_wave","UE_wave",
             "unrt","wpfinwgt","perwt","cycweight","truncweight",
 			"lfstat_wave","next.lfstat_wave","wave","id")
@@ -41,10 +41,13 @@ DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
 DTseam <- DTseam[, toKeep_wave, with = FALSE]
 DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
 DTseam<-DTseam[ is.finite(EE_wave)&is.finite(EU_wave)&is.finite(UE_wave), ]
-DTseam[wagechange_wave_bad==F & !(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
+DTseam[wagechange_wave_bad2==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &
+	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & 
+	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
 # there are many lfstat==2 and next.lfstat==2 but still a month, freq transition happened
 DTseam[ lfstat_wave==2 & next.lfstat_wave==2, highfreq_U := wagechange_wave>0 |  wagechange_wave<0]
-DTseam[wagechange_wave_bad==F & (EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
+DTseam[wagechange_wave_bad2==F & EUUE_inner2==F&
+	   	(EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
 DTseam[changer==T, stayer:= F]
 DTseam[stayer ==T, changer:=F]
 DTseam[ , useobs := is.finite(EU_wave) & is.finite(UE_wave) & is.finite(EE_wave) ]
@@ -97,15 +100,15 @@ print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)),
 
 tab_wavevardec <- array(NA_real_,dim=c(2,3))
 
-totmean <- DTseam[, wtd.mean(wagechange_wave,na.rm=T,weights=eval(as.name(wt))) ]
-totvar  <- DTseam[, sum(eval(as.name(wt))*(wagechange_wave- totmean)^2,na.rm=T) ]
-tab_wavevardec[1,1] <- DTseam[(EE_wave==F& EU_wave==F&UE_wave==F) , sum(eval(as.name(wt))*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
-tab_wavevardec[1,2] <- DTseam[(EE_wave==T& EU_wave==F&UE_wave==F) , sum(eval(as.name(wt))*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
-tab_wavevardec[1,3] <- DTseam[(EE_wave==F&(EU_wave==T|UE_wave==T)), sum(eval(as.name(wt))*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
-totwt <- DTseam[, sum(eval(as.name(wt)),na.rm=T) ]
-tab_wavevardec[2,1] <- DTseam[(EE_wave==F& EU_wave==F&UE_wave==F) , sum(eval(as.name(wt)),na.rm=T) ]/totwt
-tab_wavevardec[2,2] <- DTseam[(EE_wave==T& EU_wave==F&UE_wave==F) , sum(eval(as.name(wt)),na.rm=T) ]/totwt
-tab_wavevardec[2,3] <- DTseam[(EE_wave==F&(EU_wave==T|UE_wave==T)), sum(eval(as.name(wt)),na.rm=T) ]/totwt
+totmean <- DTseam[(stayer|changer), wtd.mean(wagechange_wave,na.rm=T,weights=eval(as.name(wt))) ]
+totvar  <- DTseam[(stayer|changer), sum(eval(as.name(wt))*(wagechange_wave- totmean)^2,na.rm=T) ]
+tab_wavevardec[1,1] <- DTseam[stayer == T                        , sum(eval(as.name(wt))*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
+tab_wavevardec[1,2] <- DTseam[changer ==T& EE_wave ==T           , sum(eval(as.name(wt))*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
+tab_wavevardec[1,3] <- DTseam[changer ==T&(EU_wave==T|UE_wave==T), sum(eval(as.name(wt))*(wagechange_wave - totmean)^2,na.rm=T) ]/totvar
+totwt <- DTseam[(stayer|changer), sum(eval(as.name(wt)),na.rm=T) ]
+tab_wavevardec[2,1] <- DTseam[stayer == T                        , sum(eval(as.name(wt)),na.rm=T) ]/totwt
+tab_wavevardec[2,2] <- DTseam[changer ==T& EE_wave ==T           , sum(eval(as.name(wt)),na.rm=T) ]/totwt
+tab_wavevardec[2,3] <- DTseam[changer ==T&(EU_wave==T|UE_wave==T), sum(eval(as.name(wt)),na.rm=T) ]/totwt
 
 
 # Full sample quantile-diff decomposition --------------------------

@@ -232,10 +232,18 @@ if( dur_adj == T){
 
 
 #add in the EU_wave2, UE_wave2
-#DTseam[ EU_wave2==T, EU_wave:=T]
-#DTseam[ UE_wave2==T, UE_wave:=T]
-#DTall[ EU_wave2==T, EU_wave:=T]
-#DTall[ UE_wave2==T, UE_wave:=T]
+DTseam[EU_wave2==T |UE_wave2==T, EU_wave2_matched := shift(UE_wave2,type="lead")==T, by=id]
+DTseam[EU_wave2==T |UE_wave2==T, UE_wave2_matched := shift(UE_wave2,type="lag" )==T, by=id]
+DTseam[ is.na(EU_wave2_matched), EU_wave2_matched := F]
+DTseam[ is.na(UE_wave2_matched), UE_wave2_matched := F]
+
+DTseam[ EU_wave2==T & EU_wave2_matched==T, EU_wave:=T]
+DTseam[ UE_wave2==T & UE_wave2_matched==T, UE_wave:=T]
+DTseam[ (UE_wave2==T & UE_wave2_matched==T) | (EU_wave2==T & EU_wave2_matched==T), EUUE_inner2:=T]
+DTseam[ is.na(EUUE_inner2), EUUE_inner2:=F]
+
+DTall[  EU_wave2==T & EU_wave2_matched==T, EU_wave:=T]
+DTall[  UE_wave2==T & UE_wave2_matched==T, UE_wave:=T]
 
 saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))
 

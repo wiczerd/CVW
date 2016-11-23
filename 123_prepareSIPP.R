@@ -27,7 +27,7 @@ toKeep <- c("year",
 	    "age",
 	    "educ",
 	    "female",
-	    "race",
+	    "race","state",
 	    # technical and weight variables
 	    "id",
 	    "wave",
@@ -41,7 +41,9 @@ toKeep <- c("year",
 		"eyear","emonth","syear","smonth",
 		"ersend","estlemp",
 	    "occ","ind","ajbocc",
-	    "earnm","earn_imp")
+		# income variables
+	    "earnm","earn_imp"#,"ui_a" <- need to get set G in.
+		)
 
 ########## read in individual panels, extract variables, and subset sample
 
