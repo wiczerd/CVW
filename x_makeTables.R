@@ -513,3 +513,4 @@ lmqr_EUEOccIndnrt <- list(lm_EUEOccIndunrt)
 for(ti in seq(1,length(tabqtls))){
 	lmqr_EUEOccIndnrt[[ti+1]] <- rq( wagechange_EUE ~  factor(EU) + factor(switchedOcc)+ factor(switchedInd)  + unrt,tau= tabqtls[ti], data=wagechanges, weights = balanceweightEUE)
 }
+

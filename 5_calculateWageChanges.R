@@ -76,7 +76,7 @@ DTall[!(EU==T | EE==T | UE==T), wagechange_EUE := wagechange_stayer]
 DTall[, wagechange_all := wagechange]
 DTall[job == shift(job, 1, type = "lead") & job > 0, wagechange_all := wagechange_stayer, by = id]
 DTall[(EE | UE | EU), wagechange_all := wagechange]
-
+DTall[ , c("wagechange_stayer","wagechange"):=NULL]
 
 # create occwagechange variable
 #DTall[, occwagechange := as.numeric(ifelse(switchedOcc & !shift(switchedOcc, 1, type = "lag"), 

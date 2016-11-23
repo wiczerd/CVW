@@ -223,8 +223,7 @@ if( dur_adj == T){
 	DTseam[UE_wave==T, waveweight:= waveweight/sum(waveweight,na.rm=T)*balwtUE ]
 	
 	DTseam[,durwt :=NULL]
-	
-	
+
 	# scale weights back to original total
 	wtscale <- DTseam[, sum(waveweight, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
 	DTseam[, waveweight := waveweight/wtscale]

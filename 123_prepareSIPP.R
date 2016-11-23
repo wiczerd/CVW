@@ -601,3 +601,26 @@ misSwOcUE_wave <- sipp[matched_EUUE_wave==T & UE_wave==T , .(misSwOcUE_wave = me
 ggplot( misSwOcUE_wave, aes(date, misSwOcUE_wave, color=panel, group=panel) ) +
 	geom_point() +
 	geom_line()
+
+
+sipp_sw_state_EE <- sipp[ EE_wave==T, .(swEE=wtd.mean(switchedOcc_wave,na.rm = T,weights=wpfinwgt)), by=state ]
+sipp_sw_state_EU <- sipp[ EU_wave==T, .(swEU=wtd.mean(switchedOcc_wave,na.rm = T,weights=wpfinwgt)), by=state ]
+sipp_sw <- merge(sipp_sw_state_EE,sipp_sw_state_EU,by= "state")
+sipp_sw_state_EUEE <- sipp[ EE_wave==T|EU_wave==T, .(swEUEE=wtd.mean(switchedOcc_wave,na.rm = T,weights=wpfinwgt)), by=state ]
+sipp_sw <- merge(sipp_sw,sipp_sw_state_EUEE,by= "state")
+sipp_sw19962013 <- merge(sipp_sw,state_codes,by.x= "state", by.y="code")
+
+#1998-2000
+sipp_sw_state_EE <- sipp[ EE_wave==T & year>=1998 & year<=2000, .(swEE=wtd.mean(switchedOcc_wave,na.rm = T,weights=wpfinwgt)), by=state ]
+sipp_sw_state_EU <- sipp[ EU_wave==T & year>=1998 & year<=2000, .(swEU=wtd.mean(switchedOcc_wave,na.rm = T,weights=wpfinwgt)), by=state ]
+sipp_sw <- merge(sipp_sw_state_EE,sipp_sw_state_EU,by= "state")
+sipp_sw_state_EUEE <- sipp[ EE_wave==T|EU_wave==T & year>=1998 & year<=2000, .(swEUEE=wtd.mean(switchedOcc_wave,na.rm = T,weights=wpfinwgt)), by=state ]
+sipp_sw <- merge(sipp_sw,sipp_sw_state_EUEE,by= "state")
+sipp_sw2000 <- merge(sipp_sw,state_codes,by.x= "state", by.y="code")
+#
+sipp_sw_state_EE <- sipp[ EE_wave==T & year>=2011 & year<=2013, .(swEE=wtd.mean(switchedOcc_wave,na.rm = T,weights=wpfinwgt)), by=state ]
+sipp_sw_state_EU <- sipp[ EU_wave==T & year>=2011 & year<=2013, .(swEU=wtd.mean(switchedOcc_wave,na.rm = T,weights=wpfinwgt)), by=state ]
+sipp_sw <- merge(sipp_sw_state_EE,sipp_sw_state_EU,by= "state")
+sipp_sw_state_EUEE <- sipp[ EE_wave==T|EU_wave==T & year>=2011 & year<=2013, .(swEUEE=wtd.mean(switchedOcc_wave,na.rm = T,weights=wpfinwgt)), by=state ]
+sipp_sw <- merge(sipp_sw,sipp_sw_state_EUEE,by= "state")
+sipp_sw2013 <- merge(sipp_sw,state_codes,by.x= "state", by.y="code")
