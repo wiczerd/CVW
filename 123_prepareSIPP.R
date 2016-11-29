@@ -332,7 +332,7 @@ sipp[, c("badearn", "nomearnm") := NULL]
 
 ########## demographic indicators
 
-sipp[, Young := age < 30]
+sipp[, Young := age <= 30]
 sipp[age < 31, ageGrp := 1]
 sipp[age >= 31 & age < 56, ageGrp := 2]
 sipp[age >= 56, ageGrp := 3]

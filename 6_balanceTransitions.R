@@ -93,9 +93,9 @@ recallRecodeShorTerm <- function(DF){
 
 DTall <- readRDS(paste0(datadir,"/DTall_5.RData"))
 # sum weights for UE, EU, and EE
-UEreadweight <- DTall[UE==T & !is.na(wagechange) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
-EUreadweight <- DTall[EU==T & !is.na(wagechange) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
-EEreadweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+UEreadweight <- DTall[UE==T & !is.na(wagechange_all) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
+EUreadweight <- DTall[EU==T & !is.na(wagechange_all) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
+EEreadweight <- DTall[EE==T & !is.na(wagechange_all), sum(wpfinwgt, na.rm = TRUE)]
 
 UEreadweight_wave <- DTall[UE_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
 EUreadweight_wave <- DTall[EU_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
@@ -106,9 +106,9 @@ if( recall_adj == T){
 	DTall[lfstat==2, recalled:= F ]
 	recallRecodeJobID(DTall)
 	
-	UEnorecallweight <- DTall[UE==T & !is.na(wagechange) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
-	EUnorecallweight <- DTall[EU==T & !is.na(wagechange) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
-	EEnorecallweight <- DTall[EE==T & !is.na(wagechange), sum(wpfinwgt, na.rm = TRUE)]
+	UEnorecallweight <- DTall[UE==T & !is.na(wagechange_all) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
+	EUnorecallweight <- DTall[EU==T & !is.na(wagechange_all) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
+	EEnorecallweight <- DTall[EE==T & !is.na(wagechange_all), sum(wpfinwgt, na.rm = TRUE)]
 	
 	UEnorecallweight_wave <- DTall[UE_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
 	EUnorecallweight_wave <- DTall[EU_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
