@@ -52,28 +52,28 @@ setwd(datadir)
 # 1996 panel
 sipp96 <- read.dta("./sippsets96ABD.dta", convert.factors = FALSE)
 sipp96 <- sipp96[toKeep]
-sipp96 <- subset(sipp96, !is.na(esr) & (age >= 16))
+sipp96 <- subset(sipp96, !is.na(esr) & (age >= 16) & (age<=65))
 sipp96 <- data.table(sipp96)
 sipp96$panel <- 1996
 
 # 2001 panel
 sipp01 <- read.dta("./sippsets01ABD.dta", convert.factors = FALSE)
 sipp01 <- sipp01[toKeep]
-sipp01 <- subset(sipp01, !is.na(esr) & (age >= 16))
+sipp01 <- subset(sipp01, !is.na(esr) & (age >= 16) & (age<=65))
 sipp01 <- data.table(sipp01)
 sipp01$panel <- 2001
 
 # 2004 panel
 sipp04 <- read.dta("./sippsets04ABD.dta", convert.factors = FALSE)
 sipp04 <- sipp04[toKeep]
-sipp04 <- subset(sipp04, !is.na(esr) & (age >= 16))
+sipp04 <- subset(sipp04, !is.na(esr) & (age >= 16) & (age<=65))
 sipp04 <- data.table(sipp04)
 sipp04$panel <- 2004
 
 # 2008 panel
 sipp08 <- read.dta("./sippsets08ABD.dta", convert.factors = FALSE)
 sipp08 <- sipp08[toKeep]
-sipp08 <- subset(sipp08, !is.na(esr) & (age >= 16))
+sipp08 <- subset(sipp08, !is.na(esr) & (age >= 16) & (age<=65))
 sipp08 <- data.table(sipp08)
 sipp08$panel <- 2008
 
