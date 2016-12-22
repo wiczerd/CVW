@@ -10,7 +10,7 @@ xwalkdir = "~/workspace/CVW/R/Crosswalks"
 datadir = "~/workspace/CVW/R/Results"
 outputdir = "~/workspace/CVW/R/Results"
 
-recall_adj = F
+recall_adj = T
 dur_adj = F
 
 setwd(wd0)
@@ -30,21 +30,30 @@ recallRecodeJobID <- function(DF){
 	DF[ is.finite(ustintid) & (lfstat>=2 | EU==T) , nextjob := Mode(nextjob), by=list(id,ustintid)]
 	# will convert all recall stints as lfstat == NA_integer_
 	DF[EU==T , recalled := (jobpos == nextjob) ]
-	DF[is.finite(ustintid) &(EU==T | lfstat>=2 ), recalled:=Mode(recalled) , by=list(id,ustintid)]
+	DF[is.finite(ustintid) &(EU==T | lfstat>=2 ), recalled:=any(recalled) , by=list(id,ustintid)]
 	DF[EU==T & recalled==T, EU:=NA]
 	DF[UE==T & recalled==T, UE:=NA]
 	DF[lfstat>=2 & recalled==T, lfstat:=NA]
 	# do it at wave level:
-	DF[job_wave> 0 , jobpos_wave := job_wave]
-	DF[seam==T & (lfstat_wave==1 | UE_wave==T) , nextjob_wave := shift(jobpos_wave,1,type="lead"), by=id]
-	DF[seam==T & (UE_wave==T | EU_wave==T) , nextjobEU_wave := shift(nextjob_wave,type="lead"), by=id]
-	DF[seam==T & EU_wave==T, recalled_wave := (jobpos_wave == nextjobEU_wave) ]
-	DF[is.finite(ustintid_wave) &(EU_wave==T | lfstat_wave>=2 ), recalled_wave:=any(recalled_wave,na.rm = T) , by=list(id,ustintid_wave)]
-	DF[EU_wave==T & recalled_wave==T, EU_wave:=NA]
-	DF[UE_wave==T & recalled_wave==T, UE_wave:=NA]
-	DF[lfstat_wave>=2 & recalled_wave==T, lfstat_wave:=NA]
+	DFseam <- DF[seam==T, ]
+	DFseam[job_wave> 0 , jobpos_wave := job_wave]
+	DFseam[ is.finite(ustintid_wave), jobpos_wave := Mode(jobpos_wave)]
+	DFseam[ , next.jobpos_wave := shift(jobpos_wave, type="lead")]
+	DFseam[ UE_wave==T, recalled_wave := jobpos_wave== next.jobpos_wave]
+	DFseam[ is.finite(ustintid_wave), recalled_wave := any(recalled_wave,na.rm = T), by=list(id,ustintid_wave)]
+	DFseam[ is.finite(ustintid_wave) & is.na(recalled_wave), recalled_wave := F]
+	#DFseam[lfstat_wave==1 | UE_wave==T,   nextjob_wave := shift(jobpos_wave,type="lead"), by=id]
+	#DFseam[UE_wave==T | EU_wave==T    , nextjobEU_wave := shift(nextjob_wave,type="lead"), by=id]
+	#DFseam[EU_wave==T, recalled_wave := jobpos_wave == nextjobEU_wave ]
+	#DFseam[is.finite(ustintid_wave) &(EU_wave==T | lfstat_wave>=2 ), recalled_wave:=any(recalled_wave,na.rm = T) , by=list(id,ustintid_wave)]
+	DFseam[EU_wave==T & recalled_wave==T, EU_wave:=NA]
+	DFseam[UE_wave==T & recalled_wave==T, UE_wave:=NA]
+	DFseam[lfstat_wave>=2 & recalled_wave==T, lfstat_wave:=NA]
 	
-	DF[ , c("jobpos","jobpos_wave","nextjob","nextjob_wave","nextjobEU_wave"):=NULL]
+	DF<- merge(DF,DFseam,by=c("id","wave"),all.x=T)
+	
+
+	DF[ , c("jobpos","jobpos_wave","nextjob","next.jobpos_wave"):=NULL]
 }
 
 recallRecodeShorTerm <- function(DF){

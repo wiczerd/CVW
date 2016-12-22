@@ -235,8 +235,16 @@ for (rI in c(F,T)){
 tab_wavechngdist    <- array(0.,dim=c(9,tN))
 
 
-wc <- "wagechange_wave"
+wc <- "wagechangeEUE_wave"
 wt <- "truncweight"
+if(wc =="wagechange_wave"){
+	labtxt = "wavechngdist"
+}else if(wc == "wagechangeEUE_wave"){
+	labtxt = "wavechngdistEUE"
+}else{
+	labtxt = "chgndist"
+}
+
 
 tab_wavechngdist[1,1]    <- DTseam[changer==T ,                    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 tab_wavechngdist[1,2:tN] <- DTseam[changer==T ,                wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
@@ -263,21 +271,19 @@ names(tab_wavechngdist_out) <- c("Mean",tabqtls)
 #rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
 rownames(tab_wavechngdist_out) <- c("Chng\ Job, All", "Chng\ Job, Same\ Occ", "Chng\ Job & Switch\ Occ")
 
-tab_wavechngdist_out <- xtable(tab_wavechngdist_out, label="tab:wavechngdist", digits=2, 
+tab_wavechngdist_out <- xtable(tab_wavechngdist_out, label=paste0("tab:",labtxt), digits=2, 
                            align="l|l|lllll", caption="Distribution of earnings changes among job changers")
 if(demolbl>=1 & demolbl<=7){
-	print(tab_wavechngdist_out,include.rownames=T, hline.after= c(0,nrow(tab_wavechngdist_out)), file=paste0(outputdir,"/wavechngdist",demotxt[demolbl],".tex"))
+	print(tab_wavechngdist_out,include.rownames=T, hline.after= c(0,nrow(tab_wavechngdist_out)), file=paste0(outputdir,"/",labtxt,demotxt[demolbl],".tex"))
 }else{
-	print(tab_wavechngdist_out,include.rownames=T, hline.after= c(0,nrow(tab_wavechngdist_out)), file=paste0(outputdir,"/wavechngdist.tex"))
+	print(tab_wavechngdist_out,include.rownames=T, hline.after= c(0,nrow(tab_wavechngdist_out)), file=paste0(outputdir,"/",labtxt,".tex"))
 }
 # rec and expansion
 tab_wavechngdist_rec    <- array(NA,dim=c(6,tN))
 tab_wavechngdist_rec_EEEU    <- array(NA,dim=c(12,tN))
 for(recHere in c(F,T)){
 	ridx = as.integer(recHere)*3
-	wc <- "wagechange_wave"
-	wt <- "truncweight"
-	
+
 	tab_wavechngdist_rec[1+ridx,1   ] <- DTseam[changer==T & recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 	tab_wavechngdist_rec[1+ridx,2:tN] <- DTseam[changer==T & recIndic == recHere,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
 	tab_wavechngdist_rec[2+ridx,1   ] <- DTseam[changer==T &switchedOcc_wave==F & recIndic == recHere,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
@@ -313,9 +319,9 @@ tab_wavechngdist_rec <- data.table(rbind(dat_wavechngdist[1:3, ],dat_wavechngdis
 names(tab_wavechngdist_rec) <- cnames
 rownames(tab_wavechngdist_rec) <- rnames
 tab_wavechngdist_rec <- xtable(tab_wavechngdist_rec, digits=2, 
-                           align="l|l|lllll", caption="Distribution of earnings changes among job changers in recession and expansion \\label{tab:wavechngdist_rec}")
+                           align="l|l|lllll", caption=paste0("Distribution of earnings changes among job changers in recession and expansion \\label{tab:",labtxt,"_rec}"))
 print(tab_wavechngdist_rec,include.rownames=T, hline.after= c(nrow(tab_wavechngdist_rec)), 
-      add.to.row=rowtitles, file="./Figures/wavechngdist_rec.tex")
+      add.to.row=rowtitles, file=paste0(outputdir,"/",labtxt,"_rec.tex"))
 
 
 
