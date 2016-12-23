@@ -76,7 +76,7 @@ if(demolbl==1){
 
 #DTseam <- DTseam[ (stayer|changer) & demo==T, ]
 
-tabqtls <- c(.05,.25,.5,.75,.95)
+tabqtls <- c(.1,.25,.5,.75,.9)
 tN <- (length(tabqtls)+1)
 
 
@@ -196,9 +196,9 @@ for (rI in c(F,T)){
   
   qtlshere <- tot51025qtl
   for(rri in seq(1,Ndifs)){
-    tab_waveqtldec[rri,1] <- DTseam[recIndic_wave==rI & (EE_wave==F&EU_wave==F&UE_wave==F)   & (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(waveweight ,na.rm=T)]
-    tab_waveqtldec[rri,2] <- DTseam[recIndic_wave==rI & (EE_wave==T&EU_wave==F&UE_wave==F)   & (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(waveweight ,na.rm=T)]
-    tab_waveqtldec[rri,3] <- DTseam[recIndic_wave==rI & (EE_wave==F&(EU_wave==T|UE_wave==T)) & (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(waveweight ,na.rm=T)]
+    tab_waveqtldec[rri,1] <- DTseam[recIndic_wave==rI & (EE_wave==F&EU_wave==F&UE_wave==F)   & (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+    tab_waveqtldec[rri,2] <- DTseam[recIndic_wave==rI & (EE_wave==T&EU_wave==F&UE_wave==F)   & (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+    tab_waveqtldec[rri,3] <- DTseam[recIndic_wave==rI & (EE_wave==F&(EU_wave==T|UE_wave==T)) & (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
   }
   tab_waveqtldec[Ndifs+1,1] <- DTseam[recIndic_wave==rI &  (stayer==T)                        , sum(eval(as.name(wt)),na.rm=T) ]
   tab_waveqtldec[Ndifs+1,2] <- DTseam[recIndic_wave==rI &  (EE_wave==T&changer==T)            , sum(eval(as.name(wt)),na.rm=T) ]
@@ -228,7 +228,7 @@ for (rI in c(F,T)){
 }
 
 
-# Quantiles by job change  -----------------------
+# Quantiles among job changers  -----------------------
 #tabqtls <- c(.1,.25,.5,.75,.9)
 #tN <- (length(tabqtls)+1)
 

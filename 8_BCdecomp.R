@@ -19,7 +19,7 @@ keep <- c("wagechange","wagechange_EUE","EU","UE","EE","recIndic","switchedOcc",
 
 mmtabchngqtls <- seq(0.1,0.9,0.1)
 mmtaballqtls  <- c(seq(.02,.1,.02),seq(0.2,0.8,0.1),seq(.9,.98,.02))
-MMstd_errs = T
+MMstd_errs = F
 #recession counter-factual returns beta^E * recession inidcators and beta^R * expansion indicators
 
 DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
@@ -224,7 +224,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 	}
 
 	
-	qtlgridOut <- seq(0.02,0.98,0.01)
+	qtlgridOut <- seq(0.02,0.98,0.001)
 	seedint = 941987
 	set.seed(seedint)
 	#draw the sample
@@ -294,8 +294,6 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 				betaR[si,] <- spline(x=qtlgridEst, y=betaptsR[,si], method="hyman", xout=qtlgridOut)$y
 			}
 		}
-		
-		qtlgrid <- qtlgridOut
 
 		wc_IR <- matrix(NA, nrow=nsampR*length(qtlgridOut),ncol=1) #storing the counter-factual distribution
 		wc_BR <- matrix(NA, nrow=nsampE*length(qtlgridOut),ncol=1) #storing the counter-factual distribution
@@ -401,8 +399,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 		#clean up the space:
 		wc_IR_un_pctile[,simiter] <- quantile(wc_IR_un,probs=qtlgridOut,na.rm=T)
 		rm(wc_IR_un)
-		
-		set.seed(seedint + 13*simiter)
+
 		qi=1
 		wc_rec <- matrix(NA, nrow=nsampR*length(qtlgridOut),ncol=1) #storing the counter-factual distribution - only unemployment
 		for(q in qtlgrid){
@@ -460,7 +457,6 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 		rm(wc_exp)
 	}	
 	
-		
 	return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_sw= wc_IR_sw_pctile, wc_IR_un= wc_IR_un_pctile,
 				wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile))
 }
@@ -471,10 +467,15 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 ## Seams version -------------------------------
 
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
-DTseam[wagechange_wave_bad==F &  !(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1, stayer:= T]
-DTseam[wagechange_wave_bad==F &  (EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
+DTseam[wagechange_wave_bad2==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &
+	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & 
+	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
+
+DTseam[wagechange_wave_bad2==F & EUUE_inner2==F&
+	   	(EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
 DTseam[changer==T, stayer:= F]
-DTseam[stayer==T , changer:=F]
+DTseam[stayer ==T, changer:=F]
+
 DTseam <- DTseam[(changer|stayer)]
 
 toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","wagechangeEUE_wave","recIndic_wave","date")
@@ -494,9 +495,9 @@ DTseamchng <- subset(DTseam, EU_wave==T|UE_wave==T|EE_wave==T)
 MM_waveall_betaE_betaR_IR <- MMdecomp(DTseam,7,"recIndic_wave","wagechange_wave","truncweight",std_errs = MMstd_errs)
 MM_waveallEUE_betaE_betaR_IR <- MMdecomp(DTseam,5,"recIndic_wave","wagechangeEUE_wave","truncweight",std_errs = MMstd_errs)
 
-saveRDS(MM_waveall_betaE_betaR_IR,paste0(outputdir,"./MM_waveall.RData"))
+saveRDS(MM_waveall_betaE_betaR_IR,paste0(outputdir,"/MM_waveall.RData"))
 #saveRDS(MM_wavechng_betaE_betaR_IR,paste0(outputdir,"./MM_wavechng.RData"))
-saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"./MM_waveallEUE.RData"))
+saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
 
 
 #all observations (7 categories)
@@ -585,7 +586,7 @@ winEUE_dif_BR_exp      <- winEUE_BR      - winEUE_exp
 ##################################################
 ### plot stuff
 ##################################################
-dt_mm <- data.table(cbind( seq(0.07,0.93,0.01),win_dif_rec_exp_sim ))
+dt_mm <- data.table(cbind( seq(0.05,0.95,0.01),win_dif_rec_exp_sim ))
 names(dt_mm) <- c("Quantile","Data")
 dt_mm_melted <- melt(dt_mm, id= "Quantile")
 ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -600,7 +601,7 @@ ggsave("./Figures/MMwave_all_data.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_data.png",height=5,width=10)
 
 
-dt_mm <- data.table(cbind( seq(0.07,0.93,0.01),win_dif_rec_exp_sim,win_dif_IR_exp ))
+dt_mm <- data.table(cbind( seq(0.07,0.93,0.01),win_dif_rec_exp_sim,win_dif_BR_exp ))
 names(dt_mm) <- c("Quantile","Data","Counter Factual")
 dt_mm_melted <- melt(dt_mm, id= "Quantile")
 ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
