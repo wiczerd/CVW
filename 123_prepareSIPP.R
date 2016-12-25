@@ -470,14 +470,17 @@ sipp_wave[is.finite(ustintid_wave), recIndic2_stint := any(recIndic2_wave,na.rm=
 #correct for w/in wave transitions
 sipp_wave[0< EEmon & EEmon<4 & EE_wave ==T , last.midEE:=T  ]
 sipp_wave[ shift(last.midEE, type="lead")==T, midEE:=T , by = id ]
+sipp_wave[is.na(midEE), midEE:=F]
 sipp_wave[ lfstat_wave==1 & midEE==T, EE_wave:=T ]
 
 sipp_wave[0< EUmon & EUmon<4 & EU_wave ==T , next.midEU:=T  ]
 sipp_wave[ shift(next.midEU, type="lag")==T, midEU:=T , by = id ]
+sipp_wave[is.na(midEU), midEU:=F]
 sipp_wave[ lfstat_wave==2 & midEU==T, EU_wave:=T ]
 
 sipp_wave[0< UEmon & UEmon<4 & UE_wave ==T , last.midUE:=T  ]
 sipp_wave[ shift(next.midEU, type="lead")==T, midUE:=T , by = id ]
+sipp_wave[is.na(midUE), midUE:=F]
 sipp_wave[ lfstat_wave==2 & midUE==T, UE_wave:=T ]
 
 
