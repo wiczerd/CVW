@@ -429,7 +429,8 @@ sipp_wave[, newunemp_wave := NULL]
 # create EU/UE/EE dummies
 sipp_wave[lfstat_wave == 1, EU_wave := (next.lfstat_wave == 2)]
 sipp_wave[lfstat_wave == 2, UE_wave := (next.lfstat_wave == 1)]
-sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , EE_wave := (Eend_wave == T | next.Estart_wave==T)]
+sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , EE_wave := (Eend_wave == T | Estart_wave==T)]
+sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 & EEmon==4, EE_wave := (Eend_wave == T | next.Estart_wave==T)]
 sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := (job_wave != next.job_wave) ] #& (last.job_wave != next.job_wave)
 sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] #knocks out ~5% of the changes
 
@@ -446,10 +447,6 @@ sipp_wave[ lfstat_wave>1, occ_wave:= Mode(occ_wave) , by=list(id,ustintid_wave)]
 sipp_wave[ , next.occ_wave    := shift(occ_wave,type="lead")   , by=id] #recompute now that I've filled back U-spells
 sipp_wave[ (EE_wave==T|EU_wave==T), switchedOcc_wave := occ_wave != next.occ_wave]
 sipp_wave[ (EE_wave==T|EU_wave==T), switchedInd_wave := ind_wave != next.ind_wave]
-
-#sipp_wave[ jobchng_wave==T &!(EE_wave|UE_wave|EU_wave), switchedOcc_wave:=F]
-sipp_wave[ UE_wave==T|EU_wave==T, last.switchedOcc_wave := shift(switchedOcc_wave), by=id]
-sipp_wave[ UE_wave==T, switchedOcc_wave:=last.switchedOcc_wave]
 
 sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(EU_wave) , EU_wave:=F ]
 sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(UE_wave) , UE_wave:=F ]
@@ -483,12 +480,17 @@ sipp_wave[ shift(next.midEU, type="lead")==T, midUE:=T , by = id ]
 sipp_wave[is.na(midUE), midUE:=F]
 sipp_wave[ lfstat_wave==2 & midUE==T, UE_wave:=T ]
 
+#add switchedOcc_wave to whole ustintid
+sipp_wave[ is.finite(ustintid_wave), switchedOcc_wave := any(switchedOcc_wave), by=list(id,ustintid_wave)]
+sipp_wave[ EE_wave==T, switchedOcc_wave:=shift(switchedOcc_wave) , by =id]
 
 #save intermediate result:
 saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
 
 sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","next.job_wave","last.job_wave","job_wave","next.occ_wave","last.occ_wave","occ_wave",
 										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","midEE","midEU","midUE","ustintid_wave","recIndic_stint","recIndic2_stint","switchedOcc_wave","wave","id"))
+
+sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
 #now check EU, UE, EE as max over months in the wave
 sipp[ , UE_max := any(UE,na.rm=T), by=list(id,wave)]
