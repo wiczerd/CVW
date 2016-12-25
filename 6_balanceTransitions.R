@@ -144,8 +144,8 @@ DTseam <- subset(DTall, seam==T)
 DTseam[ , c("EE","EU","UE"):= NULL]
 
 ##balance seams EU and UE
-DTseam[ EU_wave ==T | UE_wave==T, EU_match := shift(UE_wave,1,type = "lead")==T, by=id]
-DTseam[ EU_wave ==T | UE_wave==T, UE_match := shift(EU_wave,1,type = "lag")==T, by=id]
+DTseam[ EU_wave ==T | UE_wave==T, EU_match := shift(UE_wave,1,type = "lead")==T & is.finite(shift(wagechange_wave,1,type = "lead")), by=id]
+DTseam[ EU_wave ==T | UE_wave==T, UE_match := shift(EU_wave,1,type = "lag" )==T & is.finite(shift(wagechange_wave,1,type = "lag" )), by=id]
 ##re-weighting for the left/right survey truncation
 DTseam[ , EU_nomatch := ((EU_match ==F | is.na(EU_match)) & EU_wave==T)]
 DTseam[ , UE_nomatch := ((UE_match ==F | is.na(UE_match)) & UE_wave==T)]
@@ -198,7 +198,6 @@ for(ri in c(T,F)){
 # should I also correct for left and right truncation?
 DTseam[ , cyctruncweight := cycweight*truncweight/perwt]
 
-
 if( dur_adj == T){
 	DTseam[ , max.unempdur:= maxunempdur_wave]
 	DTseam <- merge(DTseam, CPSunempdur, by = "date", all.x = TRUE)
@@ -239,19 +238,17 @@ if( dur_adj == T){
 }
 
 
-#add in the EU_wave2, UE_wave2
-DTseam[EU_wave2==T |UE_wave2==T, EU_wave2_matched := shift(UE_wave2,type="lead")==T, by=id]
-DTseam[EU_wave2==T |UE_wave2==T, UE_wave2_matched := shift(UE_wave2,type="lag" )==T, by=id]
-DTseam[ is.na(EU_wave2_matched), EU_wave2_matched := F]
-DTseam[ is.na(UE_wave2_matched), UE_wave2_matched := F]
+#add in the EU_wave2, UE_wave2 if associated with neighboring transition
+#this corrects for transitions midway through a wave
 
-DTseam[ EU_wave2==T & EU_wave2_matched==T, EU_wave:=T]
-DTseam[ UE_wave2==T & UE_wave2_matched==T, UE_wave:=T]
-DTseam[ (UE_wave2==T & UE_wave2_matched==T) | (EU_wave2==T & EU_wave2_matched==T), EUUE_inner2:=T]
-DTseam[ is.na(EUUE_inner2), EUUE_inner2:=F]
+DTseam[ , next.EU_wave:= shift(EU_wave,type="lead"), by=id]
+DTseam[ , last.UE_wave:= shift(UE_wave,type="lag"), by=id]
 
-DTall[  EU_wave2==T & EU_wave2_matched==T, EU_wave:=T]
-DTall[  UE_wave2==T & UE_wave2_matched==T, UE_wave:=T]
+DTseam[ next.UE_wave==T & UE_wave2==T, UE_wave := T]
+DTseam[ last.UE_wave==T & EU_wave2==T, EU_wave := T]
+
+
+DTseam[ (EU_wave==T & EU_wave2==T) | (UE_wave==T & UE_wave2==T), EUUE_inner2:=T]
 
 saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))
 

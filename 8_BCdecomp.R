@@ -17,8 +17,8 @@ setwd(wd0)
 
 keep <- c("wagechange","wagechange_EUE","EU","UE","EE","recIndic","switchedOcc","switchedInd","balanceweight","date")
 
-mmtabchngqtls <- seq(0.1,0.9,0.1)
-mmtaballqtls  <- c(seq(.02,.1,.02),seq(0.2,0.8,0.1),seq(.9,.98,.02))
+qtlgridEst  <- c(seq(.02,.1,.02),seq(0.15,0.85,0.05),seq(.9,.98,.02))
+qtlgridOut <- seq(.02,0.98,0.01)
 MMstd_errs = F
 #recession counter-factual returns beta^E * recession inidcators and beta^R * expansion indicators
 
@@ -180,10 +180,10 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 		wcDF[!is.na(wcDF$s), s7 := ifelse(s==7,1,0)]
 	}else if(NS==4){
 		# 4 subgroups, Sw X (EE EU), sets up conditional distributions.
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$EU ==F, s := 1]
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$EU ==T, s := 2]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$EU ==F, s := 3]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$EU ==T, s := 4]
+		wcDF[  wcDF$EE==T & wcDF$EU ==F & wcDF$UE ==F , s := 1]
+		wcDF[  wcDF$EE==F & wcDF$EU ==T & wcDF$UE ==F , s := 2]
+		wcDF[  wcDF$EE==F & wcDF$EU ==F & wcDF$UE ==T , s := 3]
+		wcDF[!(wcDF$EE==T | wcDF$EU ==T | wcDF$UE ==T), s := 4]
 		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
 		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
 		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
@@ -206,16 +206,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 	wcExp <- subset(wcDF, rec==F)
 	
 	# run quantile regressions on a relatively coarse grid (have to run 8 regressions)
-	if(NS == 5 | NS==7){
-		qtlgridEst <- mmtaballqtls #c( .01,.04,.07, seq(.1,.9,.1),.93,.96,.99 )
-	}else{
-		qtlgridEst <- mmtaballqtls #c(0.01,0.05,mmtabchngqtls,0.95,0.99)
-	}
-	#qtlgrid <- seq(0.01,0.99,0.01)
-	
 	betaptsR <- matrix(0.,nrow = length(qtlgridEst),ncol=NS)
 	betaptsE <- matrix(0.,nrow = length(qtlgridEst),ncol=NS)
-
 
 	if(std_errs ==T){
 		Nsims = 50
@@ -223,21 +215,20 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 		Nsims = 1
 	}
 
-	
-	qtlgridOut <- seq(0.02,0.98,0.001)
+	qtlgridSamp <- seq(min(qtlgridOut),max(qtlgridOut),0.001)
 	seedint = 941987
 	set.seed(seedint)
 	#draw the sample
-	nsampE = floor(nrow(wcExp)/length(qtlgridOut))
-	nsampR = floor(nrow(wcRec)/length(qtlgridOut))
-	sampE <-matrix(0.,nrow=nsampE,ncol=length(qtlgridOut))
-	sampR <-matrix(0.,nrow=nsampR,ncol=length(qtlgridOut))
-	for(qi in seq(1,length(qtlgridOut))){
+	nsampE = floor(nrow(wcExp)/length(qtlgridSamp))
+	nsampR = floor(nrow(wcRec)/length(qtlgridSamp))
+	sampE <-matrix(0.,nrow=nsampE,ncol=length(qtlgridSamp))
+	sampR <-matrix(0.,nrow=nsampR,ncol=length(qtlgridSamp))
+	for(qi in seq(1,length(qtlgridSamp))){
 		sampE[,qi] <- sample(nrow(wcExp),nsampE,replace=T,prob=wcExp$wt)
 		sampR[,qi] <- sample(nrow(wcRec),nsampR,replace=T,prob=wcRec$wt)
 	}
 	
-	# initialize distributions:
+	# initialize output distributions:
 	wc_IR_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
 	wc_BR_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
 	wc_IR_sw_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
@@ -271,35 +262,45 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 		}else if(NS==7){
 			colnames(betaptsE) <-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay")
 			colnames(betaptsR) <-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay")
-		}
-		if(NS==5){
+		}else if(NS==5){
 			colnames(betaptsE) <-c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay")
 			colnames(betaptsR) <-c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay")
 		}else if(NS==4){
-			colnames(betaptsE) <-c("EE_sw","EU_sw","EE_nosw","EU_nosw")
-			colnames(betaptsR) <-c("EE_sw","EU_sw","EE_nosw","EU_nosw")
+			colnames(betaptsE) <-c("EE","UE","EU","stay")
+			colnames(betaptsR) <-c("EE","UE","EU","stay")
+		}else if(NS==3){
+			colnames(betaptsE) <-c("EE","EU","stay")
+			colnames(betaptsR) <-c("EE","EU","stay")
 		}
 		
 		
-		betaE <- array(0.,dim=c(NS,length(qtlgridOut)) )
-		betaR <- array(0.,dim=c(NS,length(qtlgridOut)) )
+		betaE <- array(0.,dim=c(NS,length(qtlgridSamp)) )
+		betaR <- array(0.,dim=c(NS,length(qtlgridSamp)) )
 		for(si in seq(1,NS)){
-			if(min(qtlgridOut)<min(qtlgridEst) | max(qtlgridOut)>max(qtlgridEst)){
-				betaE[si,] <- spline(x=c(min(qtlgridEst) ,qtlgridEst, max(min(qtlgridEst))), 
-									 y=c(min(betaptsE[,si]), betaptsE[,si],max(betaptsE[,si])), method="hyman", xout=qtlgridOut)$y
-				betaR[si,] <- spline(x=c(min(qtlgridEst) ,qtlgridEst, max(min(qtlgridEst))), 
-									 y=c(min(betaptsR[,si]),betaptsR[,si],max(betaptsR[,si])), method="hyman", xout=qtlgridOut)$y	
-			}else{
-				betaE[si,] <- spline(x=qtlgridEst, y=betaptsE[,si], method="hyman", xout=qtlgridOut)$y
-				betaR[si,] <- spline(x=qtlgridEst, y=betaptsR[,si], method="hyman", xout=qtlgridOut)$y
+			gpE <- c(T,betaptsE[2:length(qtlgridEst),si]>=betaptsE[1:length(qtlgridEst)-1,si]) #ensure monotonicity
+			gpR <- c(T,betaptsR[2:length(qtlgridEst),si]>=betaptsR[1:length(qtlgridEst)-1,si]) #ensure monotonicity
+			if(min(qtlgridSamp)<min(qtlgridEst[gpR]) | max(qtlgridSamp)>max(qtlgridEst[gpR])){
+				betaE[si,] <- spline(x=c(min(qtlgridSamp) ,qtlgridEst[gpE], max(qtlgridSamp)), 
+									 y=c(min(betaptsE[gpE,si]), betaptsE[gpE,si],max(betaptsE[gpE,si])), method="hyman", xout=qtlgridSamp)$y
+			}
+			if(min(qtlgridSamp)<min(qtlgridEst[gpR]) | max(qtlgridSamp)>max(qtlgridEst[gpR])){
+				betaR[si,] <- spline(x=c(min(qtlgridSamp) ,qtlgridEst[gpR], max(qtlgridSamp)), 
+									 y=c(min(betaptsR[gpR,si]),betaptsR[gpR,si],max(betaptsR[gpR,si])), method="hyman", xout=qtlgridSamp)$y	
+			}
+			if( min(qtlgridSamp)>=min(qtlgridEst) & max(qtlgridSamp)<=max(qtlgridEst[gpR]) & max(qtlgridSamp)<=max(qtlgridEst[gpE])){
+				betaE[si,] <- spline(x=qtlgridEst[gpE], y=betaptsE[gpE,si], method="hyman", xout=qtlgridSamp)$y
+				betaR[si,] <- spline(x=qtlgridEst[gpR], y=betaptsR[gpR,si], method="hyman", xout=qtlgridSamp)$y
+			}
+			if( any(gpE ==F) | any(gpR==F) ){
+				warning(c('non-monotone regression coefficients, ',as.character(sum(gpE==F) + sum(gpR==F)), ' time(s)') )
 			}
 		}
 
-		wc_IR <- matrix(NA, nrow=nsampR*length(qtlgridOut),ncol=1) #storing the counter-factual distribution
-		wc_BR <- matrix(NA, nrow=nsampE*length(qtlgridOut),ncol=1) #storing the counter-factual distribution
+		wc_IR <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution
+		wc_BR <- matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution
 		
 		qi = 1
-		for(q in qtlgridOut){
+		for(q in qtlgridSamp){
 			if(NS == 6){
 				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
 					  	betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
@@ -319,10 +320,12 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 			}else if(NS==4){
 				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
 						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-						betaE[3,qi]*s3 + betaE[4,qi]*s4]
+						betaE[3,qi]*s3 + 
+						betaR[4,qi]*s4]
 				wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
 						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
-						betaR[3,qi]*s3 + betaR[4,qi]*s4]
+						betaR[3,qi]*s3 + 
+						betaE[4,qi]*s4]
 				
 			}else if(NS==5){
 				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
@@ -344,8 +347,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 		rm(wc_BR)
 		
 		qi=1
-		wc_IR_sw <- matrix(NA, nrow=nsampR*length(qtlgridOut),ncol=1) #storing the counter-factual distribution - only switch
-		for(q in qtlgridOut){
+		wc_IR_sw <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only switch
+		for(q in qtlgridSamp){
 			if(NS == 6){
 				wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
 							betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
@@ -373,8 +376,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 		
 		
 		qi=1
-		wc_IR_un <- matrix(NA, nrow=nsampR*length(qtlgridOut),ncol=1) #storing the counter-factual distribution - only unemployment
-		for(q in qtlgridOut){
+		wc_IR_un <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
+		for(q in qtlgridSamp){
 			if(NS == 6){
 				wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
 							betaR[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
@@ -401,8 +404,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 		rm(wc_IR_un)
 
 		qi=1
-		wc_rec <- matrix(NA, nrow=nsampR*length(qtlgridOut),ncol=1) #storing the counter-factual distribution - only unemployment
-		for(q in qtlgrid){
+		wc_rec <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
+		for(q in qtlgridSamp){
 			if(NS == 6){
 				wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
 					betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
@@ -429,8 +432,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 		rm(wc_rec)
 	
 		qi=1
-		wc_exp <- matrix(NA, nrow=nsampE*length(qtlgridOut),ncol=1) #storing the counter-factual distribution - only unemployment
-		for(q in qtlgridOut){
+		wc_exp <- matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
+		for(q in qtlgridSamp){
 			if(NS == 6){
 				wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
 															   betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
@@ -482,7 +485,7 @@ toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","
 
 
 # select toKeep columns only
-DTseam <- DTseam[, toKeep, with = FALSE]
+#DTseam <- DTseam[, toKeep, with = FALSE]
 DTseam <- subset(DTseam, is.finite(wagechange_wave) & is.finite(EU_wave) & is.finite(UE_wave)& is.finite(EE_wave))
 DTseam[ , EE := EE_wave]
 DTseam[ , EU := EU_wave]
@@ -503,8 +506,8 @@ saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
 #all observations (7 categories)
 wcExp <- subset(DTseam,recIndic_wave==F)
 wcRec <- subset(DTseam,recIndic_wave==T)
-dist_exp      <- wcExp[ , wtd.quantile(wagechange_wave,probs=seq(0.02,.98,0.01),weights=truncweight, na.rm=T)]
-dist_rec      <- wcRec[ , wtd.quantile(wagechange_wave,probs=seq(0.02,.98,0.01),weights=truncweight, na.rm=T)]
+dist_exp      <- wcExp[ , wtd.quantile(wagechange_wave,probs=qtlgridOut,weights=truncweight, na.rm=T)]
+dist_rec      <- wcRec[ , wtd.quantile(wagechange_wave,probs=qtlgridOut,weights=truncweight, na.rm=T)]
 dist_IR       <- rowMeans(MM_waveall_betaE_betaR_IR$wc_IR   )
 if(MMstd_errs ==T){
 	CI_IR         <- apply(MM_waveall_betaE_betaR_IR$wc_IR,1,quantile,0.95) - apply(MM_waveall_betaE_betaR_IR$wc_IR,1,quantile,0.05)
@@ -586,7 +589,7 @@ winEUE_dif_BR_exp      <- winEUE_BR      - winEUE_exp
 ##################################################
 ### plot stuff
 ##################################################
-dt_mm <- data.table(cbind( seq(0.05,0.95,0.01),win_dif_rec_exp_sim ))
+dt_mm <- data.table(cbind( seq(0.07,0.93,0.01),win_dif_rec_exp_sim ))
 names(dt_mm) <- c("Quantile","Data")
 dt_mm_melted <- melt(dt_mm, id= "Quantile")
 ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -601,7 +604,7 @@ ggsave("./Figures/MMwave_all_data.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_data.png",height=5,width=10)
 
 
-dt_mm <- data.table(cbind( seq(0.07,0.93,0.01),win_dif_rec_exp_sim,win_dif_BR_exp ))
+dt_mm <- data.table(cbind( seq(0.07,0.93,0.01),win_dif_rec_exp_sim,win_dif_IR_exp ))
 names(dt_mm) <- c("Quantile","Data","Counter Factual")
 dt_mm_melted <- melt(dt_mm, id= "Quantile")
 ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -644,7 +647,8 @@ ggsave("./Figures/MMwave_all_sw.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_sw.png",height=5,width=10)
 
 #some coefficients:
-dt_co_stay <- data.table(cbind( mmtaballqtls,MM_waveall_betaE_betaR_IR$betaptsE[,7], MM_waveall_betaE_betaR_IR$betaptsR[,7]))
+mmtaballqtls <- qtlgridEst
+dt_co_stay <- data.table(cbind( qtlgridEst,MM_waveall_betaE_betaR_IR$betaptsE[,7], MM_waveall_betaE_betaR_IR$betaptsR[,7]))
 names(dt_co_stay) <- c("Quantile","Expansion","Recession")
 dt_co_stay_melted<-melt(dt_co_stay,id="Quantile")
 ggplot( dt_co_stay_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -658,7 +662,7 @@ ggplot( dt_co_stay_melted, aes(x=Quantile,y=value,colour=variable) ) +
 ggsave("./Figures/MMwave_all_costay.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_costay.png",height=5,width=10)
 
-dt_co_EEnos <- data.table(cbind( mmtaballqtls,MM_waveall_betaE_betaR_IR$betaptsE[,4], MM_waveall_betaE_betaR_IR$betaptsR[,4]))
+dt_co_EEnos <- data.table(cbind( qtlgridEst,MM_waveall_betaE_betaR_IR$betaptsE[,4], MM_waveall_betaE_betaR_IR$betaptsR[,4]))
 names(dt_co_EEnos) <- c("Quantile","Expansion","Recession")
 dt_co_EEnos_melted<-melt(dt_co_EEnos,id="Quantile")
 ggplot( dt_co_EEnos_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -672,7 +676,7 @@ ggplot( dt_co_EEnos_melted, aes(x=Quantile,y=value,colour=variable) ) +
 ggsave("./Figures/MMwave_all_coEEnosw.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_coEEnosw.png",height=5,width=10)
 
-dt_co_EEs <- data.table(cbind( mmtaballqtls,MM_waveall_betaE_betaR_IR$betaptsE[,1], MM_waveall_betaE_betaR_IR$betaptsR[,1]))
+dt_co_EEs <- data.table(cbind( qtlgridEst,MM_waveall_betaE_betaR_IR$betaptsE[,1], MM_waveall_betaE_betaR_IR$betaptsR[,1]))
 names(dt_co_EEs) <- c("Quantile","Expansion","Recession")
 dt_co_EEs_melted<-melt(dt_co_EEs,id="Quantile")
 ggplot( dt_co_EEs_melted, aes(x=Quantile,y=value,colour=variable) ) + 
@@ -685,6 +689,35 @@ ggplot( dt_co_EEs_melted, aes(x=Quantile,y=value,colour=variable) ) +
 		  legend.background = element_rect(linetype = "solid",color = "black"))
 ggsave("./Figures/MMwave_all_coEEsw.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_coEEsw.png",height=5,width=10)
+
+dt_co_EUs <- data.table(cbind( qtlgridEst,MM_waveall_betaE_betaR_IR$betaptsE[,3], MM_waveall_betaE_betaR_IR$betaptsR[,3]))
+names(dt_co_EUs) <- c("Quantile","Expansion","Recession")
+dt_co_EUs_melted<-melt(dt_co_EUs,id="Quantile")
+ggplot( dt_co_EUs_melted, aes(x=Quantile,y=value,colour=variable) ) + 
+	geom_line(size=2) + 
+	ylab("Coefficient Value") + 
+	xlab("Earnings Growth Quantile")  +
+	scale_color_manual(values = c("blue","red")) +
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.6,0.2),
+		  legend.background = element_rect(linetype = "solid",color = "black"))
+ggsave("./Figures/MMwave_all_coEUsw.eps",height=5,width=10)
+ggsave("./Figures/MMwave_all_coEUsw.png",height=5,width=10)
+
+dt_co_UEs <- data.table(cbind( qtlgridEst,MM_waveall_betaE_betaR_IR$betaptsE[,2], MM_waveall_betaE_betaR_IR$betaptsR[,2]))
+names(dt_co_UEs) <- c("Quantile","Expansion","Recession")
+dt_co_UEs_melted<-melt(dt_co_UEs,id="Quantile")
+ggplot( dt_co_UEs_melted, aes(x=Quantile,y=value,colour=variable) ) + 
+	geom_line(size=2) + 
+	ylab("Coefficient Value") + 
+	xlab("Earnings Growth Quantile")  +
+	scale_color_manual(values = c("blue","red")) +
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.2,0.6),
+		  legend.background = element_rect(linetype = "solid",color = "black"))
+ggsave("./Figures/MMwave_all_coUEsw.eps",height=5,width=10)
+ggsave("./Figures/MMwave_all_coUEsw.png",height=5,width=10)
+
 
 #table out:
 MM_all_tab <- data.table(cbind( mmtabqtls,(dist_IR),dist_rec,dist_exp,dist_rec- dist_exp, 

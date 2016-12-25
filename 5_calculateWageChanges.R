@@ -130,12 +130,13 @@ DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange_wave<(-2))&(next.wagechange_wave> 2.)&(lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad==T] 
 DTseam[ is.na(wagechange_wave_bad)  , wagechange_wave_bad :=F] 
 
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad2 := (wagechange_wave>2) & abs(next.wavewage - last.wavewage)<.1 &(lfstat_wave==1)&(last.lfstat_wave==1)] 
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad2 :=((wagechange_wave<(-2))& abs(next.wavewage - last.wavewage)<.1 &(lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad2==T] 
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad2 := (wagechange_wave>2)   & abs(next.wavewage - last.wavewage)<.1 &(last.lfstat_wave==1)&(next.lfstat_wave==1)] 
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad2 :=((wagechange_wave<(-2))& abs(next.wavewage - last.wavewage)<.1 &(last.lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad2==T] 
 DTseam[ is.na(wagechange_wave_bad2)  , wagechange_wave_bad2 :=F] 
 
 #wagechange between 2 0's:
 DTseam[lfstat_wave>=2 & next.lfstat_wave>=2  , wagechange_wave_bad := T] 
+DTseam[lfstat_wave>=2 & next.lfstat_wave>=2  , wagechange_wave_bad2:= T] 
 
 # wagechange wave =NA for job changers without a transition
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave_jcbad := T]
