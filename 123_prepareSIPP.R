@@ -16,6 +16,7 @@ datadir <- paste(rootdir, "/InputDataDE", sep = "")
 outputdir <- paste(rootdir, "/Results", sep = "")
 figuredir <- paste(rootdir, "/Figures", sep = "")
 intermed_plots = F
+max_wavefreq = 1 # controls whether take max over months in wave or wave-frequency observation
 setwd(rootdir)
 
 ############################## Read data, combine panels ##############################
@@ -42,7 +43,7 @@ toKeep <- c("year",
 		"ersend","estlemp",
 	    "occ","ind","ajbocc",
 		# income variables
-	    "earnm","earn_imp"#,"ui_a" <- need to get set G in.
+	    "earnm","earn_imp","ui_a","ui_r","thearn","thtotinc"
 		)
 
 ########## read in individual panels, extract variables, and subset sample
@@ -52,28 +53,44 @@ setwd(datadir)
 # 1996 panel
 sipp96 <- read.dta("./sippsets96ABD.dta", convert.factors = FALSE)
 sipp96 <- sipp96[toKeep]
+<<<<<<< HEAD
 sipp96 <- subset(sipp96, !is.na(esr) & (age >= 16) & (age<=65))
+=======
+sipp96 <- subset(sipp96, !is.na(esr) & (age >= 16) & (age <= 65))
+>>>>>>> 116d1bb6826a746caeb5e52d8611d91aa2e6b8f0
 sipp96 <- data.table(sipp96)
 sipp96$panel <- 1996
 
 # 2001 panel
 sipp01 <- read.dta("./sippsets01ABD.dta", convert.factors = FALSE)
 sipp01 <- sipp01[toKeep]
+<<<<<<< HEAD
 sipp01 <- subset(sipp01, !is.na(esr) & (age >= 16) & (age<=65))
+=======
+sipp01 <- subset(sipp01, !is.na(esr) & (age >= 16) & (age <= 65))
+>>>>>>> 116d1bb6826a746caeb5e52d8611d91aa2e6b8f0
 sipp01 <- data.table(sipp01)
 sipp01$panel <- 2001
 
 # 2004 panel
 sipp04 <- read.dta("./sippsets04ABD.dta", convert.factors = FALSE)
 sipp04 <- sipp04[toKeep]
+<<<<<<< HEAD
 sipp04 <- subset(sipp04, !is.na(esr) & (age >= 16) & (age<=65))
+=======
+sipp04 <- subset(sipp04, !is.na(esr) & (age >= 16) & (age <= 65) )
+>>>>>>> 116d1bb6826a746caeb5e52d8611d91aa2e6b8f0
 sipp04 <- data.table(sipp04)
 sipp04$panel <- 2004
 
 # 2008 panel
 sipp08 <- read.dta("./sippsets08ABD.dta", convert.factors = FALSE)
 sipp08 <- sipp08[toKeep]
+<<<<<<< HEAD
 sipp08 <- subset(sipp08, !is.na(esr) & (age >= 16) & (age<=65))
+=======
+sipp08 <- subset(sipp08, !is.na(esr) & (age >= 16) & (age <= 65))
+>>>>>>> 116d1bb6826a746caeb5e52d8611d91aa2e6b8f0
 sipp08 <- data.table(sipp08)
 sipp08$panel <- 2008
 
@@ -159,8 +176,11 @@ sipp[, mis := seq_len(.N), by = id]
 ########## labor force status ----------------------------
 
 # recode esr
-sipp[esr <= 3, lfstat := 1]
-sipp[esr >= 4 & esr <= 7, lfstat := 2]
+sipp[esr <= 5, lfstat := 1]
+sipp[esr >= 6 & esr <= 7, lfstat := 2]
+#alt:
+#sipp[esr <= 3, lfstat := 1]
+#sipp[esr >= 4 & esr <= 7, lfstat := 2]
 sipp[esr == 8, lfstat := 3]
 
 
@@ -330,7 +350,9 @@ sipp[UE == T | EU == T | EE==T, badearn := F]
 sipp[badearn == T, earnm := NA]
 sipp[, c("badearn", "nomearnm") := NULL]
 
-########## demographic indicators
+########## demographic indicators/ selection
+
+sipp <- subset(sipp, age >=16 & age<=65)
 
 sipp[, Young := age <= 30]
 sipp[age < 31, ageGrp := 1]
@@ -383,6 +405,27 @@ sipp[ lfstat_wave>1, lfstat_wave := 3L-any(lfstat==2), by=list(id,wave)]
 sipp[ , Eend_wave:= any(Eend, na.rm=T), by=list(wave,id)]
 sipp[ , Estart_wave:= any(Estart, na.rm=T), by=list(wave,id)]
 
+sipp[ EE==T, EEmon := srefmon]
+sipp[ is.na(EEmon), EEmon := 0]
+sipp[ , EEmon := max(EEmon), by=list(id,wave)]
+sipp[ EU==T, EUmon := srefmon]
+sipp[ is.na(EUmon), EUmon := 0]
+sipp[ , EUmon := max(EUmon), by=list(id,wave)]
+sipp[ UE==T, UEmon := srefmon]
+sipp[ is.na(UEmon), UEmon := 0]
+sipp[ , UEmon := max(UEmon), by=list(id,wave)]
+if(max_wavefreq ==1){
+	#now check EU, UE, EE as max over months in the wave
+	sipp[ , UE_wave := any(UE,na.rm=T), by=list(id,wave)]
+	sipp[ , EU_wave := any(EU,na.rm=T), by=list(id,wave)]
+	sipp[ , EE_wave := any(EE,na.rm=T), by=list(id,wave)]
+}else{
+	#now check EU, UE, EE as max over months in the wave
+	sipp[ , UE_max := any(UE,na.rm=T), by=list(id,wave)]
+	sipp[ , EU_max := any(EU,na.rm=T), by=list(id,wave)]
+	sipp[ , EE_max := any(EE,na.rm=T), by=list(id,wave)]
+}
+
 
 #create leads and lags using subsetted dataset
 sipp_wave <- subset(sipp, seam==T)
@@ -415,10 +458,14 @@ sipp_wave[, newunemp_wave := NULL]
 # create EU/UE/EE dummies
 sipp_wave[lfstat_wave == 1, EU_wave := (next.lfstat_wave == 2)]
 sipp_wave[lfstat_wave == 2, UE_wave := (next.lfstat_wave == 1)]
-sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , EE_wave := (Eend_wave == T | next.Estart_wave==T)]
+sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , EE_wave := (Eend_wave == T | Estart_wave==T)]
+sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 & EEmon==4, EE_wave := (Eend_wave == T | next.Estart_wave==T)]
 sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := (job_wave != next.job_wave) ] #& (last.job_wave != next.job_wave)
-sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] #knocks out ~5% of the changes
-
+if(max_wavefreq==1){
+	
+}else{
+	sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] #knocks out ~5% of the changes
+}
 
 #fill in occupation over u spells and compute switching
 sipp_wave[ , next.occ_wave    := shift(occ_wave,type="lead")   , by=id]
@@ -431,22 +478,7 @@ sipp_wave[ lfstat_wave>1, occ_wave:= Mode(occ_wave) , by=list(id,ustintid_wave)]
 
 sipp_wave[ , next.occ_wave    := shift(occ_wave,type="lead")   , by=id] #recompute now that I've filled back U-spells
 sipp_wave[ (EE_wave==T|EU_wave==T), switchedOcc_wave := occ_wave != next.occ_wave]
-#clean occupation switching
-#sipp_wave[ , lftrans := (EU_wave==T |EE_wave==T) ]
-#sipp_wave[is.na(lftrans) , lftrans := F]
-#sipp_wave[ , next.lftrans := shift(lftrans, type="lead") ,by=id]
-#sipp_wave[ , last.lftrans := shift(lftrans, type="lag") ,by=id]
-#sipp_wave[ , diffOcc_wave := occ_wave != next.occ_wave]
-#sipp_wave[ , next.diffOcc_wave := shift(diffOcc_wave,type="lead"), by=id]
-#sipp_wave[ , last.diffOcc_wave := shift(diffOcc_wave,type="lag") , by=id]
-#flip-flop occupations, but not with a transition... about 15% of switches
-#sipp_wave[ (last.diffOcc_wave==T & last.lftrans==F) | (next.diffOcc_wave==T & next.lftrans==F), switchedOcc_wave :=NA]
-
 sipp_wave[ (EE_wave==T|EU_wave==T), switchedInd_wave := ind_wave != next.ind_wave]
-
-#sipp_wave[ jobchng_wave==T &!(EE_wave|UE_wave|EU_wave), switchedOcc_wave:=F]
-sipp_wave[ UE_wave==T|EU_wave==T, last.switchedOcc_wave := shift(switchedOcc_wave), by=id]
-sipp_wave[ UE_wave==T, switchedOcc_wave:=last.switchedOcc_wave]
 
 sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(EU_wave) , EU_wave:=F ]
 sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(UE_wave) , UE_wave:=F ]
@@ -454,6 +486,7 @@ sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(EE_wave) 
 #add EU_wave to ustintid
 sipp_wave[, next.ustintid_wave := shift(ustintid_wave, type="lead"), by=id]
 sipp_wave[EU_wave==T, ustintid_wave:=next.ustintid_wave]
+#compute matched EUUE by ustintid
 sipp_wave[ ustintid_wave>0, matched_UE_wave := any(UE_wave), by=list(id,ustintid_wave)]
 sipp_wave[ ustintid_wave>0, matched_EU_wave := any(EU_wave), by=list(id,ustintid_wave)]
 sipp_wave[ ustintid_wave>0, matched_EUUE_wave := matched_EU_wave & matched_UE_wave]
@@ -464,19 +497,38 @@ sipp_wave[is.finite(ustintid_wave), recIndic_stint := any(recIndic_wave,na.rm=T)
 sipp_wave[is.na(ustintid_wave)|ustintid_wave==0 , recIndic2_stint := recIndic2_wave]
 sipp_wave[is.finite(ustintid_wave), recIndic2_stint := any(recIndic2_wave,na.rm=T), by=list(id,ustintid_wave)]
 
+#correct for w/in wave transitions
+sipp_wave[ , next.EEmon := shift( EEmon, type="lead" )]# adjust because EE_wave will be counted before
+sipp_wave[ next.EEmon>0 & next.EEmon<4, EEmon := next.EEmon]
+sipp_wave[0< EEmon & EEmon<4 & EE_wave ==T , last.midEE:=T  ]
+sipp_wave[ shift(last.midEE, type="lead")==T, midEE:=T , by = id ]
+sipp_wave[is.na(midEE), midEE:=F]
+sipp_wave[ lfstat_wave==1 & midEE==T, EE_wave:=T ]
+
+sipp_wave[ , next.EUmon := shift( EUmon, type="lead" )]
+sipp_wave[ next.EUmon>0 & next.EUmon<4, EUmon := next.EUmon]
+sipp_wave[0< EUmon & EUmon<4 & EU_wave ==T , next.midEU:=T  ]
+sipp_wave[ shift(next.midEU, type="lag")==T, midEU:=T , by = id ]
+sipp_wave[is.na(midEU), midEU:=F]
+sipp_wave[ lfstat_wave==2 & midEU==T, EU_wave:=T ]
+
+sipp_wave[0< UEmon & UEmon<4 & UE_wave ==T , last.midUE:=T  ]
+sipp_wave[ shift(next.midEU, type="lead")==T, midUE:=T , by = id ]
+sipp_wave[is.na(midUE), midUE:=F]
+sipp_wave[ lfstat_wave==2 & midUE==T, UE_wave:=T ]
+
+#add switchedOcc_wave to whole ustintid
+sipp_wave[ is.finite(ustintid_wave), switchedOcc_wave := any(switchedOcc_wave), by=list(id,ustintid_wave)]
+sipp_wave[ EE_wave==T, switchedOcc_wave:=shift(switchedOcc_wave) , by =id]
 
 #save intermediate result:
 saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
 
 sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","next.job_wave","last.job_wave","job_wave","next.occ_wave","last.occ_wave","occ_wave",
-										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","ustintid_wave","recIndic_stint","recIndic2_stint","switchedOcc_wave","wave","id"))
+										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","midEE","midEU","midUE","ustintid_wave","recIndic_stint","recIndic2_stint","switchedOcc_wave","wave","id"))
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
-#now check EU, UE, EE as max over months in the wave
-sipp[ , UE_max := any(UE,na.rm=T), by=list(id,wave)]
-sipp[ , EU_max := any(EU,na.rm=T), by=list(id,wave)]
-sipp[ , EE_max := any(EE,na.rm=T), by=list(id,wave)]
 sipp[ seam==T & (EE_max==T|EU_max==T), switchedOcc_max := occ_wave != next.occ_wave]
 sipp[ seam==T & (UE_max==T|EU_max==T), last.switchedOcc_max := shift(switchedOcc_max), by=id]
 sipp[ seam==T & UE_max==T, switchedOcc_max:=last.switchedOcc_max]
