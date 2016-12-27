@@ -16,6 +16,7 @@ datadir <- paste(rootdir, "/InputDataDE", sep = "")
 outputdir <- paste(rootdir, "/Results", sep = "")
 figuredir <- paste(rootdir, "/Figures", sep = "")
 intermed_plots = F
+max_wavefreq = 1 # controls whether take max over months in wave or wave-frequency observation
 setwd(rootdir)
 
 ############################## Read data, combine panels ##############################
@@ -397,6 +398,18 @@ sipp[ , EUmon := max(EUmon), by=list(id,wave)]
 sipp[ UE==T, UEmon := srefmon]
 sipp[ is.na(UEmon), UEmon := 0]
 sipp[ , UEmon := max(UEmon), by=list(id,wave)]
+if(max_wavefreq ==1){
+	#now check EU, UE, EE as max over months in the wave
+	sipp[ , UE_wave := any(UE,na.rm=T), by=list(id,wave)]
+	sipp[ , EU_wave := any(EU,na.rm=T), by=list(id,wave)]
+	sipp[ , EE_wave := any(EE,na.rm=T), by=list(id,wave)]
+}else{
+	#now check EU, UE, EE as max over months in the wave
+	sipp[ , UE_max := any(UE,na.rm=T), by=list(id,wave)]
+	sipp[ , EU_max := any(EU,na.rm=T), by=list(id,wave)]
+	sipp[ , EE_max := any(EE,na.rm=T), by=list(id,wave)]
+}
+
 
 #create leads and lags using subsetted dataset
 sipp_wave <- subset(sipp, seam==T)
@@ -432,8 +445,11 @@ sipp_wave[lfstat_wave == 2, UE_wave := (next.lfstat_wave == 1)]
 sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , EE_wave := (Eend_wave == T | Estart_wave==T)]
 sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 & EEmon==4, EE_wave := (Eend_wave == T | next.Estart_wave==T)]
 sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := (job_wave != next.job_wave) ] #& (last.job_wave != next.job_wave)
-sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] #knocks out ~5% of the changes
-
+if(max_wavefreq==1){
+	
+}else{
+	sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] #knocks out ~5% of the changes
+}
 
 #fill in occupation over u spells and compute switching
 sipp_wave[ , next.occ_wave    := shift(occ_wave,type="lead")   , by=id]
@@ -454,6 +470,7 @@ sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(EE_wave) 
 #add EU_wave to ustintid
 sipp_wave[, next.ustintid_wave := shift(ustintid_wave, type="lead"), by=id]
 sipp_wave[EU_wave==T, ustintid_wave:=next.ustintid_wave]
+#compute matched EUUE by ustintid
 sipp_wave[ ustintid_wave>0, matched_UE_wave := any(UE_wave), by=list(id,ustintid_wave)]
 sipp_wave[ ustintid_wave>0, matched_EU_wave := any(EU_wave), by=list(id,ustintid_wave)]
 sipp_wave[ ustintid_wave>0, matched_EUUE_wave := matched_EU_wave & matched_UE_wave]
@@ -465,11 +482,15 @@ sipp_wave[is.na(ustintid_wave)|ustintid_wave==0 , recIndic2_stint := recIndic2_w
 sipp_wave[is.finite(ustintid_wave), recIndic2_stint := any(recIndic2_wave,na.rm=T), by=list(id,ustintid_wave)]
 
 #correct for w/in wave transitions
+sipp_wave[ , next.EEmon := shift( EEmon, type="lead" )]# adjust because EE_wave will be counted before
+sipp_wave[ next.EEmon>0 & next.EEmon<4, EEmon := next.EEmon]
 sipp_wave[0< EEmon & EEmon<4 & EE_wave ==T , last.midEE:=T  ]
 sipp_wave[ shift(last.midEE, type="lead")==T, midEE:=T , by = id ]
 sipp_wave[is.na(midEE), midEE:=F]
 sipp_wave[ lfstat_wave==1 & midEE==T, EE_wave:=T ]
 
+sipp_wave[ , next.EUmon := shift( EUmon, type="lead" )]
+sipp_wave[ next.EUmon>0 & next.EUmon<4, EUmon := next.EUmon]
 sipp_wave[0< EUmon & EUmon<4 & EU_wave ==T , next.midEU:=T  ]
 sipp_wave[ shift(next.midEU, type="lag")==T, midEU:=T , by = id ]
 sipp_wave[is.na(midEU), midEU:=F]
@@ -492,10 +513,6 @@ sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","n
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
-#now check EU, UE, EE as max over months in the wave
-sipp[ , UE_max := any(UE,na.rm=T), by=list(id,wave)]
-sipp[ , EU_max := any(EU,na.rm=T), by=list(id,wave)]
-sipp[ , EE_max := any(EE,na.rm=T), by=list(id,wave)]
 sipp[ seam==T & (EE_max==T|EU_max==T), switchedOcc_max := occ_wave != next.occ_wave]
 sipp[ seam==T & (UE_max==T|EU_max==T), last.switchedOcc_max := shift(switchedOcc_max), by=id]
 sipp[ seam==T & UE_max==T, switchedOcc_max:=last.switchedOcc_max]

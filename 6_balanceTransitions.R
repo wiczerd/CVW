@@ -42,10 +42,7 @@ recallRecodeJobID <- function(DF){
 	DFseam[ UE_wave==T, recalled_wave := jobpos_wave== next.jobpos_wave]
 	DFseam[ is.finite(ustintid_wave), recalled_wave := any(recalled_wave,na.rm = T), by=list(id,ustintid_wave)]
 	DFseam[ is.finite(ustintid_wave) & is.na(recalled_wave), recalled_wave := F]
-	#DFseam[lfstat_wave==1 | UE_wave==T,   nextjob_wave := shift(jobpos_wave,type="lead"), by=id]
-	#DFseam[UE_wave==T | EU_wave==T    , nextjobEU_wave := shift(nextjob_wave,type="lead"), by=id]
-	#DFseam[EU_wave==T, recalled_wave := jobpos_wave == nextjobEU_wave ]
-	#DFseam[is.finite(ustintid_wave) &(EU_wave==T | lfstat_wave>=2 ), recalled_wave:=any(recalled_wave,na.rm = T) , by=list(id,ustintid_wave)]
+
 	DFseam[EU_wave==T & recalled_wave==T, EU_wave:=NA]
 	DFseam[UE_wave==T & recalled_wave==T, UE_wave:=NA]
 	DFseam[lfstat_wave>=2 & recalled_wave==T, lfstat_wave:=NA]
@@ -144,25 +141,31 @@ DTseam <- subset(DTall, seam==T)
 DTseam[ , c("EE","EU","UE"):= NULL]
 
 ##balance seams EU and UE
-DTseam[ EU_wave ==T | UE_wave==T, EU_match := shift(UE_wave,1,type = "lead")==T & is.finite(shift(wagechange_wave,1,type = "lead")), by=id]
-DTseam[ EU_wave ==T | UE_wave==T, UE_match := shift(EU_wave,1,type = "lag" )==T & is.finite(shift(wagechange_wave,1,type = "lag" )), by=id]
-##re-weighting for the left/right survey truncation
-DTseam[ , EU_nomatch := ((EU_match ==F | is.na(EU_match)) & EU_wave==T)]
-DTseam[ , UE_nomatch := ((UE_match ==F | is.na(UE_match)) & UE_wave==T)]
-DTseam[ EU_match==T, EU_nomatch:= F]
-DTseam[ UE_match==T, UE_nomatch:= F]
+#DTseam[ is.na(matched_EUUE_wave), matched_EUUE_wave:=F]
+DTseam[ ustintid_wave>0, EU_match:= any(UE_wave), by=list(id,ustintid_wave) ]
+DTseam[ ustintid_wave>0, UE_match:= any(EU_wave), by=list(id,ustintid_wave) ]
+DTseam[ ustintid_wave>0, matched_EUUE_wave:= UE_match & EU_match ]
+DTseam[ matched_EUUE_wave!=T & EU_wave==T, EU_nomatch:= T]
+DTseam[ is.na(EU_nomatch), EU_nomatch:= F]
+DTseam[ matched_EUUE_wave!=T & UE_wave==T, UE_nomatch:= T]
+DTseam[ is.na(UE_nomatch), UE_nomatch:= F]
+
 # these are equivalent to find non-matches:
-#DTseam[ matched_EUUE_wave!=T & EU_wave==T, EU_nomatch:= T]
-#DTseam[ is.na(EU_nomatch), EU_nomatch:= F]
-#DTseam[ matched_EUUE_wave!=T & UE_wave==T, UE_nomatch:= T]
-#DTseam[ is.na(UE_nomatch), UE_nomatch:= F]
+# DTseam[ (EU_wave ==T & midEU==F) | (UE_wave==T & midUE==F), EU_match := shift(UE_wave,1,type = "lead")==T & is.finite(shift(wagechange_wave,1,type = "lead")), by=id]
+# DTseam[ (EU_wave ==T & midEU==F) | (UE_wave==T & midUE==F), UE_match := shift(EU_wave,1,type = "lag" )==T & is.finite(shift(wagechange_wave,1,type = "lag" )), by=id]
+# 
+# DTseam[ , EU_nomatch := ((EU_match ==F | is.na(EU_match)) & EU_wave==T)]
+# DTseam[ , UE_nomatch := ((UE_match ==F | is.na(UE_match)) & UE_wave==T)]
+# DTseam[ EU_match==T, EU_nomatch:= F]
+# DTseam[ UE_match==T, UE_nomatch:= F]
+
 DTseam[ is.finite(ustintid_wave), u_nomatch := any(EU_nomatch==T|UE_nomatch==T), by=list(id,ustintid_wave)]
 DTseam[, misRemaining := max(mis), by=id]
 DTseam[, misRemaining := misRemaining-mis , by=id]
 
-EUtruenomatchrt <- DTseam[(lfstat_wave==2|EU_wave==T) & misRemaining  > 15, wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
-UEtruenomatchrt <- DTseam[UE_wave==T & mis           > 15, wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
-Utruenomatchrt <- DTseam[mis > 15 & misRemaining  > 15 & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = wpfinwgt,na.rm=T)]
+EUtruenomatchrt <- DTseam[(lfstat_wave==2|EU_wave==T) & misRemaining > 15        , wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
+UEtruenomatchrt <- DTseam[UE_wave==T & mis > 15                                  , wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
+Utruenomatchrt  <- DTseam[mis > 15 & misRemaining > 15 & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = wpfinwgt,na.rm=T)]
 
 DTseam[ EU_nomatch==T & EU_wave ==T, EU_wave := NA]
 DTseam[ UE_nomatch==T & UE_wave ==T, UE_wave := NA]
