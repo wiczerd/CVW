@@ -53,44 +53,28 @@ setwd(datadir)
 # 1996 panel
 sipp96 <- read.dta("./sippsets96ABD.dta", convert.factors = FALSE)
 sipp96 <- sipp96[toKeep]
-<<<<<<< HEAD
-sipp96 <- subset(sipp96, !is.na(esr) & (age >= 16) & (age<=65))
-=======
 sipp96 <- subset(sipp96, !is.na(esr) & (age >= 16) & (age <= 65))
->>>>>>> 116d1bb6826a746caeb5e52d8611d91aa2e6b8f0
 sipp96 <- data.table(sipp96)
 sipp96$panel <- 1996
 
 # 2001 panel
 sipp01 <- read.dta("./sippsets01ABD.dta", convert.factors = FALSE)
 sipp01 <- sipp01[toKeep]
-<<<<<<< HEAD
-sipp01 <- subset(sipp01, !is.na(esr) & (age >= 16) & (age<=65))
-=======
 sipp01 <- subset(sipp01, !is.na(esr) & (age >= 16) & (age <= 65))
->>>>>>> 116d1bb6826a746caeb5e52d8611d91aa2e6b8f0
 sipp01 <- data.table(sipp01)
 sipp01$panel <- 2001
 
 # 2004 panel
 sipp04 <- read.dta("./sippsets04ABD.dta", convert.factors = FALSE)
 sipp04 <- sipp04[toKeep]
-<<<<<<< HEAD
-sipp04 <- subset(sipp04, !is.na(esr) & (age >= 16) & (age<=65))
-=======
 sipp04 <- subset(sipp04, !is.na(esr) & (age >= 16) & (age <= 65) )
->>>>>>> 116d1bb6826a746caeb5e52d8611d91aa2e6b8f0
 sipp04 <- data.table(sipp04)
 sipp04$panel <- 2004
 
 # 2008 panel
 sipp08 <- read.dta("./sippsets08ABD.dta", convert.factors = FALSE)
 sipp08 <- sipp08[toKeep]
-<<<<<<< HEAD
-sipp08 <- subset(sipp08, !is.na(esr) & (age >= 16) & (age<=65))
-=======
 sipp08 <- subset(sipp08, !is.na(esr) & (age >= 16) & (age <= 65))
->>>>>>> 116d1bb6826a746caeb5e52d8611d91aa2e6b8f0
 sipp08 <- data.table(sipp08)
 sipp08$panel <- 2008
 
@@ -504,26 +488,27 @@ sipp_wave[is.na(ustintid_wave)|ustintid_wave==0 , recIndic2_stint := recIndic2_w
 sipp_wave[is.finite(ustintid_wave), recIndic2_stint := any(recIndic2_wave,na.rm=T), by=list(id,ustintid_wave)]
 
 #correct for w/in wave transitions
-sipp_wave[ , next.EEmon := shift( EEmon, type="lead" ), by=id]# adjust because EE_wave will be counted before
-sipp_wave[ next.EEmon>0 & next.EEmon<4, EEmon := next.EEmon]
-sipp_wave[0< next.EEmon & next.EEmon<4, midEE:=T  ]
-sipp_wave[0< next.EEmon & next.EEmon<4, EE_wave:=T  ]
+sipp_wave[ , next.EEmon   := shift( EEmon  , type="lead"), by=id]# adjust because EE_wave will be counted before
+sipp_wave[ , next.EE_wave := shift( EE_wave, type="lead"), by=id]
+sipp_wave[ next.EEmon>0 & next.EEmon<4 & next.EE_wave==T & lfstat_wave==1, EEmon := next.EEmon]
+sipp_wave[0< next.EEmon & next.EEmon<4 & next.EE_wave==T & lfstat_wave==1, midEE  :=T  ]
+sipp_wave[0< next.EEmon & next.EEmon<4 & next.EE_wave==T & lfstat_wave==1, EE_wave:=T  ]
 # sipp_wave[0< EEmon & EEmon<4 & EE_wave ==T , last.midEE:=T  ]
 # sipp_wave[ shift(last.midEE, type="lead")==T, midEE:=T , by = id ]
 # sipp_wave[is.na(midEE), midEE:=F]
 # sipp_wave[ lfstat_wave==1 & midEE==T, EE_wave:=T ]
 
-sipp_wave[ , next.EUmon := shift( EUmon, type="lead" )]
+sipp_wave[ , next.EUmon   := shift( EUmon  , type="lead" ), by= id]
+sipp_wave[ , next.EU_wave := shift( EU_wave, type="lead" ), by= id]
 sipp_wave[ next.EUmon>0 & next.EUmon<4, EUmon := next.EUmon]
-sipp_wave[0< EUmon & EUmon<4 & EU_wave ==T , next.midEU:=T  ]
-sipp_wave[ shift(next.midEU, type="lag")==T, midEU:=T , by = id ]
-sipp_wave[is.na(midEU), midEU:=F]
-sipp_wave[ lfstat_wave==2 & midEU==T, EU_wave:=T ]
+sipp_wave[0< next.EUmon & next.EUmon<4 & next.EU_wave ==T , midEU  :=T  ]
+sipp_wave[0< next.EUmon & next.EUmon<4 & next.EU_wave ==T , EU_wave:=T  ]
 
-sipp_wave[0< UEmon & UEmon<4 & UE_wave ==T , last.midUE:=T  ]
-sipp_wave[ shift(next.midEU, type="lead")==T, midUE:=T , by = id ]
-sipp_wave[is.na(midUE), midUE:=F]
-sipp_wave[ lfstat_wave==2 & midUE==T, UE_wave:=T ]
+sipp_wave[ , next.UEmon   := shift( UEmon  , type="lead" ), by= id]
+sipp_wave[ , next.UE_wave := shift( UE_wave, type="lead" ), by= id]
+sipp_wave[ next.UEmon>0 & next.UEmon<4, UEmon := next.UEmon]
+sipp_wave[0< next.UEmon & next.UEmon<4 & next.UE_wave ==T , midUE  :=T  ]
+sipp_wave[0< next.UEmon & next.UEmon<4 & next.UE_wave ==T , UE_wave:=T  ]
 
 #add switchedOcc_wave to whole ustintid
 sipp_wave[ is.finite(ustintid_wave), switchedOcc_wave := any(switchedOcc_wave), by=list(id,ustintid_wave)]
