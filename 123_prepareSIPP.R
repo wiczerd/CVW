@@ -426,8 +426,9 @@ if(max_wavefreq ==1){
 	sipp[ , EE_max := any(EE,na.rm=T), by=list(id,wave)]
 }
 
+#################################################################
+#sipp_wave begins here----------------------
 
-#create leads and lags using subsetted dataset
 sipp_wave <- subset(sipp, seam==T)
 setkey(sipp_wave, id,wave)
 sipp_wave[ , job_wave := job]
@@ -436,7 +437,7 @@ sipp_wave[ , ind_wave := ind]
 
 sipp_wave[ lfstat_wave==2 | lfstat_wave ==3, job_wave := NA]
 sipp_wave[ lfstat_wave==2 | lfstat_wave ==3, occ_wave := NA]
-
+#create leads and lags using subsetted dataset
 sipp_wave[ , next.lfstat_wave := shift(lfstat_wave,type="lead"), by=id]
 sipp_wave[ , last.lfstat_wave := shift(lfstat_wave,type="lag") , by=id]
 sipp_wave[ , next.job_wave    := shift(job_wave,type="lead")   , by=id]
@@ -456,14 +457,19 @@ sipp_wave[lfstat_wave == 1 | ustintid_wave  == 9999, ustintid_wave := NA]
 sipp_wave[, newunemp_wave := NULL]
 
 # create EU/UE/EE dummies
-sipp_wave[lfstat_wave == 1, EU_wave := (next.lfstat_wave == 2)]
-sipp_wave[lfstat_wave == 2, UE_wave := (next.lfstat_wave == 1)]
-sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , EE_wave := (Eend_wave == T | Estart_wave==T)]
-sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 & EEmon==4, EE_wave := (Eend_wave == T | next.Estart_wave==T)]
-sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := (job_wave != next.job_wave) ] #& (last.job_wave != next.job_wave)
+if(max_wavefreq==2){
+	sipp_wave[lfstat_wave == 1, EU_wave := (next.lfstat_wave == 2)]
+	sipp_wave[lfstat_wave == 2, UE_wave := (next.lfstat_wave == 1)]
+	sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , EE_wave := (Eend_wave == T | Estart_wave==T)]
+	sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 & EEmon==4, EE_wave := (Eend_wave == T | next.Estart_wave==T)]
+}
 if(max_wavefreq==1){
-	
+	sipp_wave[last.lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := (last.job_wave != next.job_wave) ] #& (last.job_wave != next.job_wave)
+	sipp_wave[is.na(last.lfstat_wave) == T & is.na(lfstat_wave) == F &
+			  	next.lfstat_wave == 1 , jobchng_wave := (last.job_wave != next.job_wave) ] #in case it's the first observation
+	sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] 
 }else{
+	sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := (job_wave != next.job_wave) ] #& (last.job_wave != next.job_wave)
 	sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] #knocks out ~5% of the changes
 }
 
@@ -498,12 +504,14 @@ sipp_wave[is.na(ustintid_wave)|ustintid_wave==0 , recIndic2_stint := recIndic2_w
 sipp_wave[is.finite(ustintid_wave), recIndic2_stint := any(recIndic2_wave,na.rm=T), by=list(id,ustintid_wave)]
 
 #correct for w/in wave transitions
-sipp_wave[ , next.EEmon := shift( EEmon, type="lead" )]# adjust because EE_wave will be counted before
+sipp_wave[ , next.EEmon := shift( EEmon, type="lead" ), by=id]# adjust because EE_wave will be counted before
 sipp_wave[ next.EEmon>0 & next.EEmon<4, EEmon := next.EEmon]
-sipp_wave[0< EEmon & EEmon<4 & EE_wave ==T , last.midEE:=T  ]
-sipp_wave[ shift(last.midEE, type="lead")==T, midEE:=T , by = id ]
-sipp_wave[is.na(midEE), midEE:=F]
-sipp_wave[ lfstat_wave==1 & midEE==T, EE_wave:=T ]
+sipp_wave[0< next.EEmon & next.EEmon<4, midEE:=T  ]
+sipp_wave[0< next.EEmon & next.EEmon<4, EE_wave:=T  ]
+# sipp_wave[0< EEmon & EEmon<4 & EE_wave ==T , last.midEE:=T  ]
+# sipp_wave[ shift(last.midEE, type="lead")==T, midEE:=T , by = id ]
+# sipp_wave[is.na(midEE), midEE:=F]
+# sipp_wave[ lfstat_wave==1 & midEE==T, EE_wave:=T ]
 
 sipp_wave[ , next.EUmon := shift( EUmon, type="lead" )]
 sipp_wave[ next.EUmon>0 & next.EUmon<4, EUmon := next.EUmon]

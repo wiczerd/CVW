@@ -128,8 +128,8 @@ if( recall_adj == T){
 
 
 #deal with all of the un-counted transitions:
-DTall[ , EE_max := any(EE,na.rm = T), by=list(wave,id)]
-DTall[ EE_max==T & EE_wave!=T & jobchng_wave==F, EE_wave:=NA]
+# DTall[ , EE_max := any(EE,na.rm = T), by=list(wave,id)]
+# DTall[ EE_max==T & EE_wave!=T & jobchng_wave==F, EE_wave:=NA]
 DTall[ lfstat_wave==2 & next.lfstat_wave==2 & wagechange_wave<0., EU_wave2 := (wagechange_wave<0.)]
 DTall[ lfstat_wave==2 & next.lfstat_wave==2 & wagechange_wave>0., UE_wave2 := (wagechange_wave>0.)]
 DTall[ (lfstat_wave==2 & !is.finite(EU_wave2))|lfstat_wave==1, EU_wave2 := F]
