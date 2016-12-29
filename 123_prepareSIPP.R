@@ -464,6 +464,8 @@ if(max_wavefreq==1){
 	sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] #knocks out ~5% of the changes
 }
 
+sipp_wave[ , difOcc_wave := occ_wave != next.occ_wave]
+
 #fill in occupation over u spells and compute switching
 sipp_wave[ ustintid_wave>0 & UE_wave!=T & EU_wave!=T, occ_wave:=NA]
 sipp_wave[  UE_wave == T & UEmon==4, occ_wave := next.occ_wave]
