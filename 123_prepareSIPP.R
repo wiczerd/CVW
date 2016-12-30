@@ -51,28 +51,28 @@ toKeep <- c("year",
 setwd(datadir)
 
 # 1996 panel
-sipp96 <- read.dta("./sippsets96ABD.dta", convert.factors = FALSE)
+sipp96 <- read.dta("./sippsets96ABDFG.dta", convert.factors = FALSE)
 sipp96 <- sipp96[toKeep]
 sipp96 <- subset(sipp96, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp96 <- data.table(sipp96)
 sipp96$panel <- 1996
 
 # 2001 panel
-sipp01 <- read.dta("./sippsets01ABD.dta", convert.factors = FALSE)
+sipp01 <- read.dta("./sippsets01ABDFG.dta", convert.factors = FALSE)
 sipp01 <- sipp01[toKeep]
 sipp01 <- subset(sipp01, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp01 <- data.table(sipp01)
 sipp01$panel <- 2001
 
 # 2004 panel
-sipp04 <- read.dta("./sippsets04ABD.dta", convert.factors = FALSE)
+sipp04 <- read.dta("./sippsets04ABDFG.dta", convert.factors = FALSE)
 sipp04 <- sipp04[toKeep]
 sipp04 <- subset(sipp04, !is.na(esr) & (age >= 16) & (age <= 65) )
 sipp04 <- data.table(sipp04)
 sipp04$panel <- 2004
 
 # 2008 panel
-sipp08 <- read.dta("./sippsets08ABD.dta", convert.factors = FALSE)
+sipp08 <- read.dta("./sippsets08ABDFG.dta", convert.factors = FALSE)
 sipp08 <- sipp08[toKeep]
 sipp08 <- subset(sipp08, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp08 <- data.table(sipp08)
@@ -420,7 +420,7 @@ if(max_wavefreq ==1){
 sipp_wave <- subset(sipp, seam==T)
 setkey(sipp_wave, id,wave)
 sipp_wave[ , job_wave := job]
-sipp_wave[ , occ_wave := soc2d]
+sipp_wave[ , occ_wave := occ]
 sipp_wave[ , ind_wave := ind]
 
 #sipp_wave[ lfstat_wave==2 | lfstat_wave ==3, job_wave := NA]
@@ -465,11 +465,10 @@ if(max_wavefreq==1){
 }
 
 sipp_wave[ , difOcc_wave := occ_wave != next.occ_wave]
+sipp_wave[ , last.difOcc_wave := last.occ_wave !=occ_wave]
 
 #fill in occupation over u spells and compute switching
 sipp_wave[ ustintid_wave>0 & UE_wave!=T & EU_wave!=T, occ_wave:=NA]
-sipp_wave[  UE_wave == T & UEmon==4, occ_wave := next.occ_wave]
-sipp_wave[  UE_wave == T & UEmon< 4, occ_wave := occ_wave]
 sipp_wave[ ustintid_wave>0 & EU_wave!=T, occ_wave:= Mode(occ_wave) , by=list(id,ustintid_wave)]
 
 sipp_wave[ , next.occ_wave    := shift(occ_wave,type="lead")   , by=id] #recompute now that I've filled back U-spells
