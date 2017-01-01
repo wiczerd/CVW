@@ -111,10 +111,13 @@ DTseam[ , last.wavewage := shift(wavewage, type="lag" ),by=id]
 
 # create wave-level EUE wage change
 # find wage in period of EU and one period after UE
+DTseam[ EU_wave==T , EU_wave_first := is.na(shift(EU_wave)), by=list(id,ustintid_wave)]
+DTseam[ UE_wave==T , UE_wave_last := is.na(shift(UE_wave,type="lead")), by=list(id,ustintid_wave)]
+
 DTseam[EU_wave_first == T, wageAtEU := wavewage]
 DTseam[, wageAtEU := na.locf(wageAtEU, na.rm = F),by=list(ustintid_wave, id)]
-DTseam[UE_wave == T, wageAfterUE :=  next.wavewage]
-DTseam[UE_wave == T, wagechangeEUE_wave := wageAfterUE - wageAtEU]
+DTseam[UE_wave_last == T, wageAfterUE :=  next.wavewage]
+DTseam[UE_wave_last == T, wagechangeEUE_wave := wageAfterUE - wageAtEU]
 DTseam[, wagechangeEUE_wave:= Mode(wagechangeEUE_wave), by=list(ustintid_wave, id)]
 DTseam[ EE_wave==T, wagechangeEUE_wave := wagechange_wave]
 DTseam[ is.na(wagechangeEUE_wave), wagechangeEUE_wave := wagechange_wave]
@@ -135,8 +138,8 @@ DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad2 :=((wagechang
 DTseam[ is.na(wagechange_wave_bad2)  , wagechange_wave_bad2 :=F] 
 
 #wagechange between 2 0's:
-DTseam[lfstat_wave>=2 & next.lfstat_wave>=2  , wagechange_wave_bad := T] 
-DTseam[lfstat_wave>=2 & next.lfstat_wave>=2  , wagechange_wave_bad2:= T] 
+DTseam[lfstat_wave>=2 & next.lfstat_wave>=2 & !(EU_wave==T|UE_wave==T|EE_wave==T) , wagechange_wave_bad := T] 
+DTseam[lfstat_wave>=2 & next.lfstat_wave>=2 & !(EU_wave==T|UE_wave==T|EE_wave==T) , wagechange_wave_bad2:= T] 
 
 # wagechange wave =NA for job changers without a transition
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave_jcbad := T]
@@ -168,10 +171,13 @@ DTseam[ , next.occwage_wave := shift(occwage_wave,type="lead"), by=id]
 DTseam[ switchedOcc_wave==T, occwagechange_wave:= next.occwage_wave-occwage_wave]
 DTseam[ switchedOcc_wave==F, occwagechange_wave:= 0.]
 
-DTseam[EU_wave == T, occwageAtEU := occwage_wave]
+DTseam[ EU_wave==T , EU_wave_first := is.na(shift(EU_wave)), by=list(id,ustintid_wave)]
+DTseam[ UE_wave==T , UE_wave_last := is.na(shift(UE_wave,type="lead")), by=list(id,ustintid_wave)]
+
+DTseam[EU_wave_first == T, occwageAtEU := occwage_wave]
 DTseam[, occwageAtEU := na.locf(occwageAtEU, na.rm = F),by=list(ustintid_wave, id)]
-DTseam[UE_wave == T, occwageAfterUE :=  next.occwage_wave]
-DTseam[UE_wave == T, occwagechangeEUE_wave := occwageAfterUE - occwageAtEU]
+DTseam[UE_wave_last == T, occwageAfterUE :=  next.occwage_wave]
+DTseam[UE_wave_last == T, occwagechangeEUE_wave := occwageAfterUE - occwageAtEU]
 DTseam[, occwagechangeEUE_wave:= Mode(occwagechangeEUE_wave), by=list(ustintid_wave, id)]
 DTseam[ EE_wave==T, occwagechangeEUE_wave:= occwagechange_wave]
 DTseam[ switchedOcc_wave==F, occwagechangeEUE_wave:= 0.]
