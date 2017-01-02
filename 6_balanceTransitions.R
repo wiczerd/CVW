@@ -1,5 +1,5 @@
 # January 22, 2016
-# Balance transitions
+# Balance transitions, knock out recalls and re-weight.
 # 1) 
 library(data.table)
 library(zoo)
@@ -25,32 +25,39 @@ CPSunempdur <- readRDS("./InputData/CPSunempDurDist.RData")
 
 recallRecodeJobID <- function(DF){
 	#this function just uses job ID to identify recalls, and may miss especially long-term when job id can reset.  
-	DF[job> 0 , jobpos := job]
-	DF[lfstat==1 | UE==T , nextjob := shift(jobpos,1,type="lead"), by=id]
-	DF[ is.finite(ustintid) & (lfstat>=2 | EU==T) , nextjob := Mode(nextjob), by=list(id,ustintid)]
-	# will convert all recall stints as lfstat == NA_integer_
-	DF[EU==T , recalled := (jobpos == nextjob) ]
-	DF[is.finite(ustintid) &(EU==T | lfstat>=2 ), recalled:=any(recalled) , by=list(id,ustintid)]
-	DF[EU==T & recalled==T, EU:=NA]
-	DF[UE==T & recalled==T, UE:=NA]
-	DF[lfstat>=2 & recalled==T, lfstat:=NA]
+	# DF[job> 0 , jobpos := job]
+	# DF[lfstat==1 | UE==T , nextjob := shift(jobpos,1,type="lead"), by=id]
+	# DF[ is.finite(ustintid) & (lfstat>=2 | EU==T) , nextjob := Mode(nextjob), by=list(id,ustintid)]
+	# # will convert all recall stints as lfstat == NA_integer_
+	# DF[EU==T , recalled := (jobpos == nextjob) ]
+	# DF[is.finite(ustintid) &(EU==T | lfstat>=2 ), recalled:=any(recalled) , by=list(id,ustintid)]
+	# DF[EU==T & recalled==T, EU:=NA]
+	# DF[UE==T & recalled==T, UE:=NA]
+	# DF[lfstat>=2 & recalled==T, lfstat:=NA]
+	# DF[ , c("jobpos","nextjob"):=NULL]
+	
 	# do it at wave level:
 	DFseam <- DF[seam==T, ]
 	DFseam[job_wave> 0 , jobpos_wave := job_wave]
-	DFseam[ is.finite(ustintid_wave), jobpos_wave := Mode(jobpos_wave)]
-	DFseam[ , next.jobpos_wave := shift(jobpos_wave, type="lead")]
-	DFseam[ UE_wave==T, recalled_wave := jobpos_wave== next.jobpos_wave]
-	DFseam[ is.finite(ustintid_wave), recalled_wave := any(recalled_wave,na.rm = T), by=list(id,ustintid_wave)]
-	DFseam[ is.finite(ustintid_wave) & is.na(recalled_wave), recalled_wave := F]
+	DFseam[ , next.jobpos_wave := shift(jobpos_wave, type="lead"),by=id]
+	DFseam[ ustintid_wave>0 & UE_wave!=T, next.jobpos_wave:=NA]
+	DFseam[ ustintid_wave>0 , next.jobpos_wave:=Mode(next.jobpos_wave), by=list(id,ustintid_wave)]
+	DFseam[ EU_wave==T, recalled_wave := jobpos_wave== next.jobpos_wave]
+	DFseam[ ustintid_wave>0, recalled_wave := any(recalled_wave,na.rm = T), by=list(id,ustintid_wave)]
+	DFseam[ ustintid_wave>0 & is.na(recalled_wave), recalled_wave := F]
 
-	DFseam[EU_wave==T & recalled_wave==T, EU_wave:=NA]
-	DFseam[UE_wave==T & recalled_wave==T, UE_wave:=NA]
-	DFseam[lfstat_wave>=2 & recalled_wave==T, lfstat_wave:=NA]
+	DFseam <- subset(DFseam, select= c("recalled_wave","id","wave"))
 	
 	DF<- merge(DF,DFseam,by=c("id","wave"),all.x=T)
+	DF[is.finite(ustintid) &(EU==T | lfstat>=2 ), recalled:=any(recalled_wave) , by=list(id,ustintid)]
+	DF[EU==T & recalled==T, EU:=NA]
+	DF[UE==T & recalled==T, UE:=NA]
+	DF[lfstat>=2 & recalled==T, lfstat:=NA]
 	
-
-	DF[ , c("jobpos","jobpos_wave","nextjob","next.jobpos_wave"):=NULL]
+	DF[EU_wave==T & recalled_wave==T, EU_wave:=NA]
+	DF[UE_wave==T & recalled_wave==T, UE_wave:=NA]
+	DF[lfstat_wave>=2 & recalled_wave==T, lfstat_wave:=NA]
+	return(DF)
 }
 
 recallRecodeShorTerm <- function(DF){
@@ -109,8 +116,7 @@ EEreadweight_wave <- DTall[EE_wave==T & !is.na(wagechange_wave), sum(wpfinwgt, n
 
 if( recall_adj == T){
 	
-	DTall[lfstat==2, recalled:= F ]
-	recallRecodeJobID(DTall)
+	DTall <-recallRecodeJobID(DTall)
 	
 	UEnorecallweight <- DTall[UE==T & !is.na(wagechange_all) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
 	EUnorecallweight <- DTall[EU==T & !is.na(wagechange_all) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
