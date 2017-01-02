@@ -136,8 +136,8 @@ if( recall_adj == T){
 #deal with all of the un-counted transitions:
 # DTall[ , EE_max := any(EE,na.rm = T), by=list(wave,id)]
 # DTall[ EE_max==T & EE_wave!=T & jobchng_wave==F, EE_wave:=NA]
-DTall[ lfstat_wave==2 & next.lfstat_wave==2 & wagechange_wave<0., EU_wave2 := (wagechange_wave<0.)]
-DTall[ lfstat_wave==2 & next.lfstat_wave==2 & wagechange_wave>0., UE_wave2 := (wagechange_wave>0.)]
+DTall[ lfstat_wave==2 & next.lfstat_wave==2 & !(EU_wave==T|UE_wave==T) & wagechange_wave<0., EU_wave2 := (wagechange_wave<0.)]
+DTall[ lfstat_wave==2 & next.lfstat_wave==2 & !(EU_wave==T|UE_wave==T) & wagechange_wave>0., UE_wave2 := (wagechange_wave>0.)]
 DTall[ (lfstat_wave==2 & !is.finite(EU_wave2))|lfstat_wave==1, EU_wave2 := F]
 DTall[ (lfstat_wave==2 & !is.finite(UE_wave2))|lfstat_wave==1, UE_wave2 := F]
 
@@ -203,9 +203,18 @@ for(ri in c(T,F)){
 		DTseam[ recIndic_wave==ri & UE_wave==T & switchedOcc_wave==si & !is.na(wagechange_wave), cycweight := cycweight*wt0/wt1]
 	}
 }
+# need to update wages for the midEU, midUE to be 1/2 weight
+
+DTseam[ , last.midEU:= shift(midEU, type="lag"), by=id]
+DTseam[ , last.midEE:= shift(midEE, type="lag"), by=id]
+DTseam[ , last.midUE:= shift(midUE, type="lag"), by=id]
+DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , truncweight := 0.5*truncweight]
+DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , cycweight   := 0.5*cycweight]
 
 # should I also correct for left and right truncation?
 DTseam[ , cyctruncweight := cycweight*truncweight/perwt]
+
+
 
 if( dur_adj == T){
 	DTseam[ , max.unempdur:= maxunempdur_wave]
@@ -250,14 +259,12 @@ if( dur_adj == T){
 #add in the EU_wave2, UE_wave2 if associated with neighboring transition
 #this corrects for transitions midway through a wave
 
-DTseam[ , next.EU_wave:= shift(EU_wave,type="lead"), by=id]
-DTseam[ , last.UE_wave:= shift(UE_wave,type="lag"), by=id]
-
-DTseam[ next.UE_wave==T & UE_wave2==T, UE_wave := T]
-DTseam[ last.UE_wave==T & EU_wave2==T, EU_wave := T]
-
-
-DTseam[ (EU_wave==T & EU_wave2==T) | (UE_wave==T & UE_wave2==T), EUUE_inner2:=T]
+# DTseam[ , next.EU_wave:= shift(EU_wave,type="lead"), by=id]
+# DTseam[ , last.UE_wave:= shift(UE_wave,type="lag"), by=id]
+# 
+# DTseam[ next.UE_wave==T & UE_wave2==T, UE_wave := T]
+# DTseam[ last.UE_wave==T & EU_wave2==T, EU_wave := T]
+# DTseam[ (EU_wave==T & EU_wave2==T) | (UE_wave==T & UE_wave2==T), EUUE_inner2:=T]
 
 saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))
 

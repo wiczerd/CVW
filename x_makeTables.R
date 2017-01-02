@@ -30,7 +30,7 @@ toKeep_wave <- c("switchedOcc_wave",
             "ageGrp","HSCol",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint",
             "wagechange_all","wagechange_wave","wagechangeEUE_wave",
-            "wagechange_wave_bad","wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad","EUUE_inner2",
+            "wagechange_wave_bad","wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad",
             "EE_wave","EU_wave","UE_wave",
             "unrt","wpfinwgt","perwt","cycweight","truncweight",
 			"lfstat_wave","next.lfstat_wave","wave","id")
@@ -46,7 +46,7 @@ DTseam[wagechange_wave_bad2==F & wagechange_wave_low==F & wagechange_wave_high==
 	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & 
 	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
 
-DTseam[wagechange_wave_bad2==F & EUUE_inner2==F&
+DTseam[wagechange_wave_bad2==F &
 	   	(EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
 DTseam[changer==T, stayer:= F]
 DTseam[stayer ==T, changer:=F]
