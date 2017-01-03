@@ -647,7 +647,6 @@ ggsave(filename = paste0(figuredir,"/UE_wave.eps"),height= 5,width=10)
 ggsave(filename = paste0(figuredir,"/UE_wave.png"),height= 5,width=10)
 
 
-
 EE_wave <- sipp[lfstat_wave==1 & next.lfstat_wave==1 , .(EE_wave = weighted.mean(EE_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(EE_wave, aes(date, EE_wave, color = panel, group = panel)) +
 	geom_point() +

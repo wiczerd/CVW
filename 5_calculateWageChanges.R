@@ -152,9 +152,11 @@ DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_low :=wavewage<lo
 highwageqtls= DTseam[ lfstat_wave==1, quantile(wavewage, na.rm = T, probs=c(.95,.98,.99))]
 DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_high :=wavewage>highwageqtls[2] | next.wavewage>highwageqtls[2] ]
 
+# take out the early attrition
+DTseam[ , panelmaxmis:= max(maxmis,na.rm = T), by=panel]
+DTseam[ , pctmaxmis:= maxmis/panelmaxmis]
 
-
-DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_bad","wagechange_wave_jcbad","wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high"
+DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_bad","wagechange_wave_jcbad","wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high","pctmaxmis"
 								  ,"wagechangeEUE_wave","next.wavewage","last.wagechange_wave","next.wagechange_wave","id","wave"))
 DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
@@ -187,4 +189,8 @@ DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
 saveRDS(DTall, paste0(datadir,"/DTall_5.RData"))
 
+wc_wave <- DTall[seam==T & lfstat_wave==1 & next.lfstat_wave==1 & wagechange_wave_bad==F, .(wc_wave = weighted.mean(wagechange_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+ggplot(wc_wave, aes(date, wc_wave, color = panel, group = panel)) +
+	geom_point() +
+	geom_line() +xlab("") + ylab("mean wage change, stayers wave-frequency")
 

@@ -204,13 +204,17 @@ for(ri in c(T,F)){
 	}
 }
 # need to update wages for the midEU, midUE to be 1/2 weight
-
 DTseam[ , last.midEU:= shift(midEU, type="lag"), by=id]
 DTseam[ , last.midEE:= shift(midEE, type="lag"), by=id]
 DTseam[ , last.midUE:= shift(midUE, type="lag"), by=id]
+chngwt1 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(truncweight,na.rm = T)]
 DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , truncweight := 0.5*truncweight]
+chngwt2 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(truncweight,na.rm = T)]
+DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , truncweight := chngwt1/chngwt2*truncweight]
+chngwt1 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(cycweight,na.rm = T)]
 DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , cycweight   := 0.5*cycweight]
-
+chngwt2 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(cycweight,na.rm = T)]
+DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , cycweight := chngwt1/chngwt2*cycweight]
 # should I also correct for left and right truncation?
 DTseam[ , cyctruncweight := cycweight*truncweight/perwt]
 
