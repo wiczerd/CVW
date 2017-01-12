@@ -145,6 +145,8 @@ DTseam[lfstat_wave>=2 & next.lfstat_wave>=2 & !(EU_wave==T|UE_wave==T|EE_wave==T
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave_jcbad := T]
 DTseam[is.na(wagechange_wave_jcbad )==T , wagechange_wave_jcbad := F]
 
+#wagechanges in the crazy 2004 months:
+
 
 #lowest/highest wages out:
 lowwageqtls= DTseam[ lfstat_wave==1, quantile(wavewage, na.rm = T, probs=c(.01,.02,.05))]
