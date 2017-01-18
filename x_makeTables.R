@@ -15,6 +15,18 @@ datadir = "~/workspace/CVW/R/Results"
 outputdir = "~/workspace/CVW/R/Figures"
 setwd(wd0)
 
+wtd.skewness <- function(xt, wt){  
+	wt  <- wt[is.na(xt)==F]
+	xt      <- xt[is.na(xt)==F]
+	(sum( wt*(xt-wtd.mean(xt,weights=wt))^3 ) / sum(wt) ) / wtd.var(xt,weights=wt)^(1.5)
+}
+wtd.kurtosis <- function(xt, wt){  
+	wt  <- wt[is.na(xt)==F]
+	xt      <- xt[is.na(xt)==F]
+	(sum( wt*(xt-wtd.mean(xt,weights=wt))^4 ) / sum(wt) ) / wtd.var(xt,weights=wt)^(2) - 3.
+}
+
+
 CPSunempRt <- readRDS("./InputData/CPSunempRt.RData")
 CPSunempRt$unrt <- CPSunempRt$unrt/100
 
@@ -79,7 +91,7 @@ if(demolbl==1){
 tabqtls <- c(.1,.25,.5,.75,.9)
 tN <- (length(tabqtls)+1)
 
-
+# wage quantiles ---------------------------------------------------------------
 tab_wavedist <- array(0., dim=c(9,length(tabqtls)+1))
 tab_wavedist[1,1]    <- DTseam[(stayer|changer)&demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
 tab_wavedist[1,2:tN] <- DTseam[(stayer|changer)&demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
@@ -120,6 +132,73 @@ if(demolbl>=1 & demolbl<=7){
 	print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)), 
 		  add.to.row=rowtitles, file=paste0(outputdir,"/wavedist.tex"))
 }
+
+#Wage moments --------------------------------------------------------
+
+
+tab_wavemoments <- array(0., dim=c(9,5))
+tab_wavemoments[1,1]    <- DTseam[(stayer|changer)&demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
+tab_wavemoments[1,2]    <- DTseam[(stayer|changer)&demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
+tab_wavemoments[1,3]    <- DTseam[(stayer|changer)&demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
+tab_wavemoments[1,4]    <- DTseam[(stayer|changer)&demo==T,wtd.skewness(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+tab_wavemoments[1,5]    <- DTseam[(stayer|changer)&demo==T,wtd.kurtosis(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+tab_wavemoments[2,1]    <- DTseam[  stayer ==T    &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+tab_wavemoments[2,2]    <- DTseam[  stayer ==T    &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
+tab_wavemoments[2,3]    <- DTseam[  stayer ==T    &demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
+tab_wavemoments[2,4]    <- DTseam[  stayer ==T    &demo==T,wtd.skewness(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+tab_wavemoments[2,5]    <- DTseam[  stayer ==T    &demo==T,wtd.kurtosis(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+tab_wavemoments[3,1]    <- DTseam[  changer==T    &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+tab_wavemoments[3,2]    <- DTseam[  changer==T    &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
+tab_wavemoments[3,3]    <- DTseam[  changer==T    &demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
+tab_wavemoments[3,4]    <- DTseam[  changer==T    &demo==T,wtd.skewness(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+tab_wavemoments[3,5]    <- DTseam[  changer==T    &demo==T,wtd.kurtosis(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+
+#expansion/recession
+for(rI in c(T,F)){
+	rix = rI*3+3
+	tab_wavemoments[1+rix,1]    <- DTseam[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
+	tab_wavemoments[1+rix,2]    <- DTseam[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
+	tab_wavemoments[1+rix,3]    <- DTseam[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
+	tab_wavemoments[1+rix,4]    <- DTseam[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,wtd.skewness(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavemoments[1+rix,5]    <- DTseam[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,wtd.kurtosis(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavemoments[2+rix,1]    <- DTseam[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavemoments[2+rix,2]    <- DTseam[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
+	tab_wavemoments[2+rix,3]    <- DTseam[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
+	tab_wavemoments[2+rix,4]    <- DTseam[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,wtd.skewness(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavemoments[2+rix,5]    <- DTseam[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,wtd.kurtosis(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavemoments[3+rix,1]    <- DTseam[eval(as.name(recDef)) == rI &   changer==T    &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavemoments[3+rix,2]    <- DTseam[eval(as.name(recDef)) == rI &   changer==T    &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
+	tab_wavemoments[3+rix,3]    <- DTseam[eval(as.name(recDef)) == rI &   changer==T    &demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
+	tab_wavemoments[3+rix,4]    <- DTseam[eval(as.name(recDef)) == rI &   changer==T    &demo==T,wtd.skewness(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavemoments[3+rix,5]    <- DTseam[eval(as.name(recDef)) == rI &   changer==T    &demo==T,wtd.kurtosis(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	
+}
+
+#output it to tables
+dat_wavemoments <- tab_wavemoments
+tab_wavemoments <- data.table(tab_wavemoments)
+names(tab_wavemoments) <- c("Mean","Median","Std Dev", "Skew", "Kurtosis")
+#rownames(tab_wavedist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
+rnames <- c("All\ Workers",      "Same\ Job",     "Chng\ Job",
+			"All\ Workers\ ",   "Same\ Job\ ",  "Chng\ Job\ ",
+			"All\ Workers\ \ ", "Same\ Job\ \ ","Chng\ Job\ \ ")
+rownames(tab_wavemoments) <- rnames
+
+rowtitles <- list( pos=list(0,3,6), command=c("\\hline  \\color{Maroon}{1996-2012} &  & & & & & \\\\ \n",
+											  "\\hline \\hline   \\color{Maroon}{Expansion} &  & & & & & \\\\  \n", 
+											  "\\hline \\hline   \\color{Maroon}{Recession} &  & & & & & \\\\  \n")  )
+tab_wavemoments <- xtable(tab_wavemoments, digits=2, 
+					   align="l|l|lllll", caption="Distribution of earnings changes \\label{tab:wavedist}")
+if(demolbl>=1 & demolbl<=7){
+	print(tab_wavemoments,include.rownames=T, hline.after= c(nrow(tab_wavemoments)), 
+		  add.to.row=rowtitles, file=paste0(outputdir,"/wavedist",demotxt[demolbl],".tex"))
+}else{
+	print(tab_wavemoments,include.rownames=T, hline.after= c(nrow(tab_wavemoments)), 
+		  add.to.row=rowtitles, file=paste0(outputdir,"/wavedist.tex"))
+}
+
+
+#Variance decomp -----------------------------------------------
 
 tab_wavevardec <- array(NA_real_,dim=c(2,3))
 

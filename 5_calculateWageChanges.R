@@ -146,6 +146,7 @@ DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave_j
 DTseam[is.na(wagechange_wave_jcbad )==T , wagechange_wave_jcbad := F]
 
 #wagechanges in the crazy 2004 months:
+DTseam[ wave>=7 & panel==2004, wagechange_wave_2004bad :=T]
 
 
 #lowest/highest wages out:
@@ -191,7 +192,7 @@ DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
 saveRDS(DTall, paste0(datadir,"/DTall_5.RData"))
 
-wc_wave <- DTall[seam==T & lfstat_wave==1 & next.lfstat_wave==1 & wagechange_wave_bad==F, .(wc_wave = weighted.mean(wagechange_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+wc_wave <- DTall[seam==T & lfstat_wave==1 & next.lfstat_wave==1 & wagechange_wave_bad==F & wc_wave<0.2, .(wc_wave = weighted.mean(wagechange_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(wc_wave, aes(date, wc_wave, color = panel, group = panel)) +
 	geom_point() +
 	geom_line() +xlab("") + ylab("mean wage change, stayers wave-frequency")
