@@ -55,7 +55,7 @@ DTseam <- DTseam[, toKeep_wave, with = FALSE]
 DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
 DTseam<-DTseam[ is.finite(EE_wave)&is.finite(EU_wave)&is.finite(UE_wave), ]
 DTseam[wagechange_wave_bad2==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &
-	   	!(EU_wave==T|UE_wave==T|EE_wave==T)  &
+	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & 
 	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
 
 DTseam[wagechange_wave_bad2==F  &
@@ -184,11 +184,11 @@ rnames <- c("All\ Workers",      "Same\ Job",     "Chng\ Job",
 			"All\ Workers\ \ ", "Same\ Job\ \ ","Chng\ Job\ \ ")
 rownames(tab_wavemoments) <- rnames
 
-rowtitles <- list( pos=list(0,3,6), command=c("\\hline  \\color{Maroon}{1996-2012} &  & & & & & \\\\ \n",
-											  "\\hline \\hline   \\color{Maroon}{Expansion} &  & & & & & \\\\  \n", 
-											  "\\hline \\hline   \\color{Maroon}{Recession} &  & & & & & \\\\  \n")  )
+rowtitles <- list( pos=list(0,3,6), command=c("\\hline  \\color{Maroon}{1996-2012} &  \\multicolumn{5}{|c|}{} \\\\ \n",
+											  "\\hline \\hline   \\color{Maroon}{Expansion} &  \\multicolumn{5}{|c|}{}  \\\\  \n", 
+											  "\\hline \\hline   \\color{Maroon}{Recession} &  \\multicolumn{5}{|c|}{}  \\\\  \n")  )
 tab_wavemoments <- xtable(tab_wavemoments, digits=2, 
-					   align="l|l|lllll", caption="Distribution of earnings changes \\label{tab:wavedist}")
+					   align="l|lllll", caption="Moments of earnings change distribution \\label{tab:wavedist}")
 if(demolbl>=1 & demolbl<=7){
 	print(tab_wavemoments,include.rownames=T, hline.after= c(nrow(tab_wavemoments)), 
 		  add.to.row=rowtitles, file=paste0(outputdir,"/wavemoments",demotxt[demolbl],".tex"))
