@@ -17,9 +17,18 @@ setwd(wd0)
 
 wtd.skewness <- function(xt, wt){  
 	wt  <- wt[is.na(xt)==F]
-	xt      <- xt[is.na(xt)==F]
+	xt  <- xt[is.na(xt)==F]
 	(sum( wt*(xt-wtd.mean(xt,weights=wt))^3 ) / sum(wt) ) / wtd.var(xt,weights=wt)^(1.5)
 }
+wtd.GroenveldMeeden <- function(xt, wt){  
+	wt  <- wt[is.na(xt)==F]
+	xt  <- xt[is.na(xt)==F]
+	md  <- wtd.quantile(xt,weights=wt,probs = 0.5,na.rm = T)
+	mn  <- wtd.mean(xt,weights=wt)
+	(mn-md)/wtd.mean(abs(xt - md),weights=wt)
+}
+
+
 wtd.kurtosis <- function(xt, wt){  
 	wt  <- wt[is.na(xt)==F]
 	xt      <- xt[is.na(xt)==F]
@@ -32,10 +41,12 @@ CPSunempRt$unrt <- CPSunempRt$unrt/100
 
 recDef <- "recIndic_wave"
 wt <- "truncweight"
-wc <- "wagechange_wave"
+wc <- "wagechangeEUE_wave"
 
-demolbl <- 0
+demolbl <- 0 #or choose number from categories in demotxt
 demotxt <- c("Young", "Prime","Old","HS","Col","Male","Female")
+
+
 ##########################################################################################
 # By wave -----------------------
 toKeep_wave <- c("switchedOcc_wave",
@@ -123,14 +134,20 @@ rownames(tab_wavedist) <- rnames
 rowtitles <- list( pos=list(0,3,6), command=c("\\hline  \\color{Maroon}{1996-2012} &  & & & & & \\\\ \n",
                                               "\\hline \\hline   \\color{Maroon}{Expansion} &  & & & & & \\\\  \n", 
                                               "\\hline \\hline   \\color{Maroon}{Recession} &  & & & & & \\\\  \n")  )
+
+if(wc == "wagechangeEUE_wave"){
+	nametab <- "wavedistEUE"
+}else{
+	nametab <- "wavedist"
+}
 tab_wavedist <- xtable(tab_wavedist, digits=2, 
-                       align="l|l|lllll", caption="Distribution of earnings changes \\label{tab:wavedist}")
+                       align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"}"))
 if(demolbl>=1 & demolbl<=7){
 	print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)), 
-		add.to.row=rowtitles, file=paste0(outputdir,"/wavedist",demotxt[demolbl],".tex"))
+		add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],".tex"))
 }else{
 	print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)), 
-		  add.to.row=rowtitles, file=paste0(outputdir,"/wavedist.tex"))
+		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,".tex"))
 }
 
 #Wage moments --------------------------------------------------------
@@ -140,17 +157,17 @@ tab_wavemoments <- array(0., dim=c(9,5))
 tab_wavemoments[1,1]    <- DTseam[(stayer|changer)&demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
 tab_wavemoments[1,2]    <- DTseam[(stayer|changer)&demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
 tab_wavemoments[1,3]    <- DTseam[(stayer|changer)&demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
-tab_wavemoments[1,4]    <- DTseam[(stayer|changer)&demo==T,wtd.skewness(eval(as.name(wc)),eval(as.name(wt)))]
+tab_wavemoments[1,4]    <- DTseam[(stayer|changer)&demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)))]
 tab_wavemoments[1,5]    <- DTseam[(stayer|changer)&demo==T,wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
 tab_wavemoments[2,1]    <- DTseam[  stayer ==T    &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 tab_wavemoments[2,2]    <- DTseam[  stayer ==T    &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
 tab_wavemoments[2,3]    <- DTseam[  stayer ==T    &demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
-tab_wavemoments[2,4]    <- DTseam[  stayer ==T    &demo==T,wtd.skewness(eval(as.name(wc)),eval(as.name(wt)))]
+tab_wavemoments[2,4]    <- DTseam[  stayer ==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)))]
 tab_wavemoments[2,5]    <- DTseam[  stayer ==T    &demo==T,wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
 tab_wavemoments[3,1]    <- DTseam[  changer==T    &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 tab_wavemoments[3,2]    <- DTseam[  changer==T    &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
 tab_wavemoments[3,3]    <- DTseam[  changer==T    &demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
-tab_wavemoments[3,4]    <- DTseam[  changer==T    &demo==T,wtd.skewness(eval(as.name(wc)),eval(as.name(wt)))]
+tab_wavemoments[3,4]    <- DTseam[  changer==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)))]
 tab_wavemoments[3,5]    <- DTseam[  changer==T    &demo==T,wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
 
 #expansion/recession
@@ -159,17 +176,17 @@ for(rI in c(T,F)){
 	tab_wavemoments[1+rix,1]    <- DTseam[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
 	tab_wavemoments[1+rix,2]    <- DTseam[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
 	tab_wavemoments[1+rix,3]    <- DTseam[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
-	tab_wavemoments[1+rix,4]    <- DTseam[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,wtd.skewness(eval(as.name(wc)),eval(as.name(wt)))]
+	tab_wavemoments[1+rix,4]    <- DTseam[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)))]
 	tab_wavemoments[1+rix,5]    <- DTseam[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
 	tab_wavemoments[2+rix,1]    <- DTseam[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 	tab_wavemoments[2+rix,2]    <- DTseam[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
 	tab_wavemoments[2+rix,3]    <- DTseam[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
-	tab_wavemoments[2+rix,4]    <- DTseam[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,wtd.skewness(eval(as.name(wc)),eval(as.name(wt)))]
+	tab_wavemoments[2+rix,4]    <- DTseam[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)))]
 	tab_wavemoments[2+rix,5]    <- DTseam[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
 	tab_wavemoments[3+rix,1]    <- DTseam[eval(as.name(recDef)) == rI &   changer==T    &demo==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 	tab_wavemoments[3+rix,2]    <- DTseam[eval(as.name(recDef)) == rI &   changer==T    &demo==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
 	tab_wavemoments[3+rix,3]    <- DTseam[eval(as.name(recDef)) == rI &   changer==T    &demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
-	tab_wavemoments[3+rix,4]    <- DTseam[eval(as.name(recDef)) == rI &   changer==T    &demo==T,wtd.skewness(eval(as.name(wc)),eval(as.name(wt)))]
+	tab_wavemoments[3+rix,4]    <- DTseam[eval(as.name(recDef)) == rI &   changer==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)))]
 	tab_wavemoments[3+rix,5]    <- DTseam[eval(as.name(recDef)) == rI &   changer==T    &demo==T,wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
 	
 }
@@ -187,14 +204,20 @@ rownames(tab_wavemoments) <- rnames
 rowtitles <- list( pos=list(0,3,6), command=c("\\hline  \\color{Maroon}{1996-2012} &  \\multicolumn{5}{|c|}{} \\\\ \n",
 											  "\\hline \\hline   \\color{Maroon}{Expansion} &  \\multicolumn{5}{|c|}{}  \\\\  \n", 
 											  "\\hline \\hline   \\color{Maroon}{Recession} &  \\multicolumn{5}{|c|}{}  \\\\  \n")  )
+
+if(wc == "wagechangeEUE_wave"){
+	nametab <- "wavemomentsEUE"
+}else{
+	nametab <- "wavemoments"
+}
 tab_wavemoments <- xtable(tab_wavemoments, digits=2, 
-					   align="l|lllll", caption="Moments of earnings change distribution \\label{tab:wavedist}")
+					   align="l|lllll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"}"))
 if(demolbl>=1 & demolbl<=7){
 	print(tab_wavemoments,include.rownames=T, hline.after= c(nrow(tab_wavemoments)), 
-		  add.to.row=rowtitles, file=paste0(outputdir,"/wavemoments",demotxt[demolbl],".tex"))
+		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],".tex"))
 }else{
 	print(tab_wavemoments,include.rownames=T, hline.after= c(nrow(tab_wavemoments)), 
-		  add.to.row=rowtitles, file=paste0(outputdir,"/wavemoments.tex"))
+		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,".tex"))
 }
 
 
