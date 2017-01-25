@@ -676,6 +676,11 @@ U_wave <- sipp[ , .(U_wave =  weighted.mean(lfstat_wave==2, wpfinwgt, na.rm = TR
 ggplot(U_wave, aes(date, U_wave, color = panel, group = panel)) +
 	geom_point() + ylim(c(0,.10))+
 	geom_line()
+ui_wave <- sipp[ lfstat==2, .(ui_wave = weighted.mean((ui_a>0), wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+ggplot(ui_wave, aes(date, ui_wave, color = panel, group = panel)) +
+	geom_point() + ylim(c(0,.40))+
+	geom_line()
+
 
 swOc_wave <- sipp[ (EE_wave==T|EU_wave==T|UE_wave==T) & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(swOc_wave, aes(date, swOc, color = panel, group = panel)) +

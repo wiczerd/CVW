@@ -46,6 +46,8 @@ wc <- "wagechangeEUE_wave"
 demolbl <- 0 #or choose number from categories in demotxt
 demotxt <- c("Young", "Prime","Old","HS","Col","Male","Female")
 
+bootse <- T #compute bootstrapped standard errors or no?
+seedint = 941987
 
 ##########################################################################################
 # By wave -----------------------
@@ -59,7 +61,6 @@ toKeep_wave <- c("switchedOcc_wave",
 			"lfstat_wave","next.lfstat_wave","wave","id")
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
-
 
 # select toKeep columns only
 DTseam <- DTseam[, toKeep_wave, with = FALSE]
@@ -91,6 +92,16 @@ if(demolbl==1){
 }else{
 	DTseam[(stayer==T|changer==T), demo := T]
 }
+
+if(bootse == T){
+	set.seed(seedint)
+	#draw the sample
+	Nsim = 100
+	nsampE = nrow(DTseam[eval(as.name(recDef)) == F ])
+	nsampR = nrow(DTseam[eval(as.name(recDef)) == T ])
+	nsamp  = nsampR+nsampE
+}
+
 
 # how to weights EUE's? 2x for an EUUE?
 #if(wc == "wagechangeEUE_wave"){
