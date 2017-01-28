@@ -108,41 +108,43 @@ tab_wavedist <- array(0., dim=c(9,length(tabqtls)+1))
 if(bootse == T){
 	set.seed(seedint)
 	#draw the sample
-	Nsim = 100
+	Nsim = 50
 	nsampE = nrow(DTseam[eval(as.name(recDef)) == F ])
 	nsampR = nrow(DTseam[eval(as.name(recDef)) == T ])
 	nsamp  = nsampR+nsampE
-	se_wavedist <- array(0.,dim = c(9,length(tabqtls)+1),Nsim)
+	se_wavedist <- array(0.,dim = c(9,length(tabqtls)+1,Nsim))
 }
 
 for( si in seq(1,bootse*Nsim+1) ){
 	if(si>1){
-		
+		DThr <- DTseam[ sample(nsamp,nsamp,replace=T,prob=eval(as.name(wt)))]
 	}else{
-		DTseam[ , samp:=T]	
+		DThr <- DTseam
 	}
-	tab_wavedist[1,1]    <- DTseam[(stayer|changer)&demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
-	tab_wavedist[1,2:tN] <- DTseam[(stayer|changer)&demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-	tab_wavedist[2,1]    <- DTseam[  stayer ==T    &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-	tab_wavedist[2,2:tN] <- DTseam[  stayer ==T    &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-	tab_wavedist[3,1]    <- DTseam[  changer==T    &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-	tab_wavedist[3,2:tN] <- DTseam[  changer==T    &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+	tab_wavedist[1,1]    <- DThr[(stayer|changer)&demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
+	tab_wavedist[1,2:tN] <- DThr[(stayer|changer)&demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+	tab_wavedist[2,1]    <- DThr[  stayer ==T    &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavedist[2,2:tN] <- DThr[  stayer ==T    &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+	tab_wavedist[3,1]    <- DThr[  changer==T    &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+	tab_wavedist[3,2:tN] <- DThr[  changer==T    &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 	#expansion/recession
 	for(rI in c(T,F)){
 		rix = rI*3+3
-		tab_wavedist[1+rix,1]   <- DTseam[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavedist[1+rix,2:tN]<- DTseam[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-		tab_wavedist[2+rix,1]   <- DTseam[eval(as.name(recDef)) == rI & stayer ==T      &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavedist[2+rix,2:tN]<- DTseam[eval(as.name(recDef)) == rI & stayer ==T      &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-		tab_wavedist[3+rix,1]   <- DTseam[eval(as.name(recDef)) == rI & changer==T      &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavedist[3+rix,2:tN]<- DTseam[eval(as.name(recDef)) == rI & changer==T      &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_wavedist[1+rix,1]   <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavedist[1+rix,2:tN]<- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_wavedist[2+rix,1]   <- DThr[eval(as.name(recDef)) == rI & stayer ==T      &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavedist[2+rix,2:tN]<- DThr[eval(as.name(recDef)) == rI & stayer ==T      &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_wavedist[3+rix,1]   <- DThr[eval(as.name(recDef)) == rI & changer==T      &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavedist[3+rix,2:tN]<- DThr[eval(as.name(recDef)) == rI & changer==T      &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 	}
 	if(si>1){
 		se_wavedist[,,si-1] = tab_wavedist
+	}else{
+		dat_wavedist <- tab_wavedist	
 	}
 }
 #output it to tables
-dat_wavedist <- tab_wavedist
+tab_wavedist <- dat_wavedist
 tab_wavedist <- data.table(tab_wavedist)
 names(tab_wavedist) <- c("Mean",as.character( tabqtls))
 #rownames(tab_wavedist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
@@ -168,6 +170,18 @@ if(demolbl>=1 & demolbl<=7){
 }else{
 	print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)), 
 		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,".tex"))
+}
+tab_wavedistci <- array(0.,dim=c(2*nrow(tab_wavedist),2*ncol(tab_wavedist)))
+tab_wavedistse <- array(0.,dim=c(2*nrow(tab_wavedist),ncol(tab_wavedist)))
+if(bootse == T){
+	for( ri in seq(0,nrow(tab_wavedist)-1) ){
+		for(ci in seq( 0,ncol(tab_wavedist)-1 )){
+			tab_wavedistci[ ri*2+1,ci*2+1 ] <- tab_wavedist[ri+1,ci+1]
+			tab_wavedistci[ ri*2+2,(ci*2+1):(ci*2+2) ] <- quantile(se_wavedist[ri+1,ci+1, ], probs=c(0.05,0.95))
+			tab_wavedistse[ ri*2+1,ci+1 ] <- tab_wavedist[ri+1,ci+1]
+			tab_wavedistse[ ri*2+2,ci+1 ] <- var(se_wavedist[ri+1,ci+1, ])^0.5
+		}
+	}
 }
 
 #Wage moments --------------------------------------------------------
