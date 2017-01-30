@@ -15,25 +15,28 @@ datadir = "~/workspace/CVW/R/Results"
 outputdir = "~/workspace/CVW/R/Figures"
 setwd(wd0)
 
+wtd.mad <- function(xt,wt,md=-Inf){
+	wt  <- wt[is.na(xt)==F]
+	xt  <- xt[is.na(xt)==F]
+	if(is.finite(md)==F){
+		md  <- wtd.quantile(xt,weights=wt,probs = 0.5,na.rm = T)
+	}
+	wtd.quantile(abs(xt - md),weights=wt,probs = 0.5,na.rm = T)
+}
 wtd.skewness <- function(xt, wt){  
 	wt  <- wt[is.na(xt)==F]
 	xt  <- xt[is.na(xt)==F]
 	(sum( wt*(xt-wtd.mean(xt,weights=wt))^3 ) / sum(wt) ) / wtd.var(xt,weights=wt)^(1.5)
 }
-wtd.GroenveldMeeden <- function(xt, wt){  
+wtd.GroenveldMeeden <- function(xt, wt,md=-Inf){  
 	wt  <- wt[is.na(xt)==F]
 	xt  <- xt[is.na(xt)==F]
-	md  <- wtd.quantile(xt,weights=wt,probs = 0.5,na.rm = T)
+	if(is.finite(md)==F){
+		md  <- wtd.quantile(xt,weights=wt,probs = 0.5,na.rm = T)
+	}
 	mn  <- wtd.mean(xt,weights=wt)
 	(mn-md)/wtd.mean(abs(xt - md),weights=wt)
 }
-wtd.mad <- function(xt,wt){
-	wt  <- wt[is.na(xt)==F]
-	xt  <- xt[is.na(xt)==F]
-	md  <- wtd.quantile(xt,weights=wt,probs = 0.5,na.rm = T)
-	wtd.quantile(abs(xt - md),weights=wt,probs = 0.5,na.rm = T)
-}
-
 wtd.kurtosis <- function(xt, wt){  
 	wt  <- wt[is.na(xt)==F]
 	xt      <- xt[is.na(xt)==F]
@@ -249,38 +252,38 @@ for( si in seq(1,bootse*Nsim+1) ){
 	}
 	tab_wavemoments[1,1]    <- DThr[(stayer|changer)&demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
 	tab_wavemoments[1,2]    <- DThr[(stayer|changer)&demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
-	tab_wavemoments[1,3]    <- DThr[(stayer|changer)&demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
-	tab_wavemoments[1,4]    <- DThr[(stayer|changer)&demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)))]
-	tab_wavemoments[1,5]    <- DThr[(stayer|changer)&demo==T,wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
+	tab_wavemoments[1,3]    <- DThr[(stayer|changer)&demo==T,            wtd.mad(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[1,2])]
+	tab_wavemoments[1,4]    <- DThr[(stayer|changer)&demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[1,2])]
+	tab_wavemoments[1,5]    <- DThr[(stayer|changer)&demo==T,       wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
 	tab_wavemoments[2,1]    <- DThr[  stayer ==T    &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 	tab_wavemoments[2,2]    <- DThr[  stayer ==T    &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
-	tab_wavemoments[2,3]    <- DThr[  stayer ==T    &demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
-	tab_wavemoments[2,4]    <- DThr[  stayer ==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)))]
-	tab_wavemoments[2,5]    <- DThr[  stayer ==T    &demo==T,wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
+	tab_wavemoments[2,3]    <- DThr[  stayer ==T    &demo==T,            wtd.mad(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[2,2])]
+	tab_wavemoments[2,4]    <- DThr[  stayer ==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[2,2])]
+	tab_wavemoments[2,5]    <- DThr[  stayer ==T    &demo==T,       wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
 	tab_wavemoments[3,1]    <- DThr[  changer==T    &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 	tab_wavemoments[3,2]    <- DThr[  changer==T    &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
-	tab_wavemoments[3,3]    <- DThr[  changer==T    &demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
-	tab_wavemoments[3,4]    <- DThr[  changer==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)))]
-	tab_wavemoments[3,5]    <- DThr[  changer==T    &demo==T,wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
+	tab_wavemoments[3,3]    <- DThr[  changer==T    &demo==T,            wtd.mad(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[3,2])]
+	tab_wavemoments[3,4]    <- DThr[  changer==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[3,2])]
+	tab_wavemoments[3,5]    <- DThr[  changer==T    &demo==T,       wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
 	
 	#expansion/recession
 	for(rI in c(T,F)){
 		rix = rI*3+3
 		tab_wavemoments[1+rix,1]    <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
 		tab_wavemoments[1+rix,2]    <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
-		tab_wavemoments[1+rix,3]    <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
-		tab_wavemoments[1+rix,4]    <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)))]
-		tab_wavemoments[1+rix,5]    <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
+		tab_wavemoments[1+rix,3]    <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,            wtd.mad(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[1+rix,2])]
+		tab_wavemoments[1+rix,4]    <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[1+rix,2])]
+		tab_wavemoments[1+rix,5]    <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,       wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
 		tab_wavemoments[2+rix,1]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 		tab_wavemoments[2+rix,2]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
-		tab_wavemoments[2+rix,3]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
-		tab_wavemoments[2+rix,4]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)))]
-		tab_wavemoments[2+rix,5]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
+		tab_wavemoments[2+rix,3]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,            wtd.mad(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[2+rix,2])]
+		tab_wavemoments[2+rix,4]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[2+rix,2])]
+		tab_wavemoments[2+rix,5]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,       wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
 		tab_wavemoments[3+rix,1]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 		tab_wavemoments[3+rix,2]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
-		tab_wavemoments[3+rix,3]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,     wtd.var(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))^0.5]
-		tab_wavemoments[3+rix,4]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)))]
-		tab_wavemoments[3+rix,5]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
+		tab_wavemoments[3+rix,3]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,            wtd.mad(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[3+rix,2])]
+		tab_wavemoments[3+rix,4]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[3+rix,2])]
+		tab_wavemoments[3+rix,5]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,       wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
 	}
 	if(si>1){
 		se_wavemoments[,,si-1] = tab_wavemoments
