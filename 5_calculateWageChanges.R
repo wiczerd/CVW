@@ -97,8 +97,6 @@ DTall[ , c("levwage","nawavewage"):=NULL]
 DTseam <- DTall[ seam==T,]
 #need to add change across waves (use wavewage)
 DTseam[ , nw:= shift(wavewage,1,type="lead"), by=id]
-DTseam[ ,nnw:= shift(wavewage,2,type="lead"), by=id]
-DTseam[midEE==T ,nw:= nnw]
 DTseam[ , tw:= wavewage]
 DTseam[ , last.wavewage:= shift(wavewage,type="lag"), by=id]
 DTseam[ EE_wave==T & EEmon< 4 & (midEE==F|is.na(midEE)), tw:= last.wavewage]
@@ -107,6 +105,8 @@ DTseam[ EE_wave==T & EEmon< 4 & (midEE==F|is.na(midEE)), tw:= last.wavewage]
 #DTseam[ is.na(tw) & (shift(job_wave,type="lag")== job_wave), tw:= shift(wavewage,type="lag"), by=id]
 
 DTseam[ , wagechange_wave := nw - tw]
+DTseam[ , next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
+DTseam[ midEE ==T & EEmon<4 & EEmon>0 , wagechange_wave := next.wagechange_wave]
 
 DTseam[ , next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
 DTseam[ , last.wagechange_wave := shift(wagechange_wave, type="lag" ),by=id]
