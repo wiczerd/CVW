@@ -106,7 +106,7 @@ DTseam[ EE_wave==T & EEmon< 4 & (midEE==F|is.na(midEE)), tw:= last.wavewage]
 
 DTseam[ , wagechange_wave := nw - tw]
 DTseam[ , next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
-DTseam[ midEE ==T & EEmon<4 & EEmon>0 , wagechange_wave := next.wagechange_wave]
+DTseam[midEE ==T & EEmon<4 & EEmon>0 , wagechange_wave := next.wagechange_wave]
 
 DTseam[ , next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
 DTseam[ , last.wagechange_wave := shift(wagechange_wave, type="lag" ),by=id]

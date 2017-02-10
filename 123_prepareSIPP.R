@@ -595,7 +595,11 @@ sipp_wave[is.finite(ustintid_wave), recIndic2_stint := any(recIndic2_wave,na.rm=
 saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
 
 sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","next.job_wave","last.job_wave","job_wave","next.occ_wave","last.occ_wave","occ_wave",
-										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","midEE","midEU","midUE","ustintid_wave","recIndic_stint","recIndic2_stint","switchedOcc_wave","wave","id"))
+										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","midEE","midEU","midUE","EEmon","UEmon","EUmon","ustintid_wave",
+										"recIndic_stint","recIndic2_stint","switchedOcc_wave","wave","id"))
+
+sipp[ , c("EEmon","EUmon","UEmon"):=NULL]
+
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
