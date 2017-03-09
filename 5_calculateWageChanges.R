@@ -30,27 +30,27 @@ DTall[ , c("next.earnm","last.earnm") := NULL]
 
 # fill wages upwards to fill in unemployment spells
 DTall[EE==T|UE == T, nextwage := next.usewage]
-DTall[, leadwage := shift(usewage, 2, type = "lead"), by = id]
-DTall[, lead2status := next.lfstat==shift(lfstat,2,type="lead"), by=id]
-DTall[(EE==T|UE == T )& is.na(nextwage) & lead2status==T, nextwage := leadwage, by=id] #replace with 2 leads forward
+#DTall[, leadwage := shift(usewage, 2, type = "lead"), by = id]
+#DTall[, lead2status := next.lfstat==shift(lfstat,2,type="lead"), by=id]
+#DTall[(EE==T|UE == T )& is.na(nextwage) & lead2status==T, nextwage := leadwage, by=id] #replace with 2 leads forward
 DTall[lfstat==2 | lfstat==3 | EU==T, nextwage := Mode(nextwage), by = list(id,ustintid)] #replace within  unemp stints
 #DTall[lfstat==1 & !(EU==T), nextwage := Mode(nextwage), by = list(id,job)] #replace if it's EE
 
 DTall[, leadwage := shift(occwage, 1, type = "lead"), by = id]
 DTall[EE==T|UE == T, nextoccwage := leadwage, by = id]
-DTall[, leadwage := shift(usewage, 2, type = "lead"), by = id]
-DTall[, lead2status := shift(lfstat,1,type="lead")==shift(lfstat,2,type="lead"), by=id]
-DTall[(EE==T|UE == T) & is.na(nextoccwage) & lead2status==T, nextoccwage := leadwage, by = id]
+#DTall[, leadwage := shift(usewage, 2, type = "lead"), by = id]
+#DTall[, lead2status := shift(lfstat,1,type="lead")==shift(lfstat,2,type="lead"), by=id]
+#DTall[(EE==T|UE == T) & is.na(nextoccwage) & lead2status==T, nextoccwage := leadwage, by = id]
 DTall[lfstat==2 | lfstat==3 | EU==T, nextoccwage := Mode(nextoccwage), by = list(id,ustintid)] #replace if it's UE
 #DTall[lfstat==1 & !(EU==T), nextoccwage := Mode(nextoccwage), by = list(id,job)] #replace if it's EE
 
 DTall[, c("leadwage","lead2status"):=NULL]
 
-DTall[, tuw := ifelse(last.lfstat==1, last.usewage,usewage)]
+DTall[lfstat==1, tuw := last.usewage]
 
 
 # create wagechange variable---------------------------------------------
-DTall[EE == T, wagechange := nextwage - tuw]
+DTall[EE == T, wagechange := nextwage - tuw] #worksbetter with usewage
 DTall[EU == T, wagechange := log(1.0) - tuw]
 DTall[UE == T, wagechange := nextwage - log(1.0)]
 
