@@ -62,7 +62,7 @@ toKeep <- c("year",
 	    "wpfinwgt",
 		"epppnum",
 	    # labor force status variables
-	    "esr",
+	    "esr","rwkesr2",
 	    # job variables
 	    "job",
 		"eyear","emonth","syear","smonth",
@@ -192,6 +192,11 @@ sipp[esr >= 6 & esr <= 7, lfstat := 2]
 #sipp[esr <= 3, lfstat := 1]
 #sipp[esr >= 4 & esr <= 7, lfstat := 2]
 sipp[esr == 8, lfstat := 3]
+# CPS-style
+#sipp[rwkesr2 >= 1 & rwkesr2 <= 3, lfstat := as.integer(1)] 
+#sipp[rwkesr2 == 4, lfstat := as.integer(2)] 
+#sipp[rwkesr2 == 5, lfstat := as.integer(3)]
+sipp[, rwkesr2:= NULL]
 
 
 #clean the 2->3 and 3->2 into 2
