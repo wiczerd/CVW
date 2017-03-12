@@ -90,13 +90,24 @@ DTall[ , c("wagechange_stayer","wagechange","wagechange_stayer_bad"):=NULL]
 #				nextoccwage - occwage, 
 #				0.)), by = id]
 
+#***********************************************************************
+#***********************************************************************
 # compute seam-to-seam wage change variable ----------------------------
+#***********************************************************************
+#***********************************************************************
+
 DTall[!is.na(usewage) , levwage := 1/2*(exp(usewage)-exp(-usewage))]
 DTall[ , wavewage := sum(levwage,na.rm=T), by= list(id,wave)] #if one month is missing, give it the average of the other 3
 DTall[ , wavewage := log(wavewage + (1+wavewage^2)^.5) ]
 DTall[ , nawavewage:= all(is.na(usewage) ),by= list(id,wave)]
 DTall[ nawavewage==T, wavewage:=NA_real_]
-DTall[ , c("levwage","nawavewage"):=NULL]
+
+#drop the lowest wages, implies working less than $80 /month:
+DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
+#extrmpctile<-DTall[seam==T & lfstat_wave==1, wtd.quantile(levwage/nmo_lf1,na.rm = T, probs = c(.01,.02,.98,.99),weights = wpfinwgt)]
+DTall[ lfstat_wave==1 & wavewage<log(80+(1+80^2)^.5), wavewage:=NA]
+
+DTall[ , c("levwage","nawavewage","nmo_lf1"):=NULL]
 
 DTseam <- DTall[ seam==T,]
 #need to add change across waves (use wavewage)
@@ -104,20 +115,20 @@ DTseam[ , next.wavewage := shift(wavewage,1,type="lead"), by=id]
 DTseam[ , last.wavewage := shift(wavewage,1,type="lag"), by=id]
 
 DTseam[ , nw:= next.wavewage]
-DTseam[ , tw:= last.wavewage]
+DTseam[ , tw:= wavewage]
+
+#DTseam[ EE_wave==T & midEE==F, tw:= last.wavewage]
 #DTseam[ EE_wave==T & EEmon==4 , tw:=wavewage]
 
 DTseam[ , wagechange_wave := nw - tw]
-#DTseam[ , next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
-#DTseam[midEE ==T & EEmon<4 & EEmon>0 , wagechange_wave := next.wagechange_wave]
-DTseam[ midEE==T, EE_wave:=F]
+#for EE that spans waves:
+DTseam[ EE_wave==T & shift(midEE)==T , wagechange_wave:= next.wavewage - last.wavewage]
+DTseam[ , next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
+DTseam[EE_wave==T & midEE ==T , wagechange_wave := next.wagechange_wave]
+
 
 DTseam[ , next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
 DTseam[ , last.wagechange_wave := shift(wagechange_wave, type="lag" ),by=id]
-DTseam[ , next.wavewage := shift(wavewage, type="lead" ),by=id]
-DTseam[ , last.wavewage := shift(wavewage, type="lag" ),by=id]
-
-
 
 # create wave-level EUE wage change
 # find wage in period before an EU and one period after UE

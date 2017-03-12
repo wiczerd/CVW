@@ -494,6 +494,7 @@ if(max_wavefreq==2){
 	sipp_wave[ , EE_wave := EE_max]
 }
 #clean up EE/EU
+sipp_wave[ EE_wave==T & (lfstat_wave>1 | next.lfstat_wave>1), EE_wave:=F]
 if(max_wavefreq==1){
 	sipp_wave[last.lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := (last.job_wave != next.job_wave) ] #& (last.job_wave != next.job_wave)
 	sipp_wave[is.na(last.lfstat_wave) == T & is.na(lfstat_wave) == F &
