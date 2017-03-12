@@ -126,27 +126,26 @@ DTseam[ EE_wave==T & shift(midEE)==T , wagechange_wave:= next.wavewage - last.wa
 DTseam[ , next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
 DTseam[EE_wave==T & midEE ==T , wagechange_wave := next.wagechange_wave]
 
-
 DTseam[ , next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
 DTseam[ , last.wagechange_wave := shift(wagechange_wave, type="lag" ),by=id]
 
-# create wave-level EUE wage change
+# create wave-level EUE wage change-----------------------------------------
 # find wage in period before an EU and one period after UE
 DTseam[ , EU_wave_first := EU_wave==T & !(shift(EU_wave)==T), by=id]
 DTseam[ , UE_wave_last  := UE_wave==T & !(shift(UE_wave,type="lead")==T), by=id]
 
-DTseam[EU_wave_first == T, wageAtEU := last.wavewage]
+DTseam[last.lfstat_wave==1 & EU_wave_first == T, wageAtEU := last.wavewage]
 DTseam[, wageAtEU := na.locf(wageAtEU, na.rm = F),by=list(ustintid_wave, id)]
-DTseam[UE_wave_last == T, wageAfterUE :=  next.wavewage]
+DTseam[next.lfstat_wave==1 & UE_wave_last == T, wageAfterUE :=  next.wavewage]
 DTseam[UE_wave_last == T, wagechangeEUE_wave := wageAfterUE - wageAtEU]
 DTseam[, wagechangeEUE_wave:= Mode(wagechangeEUE_wave), by=list(ustintid_wave, id)]
 DTseam[ EE_wave==T, wagechangeEUE_wave := wagechange_wave]
-DTseam[ is.na(wagechangeEUE_wave), wagechangeEUE_wave := wagechange_wave]
+DTseam[ !(EU_wave|UE_wave|EE_wave), wagechangeEUE_wave := wagechange_wave]
 
 DTseam[ , c("wageAtEU","wageAfterUE","EU_wave_first", "UE_wave_last"):=NULL]
 
 
-#cleaning:
+#cleaning:-----------------------------------------------------------------
 # wagechange wave =NA for large gains or losses that revert
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad := (wagechange_wave>2) &(last.wagechange_wave<(-2.))&(lfstat_wave==1)&(last.lfstat_wave==1)] 
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange_wave>2 )&(next.wagechange_wave<(-2.))&(lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad==T] 
