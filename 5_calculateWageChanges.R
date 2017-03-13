@@ -145,7 +145,7 @@ DTseam[ !(EU_wave|UE_wave|EE_wave), wagechangeEUE_wave := wagechange_wave]
 DTseam[ , c("wageAtEU","wageAfterUE","EU_wave_first", "UE_wave_last"):=NULL]
 
 
-#cleaning:-----------------------------------------------------------------
+#cleaning the stayers:-----------------------------------------------------------------
 # wagechange wave =NA for large gains or losses that revert
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad := (wagechange_wave>2) &(last.wagechange_wave<(-2.))&(lfstat_wave==1)&(last.lfstat_wave==1)] 
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange_wave>2 )&(next.wagechange_wave<(-2.))&(lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad==T] 
@@ -167,7 +167,6 @@ DTseam[is.na(wagechange_wave_jcbad )==T , wagechange_wave_jcbad := F]
 
 #wagechanges in the crazy 2004 months:
 DTseam[ wave>=7 & panel==2004, wagechange_wave_2004bad :=T]
-
 
 #lowest/highest wages out:
 lowwageqtls= DTseam[ lfstat_wave==1, quantile(wavewage, na.rm = T, probs=c(.01,.02,.05))]

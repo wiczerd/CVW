@@ -106,9 +106,9 @@ recallRecodeShorTerm <- function(DF){
 
 DTall <- readRDS(paste0(datadir,"/DTall_5.RData"))
 # sum weights for UE, EU, and EE
-UEreadweight <- DTall[UE==T & !is.na(wagechange_all) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
-EUreadweight <- DTall[EU==T & !is.na(wagechange_all) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
-EEreadweight <- DTall[EE==T & !is.na(wagechange_all), sum(wpfinwgt, na.rm = TRUE)]
+UEreadweight <- DTall[UE==T & !is.na(wagechange_month) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
+EUreadweight <- DTall[EU==T & !is.na(wagechange_month) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
+EEreadweight <- DTall[EE==T & !is.na(wagechange_month), sum(wpfinwgt, na.rm = TRUE)]
 
 UEreadweight_wave <- DTall[UE_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
 EUreadweight_wave <- DTall[EU_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
@@ -118,9 +118,9 @@ if( recall_adj == T){
 	
 	DTall <-recallRecodeJobID(DTall)
 	
-	UEnorecallweight <- DTall[UE==T & !is.na(wagechange_all) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
-	EUnorecallweight <- DTall[EU==T & !is.na(wagechange_all) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
-	EEnorecallweight <- DTall[EE==T & !is.na(wagechange_all), sum(wpfinwgt, na.rm = TRUE)]
+	UEnorecallweight <- DTall[UE==T & !is.na(wagechange_month) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
+	EUnorecallweight <- DTall[EU==T & !is.na(wagechange_month) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
+	EEnorecallweight <- DTall[EE==T & !is.na(wagechange_month), sum(wpfinwgt, na.rm = TRUE)]
 	
 	UEnorecallweight_wave <- DTall[UE_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
 	EUnorecallweight_wave <- DTall[EU_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
@@ -166,12 +166,16 @@ DTseam[ is.na(UE_nomatch), UE_nomatch:= F]
 # DTseam[ UE_match==T, UE_nomatch:= F]
 
 DTseam[ is.finite(ustintid_wave), u_nomatch := any(EU_nomatch==T|UE_nomatch==T), by=list(id,ustintid_wave)]
-DTseam[, misRemaining := max(mis), by=id]
+DTseam[, misRemaining := max(mis), by=list(id, panel)]
 DTseam[, misRemaining := misRemaining-mis , by=id]
+DTseam[ , wis:=seq(1,.N), by=id]
+DTseam[, wisRemaining := max(wis), by=list(id, panel)]
+DTseam[, wisRemaining := wisRemaining-wis , by=id]
 
-EUtruenomatchrt <- DTseam[(lfstat_wave==2|EU_wave==T) & misRemaining > 15        , wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
-UEtruenomatchrt <- DTseam[UE_wave==T & mis > 15                                  , wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
-Utruenomatchrt  <- DTseam[mis > 15 & misRemaining > 15 & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = wpfinwgt,na.rm=T)]
+
+EUtruenomatchrt <- DTseam[(lfstat_wave==2|EU_wave==T) & wisRemaining > 5        , wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
+UEtruenomatchrt <- DTseam[UE_wave==T & wis > 5                                  , wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
+Utruenomatchrt  <- DTseam[wis > 5 & wisRemaining > 5 & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = wpfinwgt,na.rm=T)]
 
 DTseam[ EU_nomatch==T & EU_wave ==T, EU_wave := NA]
 DTseam[ UE_nomatch==T & UE_wave ==T, UE_wave := NA]
@@ -180,13 +184,11 @@ DTseam[ , perwt:= mean(wpfinwgt), by=id]
 #do some reweighting for left- and right-truncation
 DTseam[ , truncweight := perwt]
 #reweight entire u stint
-Utruncnomatchrt <-DTseam[misRemaining <= 6 & mis <= 6 & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = wpfinwgt,na.rm=T)]
-DTseam[ misRemaining <= 6 & mis <= 6 & is.finite(ustintid_wave), truncweight := perwt*(1.-Utruenomatchrt)/(1.-Utruncnomatchrt)]
-wtsdisp <- array(0.,dim=(15-7+1))
-for (mi in seq(7,15)){
-	Utruncnomatchrt <-DTseam[misRemaining <= mi & mis <= mi & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = wpfinwgt,na.rm=T)]
-	DTseam[ misRemaining <= mi & mis <= mi & is.finite(ustintid_wave), truncweight := perwt*(1.-Utruenomatchrt)/(1.-Utruncnomatchrt)]
-	wtsdisp[mi-7+1] <- (1.-Utruenomatchrt)/(1.-Utruncnomatchrt)
+wtsdisp <- array(0.,dim=(4))
+for (mi in seq(3,6)){
+	Utruncnomatchrt <-DTseam[(wisRemaining < mi | wis < mi) & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = wpfinwgt,na.rm=T)]
+	DTseam[ (wisRemaining < mi | wis < mi) & is.finite(ustintid_wave), truncweight := perwt*(1.-Utruenomatchrt)/(1.-Utruncnomatchrt)]
+	wtsdisp[mi-2] <- (1.-Utruenomatchrt)/(1.-Utruncnomatchrt)
 }
 DTseam[ , cycweight := perwt]
 #do some re-weighting for the cycle
@@ -215,6 +217,10 @@ chngwt1 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(cycweight,na.rm = T)]
 DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , cycweight   := 0.5*cycweight]
 chngwt2 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(cycweight,na.rm = T)]
 DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , cycweight := chngwt1/chngwt2*cycweight]
+chngwt1 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(perwt,na.rm = T)]
+DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , perwt   := 0.5*perwt]
+chngwt2 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(perwt,na.rm = T)]
+DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , perwt := chngwt1/chngwt2*perwt]
 # should I also correct for left and right truncation?
 DTseam[ , cyctruncweight := cycweight*truncweight/perwt]
 
@@ -372,8 +378,8 @@ DTall[is.finite(ustintid), balancedUE := any(EU,na.rm=T)==T & UE==T, by = list(i
 DTall<- merge(DTall,wagechangesBalanced,by=c("id","date"),all.x=T)
 
 #make the wage changes NA if not-balanced
-DTall[UE==T & balancedUE.y==F, c("wagechange_EUE","wagechange_all","wagechange") := NA_real_]
-DTall[EU==T & balancedEU.y==F, c("wagechange_EUE","wagechange_all","wagechange") := NA_real_]
+DTall[UE==T & balancedUE.y==F, c("wagechange_EUE","wagechange_month","wagechange") := NA_real_]
+DTall[EU==T & balancedEU.y==F, c("wagechange_EUE","wagechange_month","wagechange") := NA_real_]
 
 DTall[UE==T, UE := balancedUE.y==T]
 DTall[EU==T, EU := balancedEU.y==T]
@@ -394,8 +400,8 @@ DTall[EU==T|UE==T|EE==T, allwt := balanceweight]
 DTall[                 , allwtEUE := allwt]
 DTall[EU==T            , allwtEUE := allwtEUE*2.]
 DTall[UE==T            , allwtEUE := 0.]
-DTall[                 , wagechange_allEUE := ifelse(EU==T, wagechange_EUE,wagechange_all)]
-DTall[UE==T            , wagechange_allEUE := NA_real_]
+DTall[                 , wagechange_EUE := ifelse(EU==T, wagechange_EUE,wagechange_month)]
+DTall[UE==T            , wagechange_EUE := NA_real_]
 
 wagechanges[EE==T      , balanceweightEUE:=balanceweight]
 wagechanges[EU==T      , balanceweightEUE:=balanceweight*2]

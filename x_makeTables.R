@@ -37,6 +37,12 @@ wtd.GroenveldMeeden <- function(xt, wt,md=-Inf){
 	mn  <- wtd.mean(xt,weights=wt)
 	(mn-md)/wtd.mean(abs(xt - md),weights=wt)
 }
+wtd.Moors <- function(xt, wt){  
+	wt  <- wt[is.na(xt)==F]
+	xt  <- xt[is.na(xt)==F]
+	octls<-wtd.quantile(xt,weights=wt,probs = c(seq(1/8,3/8,1/8),seq(5/8,7/8,1/8)),na.rm = T) #excludes the median
+	((octls[6]-octls[4]) - (octls[3]-octls[1]))/(octls[5]-octls[2]) - 1.23
+}
 wtd.kurtosis <- function(xt, wt){  
 	wt  <- wt[is.na(xt)==F]
 	xt      <- xt[is.na(xt)==F]
@@ -49,7 +55,7 @@ CPSunempRt$unrt <- CPSunempRt$unrt/100
 
 recDef <- "recIndic_wave"
 wt <- "truncweight"
-wc <- "wagechangeEUE_wave"
+wc <- "wagechange_wave"
 
 demolbl <- 0 #or choose number from categories in demotxt
 demotxt <- c("Young", "Prime","Old","HS","Col","Male","Female")
@@ -62,7 +68,7 @@ seedint = 941987
 toKeep_wave <- c("switchedOcc_wave",
             "ageGrp","HSCol",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint",
-            "wagechange_all","wagechange_wave","wagechangeEUE_wave",
+            "wagechange_month","wagechange_wave","wagechangeEUE_wave",
             "wagechange_wave_bad","wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad",
             "EE_wave","EU_wave","UE_wave",
             "unrt","wpfinwgt","perwt","cycweight","truncweight",
@@ -297,7 +303,8 @@ for( si in seq(1,bootse*Nsim+1) ){
 #output it to tables
 tab_wavemoments<-dat_wavemoments
 tab_wavemoments <- data.table(tab_wavemoments)
-names(tab_wavemoments) <- c("Mean","Median","Std Dev", "Skew", "Kurtosis")
+#names(tab_wavemoments) <- c("Mean","Median","Std Dev", "Skew", "Kurtosis")
+names(tab_wavemoments) <- c("Mean","Median","Med Abs Dev", "Groenv-Meeden", "Moors")
 #rownames(tab_wavedist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
 rnames <- c("All\ Workers",      "Same\ Job",     "Chng\ Job",
 			"All\ Workers\ ",   "Same\ Job\ ",  "Chng\ Job\ ",
