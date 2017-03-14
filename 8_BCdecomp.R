@@ -15,7 +15,7 @@ outputdir = "~/workspace/CVW/R/Results"
 
 setwd(wd0)
 
-keep <- c("wagechange","wagechange_EUE","EU","UE","EE","recIndic","switchedOcc","switchedInd","balanceweight","date")
+keep <- c("wagechange_month","wagechange_EUE","EU","UE","EE","recIndic","switchedOcc","switchedInd","balanceweight","date")
 
 qtlgridEst  <- c(seq(.02,.1,.02),seq(0.15,0.85,0.05),seq(.9,.98,.02))
 qtlgridOut <- seq(.02,0.98,0.01)
@@ -132,7 +132,7 @@ DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
 	return(shift_share)
 }
 
-MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
+MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 	# wcDF : data set
 	# NS   : Number of subgroups
 	# recname	: name of recession indicator
@@ -146,60 +146,86 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 	if(missing(std_errs)){
 		std_errs = F
 	}
+	if(missing(no_occ)){
+		no_occ = F
+	}
 	
 	# setup subgroup indices
-	if(NS ==6){
-		# 6 subgroups, Sw X (EE UE EU), sets up conditional distributions.
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F, s := 1]
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F, s := 2]
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T, s := 3]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F, s := 4]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F, s := 5]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T, s := 6]
-		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
-		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
-		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
-		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
-		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]
-		wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]		
-	}else if(NS==7){
-		# 7 subgroups, Sw X (EE UE EU), sets up conditional distributions.
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F , s := 1]
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F , s := 2]
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T , s := 3]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F , s := 4]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F , s := 5]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T , s := 6]
-		wcDF[                    !(wcDF$EE==T | wcDF$UE==T | wcDF$EU ==T), s := 7]
-		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
-		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
-		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
-		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
-		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]
-		wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]		
-		wcDF[!is.na(wcDF$s), s7 := ifelse(s==7,1,0)]
-	}else if(NS==4){
-		# 4 subgroups, Sw X (EE EU), sets up conditional distributions.
-		wcDF[  wcDF$EE==T & wcDF$EU ==F & wcDF$UE ==F , s := 1]
-		wcDF[  wcDF$EE==F & wcDF$EU ==T & wcDF$UE ==F , s := 2]
-		wcDF[  wcDF$EE==F & wcDF$EU ==F & wcDF$UE ==T , s := 3]
-		wcDF[!(wcDF$EE==T | wcDF$EU ==T | wcDF$UE ==T), s := 4]
-		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
-		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
-		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
-		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
-	}else if(NS==5){
-		# 4 subgroups, Sw X (EE EU), sets up conditional distributions.
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$EU ==F , s := 1]
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$EU ==T , s := 2]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$EU ==F , s := 3]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$EU ==T , s := 4]
-		wcDF[                    !(wcDF$EE==T | wcDF$EU ==T), s := 5]
-		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
-		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
-		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
-		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
-		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]		
+	if(no_occ == F){
+		if(NS ==6){
+			# 6 subgroups, Sw X (EE UE EU), sets up conditional distributions.
+			wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F, s := 1]
+			wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F, s := 2]
+			wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T, s := 3]
+			wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F, s := 4]
+			wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F, s := 5]
+			wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T, s := 6]
+			wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+			wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+			wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+			wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+			wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]
+			wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]		
+		}else if(NS==7){
+			# 7 subgroups, Sw X (EE UE EU) + stay, sets up conditional distributions.
+			wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F , s := 1]
+			wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F , s := 2]
+			wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T , s := 3]
+			wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F , s := 4]
+			wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F , s := 5]
+			wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T , s := 6]
+			wcDF[                    !(wcDF$EE==T | wcDF$UE==T | wcDF$EU ==T), s := 7]
+			wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+			wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+			wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+			wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+			wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]
+			wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]		
+			wcDF[!is.na(wcDF$s), s7 := ifelse(s==7,1,0)]
+		}else if(NS==4){
+			# 4 subgroups, Sw X (EE EU), sets up conditional distributions.
+			wcDF[  wcDF$EE==T & wcDF$EU ==F & wcDF$UE ==F , s := 1]
+			wcDF[  wcDF$EE==F & wcDF$EU ==T & wcDF$UE ==F , s := 2]
+			wcDF[  wcDF$EE==F & wcDF$EU ==F & wcDF$UE ==T , s := 3]
+			wcDF[!(wcDF$EE==T | wcDF$EU ==T | wcDF$UE ==T), s := 4]
+			wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+			wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+			wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+			wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+		}else if(NS==5){
+			# 4 subgroups, Sw X (EE EU) + stay, sets up conditional distributions.
+			wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$EU ==F , s := 1]
+			wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$EU ==T , s := 2]
+			wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$EU ==F , s := 3]
+			wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$EU ==T , s := 4]
+			wcDF[                    !(wcDF$EE==T | wcDF$EU ==T), s := 5]
+			wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+			wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+			wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+			wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+			wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]		
+		}
+	}else{
+		if(NS==4){
+			# 4 subgroups, (EE EU UE) + stay, sets up conditional distributions.
+			wcDF[  wcDF$EE==T & wcDF$EU ==F & wcDF$UE ==F , s := 1]
+			wcDF[  wcDF$EE==F & wcDF$EU ==T & wcDF$UE ==F , s := 2]
+			wcDF[  wcDF$EE==F & wcDF$EU ==F & wcDF$UE ==T , s := 3]
+			wcDF[!(wcDF$EE==T | wcDF$EU ==T | wcDF$UE ==T), s := 4]
+			wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+			wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+			wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+			wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+		}
+		if(NS==3){
+			# 4 subgroups, (EE EU) + stay, sets up conditional distributions.
+			wcDF[  wcDF$EE==T & wcDF$EU ==F & wcDF$UE ==F , s := 1]
+			wcDF[  wcDF$EE==F & wcDF$EU ==T , s := 2]
+			wcDF[!(wcDF$EE==T | wcDF$EU ==T), s := 3]
+			wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+			wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+			wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+		}
 	}
 	wcDF<- subset(wcDF,is.finite(wcDF$s))
 	wcRec <- subset(wcDF, rec==T)
@@ -317,16 +343,6 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 						betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
 						betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 + 
 						betaE[7,qi]*s7]
-			}else if(NS==4){
-				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-						betaE[3,qi]*s3 + 
-						betaR[4,qi]*s4]
-				wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
-						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
-						betaR[3,qi]*s3 + 
-						betaE[4,qi]*s4]
-				
 			}else if(NS==5){
 				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
 						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
@@ -336,6 +352,22 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
 						betaR[3,qi]*s3 + betaR[4,qi]*s4 +
 						betaE[5,qi]*s5	]
+			}else if(NS==4){
+				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
+						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
+						betaE[3,qi]*s3 + 
+						betaR[4,qi]*s4]
+				wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
+						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
+						betaR[3,qi]*s3 + 
+						betaE[4,qi]*s4]
+			}else if(NS==3){
+				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
+						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
+						betaE[3,qi]*s3 ]
+				wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
+						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
+						betaR[3,qi]*s3 ]
 			}
 			qi = qi+1
 		}
@@ -345,123 +377,139 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs){
 		
 		rm(wc_IR)
 		rm(wc_BR)
-		
-		qi=1
-		wc_IR_sw <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only switch
-		for(q in qtlgridSamp){
-			if(NS == 6){
-				wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-							betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-							betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6] 
-			}else if(NS == 7){
-				wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-							betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-							betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 + 
-							betaR[7,qi]*s7]
-			}else if(NS==4){
-				wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-							betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-							betaR[3,qi]*s3 + betaR[4,qi]*s4]
-			}else if(NS==5){
-				wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-							betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-							betaR[3,qi]*s3 + betaR[4,qi]*s4 + 
-							betaR[5,qi]*s5]
-			}
-			qi = qi+1
-		}
-		#clean up the space:
-		wc_IR_sw_pctile[,simiter] <- quantile(wc_IR_sw,probs=qtlgridOut,na.rm=T)
-		rm(wc_IR_sw)
-		
-		
-		qi=1
-		wc_IR_un <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
-		for(q in qtlgridSamp){
-			if(NS == 6){
-				wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-							betaR[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-							betaR[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6] 
-			}else if(NS == 7){
-				wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-							betaR[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-							betaR[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 +
-							betaR[7,qi]*s7]
-			}else if(NS==4){
-				wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-							betaR[1,qi]*s1 + betaE[2,qi]*s2 + 
-							betaR[3,qi]*s3 + betaE[4,qi]*s4]
-			}else if(NS==5){
-				wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-							betaR[1,qi]*s1 + betaE[2,qi]*s2 + 
-							betaR[3,qi]*s3 + betaE[4,qi]*s4 +
-							betaR[5,qi]*s5]
-			}
-			qi = qi+1
-		}
-		#clean up the space:
-		wc_IR_un_pctile[,simiter] <- quantile(wc_IR_un,probs=qtlgridOut,na.rm=T)
-		rm(wc_IR_un)
 
 		qi=1
 		wc_rec <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
 		for(q in qtlgridSamp){
 			if(NS == 6){
 				wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-					betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
-					betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6] 
+						betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
+						betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6] 
 			}else if(NS == 7){
 				wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-					betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
-					betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 +
-					betaR[7,qi]*s7]
+						betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
+						betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 +
+						betaR[7,qi]*s7]
 			}else if(NS==4){
 				wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-					betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
-					betaR[3,qi]*s3 + betaR[4,qi]*s4]
+						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
+						betaR[3,qi]*s3 + betaR[4,qi]*s4]
 			}else if(NS==5){
 				wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-					betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
-					betaR[3,qi]*s3 + betaR[4,qi]*s4 +
-					betaR[5,qi]*s5]
-			}
+						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
+						betaR[3,qi]*s3 + betaR[4,qi]*s4 +
+						betaR[5,qi]*s5]
+			else if(NS==3){
+				wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
+						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
+						betaR[3,qi]*s3 ]
+		}
 			qi = qi+1
 		}
 		#clean up the space:
 		wc_rec_pctile[,simiter] <- quantile(wc_rec,probs=qtlgridOut,na.rm=T)
 		rm(wc_rec)
-	
+		
 		qi=1
 		wc_exp <- matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
 		for(q in qtlgridSamp){
 			if(NS == 6){
 				wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
-															   betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-															   betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6] 
+						betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+						betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6] 
 			}else if(NS == 7){
 				wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
-															   betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-															   betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 +
-															   betaE[7,qi]*s7]
+						betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+						betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 +
+						betaE[7,qi]*s7]
 			}else if(NS==4){
 				wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
-															   betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-															   betaE[3,qi]*s3 + betaE[4,qi]*s4]
+						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
+						betaE[3,qi]*s3 + betaE[4,qi]*s4]
 			}else if(NS==5){
 				wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
-															   betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-															   betaE[3,qi]*s3 + betaE[4,qi]*s4 +
-															   betaE[5,qi]*s5]
+						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
+						betaE[3,qi]*s3 + betaE[4,qi]*s4 +
+						betaE[5,qi]*s5]
+			}else if(NS==3){
+				wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
+						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
+						betaE[3,qi]*s3]
 			}
 			qi = qi+1
 		}
 		#clean up the space:
 		wc_exp_pctile[,simiter] <- quantile(wc_exp,probs=qtlgridOut,na.rm=T)
 		rm(wc_exp)
-	}	
+				
+		#some additional counter-factuals		
+		if(no_occ ==F){
+			qi=1
+			wc_IR_sw <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only switch
+			for(q in qtlgridSamp){
+				if(NS == 6){
+					wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
+								betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+								betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6] 
+				}else if(NS == 7){
+					wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
+								betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+								betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 + 
+								betaR[7,qi]*s7]
+				}else if(NS==4){
+					wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
+								betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
+								betaR[3,qi]*s3 + betaR[4,qi]*s4]
+				}else if(NS==5){
+					wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
+								betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
+								betaR[3,qi]*s3 + betaR[4,qi]*s4 + 
+								betaR[5,qi]*s5]
+				}
+				qi = qi+1
+			}
+			#clean up the space:
+			wc_IR_sw_pctile[,simiter] <- quantile(wc_IR_sw,probs=qtlgridOut,na.rm=T)
+			rm(wc_IR_sw)
+			
+			
+			qi=1
+			wc_IR_un <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
+			for(q in qtlgridSamp){
+				if(NS == 6){
+					wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
+								betaR[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+								betaR[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6] 
+				}else if(NS == 7){
+					wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
+								betaR[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+								betaR[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 +
+								betaR[7,qi]*s7]
+				}else if(NS==4){
+					wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
+								betaR[1,qi]*s1 + betaE[2,qi]*s2 + 
+								betaR[3,qi]*s3 + betaE[4,qi]*s4]
+				}else if(NS==5){
+					wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
+								betaR[1,qi]*s1 + betaE[2,qi]*s2 + 
+								betaR[3,qi]*s3 + betaE[4,qi]*s4 +
+								betaR[5,qi]*s5]
+				}
+				qi = qi+1
+			}
+			#clean up the space:
+			wc_IR_un_pctile[,simiter] <- quantile(wc_IR_un,probs=qtlgridOut,na.rm=T)
+			rm(wc_IR_un)
+		}
+
+	}#simiter	
 	
-	return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_sw= wc_IR_sw_pctile, wc_IR_un= wc_IR_un_pctile,
+	if(no_occ==F){	
+		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_sw= wc_IR_sw_pctile, wc_IR_un= wc_IR_un_pctile,
 				wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile))
+	}else{
+		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile))
+	}
 }
 
 

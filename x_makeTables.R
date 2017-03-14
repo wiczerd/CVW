@@ -55,7 +55,7 @@ CPSunempRt$unrt <- CPSunempRt$unrt/100
 
 recDef <- "recIndic_wave"
 wt <- "truncweight"
-wc <- "wagechange_wave"
+wc <- "wagechangeEUE_wave"
 
 demolbl <- 0 #or choose number from categories in demotxt
 demotxt <- c("Young", "Prime","Old","HS","Col","Male","Female")
@@ -70,9 +70,9 @@ toKeep_wave <- c("switchedOcc_wave",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint",
             "wagechange_month","wagechange_wave","wagechangeEUE_wave",
             "wagechange_wave_bad","wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad",
-            "EE_wave","EU_wave","UE_wave",
-            "unrt","wpfinwgt","perwt","cycweight","truncweight",
-			"lfstat_wave","next.lfstat_wave","wave","id")
+            "EE_wave","EU_wave","UE_wave","changer","stayer",
+            "unrt","wpfinwgt","perwt","cycweight","truncweight","cleaningtruncweight",
+			"lfstat_wave","next.lfstat_wave","wave","id","date","panel")
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
 
@@ -80,14 +80,7 @@ DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
 DTseam <- DTseam[, toKeep_wave, with = FALSE]
 DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
 DTseam<-DTseam[ is.finite(EE_wave)&is.finite(EU_wave)&is.finite(UE_wave), ]
-DTseam[wagechange_wave_bad2==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &
-	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & 
-	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
 
-DTseam[wagechange_wave_bad2==F  &
-	   	(EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
-DTseam[changer==T, stayer:= F]
-DTseam[stayer ==T, changer:=F]
 
 if(demolbl==1){
 	DTseam[(stayer==T|changer==T), demo:= (ageGrp==1)]
@@ -113,6 +106,26 @@ if(demolbl==1){
 #}
 
 #DTseam <- DTseam[ (stayer|changer) & demo==T, ]
+
+wc_wave <- DTseam[ recIndic_wave==T& stayer==T, .(wc_wave = weighted.mean(wagechange_wave, wpfinwgt, na.rm = TRUE)), by = date]
+ggplot(wc_wave, aes(date, wc_wave)) +
+	geom_point() +
+	geom_line() +xlab("") + ylab("mean wage change, stayers wave-frequency")
+
+wc_wave <- DTseam[ stayer==T, .(wc_wave = wtd.mad(wagechange_wave, wpfinwgt)), by = list(date,panel)]
+ggplot(wc_wave, aes(date, wc_wave,color=panel,group=panel)) +
+	geom_point() + geom_line() +
+	ggtitle("Wage Growth Disperison, stayers w/ cleaning")+xlab("") + ylab("median abs dev(wage change), stayers wave-frequency")
+#ggsave("mad_wagegrowth_clean.png",height=5,width=10)
+#ggsave("mad_wagegrowth_clean.eps",height=5,width=10)
+
+wc_wave <- DTseam[ EE_wave==F & lfstat_wave==1 & next.lfstat_wave==1, .(wc_wave = wtd.mad(wagechange_wave, wpfinwgt)), by = list(date,panel)]
+ggplot(wc_wave, aes(date, wc_wave,color=panel,group=panel)) +
+	geom_point() + ggtitle("Wage Growth Disperison, stayers no cleaning")+ ylim(c(0,.2))+
+	geom_line() +xlab("") + ylab("median abs dev(wage change), stayers wave-frequency")
+#ggsave("mad_wagegrowth_noclean.png",height=5,width=10)
+#ggsave("mad_wagegrowth_noclean.eps",height=5,width=10)
+
 
 # wage quantiles ---------------------------------------------------------------
 tabqtls <- c(.1,.25,.5,.75,.9)
@@ -262,17 +275,17 @@ for( si in seq(1,bootse*Nsim+1) ){
 	tab_wavemoments[1,2]    <- DThr[(stayer|changer)&demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
 	tab_wavemoments[1,3]    <- DThr[(stayer|changer)&demo==T,            wtd.mad(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[1,2])]
 	tab_wavemoments[1,4]    <- DThr[(stayer|changer)&demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[1,2])]
-	tab_wavemoments[1,5]    <- DThr[(stayer|changer)&demo==T,       wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
+	tab_wavemoments[1,5]    <- DThr[(stayer|changer)&demo==T,       wtd.Moors(eval(as.name(wc)),eval(as.name(wt)))]
 	tab_wavemoments[2,1]    <- DThr[  stayer ==T    &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 	tab_wavemoments[2,2]    <- DThr[  stayer ==T    &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
 	tab_wavemoments[2,3]    <- DThr[  stayer ==T    &demo==T,            wtd.mad(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[2,2])]
 	tab_wavemoments[2,4]    <- DThr[  stayer ==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[2,2])]
-	tab_wavemoments[2,5]    <- DThr[  stayer ==T    &demo==T,       wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
+	tab_wavemoments[2,5]    <- DThr[  stayer ==T    &demo==T,       wtd.Moors(eval(as.name(wc)),eval(as.name(wt)))]
 	tab_wavemoments[3,1]    <- DThr[  changer==T    &demo==T,     wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 	tab_wavemoments[3,2]    <- DThr[  changer==T    &demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
 	tab_wavemoments[3,3]    <- DThr[  changer==T    &demo==T,            wtd.mad(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[3,2])]
 	tab_wavemoments[3,4]    <- DThr[  changer==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[3,2])]
-	tab_wavemoments[3,5]    <- DThr[  changer==T    &demo==T,       wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
+	tab_wavemoments[3,5]    <- DThr[  changer==T    &demo==T,       wtd.Moors(eval(as.name(wc)),eval(as.name(wt)))]
 	
 	#expansion/recession
 	for(rI in c(T,F)){
@@ -281,17 +294,17 @@ for( si in seq(1,bootse*Nsim+1) ){
 		tab_wavemoments[1+rix,2]    <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
 		tab_wavemoments[1+rix,3]    <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,            wtd.mad(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[1+rix,2])]
 		tab_wavemoments[1+rix,4]    <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[1+rix,2])]
-		tab_wavemoments[1+rix,5]    <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,       wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
+		tab_wavemoments[1+rix,5]    <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,       wtd.Moors(eval(as.name(wc)),eval(as.name(wt)))]
 		tab_wavemoments[2+rix,1]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 		tab_wavemoments[2+rix,2]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
 		tab_wavemoments[2+rix,3]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,            wtd.mad(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[2+rix,2])]
 		tab_wavemoments[2+rix,4]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[2+rix,2])]
-		tab_wavemoments[2+rix,5]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,       wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
+		tab_wavemoments[2+rix,5]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,       wtd.Moors(eval(as.name(wc)),eval(as.name(wt)))]
 		tab_wavemoments[3+rix,1]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 		tab_wavemoments[3+rix,2]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=0.5)]
 		tab_wavemoments[3+rix,3]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,            wtd.mad(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[3+rix,2])]
 		tab_wavemoments[3+rix,4]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,wtd.GroenveldMeeden(eval(as.name(wc)),eval(as.name(wt)),tab_wavemoments[3+rix,2])]
-		tab_wavemoments[3+rix,5]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,       wtd.kurtosis(eval(as.name(wc)),eval(as.name(wt)))]
+		tab_wavemoments[3+rix,5]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,       wtd.Moors(eval(as.name(wc)),eval(as.name(wt)))]
 	}
 	if(si>1){
 		se_wavemoments[,,si-1] = tab_wavemoments
@@ -491,7 +504,8 @@ for (rI in c(F,T)){
   
 }
 
-
+#*******************************************************************
+#*******************************************************************
 # Quantiles among job changers  -----------------------
 #tabqtls <- c(.1,.25,.5,.75,.9)
 #tN <- (length(tabqtls)+1)

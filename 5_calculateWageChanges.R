@@ -76,7 +76,7 @@ DTall[EU==T | EE==T, wagechange_EUE := nextwage - tuw]
 DTall[lfstat>=2 | EU==T, wagechange_EUE := Mode(wagechange_EUE), by=list(id,ustintid)]
 DTall[!(EU==T | EE==T | UE==T), wagechange_EUE := wagechange_stayer]
 
-# create wagechange_all variable
+# create wagechange_month variable
 # if ifelse() condition is NA, end result is NA.
 DTall[!(EE | UE | EU), wagechange_month := wagechange_stayer]
 DTall[(EE | UE | EU), wagechange_month := wagechange]
@@ -106,7 +106,7 @@ DTall[ nawavewage==T, wavewage:=NA_real_]
 DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
 #extrmpctile<-DTall[seam==T & lfstat_wave==1, wtd.quantile(levwage/nmo_lf1,na.rm = T, probs = c(.01,.02,.98,.99),weights = wpfinwgt)]
 DTall[ lfstat_wave==1 & wavewage<log(80+(1+80^2)^.5), wavewage:=NA]
-
+DTall[ lfstat==1, earn_imp_wave := sum(earn_imp==1,na.rm=T), by=list(id,wave)]
 DTall[ , c("levwage","nawavewage","nmo_lf1"):=NULL]
 
 DTseam <- DTall[ seam==T,]
@@ -178,11 +178,27 @@ DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_high :=wavewage>h
 DTseam[ , panelmaxmis:= max(maxmis,na.rm = T), by=panel]
 DTseam[ , pctmaxmis:= maxmis/panelmaxmis]
 
-DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_bad","wagechange_wave_jcbad","wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high","pctmaxmis"
-								  ,"wagechangeEUE_wave","next.wavewage","last.wagechange_wave","next.wagechange_wave","id","wave"))
+# take out imputed earnings:
+DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T) & earn_imp_wave>=1 | shift(earn_imp_wave,type="lead")>=1, wagechange_wave_imp := T, by=id]
+DTseam[ is.na(wagechange_wave_imp)==T, wagechange_wave_imp := F]
+
+DTseam[wagechange_wave_bad2==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &  wagechange_wave_imp==F &
+	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & 
+	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
+
+DTseam[wagechange_wave_bad2==F  &
+	   	(EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
+DTseam[changer==T, stayer:= F]
+DTseam[stayer ==T, changer:=F]
+
+DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T), cleaning_wts:= sum(wpfinwgt>0,na.rm = T)/sum(stayer==T,na.rm=T)  , by=date]
+DTseam[  (EU_wave==T|UE_wave==T|EE_wave==T), cleaning_wts:= sum(wpfinwgt>0,na.rm = T)/sum(changer==T,na.rm=T) , by=date]
+
+DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_bad","wagechange_wave_jcbad","wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high","wagechange_wave_imp","pctmaxmis"
+								  ,"wagechangeEUE_wave","next.wavewage","last.wagechange_wave","next.wagechange_wave","stayer","changer","cleaning_wts","id","wave"))
 DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
-DTall[ , wageimputed_wave := any(earn_imp==1,na.rm = T), by=list(id,wave)]
+DTall[ is.na(cleaning_wts)==F, cleaning_wts:= cleaning_wts*wpfinwgt]
 
 #looking at occupation-level wage changes
 DTall[ , occwage_wave:= sum(1/2*(exp(occwage)-exp(-occwage)),na.rm=T) , by=list(id,wave)]

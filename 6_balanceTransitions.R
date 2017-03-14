@@ -172,24 +172,25 @@ DTseam[ , wis:=seq(1,.N), by=id]
 DTseam[, wisRemaining := max(wis), by=list(id, panel)]
 DTseam[, wisRemaining := wisRemaining-wis , by=id]
 
+DTseam[ , perwt:= mean(wpfinwgt), by=id]
 
-EUtruenomatchrt <- DTseam[(lfstat_wave==2|EU_wave==T) & wisRemaining > 5        , wtd.mean(EU_nomatch,weights = wpfinwgt,na.rm=T)]
-UEtruenomatchrt <- DTseam[UE_wave==T & wis > 5                                  , wtd.mean(UE_nomatch,weights = wpfinwgt,na.rm=T)]
-Utruenomatchrt  <- DTseam[wis > 5 & wisRemaining > 5 & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = wpfinwgt,na.rm=T)]
+EUtruenomatchrt <- DTseam[(lfstat_wave==2|EU_wave==T) & wisRemaining > 5        , wtd.mean(EU_nomatch,weights = perwt,na.rm=T)]
+UEtruenomatchrt <- DTseam[UE_wave==T & wis > 5                                  , wtd.mean(UE_nomatch,weights = perwt,na.rm=T)]
+Utruenomatchrt  <- DTseam[wis > 5 & wisRemaining > 5 & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = perwt,na.rm=T)]
 
 DTseam[ EU_nomatch==T & EU_wave ==T, EU_wave := NA]
 DTseam[ UE_nomatch==T & UE_wave ==T, UE_wave := NA]
-DTseam[ , perwt:= mean(wpfinwgt), by=id]
 
 #do some reweighting for left- and right-truncation
 DTseam[ , truncweight := perwt]
 #reweight entire u stint
 wtsdisp <- array(0.,dim=(4))
 for (mi in seq(3,6)){
-	Utruncnomatchrt <-DTseam[(wisRemaining < mi | wis < mi) & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = wpfinwgt,na.rm=T)]
+	Utruncnomatchrt <-DTseam[(wisRemaining < mi | wis < mi) & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = perwt,na.rm=T)]
 	DTseam[ (wisRemaining < mi | wis < mi) & is.finite(ustintid_wave), truncweight := perwt*(1.-Utruenomatchrt)/(1.-Utruncnomatchrt)]
 	wtsdisp[mi-2] <- (1.-Utruenomatchrt)/(1.-Utruncnomatchrt)
 }
+
 DTseam[ , cycweight := perwt]
 #do some re-weighting for the cycle
 for(ri in c(T,F)){
@@ -223,6 +224,9 @@ chngwt2 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(perwt,na.rm = T)]
 DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , perwt := chngwt1/chngwt2*perwt]
 # should I also correct for left and right truncation?
 DTseam[ , cyctruncweight := cycweight*truncweight/perwt]
+#also correct for cleaning
+DTseam[ is.na(cleaning_wts)==F, cleaningtruncweight:= truncweight*cleaning_wts]
+DTseam[ is.na(cleaning_wts)==T, cleaningtruncweight:= truncweight]
 
 
 
