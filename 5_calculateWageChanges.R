@@ -153,8 +153,9 @@ DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad :=((wagechange_wave<(-2))&(next.wagechange_wave> 2.)&(lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad==T] 
 DTseam[ is.na(wagechange_wave_bad)  , wagechange_wave_bad :=F] 
 
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad2 := (wagechange_wave>2)   & abs(next.wavewage - last.wavewage)<.1 &(last.lfstat_wave==1)&(next.lfstat_wave==1)] 
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad2 :=((wagechange_wave<(-2))& abs(next.wavewage - last.wavewage)<.1 &(last.lfstat_wave==1)&(next.lfstat_wave==1 ))| wagechange_wave_bad2==T] 
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad2 := (wagechange_wave>2|wagechange_wave<(-2))  & abs(next.wavewage - last.wavewage)<.1 &
+	   	(last.lfstat_wave==1) & (next.lfstat_wave==1)] 
+
 DTseam[ is.na(wagechange_wave_bad2)  , wagechange_wave_bad2 :=F] 
 
 #wagechange between 2 0's:
@@ -179,7 +180,7 @@ DTseam[ , panelmaxmis:= max(maxmis,na.rm = T), by=panel]
 DTseam[ , pctmaxmis:= maxmis/panelmaxmis]
 
 # take out imputed earnings:
-DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T) & earn_imp_wave>=1 | shift(earn_imp_wave,type="lead")>=1, wagechange_wave_imp := T, by=id]
+DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T) & (earn_imp_wave>=1 | shift(earn_imp_wave,type="lead")>=1), wagechange_wave_imp := T, by=id]
 DTseam[ is.na(wagechange_wave_imp)==T, wagechange_wave_imp := F]
 
 DTseam[wagechange_wave_bad2==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &  wagechange_wave_imp==F &

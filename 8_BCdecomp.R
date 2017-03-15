@@ -518,16 +518,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 ## Seams version -------------------------------
 
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
-DTseam[wagechange_wave_bad2==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &
-	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & 
-	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
 
-DTseam[wagechange_wave_bad2==F & EUUE_inner2==F&
-	   	(EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
-DTseam[changer==T, stayer:= F]
-DTseam[stayer ==T, changer:=F]
-
-DTseam <- DTseam[(changer|stayer)]
+DTseam <- subset(DTseam, changer==T|stayer==T)
 
 toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","wagechangeEUE_wave","recIndic_wave","date")
 
@@ -542,16 +534,21 @@ DTseam[ , switchedOcc := switchedOcc_wave]
 DTseamchng <- subset(DTseam, EU_wave==T|UE_wave==T|EE_wave==T)
 
 
-#MM_wavechng_betaE_betaR_IR    <- MMdecomp(DTseamchng,6,"recIndic_wave","wagechange_wave","truncweight",std_errs = MMstd_errs)
-MM_waveall_betaE_betaR_IR <- MMdecomp(DTseam,7,"recIndic_wave","wagechange_wave","truncweight",std_errs = MMstd_errs)
-MM_waveallEUE_betaE_betaR_IR <- MMdecomp(DTseam,5,"recIndic_wave","wagechangeEUE_wave","truncweight",std_errs = MMstd_errs)
+MM_waveall_betaE_betaR_IR <- MMdecomp(DTseam,7,"recIndic_wave","wagechange_wave","truncweight",std_errs = MMstd_errs, no_occ = F)
+MM_waveallEUE_betaE_betaR_IR <- MMdecomp(DTseam,5,"recIndic_wave","wagechangeEUE_wave","truncweight",std_errs = MMstd_errs, no_occ = F)
 
 saveRDS(MM_waveall_betaE_betaR_IR,paste0(outputdir,"/MM_waveall.RData"))
-#saveRDS(MM_wavechng_betaE_betaR_IR,paste0(outputdir,"./MM_wavechng.RData"))
 saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
 
+MM_wavenooc_betaE_betaR_IR <- MMdecomp(DTseam,4,"recIndic_wave","wagechange_wave","truncweight",std_errs = MMstd_errs, no_occ = T)
+MM_wavenoocEUE_betaE_betaR_IR <- MMdecomp(DTseam,3,"recIndic_wave","wagechangeEUE_wave","truncweight",std_errs = MMstd_errs, no_occ = T)
 
-#all observations (7 categories)
+saveRDS(MM_wavenooc_betaE_betaR_IR,paste0(outputdir,"/MM_wavenooc.RData"))
+saveRDS(MM_wavenoocEUE_betaE_betaR_IR,paste0(outputdir,"/MM_wavenoocEUE.RData"))
+
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#EU,UE all observations (7 categories) -----------------------------------
 wcExp <- subset(DTseam,recIndic_wave==F)
 wcRec <- subset(DTseam,recIndic_wave==T)
 dist_exp      <- wcExp[ , wtd.quantile(wagechange_wave,probs=qtlgridOut,weights=truncweight, na.rm=T)]
@@ -597,7 +594,7 @@ win_dif_IR_sw_exp   <- win_IR_sw   - win_exp
 win_dif_BR_exp      <- win_BR      - win_exp
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#EUE wage changes  observations (5 categories)
+#EUE wage changes (5 categories) -----------------------
 distEUE_exp      <- wcExp[ , wtd.quantile(wagechangeEUE_wave,probs=seq(0.02,.98,0.01),weights=truncweight, na.rm=T)]
 distEUE_rec      <- wcRec[ , wtd.quantile(wagechangeEUE_wave,probs=seq(0.02,.98,0.01),weights=truncweight, na.rm=T)]
 distEUE_IR       <- rowMeans(MM_waveallEUE_betaE_betaR_IR$wc_IR   )
@@ -633,6 +630,70 @@ winEUE_dif_rec_exp_dat <- winEUE_rec_dat - winEUE_exp_dat
 winEUE_dif_rec_exp_sim <- winEUE_rec     - winEUE_exp
 winEUE_dif_IR_exp      <- winEUE_IR      - winEUE_exp
 winEUE_dif_BR_exp      <- winEUE_BR      - winEUE_exp
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#EU,UE wage changes - no occupations (4 categories) --------------------
+distnooc_exp      <- wcExp[ , wtd.quantile(wagechange_wave,probs=seq(0.02,.98,0.01),weights=truncweight, na.rm=T)]
+distnooc_rec      <- wcRec[ , wtd.quantile(wagechange_wave,probs=seq(0.02,.98,0.01),weights=truncweight, na.rm=T)]
+distnooc_IR       <- rowMeans(MM_wavenooc_betaE_betaR_IR$wc_IR   )
+distnooc_BR       <- rowMeans(MM_wavenooc_betaE_betaR_IR$wc_BR   )
+distnooc_sim_rec  <- rowMeans(MM_wavenooc_betaE_betaR_IR$wc_rec  )
+distnooc_sim_exp  <- rowMeans(MM_wavenooc_betaE_betaR_IR$wc_exp  )
+
+winnooc_IR      <- array(0.,dim=Nwin)
+winnooc_BR      <- array(0.,dim=Nwin)
+winnooc_exp     <- array(0.,dim=Nwin)
+winnooc_rec     <- array(0.,dim=Nwin)
+winnooc_rec_dat <- array(0.,dim=Nwin)
+winnooc_exp_dat <- array(0.,dim=Nwin)
+di = 1
+for(lb in seq(1,Nwin,1)){
+	ub = lb+10
+	winnooc_IR[di]      <- mean(distnooc_IR     [ lb:ub ])
+	winnooc_BR[di]      <- mean(distnooc_BR     [ lb:ub ])
+	winnooc_rec[di]     <- mean(distnooc_sim_rec[ lb:ub ])
+	winnooc_exp[di]     <- mean(distnooc_sim_exp[ lb:ub ])
+	winnooc_rec_dat[di] <- mean(distnooc_rec    [ lb:ub ])
+	winnooc_exp_dat[di] <- mean(distnooc_exp    [ lb:ub ])	
+	di= di+1
+}
+winnooc_dif_rec_exp_dat <- winnooc_rec_dat - winnooc_exp_dat
+winnooc_dif_rec_exp_sim <- winnooc_rec     - winnooc_exp
+winnooc_dif_IR_exp      <- winnooc_IR      - winnooc_exp
+winnooc_dif_BR_exp      <- winnooc_BR      - winnooc_exp
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#EUE wage changes - no occupations (3 categories) --------------
+distnoocEUE_exp      <- wcExp[ , wtd.quantile(wagechangeEUE_wave,probs=seq(0.02,.98,0.01),weights=truncweight, na.rm=T)]
+distnoocEUE_rec      <- wcRec[ , wtd.quantile(wagechangeEUE_wave,probs=seq(0.02,.98,0.01),weights=truncweight, na.rm=T)]
+distnoocEUE_IR       <- rowMeans(MM_wavenoocEUE_betaE_betaR_IR$wc_IR   )
+distnoocEUE_BR       <- rowMeans(MM_wavenoocEUE_betaE_betaR_IR$wc_BR   )
+distnoocEUE_sim_rec  <- rowMeans(MM_wavenoocEUE_betaE_betaR_IR$wc_rec  )
+distnoocEUE_sim_exp  <- rowMeans(MM_wavenoocEUE_betaE_betaR_IR$wc_exp  )
+
+winnoocEUE_IR      <- array(0.,dim=Nwin)
+winnoocEUE_BR      <- array(0.,dim=Nwin)
+winnoocEUE_exp     <- array(0.,dim=Nwin)
+winnoocEUE_rec     <- array(0.,dim=Nwin)
+winnoocEUE_rec_dat <- array(0.,dim=Nwin)
+winnoocEUE_exp_dat <- array(0.,dim=Nwin)
+di = 1
+for(lb in seq(1,Nwin,1)){
+	ub = lb+10
+	winnoocEUE_IR[di]      <- mean(distnoocEUE_IR     [ lb:ub ])
+	winnoocEUE_BR[di]      <- mean(distnoocEUE_BR     [ lb:ub ])
+	winnoocEUE_rec[di]     <- mean(distnoocEUE_sim_rec[ lb:ub ])
+	winnoocEUE_exp[di]     <- mean(distnoocEUE_sim_exp[ lb:ub ])
+	winnoocEUE_rec_dat[di] <- mean(distnoocEUE_rec    [ lb:ub ])
+	winnoocEUE_exp_dat[di] <- mean(distnoocEUE_exp    [ lb:ub ])	
+	di= di+1
+}
+winnoocEUE_dif_rec_exp_dat <- winnoocEUE_rec_dat - winnoocEUE_exp_dat
+winnoocEUE_dif_rec_exp_sim <- winnoocEUE_rec     - winnoocEUE_exp
+winnoocEUE_dif_IR_exp      <- winnoocEUE_IR      - winnoocEUE_exp
+winnoocEUE_dif_BR_exp      <- winnoocEUE_BR      - winnoocEUE_exp
+
+
 
 ##################################################
 ### plot stuff
