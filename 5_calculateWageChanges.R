@@ -44,7 +44,7 @@ DTall[EE==T|UE == T, nextoccwage := leadwage, by = id]
 DTall[lfstat>=2 | EU==T, nextoccwage := Mode(nextoccwage), by = list(id,ustintid)] #replace if it's UE
 #DTall[lfstat==1 & !(EU==T), nextoccwage := Mode(nextoccwage), by = list(id,job)] #replace if it's EE
 
-DTall[, c("leadwage","lead2status"):=NULL]
+DTall[, leadwage:=NULL]
 
 DTall[lfstat==1, tuw := last.usewage]
 
@@ -228,8 +228,8 @@ DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
 saveRDS(DTall, paste0(datadir,"/DTall_5.RData"))
 
-wc_wave <- DTall[seam==T & lfstat_wave==1 & next.lfstat_wave==1 & wagechange_wave_bad==F & wc_wave<0.2, .(wc_wave = weighted.mean(wagechange_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
-ggplot(wc_wave, aes(date, wc_wave, color = panel, group = panel)) +
-	geom_point() +
-	geom_line() +xlab("") + ylab("mean wage change, stayers wave-frequency")
+#wc_wave <- DTall[seam==T & lfstat_wave==1 & next.lfstat_wave==1 & wagechange_wave_bad==F & wc_wave<0.2, .(wc_wave = weighted.mean(wagechange_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+#ggplot(wc_wave, aes(date, wc_wave, color = panel, group = panel)) +
+#	geom_point() +
+#	geom_line() +xlab("") + ylab("mean wage change, stayers wave-frequency")
 

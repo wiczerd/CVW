@@ -62,7 +62,7 @@ CPSunempRt <- readRDS("./InputData/CPSunempRt.RData")
 CPSunempRt$unrt <- CPSunempRt$unrt/100
 
 recDef <- "recIndic_wave"
-wt <- "truncweight"
+wt <- "cleaningtruncweight"
 wc <- "wagechangeEUE_wave"
 
 demolbl <- 0 #or choose number from categories in demotxt
@@ -294,11 +294,11 @@ for( si in seq(1,bootse*Nsim+1) ){
 	for(rI in c(F,T)){
 		rix = as.integer(rI)*3+3
 		tab_wavemoments[1+rix,1]    <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,        wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
-		tab_wavemoments[1+rix,2:5]  <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,wtd.4qtlmoments(eval(as.name(wc),eval(as.name(wt)))]
+		tab_wavemoments[1+rix,2:5]  <- DThr[eval(as.name(recDef)) == rI & (stayer|changer)&demo==T,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
 		tab_wavemoments[2+rix,1]    <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavemoments[2+rix,2:5]  <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,wtd.4qtlmoments(eval(as.name(wc),eval(as.name(wt)))]
+		tab_wavemoments[2+rix,2:5]  <- DThr[eval(as.name(recDef)) == rI &   stayer ==T    &demo==T,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
 		tab_wavemoments[3+rix,1]    <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavemoments[3+rix,2:5]  <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,wtd.4qtlmoments(eval(as.name(wc),eval(as.name(wt))]
+		tab_wavemoments[3+rix,2:5]  <- DThr[eval(as.name(recDef)) == rI &   changer==T    &demo==T,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
 	}
 	if(si>1){
 		se_wavemoments[,,si-1] = tab_wavemoments
@@ -634,7 +634,7 @@ if(demolbl>=1 & demolbl<=7){
 }else{
 	print(tab_wavechngdistse,include.rownames=T, hline.after= c(0,6,12,nrow(tab_wavechngdistse)), 
 		  file=paste0(outputdir,"/",nametab,".tex"))
-
+}
 
 #*****************************************************************
 # rec and expansion, job changers
@@ -699,11 +699,11 @@ for( si in seq(1,bootse*Nsim+1) ){
 		for(rI in c(F,T)){
 			ridx = rI*3+3
 			tab_wavemoments_rec[1+eidx+ridx,1]    <- DThr[changer==T &trX_indic==T                      &eval(as.name(recDef))  == rI,        wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
-			tab_wavemoments_rec[1+eidx+ridx,2:5]  <- DThr[changer==T &trX_indic==T                      &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc),eval(as.name(wt)))]
+			tab_wavemoments_rec[1+eidx+ridx,2:5]  <- DThr[changer==T &trX_indic==T                      &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
 			tab_wavemoments_rec[2+eidx+ridx,1]    <- DThr[changer==T &trX_indic==T &switchedOcc_wave==F &eval(as.name(recDef))  == rI,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavemoments_rec[2+eidx+ridx,2:5]  <- DThr[changer==T &trX_indic==T &switchedOcc_wave==F &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc),eval(as.name(wt)))]
+			tab_wavemoments_rec[2+eidx+ridx,2:5]  <- DThr[changer==T &trX_indic==T &switchedOcc_wave==F &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
 			tab_wavemoments_rec[3+eidx+ridx,1]    <- DThr[changer==T &trX_indic==T &switchedOcc_wave==T &eval(as.name(recDef))  == rI,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavemoments_rec[3+eidx+ridx,2:5]  <- DThr[changer==T &trX_indic==T &switchedOcc_wave==T &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc),eval(as.name(wt))]
+			tab_wavemoments_rec[3+eidx+ridx,2:5]  <- DThr[changer==T &trX_indic==T &switchedOcc_wave==T &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
 		}
 	}
 	if(si>1){
@@ -713,8 +713,6 @@ for( si in seq(1,bootse*Nsim+1) ){
 		dat_wavechngdist_rec <- tab_wavechngdist_rec
 		dat_wavemoments_rec <- tab_wavemoments_rec
 	}
-
-	
 }
 #output it to tables
 tab_wavechngdist_rec <- dat_wavechngdist_rec
