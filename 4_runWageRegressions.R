@@ -33,10 +33,11 @@ DTall[, logearnm := log(earnm + sqrt(earnm^2 + 1))]
 
 DTall[educ == 1, yearsschool := 9]
 DTall[educ == 2, yearsschool := 12] 
-DTall[educ == 2, educ := 0] #set base to HS grad
 DTall[educ == 3, yearsschool := 14]
 DTall[educ == 4, yearsschool := 16]
 DTall[educ == 5, yearsschool := 18]
+DTall[ educ<=2, nocol_col:=1  ]
+DTall[ educ> 2, nocol_col:=2  ]
 
 DTall[, experience := age - yearsschool]
 
@@ -46,12 +47,12 @@ DTall[, hispanic := race == 3]
 # run regressions
 # usewage
 const <- DTall[ is.finite(logearnm), sum(logearnm * wpfinwgt, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
-DTall[lfstat==1, usewage := const +  residuals(lm(logearnm ~ experience + I(experience^2) + I(yearsschool-12) + 
+DTall[lfstat==1, usewage := const +  residuals(lm(logearnm ~ experience + I(experience^2) + factor(nocol_col) + 
 				       	female + black + hispanic + factor(occ) + factor(month),
 				       na.action = na.exclude, weights = wpfinwgt))]
 
 # occwage (NA observations of occ cause issues -- ~10% of employed)
-DTall[lfstat==1 & is.finite(occ), occwage := fitted(lm(logearnm ~ experience + I(experience^2) + I(yearsschool-12) +
+DTall[lfstat==1 & is.finite(occ), occwage := fitted(lm(logearnm ~ experience + I(experience^2) + factor(nocol_col) +
 			     	female + black + hispanic + factor(month), 
 			     na.action = na.exclude, weights = wpfinwgt)), by = occ]
 
@@ -59,7 +60,7 @@ DTall[ lfstat>=2, usewage:= 0. ]
 DTall[ lfstat>=2, occwage:= 0. ]
 
 # remove regressor variables
-DTall[, c("race","experience","educ","unrateNSA","PCEPI","yearsschool") := NULL]
+DTall[, c("race","experience","educ","unrateNSA","PCEPI","yearsschool","nocol_col") := NULL]
 
 saveRDS(DTall, paste0(datadir,"/DTall_4.RData"))
 rm(list=ls())

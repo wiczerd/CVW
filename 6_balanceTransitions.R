@@ -133,13 +133,30 @@ if( recall_adj == T){
 }
 
 
-#deal with all of the un-counted transitions:
+#deal with all of the un-counted transitions (there should be none):
 # DTall[ , EE_max := any(EE,na.rm = T), by=list(wave,id)]
 # DTall[ EE_max==T & EE_wave!=T & jobchng_wave==F, EE_wave:=NA]
 DTall[ lfstat_wave==2 & next.lfstat_wave==2 & !(EU_wave==T|UE_wave==T) & wagechange_wave<0., EU_wave2 := (wagechange_wave<0.)]
 DTall[ lfstat_wave==2 & next.lfstat_wave==2 & !(EU_wave==T|UE_wave==T) & wagechange_wave>0., UE_wave2 := (wagechange_wave>0.)]
 DTall[ (lfstat_wave==2 & !is.finite(EU_wave2))|lfstat_wave==1, EU_wave2 := F]
 DTall[ (lfstat_wave==2 & !is.finite(UE_wave2))|lfstat_wave==1, UE_wave2 := F]
+
+
+#now subset everyone:
+DTall[wagechange_wave_bad2==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &  wagechange_wave_imp==F &
+	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & 
+	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
+
+DTall[wagechange_wave_bad2==F  & # wagechange_wave_jcbad==F & 
+	   	(EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
+
+DTall[changer==T, stayer:= F]
+DTall[stayer ==T, changer:=F]
+
+DTall[ !(EU_wave==T|UE_wave==T|EE_wave==T), cleaning_wts:= sum(wpfinwgt>0,na.rm = T)/sum(stayer==T,na.rm=T)  , by=date]
+DTall[  (EU_wave==T|UE_wave==T|EE_wave==T), cleaning_wts:= sum(wpfinwgt>0,na.rm = T)/sum(changer==T,na.rm=T) , by=date]
+DTall[ is.na(cleaning_wts)==F, cleaning_wts:= cleaning_wts*wpfinwgt]
+
 
 #save only the seams as a 'wave-change' set ---------------------
 DTseam <- subset(DTall, seam==T)
@@ -174,9 +191,9 @@ DTseam[, wisRemaining := wisRemaining-wis , by=id]
 
 DTseam[ , perwt:= mean(wpfinwgt), by=id]
 
-EUtruenomatchrt <- DTseam[(lfstat_wave==2|EU_wave==T) & wisRemaining > 5        , wtd.mean(EU_nomatch,weights = perwt,na.rm=T)]
-UEtruenomatchrt <- DTseam[UE_wave==T & wis > 5                                  , wtd.mean(UE_nomatch,weights = perwt,na.rm=T)]
-Utruenomatchrt  <- DTseam[wis > 5 & wisRemaining > 5 & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = perwt,na.rm=T)]
+EUtruenomatchrt <- DTseam[(lfstat_wave==2|EU_wave==T) & wisRemaining > 3        , wtd.mean(EU_nomatch,weights = perwt,na.rm=T)]
+UEtruenomatchrt <- DTseam[UE_wave==T & wis > 3                                  , wtd.mean(UE_nomatch,weights = perwt,na.rm=T)]
+Utruenomatchrt  <- DTseam[wis > 3 & wisRemaining > 3 & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = perwt,na.rm=T)]
 
 DTseam[ EU_nomatch==T & EU_wave ==T, EU_wave := NA]
 DTseam[ UE_nomatch==T & UE_wave ==T, UE_wave := NA]
@@ -184,11 +201,11 @@ DTseam[ UE_nomatch==T & UE_wave ==T, UE_wave := NA]
 #do some reweighting for left- and right-truncation
 DTseam[ , truncweight := perwt]
 #reweight entire u stint
-wtsdisp <- array(0.,dim=(4))
-for (mi in seq(3,6)){
+wtsdisp <- array(0.,dim=(2))
+for (mi in seq(2,3)){
 	Utruncnomatchrt <-DTseam[(wisRemaining < mi | wis < mi) & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = perwt,na.rm=T)]
 	DTseam[ (wisRemaining < mi | wis < mi) & is.finite(ustintid_wave), truncweight := perwt*(1.-Utruenomatchrt)/(1.-Utruncnomatchrt)]
-	wtsdisp[mi-2] <- (1.-Utruenomatchrt)/(1.-Utruncnomatchrt)
+	wtsdisp[mi-1] <- (1.-Utruenomatchrt)/(1.-Utruncnomatchrt)
 }
 
 DTseam[ , cycweight := perwt]
@@ -269,17 +286,9 @@ if( dur_adj == T){
 	DTseam[, waveweight := waveweight/wtscale]
 }
 
+DTseam[ !(is.finite(EE_wave) & is.finite(EU_wave)&is.finite(UE_wave)), changer:=NA]
 
-#add in the EU_wave2, UE_wave2 if associated with neighboring transition
-#this corrects for transitions midway through a wave
-
-# DTseam[ , next.EU_wave:= shift(EU_wave,type="lead"), by=id]
-# DTseam[ , last.UE_wave:= shift(UE_wave,type="lag"), by=id]
-# 
-# DTseam[ next.UE_wave==T & UE_wave2==T, UE_wave := T]
-# DTseam[ last.UE_wave==T & EU_wave2==T, EU_wave := T]
-# DTseam[ (EU_wave==T & EU_wave2==T) | (UE_wave==T & UE_wave2==T), EUUE_inner2:=T]
-
+DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
 saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))
 
 
