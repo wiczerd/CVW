@@ -15,6 +15,12 @@ datadir = "~/workspace/CVW/R/Results"
 outputdir = "~/workspace/CVW/R/Figures"
 setwd(wd0)
 
+
+recDef <- "recIndic_wave"
+wt <- "truncweight"
+wc <- "wagechange_wave"
+
+
 wtd.mad <- function(xt,wt,md=-Inf){
 	wt  <- wt[is.na(xt)==F]
 	xt  <- xt[is.na(xt)==F]
@@ -61,22 +67,18 @@ wtd.4qtlmoments <- function(xt,wt){
 CPSunempRt <- readRDS("./InputData/CPSunempRt.RData")
 CPSunempRt$unrt <- CPSunempRt$unrt/100
 
-recDef <- "recIndic_wave"
-wt <- "truncweight"
-wc <- "wagechange_wave"
-
 demolbl <- 0 #or choose number from categories in demotxt
 demotxt <- c("Young", "Prime","Old","HS","Col","Male","Female")
 
 bootse <- F #compute bootstrapped standard errors or no?
 seedint = 941987
 
-##########################################################################################
-# By wave -----------------------
+#*********************************************************************
+
 toKeep_wave <- c("switchedOcc_wave",
             "ageGrp","HSCol",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint",
-            "wagechange_month","wagechange_wave","wagechangeEUE_wave",
+            "wagechange_month","wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave",
             "wagechange_wave_bad","wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad",
             "EE_wave","EU_wave","UE_wave","changer","stayer",
             "unrt","wpfinwgt","perwt","cycweight","truncweight","cleaningtruncweight",
@@ -107,9 +109,29 @@ if(demolbl==1){
 }
 
 # how to weights EUE's? 2x for an EUUE?
-#if(wc == "wagechangeEUE_wave"){
-#	DTseam[ UE_wave==T,eval(as.name(wt)):= 0.]
-#}
+if(wc == "wagechangeEUE_wave"){
+	DTseam[ UE_wave==T,eval(as.name(wt)):= 0.]
+}
+
+# setup labels
+if(wc == "wagechangeEUE_wave"){
+	wclab = "reswgEUE"
+}else if( wc == "wagechange_wave"){
+	wclab = "reswg"
+}else if(wc == "rawwgchangeEUE_wave"){
+	wclab = "rawwgEUE"
+}else if( wc == "rawwgchange_wave"){
+	wclab = "rawwg"
+}
+
+if(recDef == "recIndic_wave"){
+	reclab = "NBER"
+}else if( recDef == "recIndic2_wave"){
+	reclab = "urt"
+}else if(wc == "recIndic_stint"){
+	reclab = "recstint"
+}
+
 
 #plot wage-change time series:
 # wc_wave <- DTseam[ recIndic_wave==T& stayer==T, .(wc_wave = weighted.mean(wagechange_wave, wpfinwgt, na.rm = TRUE)), by = date]
@@ -117,14 +139,14 @@ if(demolbl==1){
 # 	geom_point() +
 # 	geom_line() +xlab("") + ylab("mean wage change, stayers wave-frequency")
 
-wc_wave <- DTseam[ stayer==T, .(wc_wave = wtd.mad(wagechange_wave, wpfinwgt)), by = list(date,panel)]
+wc_wave <- DTseam[ stayer==T, .(wc_wave = wtd.mad(rawwgchange_wave, wpfinwgt)), by = list(date,panel)]
 ggplot(wc_wave, aes(date, wc_wave,color=panel,group=panel)) +
 	geom_point() + geom_line() +
 	ggtitle("Wage Growth Disperison, stayers w/ cleaning")+xlab("") + ylab("median abs dev(wage change), stayers wave-frequency")
 # #ggsave("mad_wagegrowth_clean.png",height=5,width=10)
 # #ggsave("mad_wagegrowth_clean.eps",height=5,width=10)
 # 
-wc_wave <- DTseam[ EE_wave==F & lfstat_wave==1 & next.lfstat_wave==1, .(wc_wave = wtd.mad(wagechange_wave, wpfinwgt)), by = list(date,panel)]
+wc_wave <- DTseam[ EE_wave==F & lfstat_wave==1 & next.lfstat_wave==1, .(wc_wave = wtd.mad(rawwgchange_wave, wpfinwgt)), by = list(date,panel)]
 ggplot(wc_wave, aes(date, wc_wave,color=panel,group=panel)) +
 	geom_point() + ggtitle("Wage Growth Disperison, stayers no cleaning")+ ylim(c(0,.2))+
 	geom_line() +xlab("") + ylab("median abs dev(wage change), stayers wave-frequency")
@@ -191,19 +213,16 @@ rowtitles <- list( pos=list(0,3,6), command=c("\\hline  \\color{Maroon}{1996-201
                                               "\\hline \\hline   \\color{Maroon}{Expansion} &  & & & & & \\\\  \n", 
                                               "\\hline \\hline   \\color{Maroon}{Recession} &  & & & & & \\\\  \n")  )
 
-if(wc == "wagechangeEUE_wave"){
-	nametab <- "wavedistEUE"
-}else{
-	nametab <- "wavedist"
-}
+nametab <- "wavedist"
+
 tab_wavedist <- xtable(tab_wavedist, digits=2, 
-                       align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"}"))
+                       align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 if(demolbl>=1 & demolbl<=7){
 	print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)), 
-		add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],".tex"))
+		add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
 }else{
 	print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)), 
-		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,".tex"))
+		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 }
 tab_wavedistci <- array(0.,dim=c(2*nrow(tab_wavedist),2*ncol(tab_wavedist)))
 tab_wavedistse <- array(0.,dim=c(2*nrow(tab_wavedist),ncol(tab_wavedist)))
@@ -234,6 +253,8 @@ if(bootse == T){
 	}
 	tab_wavedistse <-data.table(tab_wavedistse)
 	
+	nametab = "wagedistse"
+	
 	names(tab_wavedistse) <- c("Mean",as.character( tabqtls))
 	#rownames(tab_wavedist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
 	rnames <- c("All\ Workers"    ," "     , "Same\ Job"    ,","      ,"Chng\ Job"    ,",,",
@@ -244,20 +265,16 @@ if(bootse == T){
 	rowtitles <- list( pos=list(0,6,12), command=c("\\hline  \\color{Maroon}{1996-2012} &  & & & & & \\\\ \n",
 												  "\\hline \\hline   \\color{Maroon}{Expansion} &  & & & & & \\\\  \n", 
 												  "\\hline \\hline   \\color{Maroon}{Recession} &  & & & & & \\\\  \n")  )
-	if(wc == "wagechangeEUE_wave"){
-		nametab <- "wavedistseEUE"
-	}else{
-		nametab <- "wavedistse"
-	}
+
 	tab_wavedistse <- xtable(tab_wavedistse, digits=2, 
-						   align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"}"))
+						   align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 	
 	if(demolbl>=1 & demolbl<=7){
 		print(tab_wavedistse,include.rownames=T, hline.after= c(nrow(tab_wavedistse)), 
-			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],".tex"))
+			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
 	}else{
 		print(tab_wavedistse,include.rownames=T, hline.after= c(nrow(tab_wavedistse)), 
-			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,".tex"))
+			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 	}
 
 }
@@ -321,19 +338,16 @@ rowtitles <- list( pos=list(0,3,6), command=c("\\hline  \\color{Maroon}{1996-201
 											  "\\hline \\hline   \\color{Maroon}{Expansion} &  \\multicolumn{5}{|c|}{}  \\\\  \n", 
 											  "\\hline \\hline   \\color{Maroon}{Recession} &  \\multicolumn{5}{|c|}{}  \\\\  \n")  )
 
-if(wc == "wagechangeEUE_wave"){
-	nametab <- "wavemomentsEUE"
-}else{
-	nametab <- "wavemoments"
-}
+nametab <- "wavemoments"
+
 tab_wavemoments <- xtable(tab_wavemoments, digits=2, 
-					   align="l|lllll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"}"))
+					   align="l|lllll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 if(demolbl>=1 & demolbl<=7){
 	print(tab_wavemoments,include.rownames=T, hline.after= c(nrow(tab_wavemoments)), 
-		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],".tex"))
+		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
 }else{
 	print(tab_wavemoments,include.rownames=T, hline.after= c(nrow(tab_wavemoments)), 
-		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,".tex"))
+		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 }
 tab_wavemomentsci <- array(0.,dim=c(2*nrow(tab_wavemoments),2*ncol(tab_wavemoments)))
 tab_wavemomentsse <- array(0.,dim=c(2*nrow(tab_wavemoments),ncol(tab_wavemoments)))
@@ -372,20 +386,18 @@ if(bootse == T){
 	rowtitles <- list( pos=list(0,6,12), command=c("\\hline  \\color{Maroon}{1996-2012} &  \\multicolumn{5}{|c|}{} \\\\ \n",
 												   "\\hline \\hline   \\color{Maroon}{Expansion} &  \\multicolumn{5}{|c|}{}  \\\\  \n", 
 												   "\\hline \\hline   \\color{Maroon}{Recession} &  \\multicolumn{5}{|c|}{}  \\\\  \n")  )
-	if(wc == "wagechangeEUE_wave"){
-		nametab <- "wavemomentsseEUE"
-	}else{
-		nametab <- "wavemomentsse"
-	}
+	
+	nametab <- "wavemomentsse"
+	
 	tab_wavemomentsse <- xtable(tab_wavemomentsse, digits=2, 
-							 align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"}"))
+							 align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 	
 	if(demolbl>=1 & demolbl<=7){
 		print(tab_wavemomentsse,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
-			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],".tex"))
+			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
 	}else{
 		print(tab_wavemomentsse,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
-			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,".tex"))
+			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 	}
 }
 
@@ -437,10 +449,13 @@ rownames(tab_chngvarqtldec) <- c("Variance","0.95-0.05","0.9-0.1","0.75-0.25")# 
 
 tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=2, 
                             align="l|l|ll", caption="Decomposition of earnings change dispersion \\label{tab:wavechngvarqtldec}")
+
+nametab <- "wavechngvarqtldec"
+
 if(demolbl>=1 & demolbl<=7){
-	print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file=paste0(outputdir,"/wavechngvarqtldec", demotxt[demolbl],".tex")) 
+	print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file=paste0(outputdir,"/",nametab, demotxt[demolbl],"_",wclab,"_",reclab,".tex")) 
 }else{
-	print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file=paste0(outputdir,"/wavechngvarqtldec.tex") ) 
+	print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex") ) 
 }
 
 # recession and expansion
@@ -505,16 +520,6 @@ for (rI in c(F,T)){
 tab_wavechngdist    <- array(0.,dim=c(9,tN))
 
 
-wc <- "wagechangeEUE_wave"
-wt <- "truncweight"
-if(wc =="wagechange_wave"){
-	labtxt = "wavechngdist"
-}else if(wc == "wagechangeEUE_wave"){
-	labtxt = "wavechngdistEUE"
-}else{
-	labtxt = "chgndist"
-}
-
 if(bootse==T){
 	set.seed(seedint)
 	#draw the sample
@@ -560,23 +565,24 @@ for(si in seq(1,bootse*Nsim+1)){
 tab_wavechngdist <- data.table(dat_wavechngdist)
 names(tab_wavechngdist) <- c("Mean",tabqtls)
 #rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
-if(wc =="wagechange_wave"){
+if(wc =="wagechange_wave" | wc=="rawwgchange_wave"){
 rownames(tab_wavechngdist) <- c("Chng\ Job, All", "Chng\ Job, Same\ Occ", "Chng\ Job, Switch\ Occ",
 									"EE,\ All", "EE,\ Same\ Occ", "EE,\ Switch\ Occ",
 									"EU,UE,\ All", "EU,UE,\ Same\ Occ", "EU,UE,\ Switch\ Occ")
-
-}else(wc == "wagechangeEUE_wave"){
+}else(wc == "wagechangeEUE_wave"| wc=="rawwgchangeEUE_wave"){
 rownames(tab_wavechngdist) <- c("Chng\ Job, All", "Chng\ Job, Same\ Occ", "Chng\ Job, Switch\ Occ",
 									"EE,\ All", "EE,\ Same\ Occ", "EE,\ Switch\ Occ",
 									"EUE,\ All", "EUE,\ Same\ Occ", "EUE,\ Switch\ Occ")
 }
 
+labtxt <- "chngdist"
+
 tab_wavechngdist <- xtable(tab_wavechngdist, label=paste0("tab:",labtxt), digits=2, 
                            align="l|l|lllll", caption="Distribution of earnings changes among job changers")
 if(demolbl>=1 & demolbl<=7){
-	print(tab_wavechngdist,include.rownames=T, hline.after= c(0,3,6,nrow(tab_wavechngdist)), file=paste0(outputdir,"/",labtxt,demotxt[demolbl],".tex"))
+	print(tab_wavechngdist,include.rownames=T, hline.after= c(0,3,6,nrow(tab_wavechngdist)), file=paste0(outputdir,"/",labtxt,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
 }else{
-	print(tab_wavechngdist,include.rownames=T, hline.after= c(0,3,6,nrow(tab_wavechngdist)), file=paste0(outputdir,"/",labtxt,".tex"))
+	print(tab_wavechngdist,include.rownames=T, hline.after= c(0,3,6,nrow(tab_wavechngdist)), file=paste0(outputdir,"/",labtxt,"_",wclab,"_",reclab,".tex"))
 }
 # standard errors
 tab_wavechngdistci <- array(0.,dim=c(2*nrow(tab_wavechngdist),2*ncol(tab_wavechngdist)))
@@ -619,24 +625,22 @@ if(bootse == T){
 	}
 	rownames(tab_wavechngdistse) <- rnames
 	
-	if(wc == "wagechangeEUE_wave"){
-		nametab <- "wavechngdistseEUE"
-	}else{
-		nametab <- "wavechngdistse"
-	}
+	nametab <- "chngdistse"
+	
 	tab_wavechngdistse <- xtable(tab_wavechngdistse, digits=2, 
-						   align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"}"))
+						   align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 	
 	if(demolbl>=1 & demolbl<=7){
 		print(tab_wavechngdistse,include.rownames=T, hline.after= c(0,6,12,nrow(tab_wavechngdistse)), 
-			  file=paste0(outputdir,"/",nametab,demotxt[demolbl],".tex"))
+			  file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
 	}else{
 		print(tab_wavechngdistse,include.rownames=T, hline.after= c(0,6,12,nrow(tab_wavechngdistse)), 
-			  file=paste0(outputdir,"/",nametab,".tex"))
+			  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 	}
 }
 #*****************************************************************
 # rec and expansion, job changers
+
 
 tab_wavechngdist_rec    <- array(NA,dim=c(9*3,tN))
 tab_wavechngmoments_rec     <- array(NA, dim=c(9*3,5))
@@ -719,15 +723,10 @@ tab_wavechngmoments_rec<-dat_wavechngmoments_rec
 
 for(AllEEEU in c(1,2,3)){
 	eidx = 9*(AllEEEU-1)
-	tab_wavedist <- data.table(tab_wavechngdist_rec[1+eidx:9+eidx,])
+	tab_wavedist <- data.table(tab_wavechngdist_rec[seq(1+eidx,9+eidx),])
 
-	if(wc =="wagechange_wave"){
-		labtxt = "wavechngdist"
-	}else if(wc == "wagechangeEUE_wave"){
-		labtxt = "wavechngdistEUE"
-	}else{
-		labtxt = "chgndist"
-	}
+	labtxt = "recchngdist"
+
 	if(AllEEEU==1){
 		rtxt <- "All\ changers"
 		labtxt <- paste0(labtxt,"_all")
@@ -735,8 +734,13 @@ for(AllEEEU in c(1,2,3)){
 		rtxt <- "EE"
 		labtxt <- paste0(labtxt,"_EE")
 	}else if(AllEEEU==3){
-		rtxt <- "EU,UE"
-		labtxt <- paste0(labtxt,"_EUE")
+		if( wc=="wagechangeEUE_wave" | wc=="rawwgchangeEUE_wave"){
+			rtxt <- "EUE"
+			labtxt <- paste0(labtxt,"_EUE")
+		}else{
+			rtxt <- "EU,UE"
+			labtxt <- paste0(labtxt,"_EUUE")
+		}
 	}
 	cnames <- c("Mean",tabqtls)
 	rnames <- c(paste0(rtxt,"    "), "Occ stayers    ","Occ movers    ",
@@ -750,9 +754,9 @@ for(AllEEEU in c(1,2,3)){
 	names(tab_wavedist) <- cnames
 	rownames(tab_wavedist) <- rnames
 	tab_wavedist <- xtable(tab_wavedist, digits=2, 
-		                       align="l|l|lllll", caption=paste0("Distribution of earnings changes among job changers in recession and expansion \\label{tab:",labtxt,"_rec}"))
+		                       align="l|l|lllll", caption=paste0("Distribution of earnings changes among job changers in recession and expansion \\label{tab:",labtxt,"_",wclab,"_",reclab,"}"))
 	print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)), 
-		  add.to.row=rowtitles, file=paste0(outputdir,"/",labtxt,"_rec.tex"))
+		  add.to.row=rowtitles, file=paste0(outputdir,"/",labtxt,"_",wclab,"_",reclab,"tex"))
 
 	#standard errors
 	tab_wavedistci <- array(0.,dim=c(2*nrow(tab_wavedist),2*ncol(tab_wavedist)))
@@ -794,11 +798,7 @@ for(AllEEEU in c(1,2,3)){
 		rowtitles <- list( pos=list(0,6,12), command=c("\\hline  \\color{Maroon}{1996-2012} &  & & & & & \\\\ \n",
 													  "\\hline \\hline   \\color{Maroon}{Expansion} &  & & & & & \\\\  \n", 
 													  "\\hline \\hline   \\color{Maroon}{Recession} &  & & & & & \\\\  \n")  )
-		if(wc == "wagechangeEUE_wave"){
-			labtxt <- "wavechngdistseEUE_rec"
-		}else{
-			labtxt <- "wavechngdistse_rec"
-		}
+		labtxt <- "recchngdistse"
 		if(AllEEEU==1){
 			rtxt <- "All\ changers"
 			labtxt <- paste0(labtxt,"_all")
@@ -806,23 +806,28 @@ for(AllEEEU in c(1,2,3)){
 			rtxt <- "EE"
 			labtxt <- paste0(labtxt,"_EE")
 		}else if(AllEEEU==3){
-			rtxt <- "EU,UE"
-			labtxt <- paste0(labtxt,"_EUE")
+			if(wc=="wagechangeEUE_wave"| wc=="rawwgchangeEUE_wave"){
+				rtxt <- "EUE"
+				labtxt <- paste0(labtxt,"_EUE")
+			}else{	
+				rtxt <- "EU,UE"
+				labtxt <- paste0(labtxt,"_EUUE")
+			}
 		}
 		tab_wavedistse <- xtable(tab_wavedistse, digits=2, 
-							   align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"}"))
+							   align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",labtxt,"_",wclab,"_",reclab,"}"))
 	
 		if(demolbl>=1 & demolbl<=7){
 			print(tab_wavedistse,include.rownames=T, hline.after= c(nrow(tab_wavedistse)), 
-				  add.to.row=rowtitles, file=paste0(outputdir,"/",labtxt,demotxt[demolbl],".tex"))
+				  add.to.row=rowtitles, file=paste0(outputdir,"/",labtxt,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
 		}else{
 			print(tab_wavedistse,include.rownames=T, hline.after= c(nrow(tab_wavedistse)), 
-				  add.to.row=rowtitles, file=paste0(outputdir,"/",labtxt,".tex"))
+				  add.to.row=rowtitles, file=paste0(outputdir,"/",labtxt,"_",wclab,"_",reclab,".tex"))
 		}
 	}# se on dist stats?
 	
 	# print the moments tables
-	tab_wavemoments <- data.table(tab_wavechngmoments_rec[1+eidx:9+eidx,])
+	tab_wavemoments <- data.table(tab_wavechngmoments_rec[seq(1+eidx,9+eidx),])
 	
 	#names(tab_wavemoments) <- c("Mean","Median","Std Dev", "Skew", "Kurtosis")
 	names(tab_wavemoments) <- c("Mean","Median","Med Abs Dev", "Groenv-Meeden", "Moors")
@@ -836,11 +841,7 @@ for(AllEEEU in c(1,2,3)){
 												  "\\hline \\hline   \\color{Maroon}{Expansion} &  \\multicolumn{5}{|c|}{}  \\\\  \n", 
 												  "\\hline \\hline   \\color{Maroon}{Recession} &  \\multicolumn{5}{|c|}{}  \\\\  \n")  )
 	
-	if(wc == "wagechangeEUE_wave"){
-		nametab <- "wavemomentsEUE"
-	}else{
-		nametab <- "wavemoments"
-	}
+	nametab <- "recchngmoments"
 	if(AllEEEU==1){
 		rtxt <- "All\ changers"
 		nametab <- paste0(nametab,"_all")
@@ -848,17 +849,22 @@ for(AllEEEU in c(1,2,3)){
 		rtxt <- "EE"
 		nametab <- paste0(nametab,"_EE")
 	}else if(AllEEEU==3){
-		rtxt <- "EU,UE"
-		nametab <- paste0(nametab,"_EUE")
+		if(wc=="wagechangeEUE_wave"| wc=="rawwgchangeEUE_wave"){
+			rtxt <- "EUE"
+			nametab <- paste0(nametab,"_EUE")
+		}else{	
+			rtxt <- "EU,UE"
+			nametab <- paste0(nametab,"_EUUE")
+		}
 	}
 	tab_wavemoments <- xtable(tab_wavemoments, digits=2, 
-							  align="l|lllll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"}"))
+							  align="l|lllll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 	if(demolbl>=1 & demolbl<=7){
 		print(tab_wavemoments,include.rownames=T, hline.after= c(nrow(tab_wavemoments)), 
-			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],".tex"))
+			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
 	}else{
 		print(tab_wavemoments,include.rownames=T, hline.after= c(nrow(tab_wavemoments)), 
-			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,".tex"))
+			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 	}
 	tab_wavemomentsci <- array(0.,dim=c(2*nrow(tab_wavemoments),2*ncol(tab_wavemoments)))
 	tab_wavemomentsse <- array(0.,dim=c(2*nrow(tab_wavemoments),ncol(tab_wavemoments)))
@@ -897,20 +903,31 @@ for(AllEEEU in c(1,2,3)){
 		rowtitles <- list( pos=list(0,6,12), command=c("\\hline  \\color{Maroon}{1996-2012} &  \\multicolumn{5}{|c|}{} \\\\ \n",
 													   "\\hline \\hline   \\color{Maroon}{Expansion} &  \\multicolumn{5}{|c|}{}  \\\\  \n", 
 													   "\\hline \\hline   \\color{Maroon}{Recession} &  \\multicolumn{5}{|c|}{}  \\\\  \n")  )
-		if(wc == "wagechangeEUE_wave"){
-			nametab <- "wavemomentsseEUE"
-		}else{
-			nametab <- "wavemomentsse"
+		nametab <- "recchngmomentsse"
+		if(AllEEEU==1){
+			rtxt <- "All\ changers"
+			nametab <- paste0(nametab,"_all")
+		}else if(AllEEEU==2){
+			rtxt <- "EE"
+			nametab <- paste0(nametab,"_EE")
+		}else if(AllEEEU==3){
+			if(wc=="wagechangeEUE_wave"| wc=="rawwgchangeEUE_wave"){
+				rtxt <- "EUE"
+				nametab <- paste0(nametab,"_EUE")
+			}else{	
+				rtxt <- "EU,UE"
+				nametab <- paste0(nametab,"_EUUE")
+			}
 		}
 		tab_wavemomentsse <- xtable(tab_wavemomentsse, digits=2, 
-									align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"}"))
+									align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 		
 		if(demolbl>=1 & demolbl<=7){
 			print(tab_wavemomentsse,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
-				  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],".tex"))
+				  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
 		}else{
 			print(tab_wavemomentsse,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
-				  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,".tex"))
+				  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 		}
 	}
 }
