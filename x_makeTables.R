@@ -16,9 +16,9 @@ outputdir = "~/workspace/CVW/R/Figures"
 setwd(wd0)
 
 
-recDef <- "recIndic2_wave"
+recDef <- "recIndic_wave"
 wt <- "truncweight"
-wc <- "wagechangeEUE_wave"
+wc <- "rawwgchangeEUE_wave"
 
 
 wtd.mad <- function(xt,wt,md=-Inf){
@@ -130,7 +130,7 @@ if(demolbl==1){
 }
 
 # how to weights EUE's? 2x for an EUUE?
-if(wc == "wagechangeEUE_wave"){
+if(wc == "wagechangeEUE_wave"|wc == "reswgchangeEUE_wave"){
 	DTseam[ UE_wave==T,eval(as.name(wt)):= 0.]
 	DTseam[ EU_wave==T,eval(as.name(wt)):= 2.*eval(as.name(wt))]
 }
@@ -965,9 +965,12 @@ for(AllEEEU in c(1,2,3)){
 
 
 
+#***********************************************************************
+#***********************************************************************
 # Are these the same distributions ? -----------------------------------
-
-
+#***********************************************************************
+#***********************************************************************
+#***********************************************************************
 
 # first do KS test with each subsample 
 DTseam[ , s1:= T]

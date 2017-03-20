@@ -177,7 +177,7 @@ DTseam[ , UE_wave_last  := UE_wave==T & !(shift(UE_wave,type="lead")==T), by=id]
 
 DTseam[last.lfstat_wave==1 & EU_wave_first == T, wageAtEU := last.waverawwg]
 DTseam[, wageAtEU := na.locf(wageAtEU, na.rm = F),by=list(ustintid_wave, id)]
-DTseam[next.lfstat_wave==1 & UE_wave_last == T, wageAfterUE :=  next.rawwgchange_wave]
+DTseam[next.lfstat_wave==1 & UE_wave_last == T, wageAfterUE :=  next.waverawwg]
 DTseam[UE_wave_last == T, rawwgchangeEUE_wave := wageAfterUE - wageAtEU]
 DTseam[, rawwgchangeEUE_wave:= Mode(rawwgchangeEUE_wave), by=list(ustintid_wave, id)]
 DTseam[ EE_wave==T, rawwgchangeEUE_wave := rawwgchange_wave]
