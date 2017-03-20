@@ -97,18 +97,24 @@ DTall[ , wavewage := sum(levwage,na.rm=T), by= list(id,wave)] #if one month is m
 DTall[ , wavewage := log(wavewage + (1+wavewage^2)^.5) ]
 DTall[ , nawavewage:= all(is.na(usewage) ),by= list(id,wave)]
 DTall[ nawavewage==T, wavewage:=NA_real_]
+
+#drop the lowest resid wages, implies working less than $80 /month:
+DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
+#extrmpctile<-DTall[seam==T & lfstat_wave==1, wtd.quantile(levwage/nmo_lf1,na.rm = T, probs = c(.01,.02,.98,.99),weights = wpfinwgt)]
+DTall[ lfstat_wave==1 & wavewage<log(80+(1+80^2)^.5), wavewage:=NA]
+DTall[ , c("levwage","nawavewage","nmo_lf1"):=NULL]
+
 # raw wages
 DTall[ , waverawwg := sum(earnm,na.rm=T), by= list(id,wave)] #if one month is missing, give it the average of the other 3
 DTall[ , waverawwg := log(waverawwg + (1+waverawwg^2)^.5) ]
 DTall[ , nawavewage:= all(is.na(waverawwg) ),by= list(id,wave)]
 DTall[ nawavewage==T, waverawwg:=NA_real_]
-
 #drop the lowest wages, implies working less than $80 /month:
 DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
 #extrmpctile<-DTall[seam==T & lfstat_wave==1, wtd.quantile(levwage/nmo_lf1,na.rm = T, probs = c(.01,.02,.98,.99),weights = wpfinwgt)]
-DTall[ lfstat_wave==1 & wavewage<log(80+(1+80^2)^.5), wavewage:=NA]
+DTall[ lfstat_wave==1 & waverawwg<log(80+(1+80^2)^.5), waverawwg:=NA]
 DTall[ lfstat_wave==1, earn_imp_wave := sum(earn_imp==1,na.rm=T), by=list(id,wave)]
-DTall[ , c("levwage","nawavewage","nmo_lf1"):=NULL]
+DTall[ , c("nawavewage","nmo_lf1"):=NULL]
 
 DTseam <- DTall[ seam==T,]
 #need to add change across waves (use wavewage)
@@ -147,13 +153,6 @@ DTseam[ , c("wageAtEU","wageAfterUE","EU_wave_first", "UE_wave_last"):=NULL]
 #************************************************************************************
 #adding the raw-earnings changes:-----------------------------------------------------
 #************************************************************************************
-
-#drop the lowest wages, implies working less than $80 /month:
-DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
-#extrmpctile<-DTall[seam==T & lfstat_wave==1, wtd.quantile(levwage/nmo_lf1,na.rm = T, probs = c(.01,.02,.98,.99),weights = wpfinwgt)]
-DTall[ lfstat_wave==1 & waverawwg<log(80+(1+80^2)^.5), waverawwg:=NA]
-DTall[ lfstat_wave==1, earn_imp_wave := sum(earn_imp==1,na.rm=T), by=list(id,wave)]
-DTall[ , c("nawavewage","nmo_lf1"):=NULL]
 
 DTseam[ , next.waverawwg := shift(waverawwg,1,type="lead"), by=id]
 DTseam[ , last.waverawwg := shift(waverawwg,1,type="lag"), by=id]

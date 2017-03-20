@@ -16,9 +16,9 @@ outputdir = "~/workspace/CVW/R/Figures"
 setwd(wd0)
 
 
-recDef <- "recIndic_wave"
+recDef <- "recIndic2_wave"
 wt <- "truncweight"
-wc <- "wagechange_wave"
+wc <- "wagechangeEUE_wave"
 
 
 wtd.mad <- function(xt,wt,md=-Inf){
@@ -43,11 +43,31 @@ wtd.GroenveldMeeden <- function(xt, wt,md=-Inf){
 	mn  <- wtd.mean(xt,weights=wt)
 	(mn-md)/wtd.mean(abs(xt - md),weights=wt)
 }
-wtd.Moors <- function(xt, wt){  
+wtd.Moors <- function(xt, wt,samp=T){  
 	wt  <- wt[is.na(xt)==F]
 	xt  <- xt[is.na(xt)==F]
+	if(samp==T){
+		sampidx <- sample(length(xt), length(xt)/4,replace = T)
+		xt <- xt[sampidx]
+		wt <- wt[sampidx]
+	}
 	octls<-wtd.quantile(xt,weights=wt,probs = c(seq(1/8,3/8,1/8),seq(5/8,7/8,1/8)),na.rm = T) #excludes the median
-	((octls[6]-octls[4]) + (octls[3]-octls[1]))/(octls[5]-octls[2]) - 1.23
+	((octls[6]-octls[4]) + (octls[3]-octls[1]))/(octls[5]-octls[2]) 
+}
+wtd.intMoors <- function(xt, wt,samp=T){  
+	wt  <- wt[is.na(xt)==F]
+	xt  <- xt[is.na(xt)==F]
+	if(samp==T){
+		sampidx <- sample(length(xt), length(xt)/4, replace = T)
+		xt <- xt[sampidx]
+		wt <- wt[sampidx]
+	}
+	qtls_hr<-wtd.quantile(xt,weights=wt,probs = seq(.01,.99,.01),na.rm = T)
+	kurt <- array(NA,dim=13)
+	for( i in seq(1,13)){
+		kurt[i] <- ((qtls_hr[100-i] - qtls_hr[50+i]) + (qtls_hr[50-i] - qtls_hr[i]))/(qtls_hr[100-2*i] - qtls_hr[2*i])
+	}
+	return(mean(kurt,na.rm = T))
 }
 wtd.kurtosis <- function(xt, wt){  
 	wt  <- wt[is.na(xt)==F]
@@ -59,6 +79,7 @@ wtd.4qtlmoments <- function(xt,wt){
 	median <- wtd.quantile(xt,na.rm=T,weights=wt,probs=0.5)
 	mad    <- wtd.mad(xt,wt,median)
 	GrnMd  <- wtd.GroenveldMeeden(xt,wt,median)
+	set.seed(12281951)
 	Moors  <- wtd.Moors(xt,wt)
 	return(c(median,mad,GrnMd,Moors))
 }
@@ -79,7 +100,7 @@ toKeep_wave <- c("switchedOcc_wave",
             "ageGrp","HSCol",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint",
             "wagechange_month","wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave",
-            "wagechange_wave_bad","wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad",
+            "wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad",
             "EE_wave","EU_wave","UE_wave","changer","stayer",
             "unrt","wpfinwgt","perwt","cycweight","truncweight","cleaningtruncweight",
 			"lfstat_wave","next.lfstat_wave","wave","id","date","panel")
@@ -111,6 +132,7 @@ if(demolbl==1){
 # how to weights EUE's? 2x for an EUUE?
 if(wc == "wagechangeEUE_wave"){
 	DTseam[ UE_wave==T,eval(as.name(wt)):= 0.]
+	DTseam[ EU_wave==T,eval(as.name(wt)):= 2.*eval(as.name(wt))]
 }
 
 # setup labels
@@ -173,7 +195,7 @@ if(bootse == T){
 
 for( si in seq(1,bootse*Nsim+1) ){
 	if(si>1){
-		DThr <- DTseam[ sample(nsamp,nsamp,replace=T,prob=eval(as.name(wt)))]
+		DThr <- DTseam[ sample(nsamp,nsamp,replace=T)] #,prob=eval(as.name(wt)) <- sample uniformly because will weight it later
 	}else{
 		DThr <- DTseam
 	}
@@ -291,7 +313,7 @@ if(bootse == T){
 tab_wavemoments <- array(0., dim=c(9,5))
 for( si in seq(1,bootse*Nsim+1) ){
 	if(si>1){
-		DThr <- DTseam[ sample(nsamp,nsamp,replace=T,prob=eval(as.name(wt)))]
+		DThr <- DTseam[ sample(nsamp,nsamp,replace=T)] #,prob=eval(as.name(wt))
 	}else{
 		DThr <- DTseam
 	}
@@ -442,10 +464,16 @@ for(ri in seq(1,nrow(tab_waveqtldec))){
 }
 
 #output it to tables
-tab_chngvarqtldec <- data.table(rbind(tab_wavevardec[1,],tab_waveqtldec[1:Ndifs,]) )
-names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EU,UE")
+tab_chngvarqtldec <- data.table(rbind(tab_wavevardec[1,],tab_waveqtldec[1:Ndifs,],tab_wavevardec[2,]) )
+if(wc=="wagechange_wave"|wc=="rawwgchange_wave"){
+	names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EU,UE")	
+}else{
+	names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EUE")	
+}
+
+
 #rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
-rownames(tab_chngvarqtldec) <- c("Variance","0.95-0.05","0.9-0.1","0.75-0.25")# "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
+rownames(tab_chngvarqtldec) <- c("Variance","0.95-0.05","0.9-0.1","0.75-0.25","Pop")# "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
 
 tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=2, 
                             align="l|l|ll", caption="Decomposition of earnings change dispersion \\label{tab:wavechngvarqtldec}")
@@ -534,7 +562,7 @@ if(bootse==T){
 
 for(si in seq(1,bootse*Nsim+1)){
 	if(si>1){
-		DThr <- DTseam[ sample(nsamp,nsamp,replace=T,prob=eval(as.name(wt)))]
+		DThr <- DTseam[ sample(nsamp,nsamp,replace=T)]#,prob=eval(as.name(wt))
 	}else{
 		DThr <- DTseam
 	}
@@ -569,7 +597,7 @@ if(wc =="wagechange_wave" | wc=="rawwgchange_wave"){
 rownames(tab_wavechngdist) <- c("Chng\ Job, All", "Chng\ Job, Same\ Occ", "Chng\ Job, Switch\ Occ",
 									"EE,\ All", "EE,\ Same\ Occ", "EE,\ Switch\ Occ",
 									"EU,UE,\ All", "EU,UE,\ Same\ Occ", "EU,UE,\ Switch\ Occ")
-}else(wc == "wagechangeEUE_wave"| wc=="rawwgchangeEUE_wave"){
+}else if(wc == "wagechangeEUE_wave"| wc=="rawwgchangeEUE_wave"){
 rownames(tab_wavechngdist) <- c("Chng\ Job, All", "Chng\ Job, Same\ Occ", "Chng\ Job, Switch\ Occ",
 									"EE,\ All", "EE,\ Same\ Occ", "EE,\ Switch\ Occ",
 									"EUE,\ All", "EUE,\ Same\ Occ", "EUE,\ Switch\ Occ")
@@ -668,9 +696,11 @@ for( si in seq(1,bootse*Nsim+1) ){
 			DThr[demo==T, trX_indic := T]
 		}else if(AllEEEU==2){
 			DThr[ , trX_indic := NULL]
+			DThr[                     , trX_indic := F]
 			DThr[ EE_wave==T & demo==T, trX_indic := T]
 		}else if(AllEEEU==3){
 			DThr[ , trX_indic := NULL]
+			DThr[                                , trX_indic := F]
 			DThr[ (EU_wave==T|UE_wave==T)&demo==T, trX_indic := T]
 		}
 		eidx = 9*(AllEEEU-1)
@@ -691,8 +721,8 @@ for( si in seq(1,bootse*Nsim+1) ){
 			tab_wavechngdist_rec[3+ridx+eidx,2:tN] <- DThr[changer==T &trX_indic==T &switchedOcc_wave==T &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 		}
 		#wage moments:
-		tab_wavechngmoments_rec[1+eidx,1]    <- DThr[changer==T &trX_indic==T                      ,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
-		tab_wavechngmoments_rec[1+eidx,2:5]  <- DThr[changer==T &trX_indic==T                      ,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
+		tab_wavechngmoments_rec[1+eidx,1]    <- DThr[changer==T &trX_indic==T &!is.na(switchedOcc_wave),       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
+		tab_wavechngmoments_rec[1+eidx,2:5]  <- DThr[changer==T &trX_indic==T &!is.na(switchedOcc_wave),wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
 		tab_wavechngmoments_rec[2+eidx,1]    <- DThr[changer==T &trX_indic==T &switchedOcc_wave==F ,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 		tab_wavechngmoments_rec[2+eidx,2:5]  <- DThr[changer==T &trX_indic==T &switchedOcc_wave==F ,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
 		tab_wavechngmoments_rec[3+eidx,1]    <- DThr[changer==T &trX_indic==T &switchedOcc_wave==T ,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
@@ -701,8 +731,8 @@ for( si in seq(1,bootse*Nsim+1) ){
 		#expansion/recession
 		for(rI in c(F,T)){
 			ridx = rI*3+3
-			tab_wavechngmoments_rec[1+eidx+ridx,1]    <- DThr[changer==T &trX_indic==T                      &eval(as.name(recDef))  == rI,        wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
-			tab_wavechngmoments_rec[1+eidx+ridx,2:5]  <- DThr[changer==T &trX_indic==T                      &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
+			tab_wavechngmoments_rec[1+eidx+ridx,1]    <- DThr[changer==T &trX_indic==T &!is.na(switchedOcc_wave) &eval(as.name(recDef))  == rI,        wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
+			tab_wavechngmoments_rec[1+eidx+ridx,2:5]  <- DThr[changer==T &trX_indic==T &!is.na(switchedOcc_wave) &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
 			tab_wavechngmoments_rec[2+eidx+ridx,1]    <- DThr[changer==T &trX_indic==T &switchedOcc_wave==F &eval(as.name(recDef))  == rI,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 			tab_wavechngmoments_rec[2+eidx+ridx,2:5]  <- DThr[changer==T &trX_indic==T &switchedOcc_wave==F &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
 			tab_wavechngmoments_rec[3+eidx+ridx,1]    <- DThr[changer==T &trX_indic==T &switchedOcc_wave==T &eval(as.name(recDef))  == rI,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
@@ -754,9 +784,9 @@ for(AllEEEU in c(1,2,3)){
 	names(tab_wavedist) <- cnames
 	rownames(tab_wavedist) <- rnames
 	tab_wavedist <- xtable(tab_wavedist, digits=2, 
-		                       align="l|l|lllll", caption=paste0("Distribution of earnings changes among job changers in recession and expansion \\label{tab:",labtxt,"_",wclab,"_",reclab,"}"))
+		                       align="l|l|lllll", caption=paste0("Distribution of earnings changes among ", rtxt ," job changers in recession and expansion \\label{tab:",labtxt,"_",wclab,"_",reclab,"}"))
 	print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)), 
-		  add.to.row=rowtitles, file=paste0(outputdir,"/",labtxt,"_",wclab,"_",reclab,"tex"))
+		  add.to.row=rowtitles, file=paste0(outputdir,"/",labtxt,"_",wclab,"_",reclab,".tex"))
 
 	#standard errors
 	tab_wavedistci <- array(0.,dim=c(2*nrow(tab_wavedist),2*ncol(tab_wavedist)))
@@ -832,9 +862,10 @@ for(AllEEEU in c(1,2,3)){
 	#names(tab_wavemoments) <- c("Mean","Median","Std Dev", "Skew", "Kurtosis")
 	names(tab_wavemoments) <- c("Mean","Median","Med Abs Dev", "Groenv-Meeden", "Moors")
 	#rownames(tab_wavedist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
-	rnames <- c("All\ Workers",      "Same\ Job",     "Chng\ Job",
-				"All\ Workers\ ",   "Same\ Job\ ",  "Chng\ Job\ ",
-				"All\ Workers\ \ ", "Same\ Job\ \ ","Chng\ Job\ \ ")
+	rnames <- c(paste0(rtxt,"    "), "Occ stayers    ","Occ movers    ",
+				paste0(rtxt,"\   "), "Occ stayers\   ","Occ movers\   ",
+				paste0(rtxt,"\ \ "), "Occ stayers\ \ ","Occ movers\ \ ")
+	
 	rownames(tab_wavemoments) <- rnames
 	
 	rowtitles <- list( pos=list(0,3,6), command=c("\\hline  \\color{Maroon}{1996-2012} &  \\multicolumn{5}{|c|}{} \\\\ \n",
@@ -858,7 +889,7 @@ for(AllEEEU in c(1,2,3)){
 		}
 	}
 	tab_wavemoments <- xtable(tab_wavemoments, digits=2, 
-							  align="l|lllll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+							  align="l|lllll", caption=paste0("Moments of  ", rtxt ," job changers' earnings change distribution \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 	if(demolbl>=1 & demolbl<=7){
 		print(tab_wavemoments,include.rownames=T, hline.after= c(nrow(tab_wavemoments)), 
 			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
@@ -895,9 +926,9 @@ for(AllEEEU in c(1,2,3)){
 		
 		names(tab_wavemomentsse) <- c("Mean",as.character( tabqtls))
 		#rownames(tab_wavedist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
-		rnames <- c("All\ Workers"    ," "     , "Same\ Job"    ,","      ,"Chng\ Job"    ,",,",
-					"All\ Workers\ "  ,",,,"   , "Same\ Job\ "  ,",,,,"   ,"Chng\ Job\ "  ,",,,,,",
-					"All\ Workers\ \ ",",,,,,,", "Same\ Job\ \ ",",,,,,,,","Chng\ Job\ \ ",",,,,,,,,")
+		rnames <- c("All\ Workers"    ," "     , "Occ\ Stayers"    ,","      ,"Occ\ Movers"    ,",,",
+					"All\ Workers\ "  ,",,,"   , "Occ\ Stayers\ "  ,",,,,"   ,"Occ\ Movers\ "  ,",,,,,",
+					"All\ Workers\ \ ",",,,,,,", "Occ\ Stayers\ \ ",",,,,,,,","Occ\ Movers\ \ ",",,,,,,,,")
 		rownames(tab_wavemomentsse) <- rnames
 		
 		rowtitles <- list( pos=list(0,6,12), command=c("\\hline  \\color{Maroon}{1996-2012} &  \\multicolumn{5}{|c|}{} \\\\ \n",
