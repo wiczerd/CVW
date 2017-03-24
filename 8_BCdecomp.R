@@ -20,8 +20,71 @@ keep <- c("wagechange_month","wagechange_EUE","EU","UE","EE","recIndic","switche
 qtlgridEst  <- c(seq(.02,.1,.02),seq(0.15,0.85,0.05),seq(.9,.98,.02))
 qtlgridOut <- seq(.02,0.98,0.01)
 MMstd_errs = F
+Nmoments = 5
 #recession counter-factual returns beta^E * recession inidcators and beta^R * expansion indicators
 
+wtd.mad <- function(xt,wt,md=-Inf){
+	wt  <- wt[is.na(xt)==F]
+	xt  <- xt[is.na(xt)==F]
+	if(is.finite(md)==F){
+		md  <- wtd.quantile(xt,weights=wt,probs = 0.5,na.rm = T)
+	}
+	wtd.quantile(abs(xt - md),weights=wt,probs = 0.5,na.rm = T)
+}
+wtd.skewness <- function(xt, wt){  
+	wt  <- wt[is.na(xt)==F]
+	xt  <- xt[is.na(xt)==F]
+	(sum( wt*(xt-wtd.mean(xt,weights=wt))^3 ) / sum(wt) ) / wtd.var(xt,weights=wt)^(1.5)
+}
+wtd.GroenveldMeeden <- function(xt, wt,md=-Inf){  
+	wt  <- wt[is.na(xt)==F]
+	xt  <- xt[is.na(xt)==F]
+	if(is.finite(md)==F){
+		md  <- wtd.quantile(xt,weights=wt,probs = 0.5,na.rm = T)
+	}
+	mn  <- wtd.mean(xt,weights=wt)
+	(mn-md)/wtd.mean(abs(xt - md),weights=wt)
+}
+wtd.Moors <- function(xt, wt,samp=T){  
+	wt  <- wt[is.na(xt)==F]
+	xt  <- xt[is.na(xt)==F]
+	if(samp==T){
+		sampidx <- sample(length(xt), length(xt)/4,replace = T)
+		xt <- xt[sampidx]
+		wt <- wt[sampidx]
+	}
+	octls<-wtd.quantile(xt,weights=wt,probs = c(seq(1/8,3/8,1/8),seq(5/8,7/8,1/8)),na.rm = T) #excludes the median
+	((octls[6]-octls[4]) + (octls[3]-octls[1]))/(octls[5]-octls[2]) 
+}
+wtd.intMoors <- function(xt, wt,samp=T){  
+	wt  <- wt[is.na(xt)==F]
+	xt  <- xt[is.na(xt)==F]
+	if(samp==T){
+		sampidx <- sample(length(xt), length(xt)/4, replace = T)
+		xt <- xt[sampidx]
+		wt <- wt[sampidx]
+	}
+	qtls_hr<-wtd.quantile(xt,weights=wt,probs = seq(.01,.99,.01),na.rm = T)
+	kurt <- array(NA,dim=13)
+	for( i in seq(1,13)){
+		kurt[i] <- ((qtls_hr[100-i] - qtls_hr[50+i]) + (qtls_hr[50-i] - qtls_hr[i]))/(qtls_hr[100-2*i] - qtls_hr[2*i])
+	}
+	return(mean(kurt,na.rm = T))
+}
+wtd.kurtosis <- function(xt, wt){  
+	wt  <- wt[is.na(xt)==F]
+	xt      <- xt[is.na(xt)==F]
+	(sum( wt*(xt-wtd.mean(xt,weights=wt))^4 ) / sum(wt) ) / wtd.var(xt,weights=wt)^(2) - 3.
+}
+wtd.4qtlmoments <- function(xt,wt){
+	#wraps 4 quantile-based moments
+	median <- wtd.quantile(xt,na.rm=T,weights=wt,probs=0.5)
+	mad    <- wtd.mad(xt,wt,median)
+	GrnMd  <- wtd.GroenveldMeeden(xt,wt,median)
+	set.seed(12281951)
+	Moors  <- wtd.Moors(xt,wt)
+	return(c(median,mad,GrnMd,Moors))
+}
 DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
 # wcDF : data set
 # NS   : Number of subgroups
@@ -250,17 +313,21 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 	sampE <-matrix(0.,nrow=nsampE,ncol=length(qtlgridSamp))
 	sampR <-matrix(0.,nrow=nsampR,ncol=length(qtlgridSamp))
 	for(qi in seq(1,length(qtlgridSamp))){
-		sampE[,qi] <- sample(nrow(wcExp),nsampE,replace=T,prob=wcExp$wt)
-		sampR[,qi] <- sample(nrow(wcRec),nsampR,replace=T,prob=wcRec$wt)
+		sampE[,qi] <- sample(nrow(wcExp),nsampE,prob=wcExp$wt,replace=T) # weight the sampling. I will also weight the regression 
+		sampR[,qi] <- sample(nrow(wcRec),nsampR,prob=wcRec$wt,replace=T) #,prob=wcRec$wt
 	}
 	
 	# initialize output distributions:
 	wc_IR_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
+	wc_IR_moments <- array(0.,dim=c(Nmoments,Nsims))
 	wc_BR_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
+	wc_BR_moments <- array(0.,dim=c(Nmoments,Nsims))
 	wc_IR_sw_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
 	wc_IR_un_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
 	wc_rec_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
+	wc_rec_moments <- array(0.,dim=c(Nmoments,Nsims))
 	wc_exp_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
+	wc_exp_moments <- array(0.,dim=c(Nmoments,Nsims))
 	
 	for( simiter in seq(1,Nsims)){	
 		
@@ -269,16 +336,16 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 		wcRec <- subset(wcDF, rec==T)
 		wcExp <- subset(wcDF, rec==F)
 		if(std_errs == T){
-			datsampR <- sample(nrow(wcRec),nrow(wcRec),replace=T,prob=wcRec$wt)
-			datsampE <- sample(nrow(wcExp),nrow(wcExp),replace=T,prob=wcExp$wt)
+			datsampR <- sample(nrow(wcRec),nrow(wcRec),replace=T) # <-,prob=wcRec$wt do not weight the sample. I will weight the regression and stuff
+			datsampE <- sample(nrow(wcExp),nrow(wcExp),replace=T) #,prob=wcExp$wt
 			wcRec <- wcRec[datsampR,]
 			wcExp <- wcExp[datsampE,]
 		}
 		
-		rhere <- rq( wc ~ factor(s)+0 ,tau= qtlgridEst, wcRec, weights = wt, method="fn")
+		rhere <- rq( wc ~ factor(s)+0 ,tau= qtlgridEst, data=wcRec, weights = wt, method="fn")
 		betaptsR = t(rhere$coefficients)
 	
-		rhere <- rq( wc ~factor(s) +0,tau= qtlgridEst, data=wcExp, weights = wt, method="fn")
+		rhere <- rq( wc ~factor(s) +0,tau= qtlgridEst, data=wcExp, weights = wt, method="fn") #
 		betaptsE = t(rhere$coefficients)
 		rm(rhere)
 	
@@ -374,6 +441,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 		#clean up the space:
 		wc_IR_pctile[,simiter] <- quantile(wc_IR,probs=qtlgridOut,na.rm=T)
 		wc_BR_pctile[,simiter] <- quantile(wc_BR,probs=qtlgridOut,na.rm=T)
+		wc_IR_moments[1,simiter] <- 
 		
 		rm(wc_IR)
 		rm(wc_BR)
@@ -521,8 +589,8 @@ moments_compute <- function(qtlpts, distpts){
 	qtl_step <- qtl_grid[seq(2,npts+1)]-qtl_grid[seq(1,npts)]
 	mean_hr <- qtl_step%*%distpts
 	median_hr <- dist_fun(0.5)
-	mad_hr <- spline(qtlpts, abs(distpts- median), 0.5  )
-	GroenMeed_hr <- (mean_hr-median_hr)/(abs(distpts - median_hr)%*%qtl_step)
+	mad_hr <- wtd.quantile( x=abs(distpts- median_hr),probs = 0.5) #need to figure out how weights work here
+	GroenMeed_hr <- (mean_hr-median_hr)/(sum(abs(distpts - median_hr)*qtl_step))
 	Moors_hr <- (dist_fun(7/8)-dist_fun(5/8)+dist_fun(3/8)-dist_fun(1/8))/(dist_fun(3/4)-dist_fun(1/4))
 	return( list(mean_hr,median_hr,mad_hr,GroenMeed_hr,Moors_hr))
 }
