@@ -399,7 +399,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
 						betaR[3,qi]*s3 + betaR[4,qi]*s4 +
 						betaR[5,qi]*s5]
-			else if(NS==3){
+			}else if(NS==3){
 				wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
 						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
 						betaR[3,qi]*s3 ]
@@ -512,6 +512,20 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 	}
 }
 
+
+moments_compute <- function(qtlpts, distpts){
+	# take the distributions points evaluated at the quantile points and crank out some moments
+	npts <- length(qtlpts)
+	dist_fun <- splinefun(qtlpts, distpts)
+	qtl_grid <- c(0.5*qtlpts[1] , 0.5*(qtlpts[seq(2,npts)]+qtlpts[seq(1,npts-1)]), 0.5*qtlpts[npts]+0.5)
+	qtl_step <- qtl_grid[seq(2,npts+1)]-qtl_grid[seq(1,npts)]
+	mean_hr <- qtl_step%*%distpts
+	median_hr <- dist_fun(0.5)
+	mad_hr <- spline(qtlpts, abs(distpts- median), 0.5  )
+	GroenMeed_hr <- (mean_hr-median_hr)/(abs(distpts - median_hr)%*%qtl_step)
+	Moors_hr <- (dist_fun(7/8)-dist_fun(5/8)+dist_fun(3/8)-dist_fun(1/8))/(dist_fun(3/4)-dist_fun(1/4))
+	return( list(mean_hr,median_hr,mad_hr,GroenMeed_hr,Moors_hr))
+}
 
 ########################################################################
 ########################################################################

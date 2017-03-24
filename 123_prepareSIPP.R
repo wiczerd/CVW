@@ -356,17 +356,19 @@ recDates <- as.Date(c("2001-02-01", "2001-12-01","2007-11-01", "2009-07-01"))
 # create vector of recession dates : above 6%
 recDates2 <- as.Date(c("2003-04-01", "2003-10-01","2008-08-01", "2014-09-01"))
 
-# create recession indicator
-sipp[, recIndic := (date > recDates[1] & date < recDates[2]) | 
-     	(date > recDates[3] & date < recDates[4])]
-sipp[, recIndic2 := (date > recDates2[1] & date < recDates2[2]) | 
-	 	(date > recDates2[3] & date < recDates2[4])]
-
 # get PCE and unemployment rate data
 setwd(datadir)
 PCE <- readRDS("./PCE.RData")
 unrate <- readRDS("./unrate.RData")
 setwd(rootdir)
+
+
+# create recession indicator
+sipp[, recIndic := (date > recDates[1] & date < recDates[2]) | 
+	 	(date > recDates[3] & date < recDates[4])]
+recDates2 <- as.Date(unrate$date[unrate$unrateSA>6.5])
+sipp[, recIndic2 := date %in% recDates2]
+
 
 # add PCE and unemployment rate data
 sipp <- merge(sipp, PCE, by = "date", all.x = TRUE)
@@ -571,6 +573,7 @@ sipp_wave[ is.na(midEE)==T, midEE:=F]
 sipp_wave[ midEE  ==T , EEmon := next.EEmon]
 sipp_wave[ midEE  ==T , EE_wave:=T  ]
 sipp_wave[ midEE  ==T , switchedOcc_wave:=next.switchedOcc_wave  ]
+sipp_wave[ midEE  ==T , switchedInd_wave:=next.switchedInd_wave  ]
 sipp_wave[ midEE  ==T , jobchng_wave:=next.jobchng_wave  ]
 
 
@@ -611,7 +614,10 @@ sipp_wave[ (EU_wave==T | UE_wave==T) & EE_wave==T, EE_wave:=F]
 
 #add switchedOcc_wave to whole ustintid
 sipp_wave[ ustintid_wave>0 & EU_wave!=T & midEU!=T, switchedOcc_wave:=NA]
-sipp_wave[ ustintid_wave>0 , switchedOcc_wave_any := Any_narm(switchedOcc_wave), by=list(id,ustintid_wave)]
+sipp_wave[ ustintid_wave>0 , switchedOcc_wave := Any_narm(switchedOcc_wave), by=list(id,ustintid_wave)]
+sipp_wave[ ustintid_wave>0 & EU_wave!=T & midEU!=T, switchedInd_wave:=NA]
+sipp_wave[ ustintid_wave>0 , switchedInd_wave := Any_narm(switchedInd_wave), by=list(id,ustintid_wave)]
+
 
 #create recIndic_stint
 sipp_wave[is.na(ustintid_wave)|ustintid_wave==0 , recIndic_stint := recIndic_wave]
