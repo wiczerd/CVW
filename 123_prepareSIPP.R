@@ -4,6 +4,7 @@
 library(foreign)
 library(data.table)
 library(zoo)
+library(lubridate)
 library(ggplot2)
 Mode <- function(x) {
 	ux <- unique(x[!is.na(x)])
@@ -593,7 +594,7 @@ sipp_wave[ midEU  ==T , recIndic2_wave:= next.recIndic2_wave  ]
 sipp_wave[ , next.UEmon   := shift( UEmon  , type="lead" ), by= id]
 sipp_wave[ , next.UE_wave := shift( UE_wave, type="lead" ), by= id]
 sipp_wave[ next.UEmon>0 & next.UEmon<4 & next.UE_wave ==T & lfstat_wave>=2 , midUE  :=T  ]
-sipp_wave[ is.na(midEU)==T, midEU:=F]
+sipp_wave[ is.na(midUE)==T, midUE:=F]
 sipp_wave[ midUE == T , UEmon := next.UEmon]
 sipp_wave[ midUE  ==T , recIndic_wave := next.recIndic_wave  ]
 sipp_wave[ midUE  ==T , recIndic2_wave:= next.recIndic2_wave  ]
@@ -651,18 +652,101 @@ sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
 sipp[ , c("EE_max","EU_max","UE_max"):=NULL]
 sipp[ , date0 := min(date), by=id]
-sipp[ date>= date0         & date<(date0+365  ), yr_ctr := 1]
-sipp[ date>= (date0+365)   & date<(date0+365*2), yr_ctr := 2]
-sipp[ date>= (date0+365*2) & date<(date0+365*3), yr_ctr := 3]
-sipp[ date>= (date0+365*3) & date<(date0+365*4), yr_ctr := 4]
-sipp[ date>= (date0+365*4) & date<(date0+365*5), yr_ctr := 5]
-sipp[ date>= (date0+365*5) & date<(date0+365*6), yr_ctr := 6]
+sipp[ date>= date0         & date<(date0+365  ), yri := 1]
+sipp[ date>= (date0+365)   & date<(date0+365*2), yri := 2]
+sipp[ date>= (date0+365*2) & date<(date0+365*3), yri := 3]
+sipp[ date>= (date0+365*3) & date<(date0+365*4), yri := 4]
+sipp[ date>= (date0+365*4) & date<(date0+365*5), yri := 5]
+sipp[ date>= (date0+365*5) & date<(date0+365*6), yri := 6]
+
+sipp[ , yrseam := (yri !=shift(yri,type="lead")), by=id]
+sipp[ , month0:= month(date0)]
+sipp[ , yrrefmon := month(date) - month0+1]
+sipp[ yrrefmon<=0, yrrefmon := 12+yrrefmon]
 
 #annual transitions
+sipp[, recIndic_ann := any(recIndic, na.rm=T), by=list(yri,id)]
+sipp[, recIndic2_ann := any(recIndic2, na.rm=T), by=list(yri,id)]
+
+sipp[ , lfstat_ann := as.integer(max(lfstat,na.rm=T)), by=list(id,yri)]
+sipp[ lfstat_ann>1, lfstat_wave := 3L-any(lfstat==2), by=list(id,yri)]
+
+sipp[ EE==T, EEyrmon := yrrefmon]
+sipp[ is.na(EEyrmon), EEyrmon := 0]
+sipp[ , EEyrmon := max(EEyrmon), by=list(id,yri)]
+sipp[ EU==T, EUyrmon := yrrefmon]
+sipp[ is.na(EUyrmon), EUyrmon := 0]
+sipp[ , EUyrmon := max(EUyrmon), by=list(id,yri)]
+sipp[ UE==T, UEyrmon := yrrefmon]
+sipp[ is.na(UEyrmon), UEyrmon := 0]
+sipp[ , UEyrmon := max(UEyrmon), by=list(id,yri)]
+#now check EU, UE, EE as max over months in the year
+sipp[ , UE_max := any(UE,na.rm=T), by=list(id,yri)]
+sipp[ , EU_max := any(EU,na.rm=T), by=list(id,yri)]
+sipp[ , EE_max := any(EE,na.rm=T), by=list(id,yri)]
+
+sipp[ , jobchng_ann := any(jobchng,na.rm=T), by=list(id,yri)]
+
+sipp[ , switchedOcc_ann := any(switchedOcc_wave,na.rm = T)]
+
+#**************************************************************
+#sipp_ann begins here----------------------
+
+sipp_ann <- subset(sipp, yrseam==T)
+setkey(sipp_ann, id,yri)
+
+sipp_ann[ , EU_ann := EU_max]
+sipp_ann[ , UE_ann := UE_max]
+sipp_ann[ , EE_ann := EE_max]
+
+sipp_ann[ , next.jobchng_ann:= shift(jobchng_ann,type="lead"),by=id]
+
+#correct for w/in wave transitions
+sipp_ann[ , next.EEyrmon   := shift( EEyrmon  , type="lead"), by=id]# adjust because EE_ann will be counted before
+sipp_ann[ , next.EE_ann := shift( EE_ann, type="lead"), by=id]
+sipp_ann[ , next.recIndic_ann := shift( recIndic_ann, type="lead"), by=id]
+sipp_ann[ , next.recIndic2_ann := shift( recIndic2_ann, type="lead"), by=id]
+sipp_ann[ next.EEyrmon>0 & next.EEyrmon<12 & next.EE_ann==T & lfstat_ann==1 , midEE_ann :=T  ]
+sipp_ann[ is.na(midEE_ann)==T, midEE_ann:=F]
+sipp_ann[ midEE_ann  ==T , EEyrmon := next.EEyrmon]
+sipp_ann[ midEE_ann  ==T , EE_ann:=T  ]
+sipp_ann[ midEE_ann  ==T , jobchng_ann:=next.jobchng_ann  ]
+#sipp_ann[ midEE_ann  ==T , recIndic_ann := next.recIndic_ann  ]
+#sipp_ann[ midEE_ann  ==T , recIndic2_ann:= next.recIndic2_ann  ]
 
 
+sipp_ann[ , next.EUyrmon   := shift( EUyrmon  , type="lead" ), by= id]
+sipp_ann[ , next.EU_ann := shift( EU_ann, type="lead" ), by= id]
+sipp_ann[ next.EUyrmon>0 & next.EUyrmon<12 & next.EU_ann ==T & lfstat_ann==1 , midEU_ann :=T  ]
+sipp_ann[ is.na(midEU_ann)==T, midEU_ann:=F]
+sipp_ann[ midEU_ann ==T , EUyrmon := next.EUyrmon]
+sipp_ann[ midEU_ann ==T , EU_ann:=T  ]
+#sipp_ann[ midEU_ann  ==T , recIndic_ann := next.recIndic_ann  ]
+#sipp_ann[ midEU_ann  ==T , recIndic2_ann:= next.recIndic2_ann  ]
+
+sipp_ann[ , next.UEyrmon   := shift( UEyrmon  , type="lead" ), by= id]
+sipp_ann[ , next.UE_ann := shift( UE_ann, type="lead" ), by= id]
+sipp_ann[ next.UEyrmon>0 & next.UEyrmon<12 & next.UE_ann ==T & lfstat_ann>=2 , midUE_ann :=T  ]
+sipp_ann[ is.na(midUE_ann)==T, midUE_ann:=F]
+sipp_ann[ midUE_ann == T , UEyrmon := next.UEyrmon]
+#sipp_ann[ midUE_ann  ==T , recIndic_ann := next.recIndic_ann  ]
+#sipp_ann[ midUE_ann  ==T , recIndic2_ann:= next.recIndic2_ann  ]
+sipp_ann[ midUE_ann == T , UE_ann:=T  ]
+
+#EU,UE trumps EE
+sipp_ann[ (EU_ann==T | UE_ann==T) & EE_ann==T, EE_ann:=F]
+
+#merge them back
+sipp_ann <- subset(sipp_ann, select=c(	"jobchng_ann","EE_ann","EU_ann","UE_ann","midEE_ann","midEU_ann","midUE_ann","EEyrmon","UEyrmon","EUyrmon","yri","id"))
+
+sipp[ , c("EEyrmon","EUyrmon","UEyrmon","jobchng_ann"):=NULL]
+
+sipp <- merge(sipp,sipp_ann, by=c("id","yri"), all=T)
 
 ########## save prepared data
+#a bit of cleanup
+sipp[ , c("ajbocc","date0","jobchng_max","EE_max","EU_max","UE_max","PCEPI","last.earnm","last.job","last.job_wave","smonth","syear","epppnum","next.Estart","ui_r","coc"):=NULL]
+
 setwd(outputdir)
 #saveRDS(sipp, "./preparedSipp.RData")
 saveRDS(sipp, "./DTall_3.RData")
