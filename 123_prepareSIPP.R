@@ -568,6 +568,8 @@ sipp_wave[ is.na(matched_EUUE_wave), matched_EUUE_wave:= F]
 #correct for w/in wave transitions
 sipp_wave[ , next.EEmon   := shift( EEmon  , type="lead"), by=id]# adjust because EE_wave will be counted before
 sipp_wave[ , next.EE_wave := shift( EE_wave, type="lead"), by=id]
+sipp_wave[ , next.recIndic_wave := shift( recIndic_wave, type="lead"), by=id]
+sipp_wave[ , next.recIndic2_wave := shift( recIndic2_wave, type="lead"), by=id]
 sipp_wave[ next.EEmon>0 & next.EEmon<4 & next.EE_wave==T & lfstat_wave==1 , midEE  :=T  ]
 sipp_wave[ is.na(midEE)==T, midEE:=F]
 sipp_wave[ midEE  ==T , EEmon := next.EEmon]
@@ -575,6 +577,8 @@ sipp_wave[ midEE  ==T , EE_wave:=T  ]
 sipp_wave[ midEE  ==T , switchedOcc_wave:=next.switchedOcc_wave  ]
 sipp_wave[ midEE  ==T , switchedInd_wave:=next.switchedInd_wave  ]
 sipp_wave[ midEE  ==T , jobchng_wave:=next.jobchng_wave  ]
+sipp_wave[ midEE  ==T , recIndic_wave := next.recIndic_wave  ]
+sipp_wave[ midEE  ==T , recIndic2_wave:= next.recIndic2_wave  ]
 
 
 sipp_wave[ , next.EUmon   := shift( EUmon  , type="lead" ), by= id]
@@ -583,12 +587,16 @@ sipp_wave[ next.EUmon>0 & next.EUmon<4 & next.EU_wave ==T & lfstat_wave==1 , mid
 sipp_wave[ is.na(midEU)==T, midEU:=F]
 sipp_wave[ midEU ==T , EUmon := next.EUmon]
 sipp_wave[ midEU ==T , EU_wave:=T  ]
+sipp_wave[ midEU  ==T , recIndic_wave := next.recIndic_wave  ]
+sipp_wave[ midEU  ==T , recIndic2_wave:= next.recIndic2_wave  ]
 
 sipp_wave[ , next.UEmon   := shift( UEmon  , type="lead" ), by= id]
 sipp_wave[ , next.UE_wave := shift( UE_wave, type="lead" ), by= id]
 sipp_wave[ next.UEmon>0 & next.UEmon<4 & next.UE_wave ==T & lfstat_wave>=2 , midUE  :=T  ]
 sipp_wave[ is.na(midEU)==T, midEU:=F]
 sipp_wave[ midUE == T , UEmon := next.UEmon]
+sipp_wave[ midUE  ==T , recIndic_wave := next.recIndic_wave  ]
+sipp_wave[ midUE  ==T , recIndic2_wave:= next.recIndic2_wave  ]
 sipp_wave[ midUE == T , UE_wave:=T  ]
 
 # clean-up the EU, UE in 1 wave
@@ -638,11 +646,27 @@ sipp[ , c("EEmon","EUmon","UEmon"):=NULL]
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
+#*********************************************************
+#compute annual versions of things    ----------------------
+
+sipp[ , c("EE_max","EU_max","UE_max"):=NULL]
+sipp[ , date0 := min(date), by=id]
+sipp[ date>= date0         & date<(date0+365  ), yr_ctr := 1]
+sipp[ date>= (date0+365)   & date<(date0+365*2), yr_ctr := 2]
+sipp[ date>= (date0+365*2) & date<(date0+365*3), yr_ctr := 3]
+sipp[ date>= (date0+365*3) & date<(date0+365*4), yr_ctr := 4]
+sipp[ date>= (date0+365*4) & date<(date0+365*5), yr_ctr := 5]
+sipp[ date>= (date0+365*5) & date<(date0+365*6), yr_ctr := 6]
+
+#annual transitions
+
+
 
 ########## save prepared data
 setwd(outputdir)
 #saveRDS(sipp, "./preparedSipp.RData")
 saveRDS(sipp, "./DTall_3.RData")
+
 
 # plot transitions time series for sanity check
 EU_wave <- sipp[lfstat_wave==1 & is.finite(next.lfstat_wave), .(EU_wave = weighted.mean(EU_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
