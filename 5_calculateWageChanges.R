@@ -20,7 +20,7 @@ Mode <- function(x) {
 DTall <- readRDS(paste0(datadir,"/DTall_4.RData"))
 #drop some un-need variables
 DTall[ , nwhite := black==T|hispanic==T]
-DTall <- DTall[ , c("coc","syear","smonth","eyear","emonth","esr","epppnum","ajbocc","logearnm","black","hispanic"):=NULL]
+DTall <- DTall[ , c("eyear","emonth","esr","next.earnm","logearnm","black","hispanic"):=NULL]
 DTall <- DTall[ lfstat_wave<3, ]
 
 setkey(DTall, id, date)
@@ -29,7 +29,6 @@ DTall[ lfstat==1 & usewage<log(20+(1+20^2)^.5), usewage:=NA]
 
 DTall[ , next.usewage := shift(usewage,type="lead"), by=id]
 DTall[ , last.usewage := shift(usewage,type="lag"), by=id]
-DTall[ , c("next.earnm","last.earnm") := NULL]
 
 # fill wages upwards to fill in unemployment spells
 DTall[EE==T|UE == T, nextwage := next.usewage]
@@ -97,24 +96,33 @@ DTall[ , wavewage := sum(levwage,na.rm=T), by= list(id,wave)] #if one month is m
 DTall[ , wavewage := log(wavewage + (1+wavewage^2)^.5) ]
 DTall[ , nawavewage:= all(is.na(usewage) ),by= list(id,wave)]
 DTall[ nawavewage==T, wavewage:=NA_real_]
-
 #drop the lowest resid wages, implies working less than $80 /month:
 DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
-#extrmpctile<-DTall[seam==T & lfstat_wave==1, wtd.quantile(levwage/nmo_lf1,na.rm = T, probs = c(.01,.02,.98,.99),weights = wpfinwgt)]
 DTall[ lfstat_wave==1 & wavewage<log(80+(1+80^2)^.5), wavewage:=NA]
-DTall[ , c("levwage","nawavewage","nmo_lf1"):=NULL]
+#annual:
+DTall[ , annwage := sum(levwage,na.rm = T), by=list(id,yri)]
+DTall[ , annwage := log(annwage + (1+annwage^2)^0.5)]
+DTall[ , naannwage:= all(is.na(usewage) ),by= list(id,yri)]
+DTall[ naannwage==T, annwage:=NA_real_]
+DTall[ , c("levwage","nawavewage","naannwage","nmo_lf1"):=NULL]
+
 
 # raw wages
 DTall[ , waverawwg := sum(earnm,na.rm=T), by= list(id,wave)] #if one month is missing, give it the average of the other 3
 DTall[ , waverawwg := log(waverawwg + (1+waverawwg^2)^.5) ]
-DTall[ , nawavewage:= all(is.na(waverawwg) ),by= list(id,wave)]
+DTall[ , nawavewage:= all(is.na(usewage) ),by= list(id,wave)]
 DTall[ nawavewage==T, waverawwg:=NA_real_]
 #drop the lowest wages, implies working less than $80 /month:
 DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
-#extrmpctile<-DTall[seam==T & lfstat_wave==1, wtd.quantile(levwage/nmo_lf1,na.rm = T, probs = c(.01,.02,.98,.99),weights = wpfinwgt)]
 DTall[ lfstat_wave==1 & waverawwg<log(80+(1+80^2)^.5), waverawwg:=NA]
 DTall[ lfstat_wave==1, earn_imp_wave := sum(earn_imp==1,na.rm=T), by=list(id,wave)]
-DTall[ , c("nawavewage","nmo_lf1"):=NULL]
+
+DTall[ , annrawwg := sum(levwage,na.rm = T), by=list(id,yri)]
+DTall[ , annrawwg := log(annrawwg + (1+annrawwg^2)^0.5)]
+DTall[ , annrawwg:= all(is.na(usewage) ),by= list(id,yri)]
+DTall[ naannwage==T, annwage:=NA_real_]
+DTall[ , c("naannwage","nawavewage","nmo_lf1"):=NULL]
+
 
 DTseam <- DTall[ seam==T,]
 #need to add change across waves (use wavewage)

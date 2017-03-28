@@ -36,8 +36,8 @@ DTall[educ == 2, yearsschool := 12]
 DTall[educ == 3, yearsschool := 14]
 DTall[educ == 4, yearsschool := 16]
 DTall[educ == 5, yearsschool := 18]
-DTall[ educ<=2, nocol_col:=1  ]
-DTall[ educ> 2, nocol_col:=2  ]
+DTall[ educ<=3, nocol_col:=1  ]
+DTall[ educ> 3, nocol_col:=2  ]
 
 DTall[, experience := age - yearsschool]
 
@@ -60,7 +60,7 @@ DTall[ lfstat>=2, usewage:= 0. ]
 DTall[ lfstat>=2, occwage:= 0. ]
 
 # remove regressor variables
-DTall[, c("race","experience","educ","unrateNSA","PCEPI","yearsschool","nocol_col") := NULL]
+DTall[, c("race","experience","educ","unrateNSA","yearsschool","nocol_col") := NULL]
 
 saveRDS(DTall, paste0(datadir,"/DTall_4.RData"))
 rm(list=ls())
