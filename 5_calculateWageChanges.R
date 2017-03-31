@@ -117,13 +117,14 @@ DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
 DTall[ lfstat_wave==1 & waverawwg<log(80+(1+80^2)^.5), waverawwg:=NA]
 DTall[ lfstat_wave==1, earn_imp_wave := sum(earn_imp==1,na.rm=T), by=list(id,wave)]
 
-DTall[ , annrawwg := sum(levwage,na.rm = T), by=list(id,yri)]
+DTall[ , annrawwg := sum(earnm,na.rm = T), by=list(id,yri)]
 DTall[ , annrawwg := log(annrawwg + (1+annrawwg^2)^0.5)]
-DTall[ , annrawwg:= all(is.na(usewage) ),by= list(id,yri)]
-DTall[ naannwage==T, annwage:=NA_real_]
+DTall[ , naannwage:= all(is.na(usewage) ),by= list(id,yri)]
+DTall[ naannwage==T, annrawwg:=NA_real_]
 DTall[ , c("naannwage","nawavewage","nmo_lf1"):=NULL]
 
-
+#************************************************************************************
+#wave frequency changes --------------------------------------------
 DTseam <- DTall[ seam==T,]
 #need to add change across waves (use wavewage)
 DTseam[ , next.wavewage := shift(wavewage,1,type="lead"), by=id]
@@ -205,7 +206,6 @@ DTseam[ is.na(wagechange_wave_bad2)  , wagechange_wave_bad2 :=F]
 #wagechange between 2 0's:
 DTseam[lfstat_wave>=2 & next.lfstat_wave>=2 & !(EU_wave==T|UE_wave==T|EE_wave==T) , wagechange_wave_bad2:= T] 
 
-# wagechange wave =NA for job changers without a transition
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave_jcbad := T]
 DTseam[ , next.job_wave := shift(job_wave,type="lead"),by=id]
 DTseam[ , last.job_wave := shift(job_wave,type="lag"),by=id]
@@ -261,6 +261,55 @@ DTseam[ switchedOcc_wave==F, occwagechangeEUE_wave:= 0.]
 
 DTseam<-subset(DTseam, select = c("occwagechange_wave","occwagechangeEUE_wave","next.occwage_wave","id","wave"))
 DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
+
+#************************************************************************
+#Annual wage changes ---------------------------
+#************************************************************************
+
+DTann <- DTall[ yrseam==T,]
+#need to add change across waves (use wavewage)
+DTann[ , next.annwage := shift(annwage,1,type="lead"), by=id]
+DTann[ , next2.annwage := shift(annwage,2,type="lead"), by=id]
+DTann[ , next3.annwage := shift(annwage,3,type="lead"), by=id]
+DTann[ , last.annwage := shift(annwage,1,type="lag"), by=id]
+
+DTann[ , wagechange_ann := next.annwage - annwage]
+DTann[ , wagechange2_ann := next2.annwage - annwage]
+DTann[ , wagechange3_ann := next3.annwage - annwage]
+
+DTann[ , next.wagechange_ann := shift(wagechange_ann, type="lead"),by=id]
+DTann[ , last.wagechange_ann := shift(wagechange_ann, type="lag" ),by=id]
+
+DTann[ annwage>0     , rank.annwage := rank(annwage,na.last = "keep",ties.method="average"), by=year]
+DTann[ annwage>0     , rank.annwage := (rank.annwage - min(rank.annwage,na.rm = T))/(max(rank.annwage,na.rm = T) - min(rank.annwage,na.rm = T)), by=year]
+DTann[ annwage>0     , pctile.annwage := round(rank.annwage*100)]
+DTann[ last.annwage>0, last.rank.annwage := rank(last.annwage,na.last = "keep",ties.method="average"), by=year]
+DTann[ last.annwage>0, last.rank.annwage := (last.rank.annwage - min(last.rank.annwage,na.rm = T))/(max(last.rank.annwage,na.rm = T) - min(last.rank.annwage,na.rm = T)), by=year]
+DTann[ last.annwage>0, last.pctile.annwage := round(last.rank.annwage*100)]
+
+#raw annual wage changes:
+DTann[ , next.annrawwg := shift(annrawwg,1,type="lead"),by=id]
+DTann[ , next2.annrawwg := shift(annrawwg,2,type="lead"),by=id]
+DTann[ , next3.annrawwg := shift(annrawwg,3,type="lead"),by=id]
+DTann[ , last.annrawwg := shift(annrawwg,1,type="lag"),by=id]
+
+DTann[ , rawwgchange_ann := next.annrawwg - annrawwg]
+DTann[ , rawwgchange2_ann := next2.annrawwg - annrawwg]
+DTann[ , rawwgchange3_ann := next3.annrawwg - annrawwg]
+
+DTann[ , next.rawwgchange_ann := shift(rawwgchange_ann)]
+
+DTann[ annrawwg>0     , rank.annrawwg := rank(annrawwg,na.last = "keep",ties.method="average"), by=year]
+DTann[ annrawwg>0     , rank.annrawwg := (rank.annrawwg - min(rank.annrawwg,na.rm = T))/(max(rank.annrawwg,na.rm = T) - min(rank.annrawwg,na.rm = T)), by=year]
+DTann[ annrawwg>0     , pctile.annrawwg := round(rank.annrawwg*100)]
+DTann[ last.annrawwg>0, last.rank.annrawwg := rank(last.annrawwg,na.last = "keep",ties.method="average"), by=year]
+DTann[ last.annrawwg>0, last.rank.annrawwg := (last.rank.annrawwg - min(last.rank.annrawwg,na.rm = T))/(max(last.rank.annrawwg,na.rm = T) - min(last.rank.annrawwg,na.rm = T)), by=year]
+DTann[ last.annrawwg>0, last.pctile.annrawwg := round(last.rank.annrawwg*100)]
+
+DTann<-subset(DTann, select = c("rawwgchange_ann","wagechange_ann","next.wagechange_ann","next.rawwgchange_ann",
+								"pctile.annrawwg","pctile.annwage","last.pctile.annrawwg","last.pctile.annwage","id","yri"))
+DTall<- merge(DTall,DTann,by=c("id","yri"),all.x=T)
+
 
 saveRDS(DTall, paste0(datadir,"/DTall_5.RData"))
 

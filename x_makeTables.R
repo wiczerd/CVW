@@ -114,7 +114,7 @@ DTseam <- subset(DTseam, (stayer|changer))
 
 # loop over wage measures here:
 
-for( wc in c("wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave") ){
+for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgchangeEUE_wave") ){
 
 	if(demolbl==1){
 		DTseam[(stayer==T|changer==T), demo:= (ageGrp==1)]
@@ -136,8 +136,11 @@ for( wc in c("wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgcha
 	
 	# how to weights EUE's? 2x for an EUUE?
 	if(wc == "wagechangeEUE_wave"|wc == "reswgchangeEUE_wave"){
-		DTseam[ UE_wave==T,eval(as.name(wt)):= 0.]
-		DTseam[ EU_wave==T,eval(as.name(wt)):= 2.*eval(as.name(wt))]
+		DTseam[ ,wtEUE:= eval(as.name(wt))]
+		DTseam[ UE_wave==T,wtEUE:= 0.]
+		DTseam[ EU_wave==T,wtEUE:= 2.*eval(as.name(wt))]
+		origwt = wt
+		wt = "wtEUE"
 	}
 	
 	# setup labels
@@ -754,7 +757,7 @@ for( wc in c("wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgcha
 			dat_wavechngdist_rec <- tab_wavechngdist_rec
 			dat_wavechngmoments_rec <- tab_wavechngmoments_rec
 		}
-	}
+	}#si, sim
 	#output it to tables
 	tab_wavechngdist_rec <- dat_wavechngdist_rec
 	tab_wavechngmoments_rec<-dat_wavechngmoments_rec
@@ -969,9 +972,12 @@ for( wc in c("wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgcha
 					  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 			}
 		}
+	}# all, EU,UE  & EE
+	
+	if(wc == "wagechangeEUE_wave"|wc == "reswgchangeEUE_wave"){
+		wt = origwt
 	}
-
-}
+} #wage measures
 
 #***********************************************************************
 #***********************************************************************
