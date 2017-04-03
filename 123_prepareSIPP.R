@@ -6,6 +6,7 @@ library(data.table)
 library(zoo)
 library(lubridate)
 library(ggplot2)
+library(mFilter)
 Mode <- function(x) {
 	ux <- unique(x[!is.na(x)])
 	ux[which.max(tabulate(match(x, ux)))]
@@ -361,13 +362,16 @@ recDates2 <- as.Date(c("2003-04-01", "2003-10-01","2008-08-01", "2014-09-01"))
 setwd(datadir)
 PCE <- readRDS("./PCE.RData")
 unrate <- readRDS("./unrate.RData")
+unrate <- readRDS("./CPSunempRt.RData")
 setwd(rootdir)
 
-
+filtered.unrate <- hpfilter(unrate$unrt,type = "lambda",freq=14400)
+unrate<-cbind(unrate,filtered.unrate$cycle)
 # create recession indicator
 sipp[, recIndic := (date > recDates[1] & date < recDates[2]) | 
 	 	(date > recDates[3] & date < recDates[4])]
-recDates2 <- as.Date(unrate$date[unrate$unrateSA>6.5])
+#recDates2 <- as.Date(unrate$date[unrate$unrateSA>6.5])
+recDates2 <- unrate$date[ unrate$`filtered.unrate$cycle`>=quantile(unrate$`filtered.unrate$cycle`,probs = 4/5) ]
 sipp[, recIndic2 := date %in% recDates2]
 
 

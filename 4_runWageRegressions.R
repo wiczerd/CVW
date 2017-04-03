@@ -60,7 +60,7 @@ DTall[ lfstat>=2, usewage:= 0. ]
 DTall[ lfstat>=2, occwage:= 0. ]
 
 # remove regressor variables
-DTall[, c("race","experience","educ","unrateNSA","yearsschool","nocol_col") := NULL]
+DTall[, c("race","experience","educ","yearsschool","nocol_col") := NULL]
 
 saveRDS(DTall, paste0(datadir,"/DTall_4.RData"))
 rm(list=ls())
