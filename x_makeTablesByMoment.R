@@ -25,7 +25,7 @@ demotxt <- c("Young", "Prime","Old","HS","Col","Male","Female")
 
 bootse <- T #compute bootstrapped standard errors or no?
 seedint = 941987
-Nsim = 40
+Nsim = 40 #make this bigger: just for diagnostic!!!!!!!!!!!!!!!!!!!
 
 wtd.mad <- function(xt,wt,md=-Inf){
 	wt  <- wt[is.na(xt)==F]
@@ -86,7 +86,7 @@ wtd.4qtlmoments <- function(xt,wt){
 	mad    <- wtd.mad(xt,wt,median)
 	GrnMd  <- wtd.GroenveldMeeden(xt,wt,median)
 	set.seed(12281951)
-	Moors  <- wtd.Moors(xt,wt)
+	Moors  <- wtd.Moors(xt,wt,samp = T)
 	return(c(median,mad,GrnMd,Moors))
 }
 
@@ -111,7 +111,7 @@ DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
 DTseam <- DTseam[, toKeep_wave, with = FALSE]
 DTseam <- subset(DTseam, (stayer|changer))
 
-
+DTseam[ , idx := as.integer(as.factor(id))]
 
 # select deomgraphic
 if(demolbl==1){
@@ -155,16 +155,17 @@ origwt = wt
 if(bootse == T){
 	set.seed(seedint)
 	#draw the sample
-	nsampE = nrow(DTseam[eval(as.name(recDef)) == F ])
-	nsampR = nrow(DTseam[eval(as.name(recDef)) == T ])
-	nsamp  = nsampR+nsampE
+	nsamp  = DTseam[ , max(idx)]
 	se_wavemoments <- array(0.,dim = c(Nsubsamp,Nt,Nmoments,Nsim))
+	sampidx <-array(1L, dim = c(nsamp,Nsim))
+	for(si in seq(1,Nsim)){ sampidx[ , si] = sample(nsamp,nsamp,replace = T) }
 }
 tab_wavemoments <- array(0., dim=c(Nsubsamp,Nt,Nmoments))
 
-for( si in seq(1,bootse*Nsim+1) ){
-	if(si>1){
-		DThr <- DTseam[ sample(nsamp,nsamp,replace=T)] #,prob=eval(as.name(wt))
+for( si in seq(0,bootse*Nsim) ){
+	if(si>0){
+		set.seed(seedint+si)
+		DThr <- DTseam[idx %in% sampidx[ , si], ] 
 	}else{
 		DThr <- DTseam
 	}
@@ -211,8 +212,8 @@ for( si in seq(1,bootse*Nsim+1) ){
 			tab_wavemoments[bi,rix,2:5]    <- DThr[eval(as.name(recDef)) == rI & subIndic==T&demo==T,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
 		}
 	}
-	if(si>1){
-		se_wavemoments[,,,si-1] = tab_wavemoments
+	if(si>0){
+		se_wavemoments[,,,si] = tab_wavemoments
 	}else{
 		dat_wavemoments <- tab_wavemoments	
 	}
@@ -277,8 +278,8 @@ if(bootse == T){
 		}
 	}
 	#scale up percentages:
-	tab_wavemomentsse[seq(1,9),] <- tab_wavemomentsse[seq(1,9),]*100
-	tab_wavemomentsci[seq(1,9),] <- tab_wavemomentsci[seq(1,9),]*100
+	tab_wavemomentsse[seq(1,3*Nt),] <- tab_wavemomentsse[seq(1,3*Nt),]*100
+	tab_wavemomentsci[seq(1,3*Nt),] <- tab_wavemomentsci[seq(1,3*Nt),]*100
 	
 	parens <- function(x, i, j){
 		x[i,j] <- sprintf("(%s)", x[i,j])
@@ -345,6 +346,216 @@ if(bootse == T){
 	}
 	
 }
+
+#**********************************************************************************
+#**********************************************************************************
+# moments among job changers------------------------------------------------------
+#**********************************************************************************
+#**********************************************************************************
+
+Nmoments <- 5 # the number of moemnts to spit out for each subset
+Nsubsamp <- 6 # the number of population subsamples: EE-sw,EE-nosw, EUE-sw, EUE-nosw, EUUE-sw, EUUE-nosw
+Nt <- 3 # time periods, all, exp, rec
+
+
+if(bootse == T){
+	set.seed(seedint)
+	#draw the sample
+	nsamp  = DTseam[ , max(idx)]
+	se_chngmoments <- array(0.,dim = c(Nsubsamp,Nt,Nmoments,Nsim))
+	sampidx <-array(1L, dim = c(nsamp,Nsim))
+	for(si in seq(1,Nsim)){ sampidx[ , si] = sample(nsamp,nsamp,replace = T) }
+}
+tab_chngmoments <- array(0., dim=c(Nsubsamp,Nt,Nmoments))
+
+for( si in seq(0,bootse*Nsim) ){
+	if(si>0){
+		DThr <- DTseam[idx %in% sampidx[ , si], ] 
+	}else{
+		DThr <- DTseam
+	}
+	
+	for(bi in seq(1,Nsubsamp)){
+		#subsamples: EE-sw,EE-nosw, EUE-sw, EUE-nosw, EUUE-sw, EUUE-nosw
+		if(bi==1){
+			DThr[(changer==T|stayer==T), subIndic := F]
+			DThr[changer==T & EE_wave==T & switchedOcc_wave==T, subIndic := T]
+		}else if(bi==2){
+			DThr[, subIndic := NULL]
+			DThr[(changer==T|stayer==T), subIndic := F]
+			DThr[changer==T & EE_wave==T & switchedOcc_wave==F, subIndic := T]
+		}else if(bi==3| bi==5){
+			DThr[, subIndic := NULL]
+			DThr[(changer==T|stayer==T), subIndic := F]
+			DThr[changer==T &(EU_wave==T | UE_wave==T)& switchedOcc_wave==T, subIndic := T]
+		}else if(bi==4| bi==6){
+			DThr[, subIndic := NULL]
+			DThr[(changer==T|stayer==T), subIndic := F]
+			DThr[changer==T &(EU_wave==T | UE_wave==T)& switchedOcc_wave==F, subIndic := T]
+		}
+		if(bi==5|bi==6){
+			wt = origwt
+			if(wclab == "res"){
+				wc = "wagechange_wave"
+			}else{
+				wc = "rawwgchange_wave"
+			}
+		}else{
+			wt = "wtEUE"
+			if(wclab=="res"){
+				wc = "wagechangeEUE_wave"
+			}else{
+				wc = "rawwgchangeEUE_wave"
+			}
+		}
+		
+		tab_chngmoments[bi,1,1]      <- DThr[subIndic==T&demo==T,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
+		tab_chngmoments[bi,1,2:5]    <- DThr[subIndic==T&demo==T,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
+		#expansion/recession
+		for(rI in c(F,T)){
+			rix = as.integer(rI)+2
+			tab_chngmoments[bi,rix,1]      <- DThr[eval(as.name(recDef)) == rI & subIndic==T&demo==T,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
+			tab_chngmoments[bi,rix,2:5]    <- DThr[eval(as.name(recDef)) == rI & subIndic==T&demo==T,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
+		}
+	}
+	if(si>0){
+		se_chngmoments[,,,si] = tab_chngmoments
+	}else{
+		dat_chngmoments <- tab_chngmoments	
+	}
+} #si, simulation iteration
+
+
+#output it to tables
+outputtable <-array(NA, dim=c(Nt*Nmoments,Nsubsamp))
+for(bi in seq(1,Nsubsamp)){
+	for(mi in seq(0,Nmoments-1)){
+		for(ti in seq(1,Nt)){
+			outputtable[ti+ mi*Nt,bi] <- dat_chngmoments[bi,ti,mi+1]
+		}
+	}
+}
+
+outputtable <- data.table(outputtable)
+names(outputtable) <- c("EE","EE\ ","EUE","EUE\ ","EU,UE","EU,UE\ ")
+title0 <- c( "\\multicolumn{2}{|c|}{EE} & \\multicolumn{2}{|c|}{EUE} & \\multicolumn{2}{|c|}{EU,UE}  \\\\ \n", 
+			"Swtich Occ & No Switch & Swtich Occ & No Switch & Swtich Occ & No Switch  \\\\ \\hline \n")
+rnames0 <- c("All\ Periods", "Expansion","Recession")
+rnames1 <- rnames0
+rnames <- rnames0
+for(mi in seq(2,Nmoments)){
+	for(ti in seq(1,Nt)){
+		rnames1[ti] <- paste0(rnames1[ti],"\ ")
+	}
+	rnames<- c(rnames,rnames1)
+}
+rownames(outputtable) <- rnames
+momentsnames <- c("Mean","Median","Med Abs Dev", "Groenv-Meeden", "Moors")
+momentcommand <- titles0 #paste0("\\hline  \\color{Maroon}{",momentsnames[1],"} &  \\multicolumn{",as.character(Nsubsamp),"}{|c|}{} \\\\ \n")
+for(mi in seq(1,Nmoments)){
+	momentcommand <- c(momentcommand,paste0("\\hline  \\color{Maroon}{",momentsnames[mi],"} &  \\multicolumn{",as.character(Nsubsamp),"}{|c|}{} \\\\ \n"))
+}
+
+rowtitles <- list( pos=as.list(c(0,seq(0,Nmoments-1)*Nt)), command=momentcommand )
+
+nametab <- "chngmoments"
+
+outputtable <- xtable(outputtable, digits=2, 
+					  align="l|llll|ll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+if(demolbl>=1 & demolbl<=7){
+	print(outputtable,include.rownames=T, hline.after= c(nrow(outputtable)), 
+		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
+}else{
+	print(outputtable,include.rownames=T, hline.after= c(nrow(outputtable)), 
+		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
+}
+
+tab_wavemomentsci <- array(NA,dim=c(2*nrow(outputtable),2*ncol(outputtable)))
+tab_wavemomentsse <- array(0.,dim=c(2*nrow(outputtable),ncol(outputtable)))
+if(bootse == T){
+	
+	for(bi in seq(1,Nsubsamp)){
+		for(mi in seq(0,Nmoments-1)){
+			for(ti in seq(0,Nt-1)){
+				tab_wavemomentsse[(ti+ mi*Nt)*2+1,bi] <- dat_chngmoments[bi,ti+1,mi+1]
+				tab_wavemomentsse[(ti+ mi*Nt)*2+2,bi] <- var(se_chngmoments[bi,ti+1,mi+1, ],na.rm=T)^.5
+				tab_wavemomentsci[(ti+ mi*Nt)*2+1,(bi-1)*2+1] <- dat_chngmoments[bi,ti+1,mi+1]
+				ci <- quantile(se_chngmoments[bi,ti+1,mi+1, ],na.rm=T,probs=c(0.025,0.975))
+				tab_wavemomentsci[(ti+ mi*Nt)*2+2,(bi-1)*2+1]<-ci[1]
+				tab_wavemomentsci[(ti+ mi*Nt)*2+2,bi*2]<-ci[2]
+			}
+		}
+	}
+	#scale up percentages:
+	tab_wavemomentsse[seq(1,3*Nt),] <- tab_wavemomentsse[seq(1,3*Nt),]*100
+	tab_wavemomentsci[seq(1,3*Nt),] <- tab_wavemomentsci[seq(1,3*Nt),]*100
+	
+	parens <- function(x, i, j){
+		x[i,j] <- sprintf("(%s)", x[i,j])
+		x
+	}
+	parensL <- function(x, i, j){
+		x[i,j] <- sprintf("(%s", x[i,j])
+		x
+	}
+	parensR <- function(x, i, j){
+		x[i,j] <- sprintf("%s)", x[i,j])
+		x
+	}
+	for (ri in seq(2,nrow(tab_wavemomentsse),2)){
+		for(ci in seq(1,ncol(tab_wavemomentsse))){
+			tab_wavemomentsse <-parens(tab_wavemomentsse,ri,ci)
+			tab_wavemomentsci <-parensL(tab_wavemomentsci,ri,(ci-1)*2+1)
+			tab_wavemomentsci <-parensR(tab_wavemomentsci,ri,ci*2)
+		}
+	}
+	tab_wavemomentsse <-data.table(tab_wavemomentsse)
+	tab_wavemomentsci <-data.table(tab_wavemomentsci)
+	
+	names(tab_wavemomentsse) <- c("All","Stayers","EE", "EUE", "All-EU,UE","EU,UE")
+	names(tab_wavemomentsci) <- c("All","\ ","Stayers","\ \ ","EE","\ \ \ ","EUE","\ \ \ \ ","All-EU,UE","\ \ \ \ \ ","EU,UE","\ \ \ \ \ \ ")
+	
+	rnames0 <- c("All\ Periods","% ","Expansion","% %","Recession","% % %")
+	rnames1 <- rnames0
+	rnames <- rnames0
+	for(mi in seq(2,Nmoments)){
+		for(ti in seq(1,Nt*2)){
+			rnames1[ti] <- paste0(rnames1[ti],"\ ")
+		}
+		rnames<- c(rnames,rnames1)
+	}
+	rownames(tab_wavemomentsse) <- rnames
+	rownames(tab_wavemomentsci) <- rnames
+	momentsnames <- c("Mean","Median","Med Abs Dev", "Groenv-Meeden", "Moors")
+	momentcommand <- paste0("\\hline  \\color{Maroon}{",momentsnames[1],"} &  \\multicolumn{",as.character(Nsubsamp),"}{|c|}{} \\\\ \n")
+	for(mi in seq(2,Nmoments)){
+		momentcommand <- c(momentcommand,paste0("\\hline  \\color{Maroon}{",momentsnames[mi],"} &  \\multicolumn{",as.character(Nsubsamp),"}{|c|}{} \\\\ \n"))
+	}
+	
+	rowtitles <- list( pos=as.list(seq(0,Nmoments-1)*Nt*2), command=momentcommand )
+	
+	nametabse <- "chngmomentsse"
+	nametabci <- "chngmomentsci"
+	tab_wavemomentsse <- xtable(tab_wavemomentsse, digits=2, 
+								align="l|llll|ll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametabse,"_",wclab,"_",reclab,"}"))
+	tab_wavemomentsci <- xtable(tab_wavemomentsci, digits=2, 
+								align="l|llllllll|llll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametabci,"_",wclab,"_",reclab,"}"))
+	
+	if(demolbl>=1 & demolbl<=7){
+		print(tab_wavemomentsse,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
+			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametabse,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
+		print(tab_wavemomentsci,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
+			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametabse,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
+		
+	}else{
+		print(tab_wavemomentsse,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
+			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametabse,"_",wclab,"_",reclab,".tex"))
+		print(tab_wavemomentsci,include.rownames=T, hline.after= c(nrow(tab_wavemomentsci)), 
+			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametabci,"_",wclab,"_",reclab,".tex"))
+	}
+	
+}
+
 
 #Variance decomp -----------------------------------------------
 
@@ -470,8 +681,6 @@ for (rI in c(F,T)){
 # Moments among job changers  -----------------------
 #tabqtls <- c(.1,.25,.5,.75,.9)
 #tN <- (length(tabqtls)+1)
-
-tab_wavechngdist    <- array(0.,dim=c(9,tN))
 
 
 if(bootse==T){
