@@ -18,7 +18,7 @@ setwd(wd0)
 
 recDef <- "recIndic_wave"
 wt <- "truncweight"
-wclab <- "raw" #raw or res
+wclab <- "res" #raw or res
 
 demolbl <- 0 #or choose number from categories in demotxt
 demotxt <- c("Young", "Prime","Old","HS","Col","Male","Female")
@@ -277,34 +277,44 @@ if(bootse == T){
 			}
 		}
 	}
-	#scale up percentages:
-	tab_wavemomentsse[seq(1,3*Nt),] <- tab_wavemomentsse[seq(1,3*Nt),]*100
-	tab_wavemomentsci[seq(1,3*Nt),] <- tab_wavemomentsci[seq(1,3*Nt),]*100
+
+	for(ri in seq(1,nrow(tab_wavemomentsci))){
+		for(ci in seq(1,ncol(tab_wavemomentsse))){
+			if(ci %%2==1){
+				tab_wavemomentsse[ri,ci]<- round(tab_wavemomentsse[ri,ci],2)	
+			}else{
+				tab_wavemomentsse[ri,ci]<- round(tab_wavemomentsse[ri,ci],3)				
+			}
+		}
+		for(ci in seq(1,ncol(tab_wavemomentsci))){
+			if(ci %%2==1){
+				tab_wavemomentsci[ri,ci]<- round(tab_wavemomentsci[ri,ci],2)	
+			}else{
+				tab_wavemomentsci[ri,ci]<- round(tab_wavemomentsci[ri,ci],3)
+			}
+		}
+	}
+	
 	
 	parens <- function(x, i, j){
 		x[i,j] <- sprintf("(%s)", x[i,j])
 		x
 	}
-	parensL <- function(x, i, j){
-		x[i,j] <- sprintf("(%s", x[i,j])
-		x
-	}
-	parensR <- function(x, i, j){
-		x[i,j] <- sprintf("%s)", x[i,j])
+	parensLR <- function(x, i, j){
+		x[i,j] <- sprintf("(%s,%s)", x[i,j],x[i,j+1])
 		x
 	}
 	for (ri in seq(2,nrow(tab_wavemomentsse),2)){
 		for(ci in seq(1,ncol(tab_wavemomentsse))){
 			tab_wavemomentsse <-parens(tab_wavemomentsse,ri,ci)
-			tab_wavemomentsci <-parensL(tab_wavemomentsci,ri,(ci-1)*2+1)
-			tab_wavemomentsci <-parensR(tab_wavemomentsci,ri,ci*2)
+			tab_wavemomentsci <-parensLR(tab_wavemomentsci,ri,(ci-1)*2+1)
 		}
 	}
 	tab_wavemomentsse <-data.table(tab_wavemomentsse)
-	tab_wavemomentsci <-data.table(tab_wavemomentsci)
+	tab_wavemomentsci <-data.table(tab_wavemomentsci[,seq(1,ncol(tab_wavemomentsci),2)])
 	
 	names(tab_wavemomentsse) <- c("All","Stayers","EE", "EUE", "All-EU,UE","EU,UE")
-	names(tab_wavemomentsci) <- c("All","\ ","Stayers","\ \ ","EE","\ \ \ ","EUE","\ \ \ \ ","All-EU,UE","\ \ \ \ \ ","EU,UE","\ \ \ \ \ \ ")
+	names(tab_wavemomentsci) <- c("All","Stayers","EE", "EUE", "All-EU,UE","EU,UE")
 	
 	rnames0 <- c("All\ Periods","% ","Expansion","% %","Recession","% % %")
 	rnames1 <- rnames0
@@ -330,7 +340,7 @@ if(bootse == T){
 	tab_wavemomentsse <- xtable(tab_wavemomentsse, digits=2, 
 							align="l|llll|ll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametabse,"_",wclab,"_",reclab,"}"))
 	tab_wavemomentsci <- xtable(tab_wavemomentsci, digits=2, 
-							align="l|llllllll|llll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametabci,"_",wclab,"_",reclab,"}"))
+							align="l|cccc|cc", caption=paste0("Moments of earnings change distribution \\label{tab:",nametabci,"_",wclab,"_",reclab,"}"))
 	
 	if(demolbl>=1 & demolbl<=7){
 		print(tab_wavemomentsse,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
@@ -438,8 +448,8 @@ for(bi in seq(1,Nsubsamp)){
 
 outputtable <- data.table(outputtable)
 names(outputtable) <- c("EE","EE\ ","EUE","EUE\ ","EU,UE","EU,UE\ ")
-title0 <- c( "\\multicolumn{2}{|c|}{EE} & \\multicolumn{2}{|c|}{EUE} & \\multicolumn{2}{|c|}{EU,UE}  \\\\ \n", 
-			"Swtich Occ & No Switch & Swtich Occ & No Switch & Swtich Occ & No Switch  \\\\ \\hline \n")
+title0 <- c( "& \\multicolumn{2}{|c|}{EE} & \\multicolumn{2}{|c|}{EUE} & \\multicolumn{2}{|c|}{EU,UE}  \\\\ \n", 
+			"&   Swtich Occ & No Switch & Swtich Occ & No Switch & Swtich Occ & No Switch  \\\\ \\hline \n")
 rnames0 <- c("All\ Periods", "Expansion","Recession")
 rnames1 <- rnames0
 rnames <- rnames0
@@ -451,22 +461,22 @@ for(mi in seq(2,Nmoments)){
 }
 rownames(outputtable) <- rnames
 momentsnames <- c("Mean","Median","Med Abs Dev", "Groenv-Meeden", "Moors")
-momentcommand <- titles0 #paste0("\\hline  \\color{Maroon}{",momentsnames[1],"} &  \\multicolumn{",as.character(Nsubsamp),"}{|c|}{} \\\\ \n")
+momentcommand <- title0 #paste0("\\hline  \\color{Maroon}{",momentsnames[1],"} &  \\multicolumn{",as.character(Nsubsamp),"}{|c|}{} \\\\ \n")
 for(mi in seq(1,Nmoments)){
 	momentcommand <- c(momentcommand,paste0("\\hline  \\color{Maroon}{",momentsnames[mi],"} &  \\multicolumn{",as.character(Nsubsamp),"}{|c|}{} \\\\ \n"))
 }
 
-rowtitles <- list( pos=as.list(c(0,seq(0,Nmoments-1)*Nt)), command=momentcommand )
+rowtitles <- list( pos=as.list(c(0,0,seq(0,Nmoments-1)*Nt)), command=momentcommand )
 
 nametab <- "chngmoments"
 
 outputtable <- xtable(outputtable, digits=2, 
 					  align="l|llll|ll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 if(demolbl>=1 & demolbl<=7){
-	print(outputtable,include.rownames=T, hline.after= c(nrow(outputtable)), 
+	print(outputtable,include.rownames=T, include.colnames = F, hline.after= c(nrow(outputtable)), 
 		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
 }else{
-	print(outputtable,include.rownames=T, hline.after= c(nrow(outputtable)), 
+	print(outputtable,include.rownames=T, include.colnames = F, hline.after= c(nrow(outputtable)), 
 		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 }
 
@@ -486,36 +496,48 @@ if(bootse == T){
 			}
 		}
 	}
-	#scale up percentages:
-	tab_wavemomentsse[seq(1,3*Nt),] <- tab_wavemomentsse[seq(1,3*Nt),]*100
-	tab_wavemomentsci[seq(1,3*Nt),] <- tab_wavemomentsci[seq(1,3*Nt),]*100
-	
+
+	#round everything:
+	for(ri in seq(1,nrow(tab_wavemomentsse))){
+		for(ci in seq(1,ncol(tab_wavemomentsse))){
+			if(ci %% 2 ==1){
+				tab_wavemomentsse[ri,ci] = round(tab_wavemomentsse[ri,ci],2)
+			}else{
+				tab_wavemomentsse[ri,ci] = round(tab_wavemomentsse[ri,ci],3)	
+			}
+		}
+		for(ci in seq(1,ncol(tab_wavemomentsci))){
+			if(ci %% 2 ==1){
+				tab_wavemomentsci[ri,ci] = round(tab_wavemomentsci[ri,ci],2)
+			}else{
+				tab_wavemomentsci[ri,ci] = round(tab_wavemomentsci[ri,ci],3)	
+			}
+			
+		}
+	}
 	parens <- function(x, i, j){
 		x[i,j] <- sprintf("(%s)", x[i,j])
 		x
 	}
-	parensL <- function(x, i, j){
-		x[i,j] <- sprintf("(%s", x[i,j])
-		x
-	}
-	parensR <- function(x, i, j){
-		x[i,j] <- sprintf("%s)", x[i,j])
+	parensLR <- function(x, i, j){
+		x[i,j] <- sprintf("(%s,%s)", x[i,j],x[i,j+1])
 		x
 	}
 	for (ri in seq(2,nrow(tab_wavemomentsse),2)){
 		for(ci in seq(1,ncol(tab_wavemomentsse))){
 			tab_wavemomentsse <-parens(tab_wavemomentsse,ri,ci)
-			tab_wavemomentsci <-parensL(tab_wavemomentsci,ri,(ci-1)*2+1)
-			tab_wavemomentsci <-parensR(tab_wavemomentsci,ri,ci*2)
+			tab_wavemomentsci <-parensLR(tab_wavemomentsci,ri,(ci-1)*2+1)
 		}
 	}
 	tab_wavemomentsse <-data.table(tab_wavemomentsse)
-	tab_wavemomentsci <-data.table(tab_wavemomentsci)
+	tab_wavemomentsci <-data.table(tab_wavemomentsci[,seq(1,ncol(tab_wavemomentsci),2)])
 	
-	names(tab_wavemomentsse) <- c("All","Stayers","EE", "EUE", "All-EU,UE","EU,UE")
-	names(tab_wavemomentsci) <- c("All","\ ","Stayers","\ \ ","EE","\ \ \ ","EUE","\ \ \ \ ","All-EU,UE","\ \ \ \ \ ","EU,UE","\ \ \ \ \ \ ")
 	
-	rnames0 <- c("All\ Periods","% ","Expansion","% %","Recession","% % %")
+	names(tab_wavemomentsse) <- c("EE","EE\ ","EUE","EUE\ ","EU,UE","EU,UE\ ")
+	names(tab_wavemomentsci) <- c("EE","EE\ ","EUE","EUE\ ","EU,UE","EU,UE\ ")
+	title0 <- c( "& \\multicolumn{2}{|c|}{EE} & \\multicolumn{2}{|c|}{EUE} & \\multicolumn{2}{|c|}{EU,UE}  \\\\ \n", 
+				 "&   Swtich Occ & No Switch & Swtich Occ & No Switch & Swtich Occ & No Switch  \\\\ \\hline \n")
+	rnames0 <- c("All\ Periods","~","Expansion","~ ~","Recession","~ ~ ~")
 	rnames1 <- rnames0
 	rnames <- rnames0
 	for(mi in seq(2,Nmoments)){
@@ -527,30 +549,30 @@ if(bootse == T){
 	rownames(tab_wavemomentsse) <- rnames
 	rownames(tab_wavemomentsci) <- rnames
 	momentsnames <- c("Mean","Median","Med Abs Dev", "Groenv-Meeden", "Moors")
-	momentcommand <- paste0("\\hline  \\color{Maroon}{",momentsnames[1],"} &  \\multicolumn{",as.character(Nsubsamp),"}{|c|}{} \\\\ \n")
-	for(mi in seq(2,Nmoments)){
+	momentcommand <- title0 #paste0("\\hline  \\color{Maroon}{",momentsnames[1],"} &  \\multicolumn{",as.character(Nsubsamp),"}{|c|}{} \\\\ \n")
+	for(mi in seq(1,Nmoments)){
 		momentcommand <- c(momentcommand,paste0("\\hline  \\color{Maroon}{",momentsnames[mi],"} &  \\multicolumn{",as.character(Nsubsamp),"}{|c|}{} \\\\ \n"))
 	}
 	
-	rowtitles <- list( pos=as.list(seq(0,Nmoments-1)*Nt*2), command=momentcommand )
+	rowtitles <- list( pos=as.list(c(0,0,seq(0,Nmoments-1)*Nt*2)), command=momentcommand )
 	
 	nametabse <- "chngmomentsse"
 	nametabci <- "chngmomentsci"
 	tab_wavemomentsse <- xtable(tab_wavemomentsse, digits=2, 
 								align="l|llll|ll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametabse,"_",wclab,"_",reclab,"}"))
 	tab_wavemomentsci <- xtable(tab_wavemomentsci, digits=2, 
-								align="l|llllllll|llll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametabci,"_",wclab,"_",reclab,"}"))
+								align="l|cccc|cc", caption=paste0("Moments of earnings change distribution \\label{tab:",nametabci,"_",wclab,"_",reclab,"}"))
 	
 	if(demolbl>=1 & demolbl<=7){
-		print(tab_wavemomentsse,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
+		print(tab_wavemomentsse,include.rownames=T, include.colnames=F, hline.after= c(nrow(tab_wavemomentsse)), 
 			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametabse,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
-		print(tab_wavemomentsci,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
+		print(tab_wavemomentsci,include.rownames=T, include.colnames=F, hline.after= c(nrow(tab_wavemomentsse)), 
 			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametabse,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
 		
 	}else{
-		print(tab_wavemomentsse,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
+		print(tab_wavemomentsse,include.rownames=T, include.colnames=F, hline.after= c(nrow(tab_wavemomentsse)), 
 			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametabse,"_",wclab,"_",reclab,".tex"))
-		print(tab_wavemomentsci,include.rownames=T, hline.after= c(nrow(tab_wavemomentsci)), 
+		print(tab_wavemomentsci,include.rownames=T, include.colnames=F, hline.after= c(nrow(tab_wavemomentsci)), 
 			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametabci,"_",wclab,"_",reclab,".tex"))
 	}
 	
