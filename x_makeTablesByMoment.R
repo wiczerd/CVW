@@ -16,7 +16,7 @@ outputdir = "~/workspace/CVW/R/Figures"
 setwd(wd0)
 
 
-recDef <- "recIndic_wave"
+recDef <- "recIndic2_wave"
 wt <- "truncweight"
 wclab <- "res" #raw or res
 
