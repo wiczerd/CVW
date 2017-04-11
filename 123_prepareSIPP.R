@@ -637,6 +637,14 @@ sipp_wave[is.na(ustintid_wave)|ustintid_wave==0 , recIndic_stint := recIndic_wav
 sipp_wave[is.finite(ustintid_wave), recIndic_stint := any(recIndic_wave,na.rm=T), by=list(id,ustintid_wave)]
 sipp_wave[is.na(ustintid_wave)|ustintid_wave==0 , recIndic2_stint := recIndic2_wave]
 sipp_wave[is.finite(ustintid_wave), recIndic2_stint := any(recIndic2_wave,na.rm=T), by=list(id,ustintid_wave)]
+#count by UE or EU
+sipp_wave[UE_wave==T & midUE==F, recIndic_UE := recIndic_wave]
+sipp_wave[is.finite(ustintid_wave), recIndic_UE := any(recIndic_UE,na.rm=T), by=list(id,ustintid_wave)]
+sipp_wave[is.na(ustintid_wave)|ustintid_wave==0 , recIndic_UE := recIndic_wave]
+sipp_wave[EU_wave==T & midEU==F, recIndic_EU := recIndic_wave]
+sipp_wave[is.finite(ustintid_wave), recIndic_EU := any(recIndic_EU,na.rm=T), by=list(id,ustintid_wave)]
+sipp_wave[is.na(ustintid_wave)|ustintid_wave==0 , recIndic_EU := recIndic_wave]
+
 
 
 #save intermediate result:
@@ -644,7 +652,7 @@ saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
 
 sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","next.job_wave","last.job_wave","job_wave","next.occ_wave","last.occ_wave","occ_wave",
 										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","midEE","midEU","midUE","EEmon","UEmon","EUmon","ustintid_wave",
-										"recIndic_stint","recIndic2_stint","switchedOcc_wave","wave","id"))
+										"recIndic_stint","recIndic2_stint","recIndic_EU","recIndic_UE","switchedOcc_wave","wave","id"))
 
 sipp[ , c("EEmon","EUmon","UEmon"):=NULL]
 
@@ -673,7 +681,7 @@ sipp[, recIndic_ann := any(recIndic, na.rm=T), by=list(yri,id)]
 sipp[, recIndic2_ann := any(recIndic2, na.rm=T), by=list(yri,id)]
 
 sipp[ , lfstat_ann := as.integer(max(lfstat,na.rm=T)), by=list(id,yri)]
-sipp[ lfstat_ann>1, lfstat_wave := 3L-any(lfstat==2), by=list(id,yri)]
+sipp[ lfstat_ann>1, lfstat_ann := 3L-any(lfstat==2), by=list(id,yri)]
 
 sipp[ EE==T, EEyrmon := yrrefmon]
 sipp[ is.na(EEyrmon), EEyrmon := 0]
@@ -757,14 +765,10 @@ saveRDS(sipp, "./DTall_3.RData")
 
 
 # plot transitions time series for sanity check
-EU_wave <- sipp[lfstat_wave==1 & is.finite(next.lfstat_wave), .(EU_wave = weighted.mean(EU_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+EU_wave <- sipp_wave[lfstat_wave==1 &  is.finite(next.lfstat_wave), .(EU_wave = weighted.mean(EU_wave , wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(EU_wave, aes(date, EU_wave, color = panel, group = panel)) +
-	geom_point()+
+	geom_point()+ylim(c(0,.015))+
 	geom_line() +xlab("") + ylab("EU wave-frequency")
-EU_max <- sipp[lfstat_wave==1 & is.finite(next.lfstat_wave), .(EU_max = weighted.mean(EU_max, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
-ggplot(EU_max, aes(date, EU_max, color = panel, group = panel)) +
-	geom_point()+
-	geom_line() +xlab("") + ylab("EU max-wave")
 
 EU_wave <- sipp[lfstat_wave==1 & is.finite(next.lfstat_wave), .(EU_wave = weighted.mean(EU_wave, wpfinwgt, na.rm = TRUE)), by = list(date)]
 setkey(EU_wave,date)
@@ -776,14 +780,10 @@ ggsave(filename = paste0(figuredir,"/EU_wave.eps"),height= 5,width=10)
 ggsave(filename = paste0(figuredir,"/EU_wave.png"),height= 5,width=10)
 
 
-UE_wave <- sipp[lfstat_wave==2 & is.finite(next.lfstat_wave), .(UE_wave = weighted.mean(UE_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+UE_wave <- sipp[lfstat_wave==2 & is.finite(next.lfstat_wave), .(UE_wave = weighted.mean(UE_wave & !midUE, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(UE_wave, aes(date, UE_wave, color = panel, group = panel)) +
 	geom_point() +
 	geom_line() +xlab("") + ylab("UE wave-frequency")
-UE_max <- sipp[lfstat_wave==2 & is.finite(next.lfstat_wave), .(UE_max = weighted.mean(UE_max, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
-ggplot(UE_max, aes(date, UE_max, color = panel, group = panel)) +
-	geom_point() +
-	geom_line() +xlab("") + ylab("UE max-wave")
 
 UE_wave <- sipp[lfstat_wave==2 & is.finite(next.lfstat_wave), .(UE_wave = weighted.mean(UE_wave, wpfinwgt, na.rm = TRUE)), by = list(date)]
 setkey(UE_wave,date)
@@ -799,10 +799,6 @@ EE_wave <- sipp[lfstat_wave==1 & next.lfstat_wave==1 , .(EE_wave = weighted.mean
 ggplot(EE_wave, aes(date, EE_wave, color = panel, group = panel)) +
 	geom_point() +
 	geom_line() +xlab("") + ylab("EE wave-frequency")
-EE_max <- sipp[lfstat_wave==1 & next.lfstat_wave==1 , .(EE_max = weighted.mean(EE_max, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
-ggplot(EE_max, aes(date, EE_max, color = panel, group = panel)) +
-	geom_point() +
-	geom_line() +xlab("") + ylab("EE max-wave")
 
 EE_wave <- sipp[lfstat_wave==1 & next.lfstat_wave==1 & !(panel==2004 & year<2005), .(EE_wave = weighted.mean(EE_wave, wpfinwgt, na.rm = TRUE)), by = list(date)]
 setkey(EE_wave,date)
@@ -832,10 +828,6 @@ ggplot(ui_wave, aes(date, ui_wave, color = panel, group = panel)) +
 
 swOc_wave <- sipp[ (EE_wave==T|EU_wave==T|UE_wave==T) & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(swOc_wave, aes(date, swOc, color = panel, group = panel)) +
-	geom_point() + 
-	geom_smooth()
-swOc_max <- sipp[ (EE_max==T|EU_max==T|UE_max==T) & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
-ggplot(swOc_max, aes(date, swOc, color = panel, group = panel)) +
 	geom_point() + 
 	geom_smooth()
 
