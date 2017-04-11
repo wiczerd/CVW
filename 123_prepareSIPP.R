@@ -198,6 +198,15 @@ sipp[, mis := seq_len(.N), by = id]
 
 ########## labor force status ----------------------------
 
+#ESR 1 -- With job entire month, worked all weeks.
+#ESR 2 -- With job entire month, missed one or more weeks but not because of a layoff.
+#ESR 3 -- With job entire month, missed 1 or more weeks because of layoff.
+#ESR 4 -- With job part of month, but not because of layoff or looking for work.
+#ESR 5 -- With job part of month, some time spent on layoff or looking for work.
+#ESR 6 -- No job in month, spent entire month on layoff or looking for work.
+#ESR 7 -- No job in month, spent part of month on layoff or looking for work.
+#ESR 8 -- No job in month, no time spent on layoff or looking for work
+
 # recode esr
 sipp[esr <= 5, lfstat := 1]
 sipp[esr >= 6 & esr <= 7, lfstat := 2]
@@ -257,7 +266,7 @@ sipp[, newunemp := NULL]
 sipp[lfstat==2, unempdur := seq_len(.N) - 1, by = list(id, ustintid)]  #count U entries in each ustintid
 sipp[is.na(ustintid), unempdur := NA]
 # create max unemployment duration
-sipp[, max.unempdur := max(unempdur), by = list(id, ustintid)]
+sipp[is.finite(ustintid)==T, max.unempdur := max(unempdur,na.rm = T), by = list(id, ustintid)]
 
 # clean weird occupation codes:
 sipp[ , varoccjob := var(occ,na.rm = T), by=list(id,estintid)] #in about 6\% of cases, occupation changes during job
