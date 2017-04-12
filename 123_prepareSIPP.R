@@ -765,9 +765,9 @@ saveRDS(sipp, "./DTall_3.RData")
 
 
 # plot transitions time series for sanity check
-EU_wave <- sipp_wave[lfstat_wave==1 &  is.finite(next.lfstat_wave), .(EU_wave = weighted.mean(EU_wave , wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+EU_wave <- sipp[lfstat_wave==1 &  is.finite(next.lfstat_wave), .(EU_wave = weighted.mean(EU_wave , wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(EU_wave, aes(date, EU_wave, color = panel, group = panel)) +
-	geom_point()+ylim(c(0,.015))+
+	geom_point()+ylim(c(0,.05))+
 	geom_line() +xlab("") + ylab("EU wave-frequency")
 
 EU_wave <- sipp[lfstat_wave==1 & is.finite(next.lfstat_wave), .(EU_wave = weighted.mean(EU_wave, wpfinwgt, na.rm = TRUE)), by = list(date)]
