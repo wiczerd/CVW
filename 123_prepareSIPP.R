@@ -266,7 +266,7 @@ sipp[, newunemp := NULL]
 sipp[lfstat==2, unempdur := seq_len(.N) - 1, by = list(id, ustintid)]  #count U entries in each ustintid
 sipp[is.na(ustintid), unempdur := NA]
 # create max unemployment duration
-sipp[is.finite(ustintid)==T, max.unempdur := max(unempdur,na.rm = T), by = list(id, ustintid)]
+sipp[lfstat==2, max.unempdur := max(unempdur,na.rm = T), by = list(id, ustintid)]
 
 # clean weird occupation codes:
 sipp[ , varoccjob := var(occ,na.rm = T), by=list(id,estintid)] #in about 6\% of cases, occupation changes during job
@@ -459,6 +459,8 @@ sipp[, recIndic2_wave := any(recIndic2, na.rm=T), by=list(wave,id)]
 sipp[ , lfstat_wave := as.integer(max(lfstat,na.rm=T)), by=list(id,wave)]
 sipp[ lfstat_wave>1, lfstat_wave := 3L-any(lfstat==2), by=list(id,wave)]
 
+sipp[lfstat_wave==2 , max.unempdur_wave := max(max.unempdur, na.rm = T) , by=list(id,wave)]
+
 sipp[ , Eend_wave:= any(Eend, na.rm=T), by=list(wave,id)]
 sipp[ , Estart_wave:= any(Estart, na.rm=T), by=list(wave,id)]
 
@@ -547,6 +549,9 @@ sipp_wave[ ustintid_wave>0 & UE_wave==T & is.na(occ_wave), occ_wave:=next.occ_wa
 sipp_wave[ ustintid_wave>0 & EU_wave!=T, occ_wave:= Mode(occ_wave) , by=list(id,ustintid_wave)]
 sipp_wave[ ustintid_wave>0 & UE_wave!=T & EU_wave!=T, ind_wave:=NA]
 sipp_wave[ ustintid_wave>0 & EU_wave!=T, ind_wave:= Mode(ind_wave) , by=list(id,ustintid_wave)]
+
+sipp_wave[ (EU_wave==T|lfstat_wave==2) , max.unempdur_wave:= max(max.unempdur_wave,na.rm=T), by=list(id,ustintid_wave)]
+
 
 sipp_wave[ , next.occ_wave    := shift(occ_wave,type="lead")   , by=id] #recompute now that I've filled back U-spells
 sipp_wave[ EU_wave==T & EUmon<4 , switchedOcc_wave := last.occ_wave != next.occ_wave]
