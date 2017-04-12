@@ -452,6 +452,7 @@ if( sipp[ , mean(wave_sorted,na.rm=T)]!=0 ){
 }
 sipp[ , wave_sorted:=NULL]
 sipp[ , seam:= (wave != shift(wave,1,type="lead") | mis==maxmis) , by=id ]
+sipp[ , seammon := max(srefmon,na.rm = T), by=list(id,wave)]
 
 sipp[, recIndic_wave := any(recIndic, na.rm=T), by=list(wave,id)]
 sipp[, recIndic2_wave := any(recIndic2, na.rm=T), by=list(wave,id)]
@@ -536,7 +537,7 @@ if(max_wavefreq==1){
 	#		  	next.lfstat_wave == 1 , jobchng_wave := (last.job_wave != next.job_wave) ] #in case it's the first observation
 	#This cleaning will happen in 5_ with the rest of the cleaning sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] 
 	#add EU_wave, EUmon==4 to next ustintid_wave
-	sipp_wave[EU_wave==T & EUmon==4, ustintid_wave:=next.ustintid_wave  ]
+	sipp_wave[EU_wave==T & EUmon==seammon, ustintid_wave:=next.ustintid_wave  ]
 }else{#wavefreq==2
 	sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := (job_wave != next.job_wave) ] #& (last.job_wave != next.job_wave)
 	#sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] #knocks out ~5% of the changes
@@ -552,18 +553,17 @@ sipp_wave[ ustintid_wave>0 & EU_wave!=T, ind_wave:= Mode(ind_wave) , by=list(id,
 
 sipp_wave[ (EU_wave==T|lfstat_wave==2) , max.unempdur_wave:= max(max.unempdur_wave,na.rm=T), by=list(id,ustintid_wave)]
 
-
 sipp_wave[ , next.occ_wave    := shift(occ_wave,type="lead")   , by=id] #recompute now that I've filled back U-spells
-sipp_wave[ EU_wave==T & EUmon<4 , switchedOcc_wave := last.occ_wave != next.occ_wave]
-sipp_wave[ EU_wave==T & EUmon==4, switchedOcc_wave := occ_wave != next.occ_wave]
-sipp_wave[ EE_wave==T & EEmon<4 , switchedOcc_wave := last.occ_wave != next.occ_wave]
-sipp_wave[ EE_wave==T & EEmon==4, switchedOcc_wave := occ_wave != next.occ_wave]
+sipp_wave[ EU_wave==T & EUmon<seammon , switchedOcc_wave := last.occ_wave != next.occ_wave]
+sipp_wave[ EU_wave==T & EUmon==seammon, switchedOcc_wave := occ_wave != next.occ_wave]
+sipp_wave[ EE_wave==T & EEmon<seammon , switchedOcc_wave := last.occ_wave != next.occ_wave]
+sipp_wave[ EE_wave==T & EEmon==seammon, switchedOcc_wave := occ_wave != next.occ_wave]
 
 sipp_wave[ , next.ind_wave    := shift(ind_wave,type="lead")   , by=id]
-sipp_wave[ EU_wave==T & EUmon<4 , switchedInd_wave := last.ind_wave != next.ind_wave]
-sipp_wave[ EU_wave==T & EUmon==4, switchedInd_wave := ind_wave != next.ind_wave]
-sipp_wave[ EE_wave==T & EEmon<4 , switchedInd_wave := last.ind_wave != next.ind_wave]
-sipp_wave[ EE_wave==T & EEmon==4, switchedInd_wave := ind_wave != next.ind_wave]
+sipp_wave[ EU_wave==T & EUmon<seammon , switchedInd_wave := last.ind_wave != next.ind_wave]
+sipp_wave[ EU_wave==T & EUmon==seammon, switchedInd_wave := ind_wave != next.ind_wave]
+sipp_wave[ EE_wave==T & EEmon<seammon , switchedInd_wave := last.ind_wave != next.ind_wave]
+sipp_wave[ EE_wave==T & EEmon==seammon, switchedInd_wave := ind_wave != next.ind_wave]
 
 sipp_wave[ , next.switchedOcc_wave:= shift(switchedOcc_wave,type="lead"),by=id]
 sipp_wave[ , next.switchedInd_wave:= shift(switchedInd_wave,type="lead"),by=id]
@@ -602,16 +602,18 @@ sipp_wave[ midEE  ==T , recIndic2_wave:= next.recIndic2_wave  ]
 
 sipp_wave[ , next.EUmon   := shift( EUmon  , type="lead" ), by= id]
 sipp_wave[ , next.EU_wave := shift( EU_wave, type="lead" ), by= id]
-sipp_wave[ next.EUmon>0 & next.EUmon<4 & next.EU_wave ==T & lfstat_wave==1 , midEU  :=T  ]
+sipp_wave[ , next.max.unempdur_wave := shift( max.unempdur_wave, type="lead" ), by= id]
+sipp_wave[ next.EUmon>0 & next.EUmon<seammon & next.EU_wave ==T & lfstat_wave==1 , midEU  :=T  ]
 sipp_wave[ is.na(midEU)==T, midEU:=F]
 sipp_wave[ midEU ==T , EUmon := next.EUmon]
 sipp_wave[ midEU ==T , EU_wave:=T  ]
+sipp_wave[ midEU ==T , max.unempdur_wave:=next.max.unempdur_wave  ]
 sipp_wave[ midEU  ==T , recIndic_wave := next.recIndic_wave  ]
 sipp_wave[ midEU  ==T , recIndic2_wave:= next.recIndic2_wave  ]
 
 sipp_wave[ , next.UEmon   := shift( UEmon  , type="lead" ), by= id]
 sipp_wave[ , next.UE_wave := shift( UE_wave, type="lead" ), by= id]
-sipp_wave[ next.UEmon>0 & next.UEmon<4 & next.UE_wave ==T & lfstat_wave>=2 , midUE  :=T  ]
+sipp_wave[ next.UEmon>0 & next.UEmon<seammon & next.UE_wave ==T & lfstat_wave>=2 , midUE  :=T  ]
 sipp_wave[ is.na(midUE)==T, midUE:=F]
 sipp_wave[ midUE == T , UEmon := next.UEmon]
 sipp_wave[ midUE  ==T , recIndic_wave := next.recIndic_wave  ]
@@ -666,9 +668,9 @@ saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
 
 sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","next.job_wave","last.job_wave","job_wave","next.occ_wave","last.occ_wave","occ_wave",
 										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","midEE","midEU","midUE","EEmon","UEmon","EUmon","ustintid_wave",
-										"recIndic_stint","recIndic2_stint","recIndic_EU","recIndic_UE","switchedOcc_wave","wave","id"))
+										"recIndic_stint","recIndic2_stint","recIndic_EU","recIndic_UE","max.unempdur_wave","switchedOcc_wave","wave","id"))
 
-sipp[ , c("EEmon","EUmon","UEmon"):=NULL]
+sipp[ , c("EEmon","EUmon","UEmon","max.unempdur_wave"):=NULL]
 
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
