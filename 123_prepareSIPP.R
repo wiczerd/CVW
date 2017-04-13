@@ -771,6 +771,19 @@ sipp[ , c("EEyrmon","EUyrmon","UEyrmon","jobchng_ann"):=NULL]
 
 sipp <- merge(sipp,sipp_ann, by=c("id","yri"), all=T)
 
+sipp[ EU ==T, EUmis:= mis ]
+sipp[ is.na(EUmis), EUmis:= 0 ]
+sipp[ ustintid>0, EUmis:= max(EUmis,na.rm = T), by=list(id,ustintid)]
+sipp[ , EUmis:= max(EUmis,na.rm=T), by=list(id,wave)]
+sipp[ (EU_wave==T|UE_wave==T)&!(midEU|midUE) & EUmis<=maxmis-12 & matched_EUUE_wave==T, validEUUE:=T]
+sipp[ is.na(validEUUE), validEUUE:=F]
+
+#sipp[ , ersend_wave:= Mode(ersend), by=list(id,wave)]
+sipp[ ustintid_wave>0 , ersend_wave:=Mode(ersend), by=list(id,ustintid_wave)]
+sipp[ ustintid_wave>0 , var_ersend:=var(ersend,na.rm = T), by=list(id,ustintid_wave)]
+sipp[ var_ersend>0 , ersend_wave:=NA]
+sipp[ , var_ersend:=NULL]
+sipp[ is.finite(ersend_wave) , displaced:= (ersend_wave>=8 & ersend_wave<=10)]
 ########## save prepared data
 #a bit of cleanup
 sipp[ , c("ajbocc","date0","jobchng_max","EE_max","EU_max","UE_max","PCEPI","last.earnm","last.job","last.job_wave","smonth","syear","epppnum","next.Estart","ui_r","coc"):=NULL]
@@ -778,12 +791,6 @@ sipp[ , c("ajbocc","date0","jobchng_max","EE_max","EU_max","UE_max","PCEPI","las
 setwd(outputdir)
 #saveRDS(sipp, "./preparedSipp.RData")
 saveRDS(sipp, "./DTall_3.RData")
-sipp[ EU ==T, EUmis:= mis ]
-sipp[ is.na(EUmis), EUmis:= 0 ]
-sipp[ ustintid>0, EUmis:= max(EUmis,na.rm = T), by=list(id,ustintid)]
-sipp[ , EUmis:= max(EUmis,na.rm=T), by=list(id,wave)]
-sipp[ (EU_wave==T|UE_wave==T)&!(midEU|midUE) & EUmis<=maxmis-12 & matched_EUUE_wave==T, validEUUE:=T]
-sipp[ is.na(validEUUE), validEUUE:=F]
 
 # plot transitions time series for sanity check
 EU_wave <- sipp[lfstat_wave==1 &  is.finite(next.lfstat_wave), .(EU_wave = weighted.mean(EU_wave , wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
