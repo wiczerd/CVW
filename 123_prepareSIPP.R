@@ -778,7 +778,12 @@ sipp[ , c("ajbocc","date0","jobchng_max","EE_max","EU_max","UE_max","PCEPI","las
 setwd(outputdir)
 #saveRDS(sipp, "./preparedSipp.RData")
 saveRDS(sipp, "./DTall_3.RData")
-
+sipp[ EU ==T, EUmis:= mis ]
+sipp[ is.na(EUmis), EUmis:= 0 ]
+sipp[ ustintid>0, EUmis:= max(EUmis,na.rm = T), by=list(id,ustintid)]
+sipp[ , EUmis:= max(EUmis,na.rm=T), by=list(id,wave)]
+sipp[ (EU_wave==T|UE_wave==T)&!(midEU|midUE) & EUmis<=maxmis-12 & matched_EUUE_wave==T, validEUUE:=T]
+sipp[ is.na(validEUUE), validEUUE:=F]
 
 # plot transitions time series for sanity check
 EU_wave <- sipp[lfstat_wave==1 &  is.finite(next.lfstat_wave), .(EU_wave = weighted.mean(EU_wave , wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
@@ -853,7 +858,7 @@ ggplot(swOcEE_wave, aes(date, swOcEE, color = panel)) +
 	geom_smooth()
 
 
-swOcEUUE_wave <- sipp[(EU_wave==T|UE_wave==T) & matched_EUUE_wave==T & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+swOcEUUE_wave <- sipp[(EU_wave==T|UE_wave==T) &  is.finite(switchedOcc_wave) & validEUUE==T, .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(swOcEUUE_wave, aes(date, swOc, color = panel)) +
 	geom_point() + 
 	geom_smooth() + ggtitle("Occupational Switching | EU,UE counted at EU")
