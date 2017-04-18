@@ -568,11 +568,6 @@ sipp_wave[ EE_wave==T & EEmon==seammon, switchedInd_wave := ind_wave != next.ind
 sipp_wave[ , next.switchedOcc_wave:= shift(switchedOcc_wave,type="lead"),by=id]
 sipp_wave[ , next.switchedInd_wave:= shift(switchedInd_wave,type="lead"),by=id]
 
-# replace missing transitions with F?
-#sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(EU_wave) , EU_wave:=F ]
-#sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(UE_wave) , UE_wave:=F ]
-#sipp_wave[is.finite(lfstat_wave) & is.finite(next.lfstat_wave) & is.na(EE_wave) , EE_wave:=F ]
-
 #compute matched EUUE by ustintid ---- this will replace the one taken from monthly, level
 sipp_wave[ UE_wave==T, wis_UE_wave:= wis]
 sipp_wave[ EU_wave==T, wis_EU_wave:= wis]
@@ -641,11 +636,19 @@ sipp_wave[EU_wave==T & midEU ==T , ustintid_wave   :=next.ustintid_wave  ]
 #EU,UE trumps EE
 sipp_wave[ (EU_wave==T | UE_wave==T) & EE_wave==T, EE_wave:=F]
 
-#add switchedOcc_wave to whole ustintid
+#add switchedOcc_wave to whole ustintid and create occL, occD
 sipp_wave[ ustintid_wave>0 & EU_wave!=T & midEU!=T, switchedOcc_wave:=NA]
 sipp_wave[ ustintid_wave>0 , switchedOcc_wave := Any_narm(switchedOcc_wave), by=list(id,ustintid_wave)]
 sipp_wave[ ustintid_wave>0 & EU_wave!=T & midEU!=T, switchedInd_wave:=NA]
 sipp_wave[ ustintid_wave>0 , switchedInd_wave := Any_narm(switchedInd_wave), by=list(id,ustintid_wave)]
+sipp_wave[ EU_wave==T & midEU!=T & EUmon< seammon, occL:= last.occ_wave]
+sipp_wave[ EU_wave==T & midEU!=T & EUmon==seammon, occL:= occ_wave]
+sipp_wave[ EU_wave==T & midEU!=T, occD := next.occ_wave]
+sipp_wave[ ustintid_wave>0, occL := Max_narm(occL), by=list(id,ustintid_wave)]
+sipp_wave[ ustintid_wave>0, occD := Max_narm(occD), by=list(id,ustintid_wave)]
+sipp_wave[ EE_wave ==T & EEmon<seammon, occL:= last.occ_wave]
+sipp_wave[ EE_wave ==T & EEmon==seammon, occL:= occ_wave]
+sipp_wave[ EE_wave ==T , occD:= next.occ_wave]
 
 
 #create recIndic_stint
@@ -666,7 +669,7 @@ sipp_wave[is.na(ustintid_wave)|ustintid_wave==0 , recIndic_EU := recIndic_wave]
 #save intermediate result:
 saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
 
-sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","next.job_wave","last.job_wave","job_wave","next.occ_wave","last.occ_wave","occ_wave",
+sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","last.lfstat_wave","next.job_wave","last.job_wave","job_wave","next.occ_wave","last.occ_wave","occ_wave","occL","occD",
 										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","midEE","midEU","midUE","EEmon","UEmon","EUmon","ustintid_wave",
 										"recIndic_stint","recIndic2_stint","recIndic_EU","recIndic_UE","max.unempdur_wave","switchedOcc_wave","wave","id"))
 
@@ -777,14 +780,19 @@ sipp[ ustintid>0, EUmis:= max(EUmis,na.rm = T), by=list(id,ustintid)]
 sipp[ , EUmis:= max(EUmis,na.rm=T), by=list(id,wave)]
 sipp[ (EU_wave==T|UE_wave==T)&!(midEU|midUE) & EUmis<=maxmis-12 & matched_EUUE_wave==T, validEUUE:=T]
 sipp[ is.na(validEUUE), validEUUE:=F]
+sipp[ , EUmis:=NULL]
 
 #sipp[ , ersend_wave:= Mode(ersend), by=list(id,wave)]
 sipp[ ustintid_wave>0 , ersend_wave:=Mode(ersend), by=list(id,ustintid_wave)]
 sipp[ ustintid_wave>0 , var_ersend:=var(ersend,na.rm = T), by=list(id,ustintid_wave)]
 sipp[ var_ersend>0 , ersend_wave:=NA]
 sipp[ , var_ersend:=NULL]
-sipp[ is.finite(ersend_wave) , displaced:= (ersend_wave>=8 & ersend_wave<=10)]
-########## save prepared data
+sipp[ is.finite(ersend_wave) , displaced:= (ersend_wave>=9 & ersend_wave<=10)|(ersend_wave==1)|(ersend_wave==13)]
+
+sipp[is.finite(ersend_wave), displaced_layoff := ersend_wave==1]
+sipp[is.finite(ersend_wave), displaced_empclosed := ersend_wave==9|ersend_wave==10]
+sipp[is.finite(ersend_wave), displaced_slackbiz := ersend_wave==13]
+########## save prepared data--------------
 #a bit of cleanup
 sipp[ , c("ajbocc","date0","jobchng_max","EE_max","EU_max","UE_max","PCEPI","last.earnm","last.job","last.job_wave","smonth","syear","epppnum","next.Estart","ui_r","coc"):=NULL]
 
@@ -792,7 +800,7 @@ setwd(outputdir)
 #saveRDS(sipp, "./preparedSipp.RData")
 saveRDS(sipp, "./DTall_3.RData")
 
-# plot transitions time series for sanity check
+# plot transitions time series for sanity check------------------
 EU_wave <- sipp[lfstat_wave==1 &  is.finite(next.lfstat_wave), .(EU_wave = weighted.mean(EU_wave , wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 ggplot(EU_wave, aes(date, EU_wave, color = panel, group = panel)) +
 	geom_point()+ylim(c(0,.05))+
