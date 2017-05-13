@@ -189,6 +189,7 @@ sipp[, date := as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")]
 
 # create unique ID across all panels
 sipp[, id := paste(id, panel, sep = "")]
+sipp[, id := as.integer(factor(id)) ]
 
 # sort by id and date
 setkey(sipp, id, date)
@@ -218,7 +219,7 @@ sipp[esr == 8, lfstat := 3]
 #sipp[rwkesr2 >= 1 & rwkesr2 <= 3, lfstat := as.integer(1)] 
 #sipp[rwkesr2 == 4, lfstat := as.integer(2)] 
 #sipp[rwkesr2 == 5, lfstat := as.integer(3)]
-sipp[, rwkesr2:= NULL]
+#sipp[, rwkesr2:= NULL]
 
 
 #clean the 2->3 and 3->2 into 2
