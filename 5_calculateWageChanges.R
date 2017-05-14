@@ -20,8 +20,9 @@ Mode <- function(x) {
 DTall <- readRDS(paste0(datadir,"/DTall_4.RData"))
 #drop some un-need variables
 DTall[ , nwhite := black==T|hispanic==T]
-DTall <- DTall[ , c("eyear","emonth","esr","next.earnm","logearnm","black","hispanic"):=NULL]
-DTall <- DTall[ lfstat_wave<3, ]
+DTall <- DTall[ , c("eyear","emonth","esr","next.earnm","logearnm","black","hispanic","filtered.unrate$cycle",
+					"matched_EUUE_max"):=NULL]
+#I don't want to drop these ->  DTall <- DTall[ lfstat_wave<3, ]
 
 setkey(DTall, id, date)
 #clear out the super-low earnings
@@ -33,12 +34,6 @@ DTall[ , last.usewage := shift(usewage,type="lag"), by=id]
 # fill wages upwards to fill in unemployment spells
 DTall[EE==T|UE == T, nextwage := next.usewage]
 DTall[lfstat>=2 | EU==T, nextwage := Mode(nextwage), by = list(id,ustintid)] #replace within  unemp stints
-
-DTall[, leadwage := shift(occwage, 1, type = "lead"), by = id]
-DTall[EE==T|UE == T, nextoccwage := leadwage, by = id]
-DTall[lfstat>=2 | EU==T, nextoccwage := Mode(nextoccwage), by = list(id,ustintid)] #replace if it's UE
-
-DTall[, leadwage:=NULL]
 
 DTall[last.lfstat==1, tuw := last.usewage]
 
@@ -74,15 +69,16 @@ DTall[!(EU==T | EE==T | UE==T), wagechange_EUE := wagechange_stayer]
 # if ifelse() condition is NA, end result is NA.
 DTall[!(EE | UE | EU), wagechange_month := wagechange_stayer]
 DTall[(EE | UE | EU), wagechange_month := wagechange]
-DTall[ , c("wagechange_stayer","wagechange","wagechange_stayer_bad"):=NULL]
+DTall[ , c("wagechange_stayer","wagechange","wagechange_stayer_bad","tuw"):=NULL]
 
 # create occwagechange variable
-#DTall[, occwagechange := as.numeric(ifelse(switchedOcc & !shift(switchedOcc, 1, type = "lag"), 
-#				nextoccwage - shift(occwage, 1, type = "lag"), 
-#				0.)), by = id]
-#DTall[, occwagechange := as.numeric(ifelse(switchedOcc & shift(switchedOcc, 1, type = "lag"),
-#				nextoccwage - occwage, 
-#				0.)), by = id]
+#DTall[, leadwage := shift(occwage, 1, type = "lead"), by = id]
+#DTall[, last.occwage := shift(occwage, 1, type = "lag"), by = id]
+#DTall[EE==T|UE == T, nextoccwage := leadwage, by = id]
+#DTall[lfstat>=2 | EU==T, nextoccwage := Mode(nextoccwage), by = list(id,ustintid)] #replace if it's UE
+#DTall[, leadwage:=NULL]
+# DTall[switchedOcc_wave ==T, occwagechange := nextoccwage - last.occwage]
+# DTall[ , c("nextoccwage","last.occwage"):=NULL]
 
 #***********************************************************************
 #***********************************************************************
@@ -135,7 +131,7 @@ DTseam[ , tw:= wavewage]
 
 DTseam[ , wagechange_wave := nw - tw]
 #for EE that spans waves:
-DTseam[ EE_wave==T & EEmon<4 , wagechange_wave:= NA]
+DTseam[ EE_wave==T & EEmon<seammon , wagechange_wave:= NA]
 DTseam[ EE_wave==T & shift(midEE)==T , wagechange_wave:= (next.wavewage - last.wavewage)]
 DTseam[ , next.wagechange_wave := shift(wagechange_wave, type="lead"),by=id]
 DTseam[EE_wave==T & midEE ==T , wagechange_wave := next.wagechange_wave]
@@ -171,7 +167,7 @@ DTseam[ , tw:= waverawwg]
 
 DTseam[ , rawwgchange_wave := nw - tw]
 #for EE that spans waves:
-DTseam[ EE_wave==T & EEmon<4 , rawwgchange_wave:= NA]
+DTseam[ EE_wave==T & EEmon<seammon , rawwgchange_wave:= NA]
 DTseam[ EE_wave==T & shift(midEE)==T , rawwgchange_wave:= (next.waverawwg - last.waverawwg)]
 DTseam[ , next.rawwgchange_wave := shift(rawwgchange_wave, type="lead"),by=id]
 DTseam[EE_wave==T & midEE ==T , rawwgchange_wave := next.rawwgchange_wave]
@@ -233,8 +229,7 @@ DTseam[ is.na(wagechange_wave_imp)==T, wagechange_wave_imp := F]
 
 
 DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_jcbad","wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high","wagechange_wave_imp","pctmaxmis"
-								  ,"wagechangeEUE_wave","next.wavewage","last.wagechange_wave","next.wagechange_wave",
-								  "rawwgchangeEUE_wave","rawwgchange_wave","id","wave"))
+								  ,"wagechangeEUE_wave","next.wavewage","rawwgchangeEUE_wave","rawwgchange_wave","id","wave"))
 DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
 #looking at occupation-level wage changes
@@ -259,7 +254,7 @@ DTseam[, occwagechangeEUE_wave:= Mode(occwagechangeEUE_wave), by=list(ustintid_w
 DTseam[ EE_wave==T, occwagechangeEUE_wave:= occwagechange_wave]
 DTseam[ switchedOcc_wave==F, occwagechangeEUE_wave:= 0.]
 
-DTseam<-subset(DTseam, select = c("occwagechange_wave","occwagechangeEUE_wave","next.occwage_wave","id","wave"))
+DTseam<-subset(DTseam, select = c("occwagechange_wave","occwagechangeEUE_wave","id","wave"))
 DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
 #************************************************************************
@@ -306,8 +301,7 @@ DTann[ last.annrawwg>0, last.rank.annrawwg := rank(last.annrawwg,na.last = "keep
 DTann[ last.annrawwg>0, last.rank.annrawwg := (last.rank.annrawwg - min(last.rank.annrawwg,na.rm = T))/(max(last.rank.annrawwg,na.rm = T) - min(last.rank.annrawwg,na.rm = T)), by=year]
 DTann[ last.annrawwg>0, last.pctile.annrawwg := round(last.rank.annrawwg*100)]
 
-DTann<-subset(DTann, select = c("rawwgchange_ann","wagechange_ann","next.wagechange_ann","next.rawwgchange_ann",
-								"pctile.annrawwg","pctile.annwage","last.pctile.annrawwg","last.pctile.annwage","id","yri"))
+DTann<-subset(DTann, select = c("rawwgchange_ann","wagechange_ann","pctile.annrawwg","pctile.annwage","id","yri"))
 DTall<- merge(DTall,DTann,by=c("id","yri"),all.x=T)
 
 
