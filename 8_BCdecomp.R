@@ -21,6 +21,7 @@ qtlgridEst  <- c(seq(.02,.1,.02),seq(0.15,0.85,0.05),seq(.9,.98,.02))
 qtlgridOut <- seq(.02,0.98,0.01)
 MMstd_errs = F
 Nmoments = 5
+moment_names <- c("Mean","Median","Med Abs Dev","Groenv-Meeden","Moors")
 #recession counter-factual returns beta^E * recession inidcators and beta^R * expansion indicators
 
 wtd.mad <- function(xt,wt,md=-Inf){
@@ -84,115 +85,6 @@ wtd.4qtlmoments <- function(xt,wt){
 	set.seed(12281951)
 	Moors  <- wtd.Moors(xt,wt)
 	return(c(median,mad,GrnMd,Moors))
-}
-DHLdecomp <- function(wcDF,NS, recname,wcname,wtname){
-# wcDF : data set
-# NS   : Number of subgroups
-# recname	: name of recession indicator
-# wcname	: name of earnings change variable
-# wtname	: name of weighting variable
-
-	wcDF$wc  <- wcDF[[wcname]]
-	wcDF$wt  <- wcDF[[wtname]]
-	wcDF$rec <- wcDF[[recname]]
-	wcDF$s   <- 0
-	# setup subgroup indices
-	if(NS ==6){
-		# 6 subgroups, Sw X (EE UE EU), sets up conditional distributions.
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F, s := 1]
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F, s := 2]
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T, s := 3]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F, s := 4]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F, s := 5]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T, s := 6]
-	}else if(NS ==7){
-		# 6 subgroups, Sw X (EE UE EU), sets up conditional distributions.
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F, s := 1]
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F, s := 2]
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T, s := 3]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F, s := 4]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F, s := 5]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T, s := 6]
-		wcDF[                      wcDF$EE==F & wcDF$UE==F & wcDF$EU ==F, s := 7]
-	}else if(NS==4){
-		# 4 subgroups, Sw X (EE EU), sets up conditional distributions.
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==T & wcDF$EU ==F, s := 1]
-		wcDF[wcDF$switchedOcc==T & wcDF$EE==F & wcDF$EU ==T, s := 2]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==T & wcDF$EU ==F, s := 3]
-		wcDF[wcDF$switchedOcc==F & wcDF$EE==F & wcDF$EU ==T, s := 4]		
-	}
-	wcRec <- subset(wcDF, rec==T)
-	wcExp <- subset(wcDF, rec==F)
-	
-	
-	distptsRec <-with(wcRec,wtd.quantile(wc, wt, probs = seq(0.01,0.99,by=0.005)))
-	distptsExp <-with(wcExp,wtd.quantile(wc, wt, probs = seq(0.01,0.99,by=0.005)))
-	
-	invdistRec <- approxfun(seq(0.01,0.99,by=0.005),distptsRec)
-	invdistExp <- approxfun(seq(0.01,0.99,by=0.005),distptsExp)
-	distRec <- approxfun(distptsRec,seq(0.01,0.99,by=0.005),yleft=0.,yright=1.)
-	distExp <- approxfun(distptsExp,seq(0.01,0.99,by=0.005),yleft=0.,yright=1.)
-	
-	
-	
-	distptsRecS <- matrix(0.,197,NS)
-	distptsExpS <- matrix(0.,197,NS)
-	
-	for(si in seq(1,NS)){
-		distptsRecS[,si] <- with(subset(wcRec,wcRec$s == si), 
-								wtd.quantile(wc, wt, probs = seq(0.01,0.99,by=0.005)))
-		distptsExpS[,si] <- with(subset(wcExp,wcExp$s == si),
-								wtd.quantile(wc, wt, probs = seq(0.01,0.99,by=0.005)))
-	}
-	# allocate lists, and will grow them later
-	distRecS <-list(distRec) 
-	invdistRecS <-list(invdistRec)
-	distExpS <-list(distExp)
-	invdistExpS <-list(invdistExp)
-	
-	
-	for (si in seq(1,NS)){
-		invdistRecS[[si]] <- approxfun(seq(0.01,0.99,by=0.005),distptsRecS[,si])
-		invdistExpS[[si]] <- approxfun(seq(0.01,0.99,by=0.005),distptsExpS[,si])
-		distRecS[[si]] <- approxfun(distptsRecS[,si],seq(0.01,0.99,by=0.005),yleft=0.,yright=1.)
-		distExpS[[si]] <- approxfun(distptsExpS[,si],seq(0.01,0.99,by=0.005),yleft=0.,yright=1.)
-	}
-	
-	PsExp <- rep(0,NS)
-	PsRec <- rep(0,NS)
-	for (si in seq(1,NS)){
-		PsExp[si] = wcExp[!is.na(wc), wtd.mean(s == si,wt)]
-		PsRec[si] = wcRec[!is.na(wc), wtd.mean(s == si,wt)]
-	}
-	
-	qtls<- seq(0.1,0.9,by=0.1)
-	share <- array(0, dim= length(qtls))
-	wchng <- array(0, dim= length(qtls))
-	shift <- array(0, dim= c(length(qtls),NS))
-	qi =1
-	for (q in qtls){
-		# set wc^E, wc^R with the two distributions
-		wcE <- invdistExp(q)
-		wcR <- invdistRec(q)
-		wchng[qi] = wcR - wcE
-		fstar = 0. #integrate this
-		for(si in seq(1,NS)){
-			fstar = PsExp[si]*(distExpS[[si]](wcR) - distExpS[[si]](wcE)) + PsRec[si]*( distExpS[[si]](wcR) - distExpS[[si]](wcE) ) +fstar
-		}
-		fstar = fstar/(wcR - wcE)
-		share[qi] = 0.
-		for(si in seq(1,NS)){
-			share[qi] = PsExp[si]*(distExpS[[si]](wcE)-distRecS[[si]](wcE) ) + PsRec[si]*(distExpS[[si]](wcR)-distRecS[[si]](wcR)) + share[qi]
-		}
-		share[qi] = share[qi]/fstar
-		for(si in seq(1,NS)){
-			shift[qi,si] = ((distExpS[[si]](wcR)-q) + (distRecS[[si]](wcE)-q))*(PsRec[si]-PsExp[si])
-			shift[qi,si] = shift[qi,si]/fstar
-		}
-		qi = qi+1
-	}
-	shift_share <-list(wchng,shift,share)
-	return(shift_share)
 }
 
 MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
@@ -441,7 +333,10 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 		#clean up the space:
 		wc_IR_pctile[,simiter] <- quantile(wc_IR,probs=qtlgridOut,na.rm=T)
 		wc_BR_pctile[,simiter] <- quantile(wc_BR,probs=qtlgridOut,na.rm=T)
-		wc_IR_moments[1,simiter] <- 
+		wc_IR_moments[1,simiter] <- mean(wc_IR,na.rm = T)
+		wc_IR_moments[2:5,simiter] <- wtd.4qtlmoments(xt=wc_IR,wt=array(1.,dim = dim(wc_IR)))
+		wc_BR_moments[1,simiter] <- mean(wc_BR)
+		wc_BR_moments[2:5,simiter] <- wtd.4qtlmoments(xt=wc_BR,wt=array(1.,dim = dim(wc_BR)))
 		
 		rm(wc_IR)
 		rm(wc_BR)
@@ -476,6 +371,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 		}
 		#clean up the space:
 		wc_rec_pctile[,simiter] <- quantile(wc_rec,probs=qtlgridOut,na.rm=T)
+		wc_rec_moments[1,simiter] <- mean( wc_rec,na.rm = T )
+		wc_rec_moments[2:5,simiter] <- wtd.4qtlmoments( xt=wc_rec,wt=array(1,dim=dim(wc_rec)) )
 		rm(wc_rec)
 		
 		qi=1
@@ -508,12 +405,15 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 		}
 		#clean up the space:
 		wc_exp_pctile[,simiter] <- quantile(wc_exp,probs=qtlgridOut,na.rm=T)
+		wc_exp_moments[1,simiter] <- mean( wc_exp,na.rm = T )
+		wc_exp_moments[2:5,simiter] <- wtd.4qtlmoments( xt=wc_exp,wt=array(1,dim=dim(wc_exp)) )
 		rm(wc_exp)
 				
 		#some additional counter-factuals		
 		if(no_occ ==F){
 			qi=1
 			wc_IR_sw <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only switch
+			wc_IR_sw_moments <- matrix(NA,Nmoments,Nsims)
 			for(q in qtlgridSamp){
 				if(NS == 6){
 					wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
@@ -538,6 +438,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 			}
 			#clean up the space:
 			wc_IR_sw_pctile[,simiter] <- quantile(wc_IR_sw,probs=qtlgridOut,na.rm=T)
+			wc_IR_sw_moments[1,simiter] <- mean( wc_IR_sw,na.rm = T )
+			wc_IR_sw_moments[2:5,simiter] <- wtd.4qtlmoments( xt=wc_IR_sw,wt=array(1,dim=dim(wc_IR_sw)) )
 			rm(wc_IR_sw)
 			
 			
@@ -569,19 +471,20 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 			wc_IR_un_pctile[,simiter] <- quantile(wc_IR_un,probs=qtlgridOut,na.rm=T)
 			rm(wc_IR_un)
 		}
-
 	}#simiter	
 	
 	if(no_occ==F){	
 		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_sw= wc_IR_sw_pctile, wc_IR_un= wc_IR_un_pctile,
-				wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile))
+				wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile,wc_BR_mmts = wc_BR_moments,wc_IR_mmts = wc_IR_moments, 
+				wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments, wc_IR_sw_mmts = wc_IR_sw_moments))
 	}else{
-		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile))
+		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile,
+					wc_BR_mmts = wc_BR_moments,wc_IR_mmts = wc_IR_moments,wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments))
 	}
 }
 
 
-moments_compute <- function(qtlpts, distpts){
+moments_compute_qtls <- function(qtlpts, distpts){
 	# take the distributions points evaluated at the quantile points and crank out some moments
 	npts <- length(qtlpts)
 	dist_fun <- splinefun(qtlpts, distpts)
@@ -796,7 +699,7 @@ ggsave("./Figures/MMwave_all_data.png",height=5,width=10)
 
 
 dt_mm <- data.table(cbind( seq(0.07,0.93,0.01),win_dif_rec_exp_sim,win_dif_IR_exp ))
-names(dt_mm) <- c("Quantile","Data","Counter Factual")
+names(dt_mm) <- c("Quantile","Data","Counter Factual - Rec Flows")
 dt_mm_melted <- melt(dt_mm, id= "Quantile")
 ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
 	geom_line(size=2) + 
@@ -808,6 +711,20 @@ ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) +
 		  legend.background = element_rect(linetype = "solid",color = "black"))
 ggsave("./Figures/MMwave_all.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all.png",height=5,width=10)
+
+dt_mm <- data.table(cbind( seq(0.07,0.93,0.01),win_dif_rec_exp_sim,win_dif_BR_exp ))
+names(dt_mm) <- c("Quantile","Data","Counter Factual - Rec Returns")
+dt_mm_melted <- melt(dt_mm, id= "Quantile")
+ggplot( dt_mm_melted, aes(x=Quantile,y=value,colour=variable) ) + 
+	geom_line(size=2) + 
+	ylab("Recession - Expansion Distribution") + 
+	xlab("Earnings Growth Quantile") +
+	scale_color_manual( values = c(hcl(h=seq(15, 375, length=4), l=50, c=100)[1:2]) ) +
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.8,0.2),
+		  legend.background = element_rect(linetype = "solid",color = "black"))
+ggsave("./Figures/MMwave_BR_all.eps",height=5,width=10)
+ggsave("./Figures/MMwave_BR_all.png",height=5,width=10)
 
 dt_mm_un <- data.table(cbind( seq(0.07,0.93,0.01),win_dif_rec_exp_sim,win_dif_IR_exp,win_dif_IR_un_exp ))
 names(dt_mm_un) <- c("Quantile","Data","Counter Factual","Recession Switching Coefficients")
@@ -910,7 +827,34 @@ ggsave("./Figures/MMwave_all_coUEsw.eps",height=5,width=10)
 ggsave("./Figures/MMwave_all_coUEsw.png",height=5,width=10)
 
 
-#table out:
+#Tables Out---------------------
+
+
+#Moments:
+MM_moments <- cbind(MM_waveall_betaE_betaR_IR$wc_exp_mmts,MM_waveall_betaE_betaR_IR$wc_rec_mmts,
+					MM_waveall_betaE_betaR_IR$wc_IR_mmts,MM_waveall_betaE_betaR_IR$wc_IR_sw_mmts)
+MM_moments <- data.table(MM_moments)
+
+MM_EUE_moments <- cbind(MM_waveallEUE_betaE_betaR_IR$wc_exp_mmts,MM_waveallEUE_betaE_betaR_IR$wc_rec_mmts,
+						MM_waveallEUE_betaE_betaR_IR$wc_IR_mmts,MM_waveallEUE_betaE_betaR_IR$wc_IR_sw_mmts)
+MM_EUE_moments <- data.table(MM_EUE_moments)
+
+names(MM_moments) <- c("Exp","Rec","CF-Rec Flows",
+					   "CF-Rec Flows + Sw Rets")
+rownames(MM_moments) <- moment_names
+MM_moments <- xtable(MM_moments, digits=3, 
+					 align="l|ll|ll", caption="Moments of Machado-Mata Deocmpostion (EU,UE-view)\\label{tab:MM_moments}")
+print(MM_moments,include.rownames=T, include.colnames = T , hline.after= c(-1,-1,0,nrow(MM_moments)), file="./Figures/MM_moments.tex")
+##
+names(MM_EUE_moments) <- c("Exp","Rec","CF-Rec Flows",
+					   "CF-Rec Flows + Sw Rets")
+rownames(MM_EUE_moments) <- moment_names
+MM_EUE_moments <- xtable(MM_EUE_moments, digits=3, 
+					 align="l|ll|ll", caption="Moments of Machado-Mata Deocmpostion (EUE-view)\\label{tab:MM_EUE_moments}")
+print(MM_EUE_moments,include.rownames=T, include.colnames = T , hline.after= c(-1,-1,0,nrow(MM_EUE_moments)), file="./Figures/MM_EUE_moments.tex")
+
+
+#quantile tables out:
 MM_all_tab <- data.table(cbind( mmtabqtls,(dist_IR),dist_rec,dist_exp,dist_rec- dist_exp, 
 								dist_pct,dist_pct_sw,dist_pct_un))
 names(MM_all_tab) <- c("Quantile","CF\ Rec","Rec","Exp","Rec-Exp","Pct\ CF","Pct\ CF\ OccSw","Pct\ CF\ Unemp")
