@@ -448,8 +448,8 @@ for(bi in seq(1,Nsubsamp)){
 
 outputtable <- data.table(outputtable)
 names(outputtable) <- c("EE","EE\ ","EUE","EUE\ ","EU,UE","EU,UE\ ")
-title0 <- c( "& \\multicolumn{2}{|c|}{EE} & \\multicolumn{2}{|c|}{EUE} & \\multicolumn{2}{|c|}{EU,UE}  \\\\ \n", 
-			"&   Swtich Occ & No Switch & Swtich Occ & No Switch & Swtich Occ & No Switch  \\\\ \\hline \n")
+title0 <- c( "& \\multicolumn{2}{|c}{EE} & \\multicolumn{2}{|c|}{EUE} & \\multicolumn{2}{|c|}{EU,UE}  \\\\ \n", 
+			"&   Switch Occ & No Switch & Switch Occ & No Switch & Switch Occ & No Switch  \\\\ \\hline \n")
 rnames0 <- c("All\ Periods", "Expansion","Recession")
 rnames1 <- rnames0
 rnames <- rnames0
