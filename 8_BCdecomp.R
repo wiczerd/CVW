@@ -833,26 +833,33 @@ ggsave("./Figures/MMwave_all_coUEsw.png",height=5,width=10)
 #Moments:
 MM_moments <- cbind(MM_waveall_betaE_betaR_IR$wc_exp_mmts,MM_waveall_betaE_betaR_IR$wc_rec_mmts,
 					MM_waveall_betaE_betaR_IR$wc_IR_mmts,MM_waveall_betaE_betaR_IR$wc_IR_sw_mmts)
-MM_moments <- data.table(MM_moments)
+#MM_moments <- data.table(MM_moments)
 
 MM_EUE_moments <- cbind(MM_waveallEUE_betaE_betaR_IR$wc_exp_mmts,MM_waveallEUE_betaE_betaR_IR$wc_rec_mmts,
 						MM_waveallEUE_betaE_betaR_IR$wc_IR_mmts,MM_waveallEUE_betaE_betaR_IR$wc_IR_sw_mmts)
-MM_EUE_moments <- data.table(MM_EUE_moments)
+#MM_EUE_moments <- data.table(MM_EUE_moments)
 
-names(MM_moments) <- c("Exp","Rec","CF-Rec Flows",
-					   "CF-Rec Flows + Sw Rets")
+
+
+colnames(MM_moments) <- c("Exp", "Rec" , "CF: $\\beta^E$, $\\indic^R$", 
+						  "\\parbox{1\\columnwidth}{\\vspace{3px} CF: $\\beta^E$, $\\indic^R$  \\\\ + Switch Rtn\\vspace{3px} }") 
+					#c("Exp","Rec","CF-Rec Flows",
+					 #  "CF-Rec Flows + Sw Rets")
 rownames(MM_moments) <- moment_names
-MM_moments <- xtable(MM_moments, digits=3, 
+MM_moments <- xtable(MM_moments, digits=2, 
 					 align="l|ll|ll", caption="Moments of Machado-Mata Deocmpostion (EU,UE-view)\\label{tab:MM_moments}")
-print(MM_moments,include.rownames=T, include.colnames = T , hline.after= c(-1,-1,0,nrow(MM_moments)), file="./Figures/MM_moments.tex")
+print(MM_moments,include.rownames=T, include.colnames = T ,  sanitize.colnames.function = function(x) {x} ,sanitize.text.function=function(x) {x},
+	  hline.after= c(-1,-1,0,nrow(MM_moments)), file="./Figures/MM_moments.tex")
 ##
-names(MM_EUE_moments) <- c("Exp","Rec","CF-Rec Flows",
-					   "CF-Rec Flows + Sw Rets")
+colnames(MM_EUE_moments) <- c("Exp", "Rec" , "CF: $\\beta^E$, $\\indic^R$", 
+						   "\\parbox{1\\columnwidth}{\\vspace{3px} CF: $\\beta^E$, $\\indic^R$  \\\\ + Switch Rtn\\vspace{3px} }") 
+						#c("Exp","Rec","CF-Rec Flows",
+					    #"CF-Rec Flows + Sw Rets")
 rownames(MM_EUE_moments) <- moment_names
-MM_EUE_moments <- xtable(MM_EUE_moments, digits=3, 
+MM_EUE_moments <- xtable(MM_EUE_moments, digits=2, 
 					 align="l|ll|ll", caption="Moments of Machado-Mata Deocmpostion (EUE-view)\\label{tab:MM_EUE_moments}")
-print(MM_EUE_moments,include.rownames=T, include.colnames = T , hline.after= c(-1,-1,0,nrow(MM_EUE_moments)), file="./Figures/MM_EUE_moments.tex")
-
+print(MM_EUE_moments,include.rownames=T, include.colnames = T , sanitize.colnames.function = function(x) {x} ,sanitize.text.function=function(x) {x},
+	  hline.after= c(-1,-1,0,nrow(MM_EUE_moments)), file="./Figures/MM_EUE_moments.tex")
 
 #quantile tables out:
 MM_all_tab <- data.table(cbind( mmtabqtls,(dist_IR),dist_rec,dist_exp,dist_rec- dist_exp, 
