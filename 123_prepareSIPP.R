@@ -785,9 +785,11 @@ sipp[ , EUmis:=NULL]
 
 #sipp[ , ersend_wave:= Mode(ersend), by=list(id,wave)]
 sipp[ ustintid_wave>0 , ersend_wave:=Mode(ersend), by=list(id,ustintid_wave)]
+sipp[ !is.finite(ustintid_wave), ersend_wave := Mode(ersend), by=list(id,wave)]
 sipp[ ustintid_wave>0 , var_ersend:=var(ersend,na.rm = T), by=list(id,ustintid_wave)]
 sipp[ var_ersend>0 , ersend_wave:=NA]
 sipp[ , var_ersend:=NULL]
+
 sipp[ is.finite(ersend_wave) , displaced:= (ersend_wave>=9 & ersend_wave<=10)|(ersend_wave==1)|(ersend_wave==13)]
 
 sipp[is.finite(ersend_wave), displaced_layoff := ersend_wave==1]

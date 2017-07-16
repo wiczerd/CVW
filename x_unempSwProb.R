@@ -5,12 +5,26 @@ library(data.table)
 library(zoo)
 library(stats)
 library(texreg)
+library(mFilter)
 
-#setwd("G:/Research_Analyst/Eubanks/Occupation Switching")
+Max_narm <- function(x) {
+	ux <- unique(x[!is.na(x)])
+	if(length(ux)>0){
+		max(ux)
+	}else{
+		if(is.integer(x)){
+			NA_integer_
+		}else{
+			NA_real_
+		}
+	}
+}
+
 wd0 = "~/workspace/CVW/R"
-xwalkdir = "~/workspace/CVW/R/Crosswalks"
-datadir = "~/workspace/CVW/R/Results"
-outputdir = "~/workspace/CVW/R/Figures"
+xwalkdir = paste0(wd0, "/Crosswalks")
+inputdir <- paste0(wd0, "/InputDataDE")
+datadir = paste0(wd0, "/Results")
+outputdir = paste0(wd0, "/Figures")
 setwd(wd0)
 
 
@@ -25,8 +39,41 @@ regressors <- c("age",
 
 sipp <- readRDS(paste0(datadir,"/DTall_3.RData"))
 
-
 sipp[, switchedOcc_wave := switchedOcc_wave *100]
+sipp[ mis==1, ltrunc := (lfstat>1)]
+sipp[       , ltrunc := any(ltrunc,na.rm = F), by=list(id,ustintid)]
+sipp[is.na(ltrunc), ltrunc := F]
+sipp[EE_wave==T, nempdur := 0]
+sipp[ ustintid>0 & ltrunc==F, nempdur := seq_len(.N)-1, by=list(id,ustintid)]
+sipp[ ustintid>0 & ltrunc==F, max.nempdur := max(nempdur,na.rm = T), by=list(id,ustintid)]
+sipp[ , max.nempdur_wave := Max_narm(max.nempdur), by=list(id,wave)]
+sipp[ EE_wave==T, max.nempdur_wave := 0]
+sipp[ EE_wave==T, max.unempdur_wave := 0]
+
+sipp[ validEUUE==T | (EE_wave==T&midEE==F) , validTransX := T]
+sipp[ (validEUUE==T & EU_wave==T & midEE==F) | (EE_wave==T&midEE==F) , validTransX_sep := T]
+
+sipp[ , fil_unrt := `filtered.unrate$cycle`]
+
+LPM_urt_coefsd <- array(NA,dim=c(13,2))
+LPM_urt_disp_coefsd <- array(NA,dim=c(13,2))
+
+for( d in seq(0,12) ){
+	LPM_urt_here <- lm(switchedOcc_wave~fil_unrt+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validTransX_sep==T & max.nempdur_wave >= d) )
+	LPM_urt_coefsd[d+1,1] <-LPM_urt_here$coefficients["fil_unrt"]
+	LPM_urt_coefsd[d+1,2] <-LPM_urt_here$coefficients["fil_unrt"]
+	LPM_urt_disp_here <- lm(switchedOcc_wave~fil_unrt+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validTransX_sep==T & displaced==T & max.nempdur_wave >= d) )
+	LPM_urt_disp_coefsd[d+1,1] <-LPM_urt_disp_here$coefficients["fil_unrt"]
+}
+
+
+LPM_urt_EUUE <- lm(switchedOcc_wave~fil_unrt+
+				   	max.nempdur_wave+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validEUUE==T) )
+
+LPM_urt_disp_EUUE <- lm(switchedOcc_wave~fil_unrt+
+				   	max.nempdur_wave+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validEUUE==T & displaced==T ) )
+
+
 LPM_NBER_EUUE <- lm(switchedOcc_wave~recIndic_wave+
 								max.unempdur_wave+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validEUUE==T) )
 
