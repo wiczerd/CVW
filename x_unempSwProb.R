@@ -39,6 +39,15 @@ regressors <- c("age",
 
 sipp <- readRDS(paste0(datadir,"/DTall_3.RData"))
 
+sipp <- subset(sipp, seam==T)
+
+rec_dates <- read.table(textConnection(
+"Peak, Trough
+2001-03-01, 2001-11-01
+2007-12-01, 2009-06-01"), sep=',',header=TRUE, 
+colClasses=c('Date', 'Date'))
+
+
 sipp[, switchedOcc_wave := switchedOcc_wave *100]
 sipp[ mis==1, ltrunc := (lfstat>1)]
 sipp[       , ltrunc := any(ltrunc,na.rm = F), by=list(id,ustintid)]
@@ -55,30 +64,79 @@ sipp[ (validEUUE==T & EU_wave==T & midEE==F) | (EE_wave==T&midEE==F) , validTran
 
 sipp[ , fil_unrt := `filtered.unrate$cycle`]
 
-LPM_urt_coefsd <- array(NA,dim=c(13,2))
-LPM_urt_disp_coefsd <- array(NA,dim=c(13,2))
+fil_unrt_ts <- sipp[ validTransX_sep==T, mean(fil_unrt) , by=date]
+ggplot(fil_unrt_ts, aes(date,V1))+geom_line()+ylab("HP Filtered Unemployment")+  geom_rect(data = rec_dates, 
+	mapping = aes(xmin = Peak,xmax=Trough ,ymin = -Inf, ymax = +Inf),inherit.aes = FALSE, fill = "red", alpha = "0.2")
+ggsave(filename = paste0(outputdir,"/fil_unrt.eps"), height = 5,width=10)
+ggsave(filename = paste0(outputdir,"/fil_unrt.png"), height = 5,width=10)
+
+LPM_urt_ndur_coefsd <- array(NA,dim=c(13,2))
+LPM_urt_ndur_disp_coefsd <- array(NA,dim=c(13,2))
+LPM_urt_udur_coefsd <- array(NA,dim=c(13,2))
+LPM_urt_udur_disp_coefsd <- array(NA,dim=c(13,2))
+
 
 for( d in seq(0,12) ){
-	LPM_urt_here <- lm(switchedOcc_wave~fil_unrt+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validTransX_sep==T & max.nempdur_wave >= d) )
-	LPM_urt_coefsd[d+1,1] <-LPM_urt_here$coefficients["fil_unrt"]
-	LPM_urt_coefsd[d+1,2] <-LPM_urt_here$coefficients["fil_unrt"]
-	LPM_urt_disp_here <- lm(switchedOcc_wave~fil_unrt+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validTransX_sep==T & displaced==T & max.nempdur_wave >= d) )
-	LPM_urt_disp_coefsd[d+1,1] <-LPM_urt_disp_here$coefficients["fil_unrt"]
+	LPM_urt_here <- summary(lm(switchedOcc_wave~fil_unrt+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T & max.nempdur_wave >= d) ))
+	LPM_urt_ndur_coefsd[d+1,1] <-LPM_urt_here$coefficients["fil_unrt",1]
+	LPM_urt_ndur_coefsd[d+1,2] <-LPM_urt_here$coefficients["fil_unrt",2]
+	LPM_urt_disp_here <- summary(lm(switchedOcc_wave~fil_unrt+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validTransX_sep==T & displaced==T & max.nempdur_wave >= d) ))
+	LPM_urt_ndur_disp_coefsd[d+1,1] <-LPM_urt_disp_here$coefficients["fil_unrt",1]
+	LPM_urt_ndur_disp_coefsd[d+1,2] <-LPM_urt_disp_here$coefficients["fil_unrt",2]
+	
+	LPM_urt_here <- summary(lm(switchedOcc_wave~fil_unrt+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validTransX_sep==T & max.unempdur_wave >= d) ))
+	LPM_urt_udur_coefsd[d+1,1] <-LPM_urt_here$coefficients["fil_unrt",1]
+	LPM_urt_udur_coefsd[d+1,2] <-LPM_urt_here$coefficients["fil_unrt",2]
+	LPM_urt_disp_here <- summary(lm(switchedOcc_wave~fil_unrt+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validTransX_sep==T & displaced==T & max.unempdur_wave >= d) ))
+	LPM_urt_udur_disp_coefsd[d+1,1] <-LPM_urt_disp_here$coefficients["fil_unrt",1]
+	LPM_urt_udur_disp_coefsd[d+1,2] <-LPM_urt_disp_here$coefficients["fil_unrt",2]
 }
 
 
-LPM_urt_EUUE <- lm(switchedOcc_wave~fil_unrt+
-				   	max.nempdur_wave+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validEUUE==T) )
+LPM_urt_EU <- lm(switchedOcc_wave~max.nempdur_wave*fil_unrt+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T & EU_wave==T) )
+summary(LPM_urt_EU)
+LPM_urt_disp_EU <- lm(switchedOcc_wave~fil_unrt*max.nempdur_wave+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T & displaced==T & EU_wave==T) )
+summary(LPM_urt_disp_EU)
+#interact with displaced
+LPM_urt_disp_EU <- lm(switchedOcc_wave~fil_unrt*max.nempdur_wave*displaced+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T& EU_wave==T) )
+summary(LPM_urt_disp_EU)
+#include EE ######################################################################
+LPM_urt_EU_EE <- lm(switchedOcc_wave~max.nempdur_wave*fil_unrt+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T) )
+summary(LPM_urt_EU_EE)
+LPM_urt_disp_EU_EE <- lm(switchedOcc_wave~fil_unrt*max.nempdur_wave+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T & displaced==T) )
+summary(LPM_urt_disp_EU_EE)
+#interact with displaced
+LPM_urt_disp_EU_EE <- lm(switchedOcc_wave~fil_unrt*max.nempdur_wave*displaced+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T) )
+summary(LPM_urt_disp_EU_EE)
 
-LPM_urt_disp_EUUE <- lm(switchedOcc_wave~fil_unrt+
-				   	max.nempdur_wave+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validEUUE==T & displaced==T ) )
+
+# By NBER indicator: ######################################################################
+LPM_NBER_EU <- lm(switchedOcc_wave~max.nempdur_wave*recIndic_wave+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T & EU_wave==T) )
+summary(LPM_NBER_EU)
+LPM_NBER_disp_EU <- lm(switchedOcc_wave~recIndic_wave*max.nempdur_wave+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T & displaced==T & EU_wave==T) )
+summary(LPM_NBER_disp_EU)
+#interact with displaced
+LPM_NBER_disp_EU <- lm(switchedOcc_wave~recIndic_wave*max.nempdur_wave*displaced+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T& EU_wave==T) )
+summary(LPM_NBER_disp_EU)
+#include EE ######################################################################
+LPM_NBER_EU_EE <- lm(switchedOcc_wave~max.nempdur_wave*recIndic_wave+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T) )
+summary(LPM_NBER_EU_EE)
+LPM_NBER_disp_EU_EE <- lm(switchedOcc_wave~recIndic_wave*max.nempdur_wave+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T & displaced==T) )
+summary(LPM_NBER_disp_EU_EE)
+#interact with displaced
+LPM_NBER_disp_EU_EE <- lm(switchedOcc_wave~recIndic_wave*max.nempdur_wave*displaced+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T) )
+summary(LPM_NBER_disp_EU_EE)
 
 
-LPM_NBER_EUUE <- lm(switchedOcc_wave~recIndic_wave+
-								max.unempdur_wave+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validEUUE==T) )
 
-LPM_NBER_EUUE_alldisp <- lm(switchedOcc_wave~recIndic_wave*displaced+
-								max.unempdur_wave+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validEUUE==T) )
+
+LPM_NBER_EUUE <- lm(switchedOcc_wave~recIndic_wave*max.nempdur_wave+
+								factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validEUUE==T) )
+summary(LPM_NBER_EUUE)
+
+LPM_NBER_disp_EUUE <- lm(switchedOcc_wave~recIndic_wave*displaced+
+								max.unempdur_wave+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validEUUE==T) )
+summary(LPM_NBER_disp_EUUE)
 
 LPM_NBER_EUUE_splitdisp <- lm(switchedOcc_wave~recIndic_wave*displaced_layoff+recIndic_wave*displaced_empclosed+recIndic_wave*displaced_slackbiz+
 							  	max.unempdur_wave+factor(ageGrp)+female+factor(HSCol), data=subset(sipp,validEUUE==T) )
