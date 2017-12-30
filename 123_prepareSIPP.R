@@ -240,10 +240,11 @@ sipp[ajbocc>0, coc := NA ]
 # make sure job and occ are NA if not employed
 sipp[lfstat != 1, job := NA]
 sipp[lfstat != 1, occ := NA]
+sipp[lfstat != 1, ind := NA]
 
-# replace occ with mode occ over a job spell.  No internal job switches
-# sipp[lfstat == 1, occ := Mode(occ), by = list(id, job)]
-
+# very frequently occ is missing during an employment spell. Fill it forward where there're no conflicts:
+sipp[ lfstat==1 & is.finite(job), occ:= na.locf(occ,na.rm = F), by=list(id,job)]
+sipp[ lfstat==1 & is.finite(job), occ:= na.locf(occ,na.rm = F,fromLast = T), by=list(id,job)]
 
 ########## stint ids ----------------------------
 
@@ -269,14 +270,14 @@ sipp[is.na(ustintid), unempdur := NA]
 # create max unemployment duration
 sipp[lfstat==2, max.unempdur := max(unempdur,na.rm = T), by = list(id, ustintid)]
 
-# clean weird occupation codes:
-sipp[ , varoccjob := var(occ,na.rm = T), by=list(id,estintid)] #in about 6\% of cases, occupation changes during job
-sipp[ , varjobidjob := var(job,na.rm = T), by=list(id,estintid)]
-sipp[ lfstat==1, occ_mode := Mode(occ), by=list(id,estintid)]
-sipp[ varoccjob>0 & varjobidjob==0 & lfstat==1, occ:=occ_mode, by=list(id,estintid)]
+# This removed occupation codes that changed during a job spell:
+#sipp[ , varoccjob := var(occ,na.rm = T), by=list(id,estintid)] #in about 6\% of cases, occupation changes during job
+#sipp[ , varjobidjob := var(job,na.rm = T), by=list(id,estintid)]
+#sipp[ lfstat==1, occ_mode := Mode(occ), by=list(id,estintid)]
+#sipp[ varoccjob>0 & varjobidjob==0 & lfstat==1, occ:=occ_mode, by=list(id,estintid)]
 # some employment not list occupation
-sipp[ lfstat==1 & is.na(occ), occ:= occ_mode]
-sipp[ , c("varoccjob","varjobidjob","occ_mode"):=NULL]
+#sipp[ lfstat==1 & is.na(occ), occ:= occ_mode]
+#sipp[ , c("varoccjob","varjobidjob","occ_mode"):=NULL]
 
 # fill in occupation with next occupation during unemployment stints
 sipp[, next.occ := shift(occ, 1, type = "lead"), by = id]
@@ -487,7 +488,7 @@ sipp[ , jobchng_max := any(jobchng,na.rm=T), by=list(id,wave)]
 #sipp_wave begins here----------------------
 
 sipp_wave <- subset(sipp, seam==T)
-setkey(sipp_wave, id,wave)
+setkeyv(sipp_wave, c("id","wave"))
 sipp_wave[ , job_wave := job]
 sipp_wave[ , occ_wave := occ]
 sipp_wave[ , ind_wave := ind]
@@ -529,7 +530,7 @@ if(max_wavefreq==2){
 	sipp_wave[ , EE_wave := EE_max]
 }
 
-#clean up EE/EU
+#set up jobchng_wave and EU_wave with ustintid
 sipp_wave[ EE_wave==T & (lfstat_wave>1 | next.lfstat_wave>1), EE_wave:=F]
 if(max_wavefreq==1){
 	sipp_wave[last.lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := jobchng_max ] #& (last.job_wave != next.job_wave)

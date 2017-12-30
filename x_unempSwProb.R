@@ -118,7 +118,18 @@ summary(LPM_NBER_disp_EU)
 #interact with displaced
 LPM_NBER_disp_EU <- lm(switchedOcc_wave~recIndic_wave*max.nempdur_wave*displaced+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T& EU_wave==T) )
 summary(LPM_NBER_disp_EU)
+#EU and UE ##################################################################################
+LPM_NBER_EUUE <- lm(switchedOcc_wave~max.nempdur_wave*recIndic_wave+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validEUUE==T) )
+summary(LPM_NBER_EUUE)
+LPM_NBER_disp_EUUE <- lm(switchedOcc_wave~recIndic_wave*max.nempdur_wave+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validEUUE==T & displaced==T) )
+summary(LPM_NBER_disp_EUUE)
+#interact with displaced
+LPM_NBER_disp_EUUE <- lm(switchedOcc_wave~recIndic_wave*max.nempdur_wave*displaced+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validEUUE==T) )
+summary(LPM_NBER_disp_EUUE)
+
 #include EE ######################################################################
+LPM_NBER_EU_EE_add <-lm(switchedOcc_wave~max.nempdur_wave + recIndic_wave+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T) )
+summary(LPM_NBER_EU_EE_add)
 LPM_NBER_EU_EE <- lm(switchedOcc_wave~max.nempdur_wave*recIndic_wave+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T) )
 summary(LPM_NBER_EU_EE)
 LPM_NBER_disp_EU_EE <- lm(switchedOcc_wave~recIndic_wave*max.nempdur_wave+factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validTransX_sep==T & displaced==T) )
