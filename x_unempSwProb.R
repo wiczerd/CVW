@@ -6,6 +6,7 @@ library(zoo)
 library(stats)
 library(texreg)
 library(mFilter)
+library(ggplot2)
 
 Max_narm <- function(x) {
 	ux <- unique(x[!is.na(x)])

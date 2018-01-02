@@ -359,12 +359,12 @@ if(bootse == T){
 
 #**********************************************************************************
 #**********************************************************************************
-# moments among job changers------------------------------------------------------
+# moments among job changers & occupation switchers -------------------------------
 #**********************************************************************************
 #**********************************************************************************
 
 Nmoments <- 5 # the number of moemnts to spit out for each subset
-Nsubsamp <- 6 # the number of population subsamples: EE-sw,EE-nosw, EUE-sw, EUE-nosw, EUUE-sw, EUUE-nosw
+Nsubsamp <- 7 # the number of population subsamples: Stay-sw, EE-sw,EE-nosw, EUE-sw, EUE-nosw, EUUE-sw, EUUE-nosw
 Nt <- 3 # time periods, all, exp, rec
 
 
@@ -386,24 +386,27 @@ for( si in seq(0,bootse*Nsim) ){
 	}
 	
 	for(bi in seq(1,Nsubsamp)){
-		#subsamples: EE-sw,EE-nosw, EUE-sw, EUE-nosw, EUUE-sw, EUUE-nosw
+		#subsamples: Stay-sw, EE-sw,EE-nosw, EUE-sw, EUE-nosw, EUUE-sw, EUUE-nosw
 		if(bi==1){
 			DThr[(changer==T|stayer==T), subIndic := F]
-			DThr[changer==T & EE_wave==T & switchedOcc_wave==T, subIndic := T]
+			DThr[stayer==T               & switchedOcc_wave==T, subIndic := T]
 		}else if(bi==2){
+			DThr[(changer==T|stayer==T), subIndic := F]
+			DThr[changer==T & EE_wave==T & switchedOcc_wave==T, subIndic := T]
+		}else if(bi==3){
 			DThr[, subIndic := NULL]
 			DThr[(changer==T|stayer==T), subIndic := F]
 			DThr[changer==T & EE_wave==T & switchedOcc_wave==F, subIndic := T]
-		}else if(bi==3| bi==5){
+		}else if(bi==4| bi==6){
 			DThr[, subIndic := NULL]
 			DThr[(changer==T|stayer==T), subIndic := F]
 			DThr[changer==T &(EU_wave==T | UE_wave==T)& switchedOcc_wave==T, subIndic := T]
-		}else if(bi==4| bi==6){
+		}else if(bi==5| bi==7){
 			DThr[, subIndic := NULL]
 			DThr[(changer==T|stayer==T), subIndic := F]
 			DThr[changer==T &(EU_wave==T | UE_wave==T)& switchedOcc_wave==F, subIndic := T]
 		}
-		if(bi==5|bi==6){
+		if(bi==6|bi==7){
 			wt = origwt
 			if(wclab == "res"){
 				wc = "wagechange_wave"
@@ -447,9 +450,9 @@ for(bi in seq(1,Nsubsamp)){
 }
 
 outputtable <- data.table(outputtable)
-names(outputtable) <- c("EE","EE\ ","EUE","EUE\ ","EU,UE","EU,UE\ ")
-title0 <- c( "& \\multicolumn{2}{|c}{EE} & \\multicolumn{2}{|c|}{EUE} & \\multicolumn{2}{|c|}{EU,UE}  \\\\ \n", 
-			"&   Switch Occ & No Switch & Switch Occ & No Switch & Switch Occ & No Switch  \\\\ \\hline \n")
+names(outputtable) <- c("Stay","EE","EE\ ","EUE","EUE\ ","EU,UE","EU,UE\ ")
+title0 <- c( "&            & \\multicolumn{2}{|c}{EE} & \\multicolumn{2}{|c|}{EUE} & \\multicolumn{2}{|c|}{EU,UE}  \\\\ \n", 
+			"& Switch Occ &   Switch Occ & No Switch & Switch Occ & No Switch & Switch Occ & No Switch  \\\\ \\hline \n")
 rnames0 <- c("All\ Periods", "Expansion","Recession")
 rnames1 <- rnames0
 rnames <- rnames0
@@ -471,7 +474,7 @@ rowtitles <- list( pos=as.list(c(0,0,seq(0,Nmoments-1)*Nt)), command=momentcomma
 nametab <- "chngmoments"
 
 outputtable <- xtable(outputtable, digits=2, 
-					  align="l|llll|ll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+					  align="l|l|llll|ll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 if(demolbl>=1 & demolbl<=7){
 	print(outputtable,include.rownames=T, include.colnames = F, hline.after= c(nrow(outputtable)), 
 		  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
@@ -532,11 +535,11 @@ if(bootse == T){
 	tab_wavemomentsse <-data.table(tab_wavemomentsse)
 	tab_wavemomentsci <-data.table(tab_wavemomentsci[,seq(1,ncol(tab_wavemomentsci),2)])
 	
-	
-	names(tab_wavemomentsse) <- c("EE","EE\ ","EUE","EUE\ ","EU,UE","EU,UE\ ")
-	names(tab_wavemomentsci) <- c("EE","EE\ ","EUE","EUE\ ","EU,UE","EU,UE\ ")
-	title0 <- c( "& \\multicolumn{2}{|c|}{EE} & \\multicolumn{2}{|c|}{EUE} & \\multicolumn{2}{|c|}{EU,UE}  \\\\ \n", 
-				 "&   Swtich Occ & No Switch & Swtich Occ & No Switch & Swtich Occ & No Switch  \\\\ \\hline \n")
+
+	names(tab_wavemomentsse) <- c("Stay","EE","EE\ ","EUE","EUE\ ","EU,UE","EU,UE\ ")
+	names(tab_wavemomentsci) <- c("Stay","EE","EE\ ","EUE","EUE\ ","EU,UE","EU,UE\ ")
+	title0 <- c( "&            & \\multicolumn{2}{|c|}{EE} & \\multicolumn{2}{|c|}{EUE} & \\multicolumn{2}{|c|}{EU,UE}  \\\\ \n", 
+				 "& Switch Occ &   Swtich Occ & No Switch & Swtich Occ & No Switch & Swtich Occ & No Switch  \\\\ \\hline \n")
 	rnames0 <- c("All\ Periods","~","Expansion","~ ~","Recession","~ ~ ~")
 	rnames1 <- rnames0
 	rnames <- rnames0
@@ -559,9 +562,9 @@ if(bootse == T){
 	nametabse <- "chngmomentsse"
 	nametabci <- "chngmomentsci"
 	tab_wavemomentsse <- xtable(tab_wavemomentsse, digits=2, 
-								align="l|llll|ll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametabse,"_",wclab,"_",reclab,"}"))
+								align="l|l|llll|ll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametabse,"_",wclab,"_",reclab,"}"))
 	tab_wavemomentsci <- xtable(tab_wavemomentsci, digits=2, 
-								align="l|cccc|cc", caption=paste0("Moments of earnings change distribution \\label{tab:",nametabci,"_",wclab,"_",reclab,"}"))
+								align="l|c|cccc|cc", caption=paste0("Moments of earnings change distribution \\label{tab:",nametabci,"_",wclab,"_",reclab,"}"))
 	
 	if(demolbl>=1 & demolbl<=7){
 		print(tab_wavemomentsse,include.rownames=T, include.colnames=F, hline.after= c(nrow(tab_wavemomentsse)), 
