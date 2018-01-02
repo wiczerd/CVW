@@ -23,7 +23,7 @@ wclab <- "res" #raw or res
 demolbl <- 0 #or choose number from categories in demotxt
 demotxt <- c("Young", "Prime","Old","HS","Col","Male","Female")
 
-bootse <- T #compute bootstrapped standard errors or no?
+bootse <- F #compute bootstrapped standard errors or no?
 seedint = 941987
 Nsim = 40 #make this bigger: just for diagnostic!!!!!!!!!!!!!!!!!!!
 

@@ -294,7 +294,7 @@ saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))
 
 
 # create data set with defined wage changes only ------------------------------
-wagechanges <- DTall[!is.infinite(wagechange) & !is.na(wagechange),]
+wagechanges <- DTall[!is.infinite(wagechange_month) & !is.na(wagechange_month),]
 setkey(wagechanges, id, date)
 
 
@@ -322,9 +322,9 @@ DTall[, perwt := mean(wpfinwgt, na.rm = TRUE), by = id]
 
 
 # re-weight for total distribution
-UEweight.balanced <- wagechanges[UE & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
-EUweight.balanced <- wagechanges[EU & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
-EEweight.balanced <- wagechanges[EE & !is.na(wagechange), sum(perwt, na.rm = TRUE)]
+UEweight.balanced <- wagechanges[UE & !is.na(wagechange_month), sum(perwt, na.rm = TRUE)]
+EUweight.balanced <- wagechanges[EU & !is.na(wagechange_month), sum(perwt, na.rm = TRUE)]
+EEweight.balanced <- wagechanges[EE & !is.na(wagechange_month), sum(perwt, na.rm = TRUE)]
 
 # re-inflate weights for workers who enter and leave as unemployed & divide by 2 for the whole transition
 # this should take the UE, because many EU will leave sample by exit LF
@@ -391,8 +391,8 @@ DTall[is.finite(ustintid), balancedUE := any(EU,na.rm=T)==T & UE==T, by = list(i
 DTall<- merge(DTall,wagechangesBalanced,by=c("id","date"),all.x=T)
 
 #make the wage changes NA if not-balanced
-DTall[UE==T & balancedUE.y==F, c("wagechange_EUE","wagechange_month","wagechange") := NA_real_]
-DTall[EU==T & balancedEU.y==F, c("wagechange_EUE","wagechange_month","wagechange") := NA_real_]
+DTall[UE==T & balancedUE.y==F, c("wagechange_EUE","wagechange_month") := NA_real_]
+DTall[EU==T & balancedEU.y==F, c("wagechange_EUE","wagechange_month") := NA_real_]
 
 DTall[UE==T, UE := balancedUE.y==T]
 DTall[EU==T, EU := balancedEU.y==T]
@@ -426,9 +426,9 @@ saveRDS(DTall,paste0(outputdir,"/DTall_6.RData"))
 #- Diagnostics
 
 # check weights
-UEweight <- wagechanges[UE & !is.na(wagechange), sum(balanceweight, na.rm = TRUE)]
-EUweight <- wagechanges[EU & !is.na(wagechange), sum(balanceweight, na.rm = TRUE)]
-EEweight <- wagechanges[EE & !is.na(wagechange), sum(balanceweight, na.rm = TRUE)]
+UEweight <- wagechanges[UE & !is.na(wagechange_month), sum(balanceweight, na.rm = TRUE)]
+EUweight <- wagechanges[EU & !is.na(wagechange_month), sum(balanceweight, na.rm = TRUE)]
+EEweight <- wagechanges[EE & !is.na(wagechange_month), sum(balanceweight, na.rm = TRUE)]
 
 
 # new weight ratio diff from Fallick Fleischmann UE/EE ratio
