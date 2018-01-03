@@ -142,6 +142,10 @@ summary(LPM_NBER_disp_EU_EE)
 
 
 
+LPM_NBER_EUUE <- lm(switchedOcc_wave~recIndic_wave + max.nempdur_wave+
+						factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validEUUE==T) )
+summary(LPM_NBER_EUUE)
+
 LPM_NBER_EUUE <- lm(switchedOcc_wave~recIndic_wave*max.nempdur_wave+
 								factor(ageGrp)+female+factor(HSCol)+factor(occ), data=subset(sipp,validEUUE==T) )
 summary(LPM_NBER_EUUE)
