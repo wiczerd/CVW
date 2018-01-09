@@ -55,6 +55,52 @@ Any_narm <- function(x) {
 	}
 }
 
+
+DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
+
+
+# Occupation switchers and not--------------
+
+DTseam[  DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F , g := 1]
+DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==T & DTseam$EU_wave ==F , g := 2]
+DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==F & DTseam$EU_wave ==T , g := 3]
+DTseam[!(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T), g := 4]
+DTseam[!is.na(DTseam$s), g1 := ifelse(g==1,1,0)]
+DTseam[!is.na(DTseam$s), g2 := ifelse(g==2,1,0)]
+DTseam[!is.na(DTseam$s), g3 := ifelse(g==3,1,0)]
+DTseam[!is.na(DTseam$s), g4 := ifelse(g==4,1,0)]
+
+DTseam <- subset(DTseam, changer==T|stayer==T)
+
+toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","wagechangeEUE_wave","recIndic_wave","date")
+DTseam <- subset(DTseam, is.finite(wagechange_wave) & is.finite(EU_wave) & is.finite(UE_wave)& is.finite(EE_wave))
+
+
+
+ggplot(subset(DTseam,wagechange_wave<5 & wagechange_wave>-5), aes(x=wagechange_wave, fill = g)) + geom_area(stat ="density", alpha=0.6) + theme_classic()
+
+
+# Occupation switchers and not--------------
+
+DTseam[DTseam$switchedOcc_wave==T & DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F , s := 1]
+DTseam[DTseam$switchedOcc_wave==T & DTseam$EE_wave==F & DTseam$UE_wave==T & DTseam$EU_wave ==F , s := 2]
+DTseam[DTseam$switchedOcc_wave==T & DTseam$EE_wave==F & DTseam$UE_wave==F & DTseam$EU_wave ==T , s := 3]
+DTseam[DTseam$switchedOcc_wave==F & DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F , s := 4]
+DTseam[DTseam$switchedOcc_wave==F & DTseam$EE_wave==F & DTseam$UE_wave==T & DTseam$EU_wave ==F , s := 5]
+DTseam[DTseam$switchedOcc_wave==F & DTseam$EE_wave==F & DTseam$UE_wave==F & DTseam$EU_wave ==T , s := 6]
+DTseam[                      !(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T), s := 7]
+DTseam[!is.na(DTseam$s), s1 := ifelse(s==1,1,0)]
+DTseam[!is.na(DTseam$s), s2 := ifelse(s==2,1,0)]
+DTseam[!is.na(DTseam$s), s3 := ifelse(s==3,1,0)]
+DTseam[!is.na(DTseam$s), s4 := ifelse(s==4,1,0)]
+DTseam[!is.na(DTseam$s), s5 := ifelse(s==5,1,0)]
+DTseam[!is.na(DTseam$s), s6 := ifelse(s==6,1,0)]		
+DTseam[!is.na(DTseam$s), s7 := ifelse(s==7,1,0)]
+
+
+
+# Figures with monthly data ----------------------------------
+
 DTall <- readRDS( paste0(datadir,"/DTall_5.RData"))
 
 #drop some un-need variables
@@ -82,80 +128,84 @@ DTall[ ustintid>0 & ltrunc==F, max.nempdur := max(nempdur,na.rm = T), by=list(id
 DTall[ , max.nempdur_wave := Max_narm(max.nempdur), by=list(id,wave)]
 
 
+#Single variable for the type of transition ------
+DTseam <- readRDS(paste0(datadir,"/DTall_5.RData"))
+
 #Set up wage change for NE-------------------------
 DTall[ , NE_max := any(NE,na.rm=T), by=list(id,wave)]
-DTall[ , EN_max := any(EN,na.rm=T), by=list(id,wave)]
-
-DTseam <- DTall[ seam==T,]
-DTseam[ , next.wavewage := shift(wavewage,1,type="lead"), by=id]
-DTseam[ , last.wavewage := shift(wavewage,1,type="lag"), by=id]
-DTseam[ , next.ustintid_wave := shift(ustintid_wave,1,type="lead"), by=id]
-DTseam[ EN_max==T, ustintid_wave:= next.ustintid_wave]
-DTseam[ EN_max==T & is.na( ustintid_wave) & next.lfstat_wave==1, ustintid_wave := 10L]
-
-
-DTseam[last.lfstat_wave==1 & EN_max == T, wageAtEN := last.wavewage]
-DTseam[, wageAtEN := na.locf(wageAtEN, na.rm = F),by=list(ustintid_wave, id)]
-DTseam[next.lfstat_wave==1 & NE_max == T, wageAfterNE :=  next.wavewage]
-DTseam[NE_max == T, wagechangeENE_wave := wageAfterNE - wageAtEN]
-DTseam[, wagechangeENE_wave:= Mode(wagechangeENE_wave), by=list(ustintid_wave, id)]
-DTseam[ EE_wave==T, wagechangeENE_wave := wagechange_wave]
-DTseam[ !(EN_max |NE_max), wagechangeENE_wave := wagechange_wave]
-
-DTseam <- subset(DTseam, select=c("id","wave","wagechangeENE_wave"))
-
-DTall <- merge(DTall,DTseam, by=c("id","wave"), all=T)
-rm(DTseam)
+# DTall[ , EN_max := any(EN,na.rm=T), by=list(id,wave)]
+#  
+# DTseam <- DTall[ seam==T,]
+# DTseam[ , next.wavewage := shift(wavewage,1,type="lead"), by=id]
+# DTseam[ , last.wavewage := shift(wavewage,1,type="lag"), by=id]
+# DTseam[ , next.ustintid_wave := shift(ustintid_wave,1,type="lead"), by=id]
+# DTseam[ EN_max==T, ustintid_wave:= next.ustintid_wave]
+# DTseam[ EN_max==T & is.na( ustintid_wave) & next.lfstat_wave==1, ustintid_wave := 10L]
+# 
+# 
+# DTseam[last.lfstat_wave==1 & EN_max == T, wageAtEN := last.wavewage]
+# DTseam[, wageAtEN := na.locf(wageAtEN, na.rm = F),by=list(ustintid_wave, id)]
+# DTseam[next.lfstat_wave==1 & NE_max == T, wageAfterNE :=  next.wavewage]
+# DTseam[NE_max == T, wagechangeENE_wave := wageAfterNE - wageAtEN]
+# DTseam[, wagechangeENE_wave:= Mode(wagechangeENE_wave), by=list(ustintid_wave, id)]
+# DTseam[ EE_wave==T, wagechangeENE_wave := wagechange_wave]
+# DTseam[ !(EN_max |NE_max), wagechangeENE_wave := wagechange_wave]
+# 
+# DTseam <- subset(DTseam, select=c("id","wave","wagechangeENE_wave"))
+# 
+# DTall <- merge(DTall,DTseam, by=c("id","wave"), all=T)
+# rm(DTseam)
 
 #Transition rates and wages---------------------------
 
 frateUE <- lm(formula = UE ~ nempdur + I(nempdur^2) + I(nempdur^3), data = subset(DTall, lfstat == 2))
-frateNE <- lm(formula = NE ~ nempdur + I(nempdur^2) + I(nempdur^3), data = subset(DTall, lfstat == 3))
+# frateNE <- lm(formula = NE ~ nempdur + I(nempdur^2) + I(nempdur^3), data = subset(DTall, lfstat == 3))
 
-frateDat <- array(NA, dim=c(24,3))
+frateDat <- array(NA, dim=c(24,2))
 frateDat[,1] <- seq_len(24)
 for( t in seq(1,24)){
 	frateDat[t,2] <- DTall[ nempdur==t+1 & lfstat==2, mean(UE,na.rm = T)]
-	frateDat[t,3] <- DTall[ nempdur==t+1 & lfstat==3, mean(NE,na.rm = T)]
+	# frateDat[t,3] <- DTall[ nempdur==t+1 & lfstat==3, mean(NE,na.rm = T)]
 }
-frateFit <- array(NA, dim=c(24,3))
+frateFit <- array(NA, dim=c(24,2))
 frateFit[,1] <- seq_len(24)
 frateFit[,2] <- frateFit[,1]*frateUE$coefficients[2] +frateFit[,1]^2*frateUE$coefficients[3] + frateFit[,1]^3*frateUE$coefficients[4] + frateUE$coefficients[1]
-frateFit[,3] <- frateFit[,1]*frateNE$coefficients[2] +frateFit[,1]^2*frateNE$coefficients[3] + frateFit[,1]^3*frateNE$coefficients[4] + frateNE$coefficients[1]
+# frateFit[,3] <- frateFit[,1]*frateNE$coefficients[2] +frateFit[,1]^2*frateNE$coefficients[3] + frateFit[,1]^3*frateNE$coefficients[4] + frateNE$coefficients[1]
 
 frateNN <- DTall[ lfstat==3 & ltrunc==T, mean(NE,na.rm = T)]
 
 # plot these:
 frateFitPlot <- data.table(frateFit)
-names(frateFitPlot) <- c("Duration","EUE","ENE")
+names(frateFitPlot) <- c("Duration","EUE") #,"ENE"
 frateDatPlot <- data.table(frateDat)
-names(frateDatPlot) <- c("Duration","EUE","ENE")
-frateFitPlot[ , NNE := as.numeric(frateNN) ]
+names(frateDatPlot) <- c("Duration","EUE")
+#frateFitPlot[ , NNE := as.numeric(frateNN) ]
 frateFitMelt <- melt(frateFitPlot, id.vars = "Duration")
 frateDatMelt <- melt(frateDatPlot, id.vars = "Duration")
 
-ggplot(data=frateFitMelt, aes(x=Duration,y=value,color=variable)) + geom_line(size=1.5)+
+ggplot(data=frateFitMelt, aes(x=Duration,y=value)) + geom_line(size=1.5)+
 	theme_bw()+xlab("Duration (mo)")+ylab("Finding Rate")+ylim(c(0,.23))+
 	scale_color_manual( values = c(hcl(h=seq(15, 375, length=4), l=50, c=100)[c(1:3,1,2)]) ,
 						labels=c("Thru U","Thru N","Never E","",""))+
 	theme(legend.title = element_blank(),
 		  legend.position = c(0.8,0.8),
 		  legend.background = element_rect(linetype = "solid",color = "white"))+
-	geom_point(data=frateDatMelt, aes(x=Duration,y=value,color=variable))
+	geom_point(data=frateDatMelt, aes(x=Duration,y=value))
 
 ggsave(paste0(outdir,"/frateFit.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/frateFit.png"),height=5,width=10)
 
-ggplot(data=subset(frateFitMelt, variable%in%c("EUE","NNE")), aes(x=Duration,y=value,color=variable)) + geom_line(size=1.5)+
-	theme_bw()+xlab("Duration (mo)")+ylab("Finding Rate")+ylim(c(0,.23))+
-	scale_color_manual( values = c(hcl(h=seq(15, 375, length=4), l=50, c=100)[c(1,3)]) ,
-						labels=c("Thru U","Never E"))+
-	theme(legend.title = element_blank(),
-		  legend.position = c(0.8,0.8),
-		  legend.background = element_rect(linetype = "solid",color = "white"))+
-	geom_point(data=subset(frateDatMelt, variable%in%c("EUE")), aes(x=Duration,y=value,color=variable))	
-ggsave(paste0(outdir,"/frateFit_EUE_NNE.eps"),height=5,width=10)
-ggsave(paste0(outdir,"/frateFit_EUE_NNE.png"),height=5,width=10)
+# ggplot(data=subset(frateFitMelt, variable%in%c("EUE","NNE")), aes(x=Duration,y=value,color=variable)) + geom_line(size=1.5)+
+# 	theme_bw()+xlab("Duration (mo)")+ylab("Finding Rate")+ylim(c(0,.23))+
+# 	scale_color_manual( values = c(hcl(h=seq(15, 375, length=4), l=50, c=100)[c(1,3)]) ,
+# 						labels=c("Thru U","Never E"))+
+# 	theme(legend.title = element_blank(),
+# 		  legend.position = c(0.8,0.8),
+# 		  legend.background = element_rect(linetype = "solid",color = "white"))+
+# 	geom_point(data=subset(frateDatMelt, variable%in%c("EUE")), aes(x=Duration,y=value,color=variable))	
+# 
+# ggsave(paste0(outdir,"/frateFit_EUE_NNE.eps"),height=5,width=10)
+# ggsave(paste0(outdir,"/frateFit_EUE_NNE.png"),height=5,width=10)
 
 wchngUE<- lm( wagechangeEUE_wave ~max.nempdur_wave + I(max.nempdur_wave^2)+ I(max.nempdur_wave^3), data=subset(DTall, UE_wave==T & midUE==F & seam==T) )
 
@@ -169,36 +219,41 @@ for(t in seq(1,24)){
 wchngUE_Fit[,2] = wchngUE_Fit[,1]*wchngUE$coefficients[2] +wchngUE_Fit[,1]^2*wchngUE$coefficients[3] + wchngUE_Fit[,1]^3*wchngUE$coefficients[4] + wchngUE$coefficients[1]
 
 
-wchngNE<- lm( wagechangeENE_wave ~max.nempdur_wave + I(max.nempdur_wave^2)+ I(max.nempdur_wave^3), data=subset(DTall, NE_max==T & seam==T ) )
+# wchngNE<- lm( wagechangeENE_wave ~max.nempdur_wave + I(max.nempdur_wave^2)+ I(max.nempdur_wave^3), data=subset(DTall, NE_max==T & seam==T ) )
 
-wchngNE_Fit<- array(NA,dim=c(24,2))
-wchngNE_Dat<- array(NA,dim=c(24,2))
-wchngNE_Dat[ , 1]<- seq_len(24)
-wchngNE_Fit[ , 1]<- seq_len(24)
-for(t in seq(1,24)){
-	wchngNE_Dat[t,2] <- DTall[ max.nempdur_wave==t & seam==T & NE_max==T , mean(wagechangeENE_wave,na.rm = T)]
-}
-wchngNE_Fit[,2] = wchngNE_Fit[,1]*wchngNE$coefficients[2] +wchngNE_Fit[,1]^2*wchngNE$coefficients[3] + wchngNE_Fit[,1]^3*wchngNE$coefficients[4] + wchngNE$coefficients[1]
+# wchngNE_Fit<- array(NA,dim=c(24,2))
+# wchngNE_Dat<- array(NA,dim=c(24,2))
+# wchngNE_Dat[ , 1]<- seq_len(24)
+# wchngNE_Fit[ , 1]<- seq_len(24)
+# for(t in seq(1,24)){
+# 	wchngNE_Dat[t,2] <- DTall[ max.nempdur_wave==t & seam==T & NE_max==T , mean(wagechangeENE_wave,na.rm = T)]
+# }
+# wchngNE_Fit[,2] = wchngNE_Fit[,1]*wchngNE$coefficients[2] +wchngNE_Fit[,1]^2*wchngNE$coefficients[3] + wchngNE_Fit[,1]^3*wchngNE$coefficients[4] + wchngNE$coefficients[1]
 
 # plot these:
-wchngFitPlot <- data.table(cbind(wchngUE_Fit,wchngNE_Fit[,2]))
-names(wchngFitPlot) <- c("Duration","EUE","ENE")
-wchngDatPlot <- data.table(cbind(wchngUE_Dat,wchngNE_Dat[,2]))
-names(wchngDatPlot) <- c("Duration","EUE","ENE")
+wchngFitPlot <- data.table(wchngUE_Fit)
+names(wchngFitPlot) <- c("Duration","EUE")
+EEchng <- DTall[ EE_wave==T, mean(wagechange_wave,na.rm = T)]
+wchngFitPlot[ , EE:= EEchng]
+wchngDatPlot <- data.table(wchngUE_Dat)
+names(wchngDatPlot) <- c("Duration","EUE")
+wchngDatPlot[ , EE:= EEchng]
 wchngFitMelt <- melt(wchngFitPlot, id.vars = "Duration")
 wchngDatMelt <- melt(wchngDatPlot, id.vars = "Duration")
 
-ggplot(data=wchngFitMelt, aes(x=Duration,y=value,color=variable)) + geom_line(size=1.5)+geom_hline(yintercept = 0.13,size=1.5)+
+ggplot(data=wchngFitMelt, aes(x=Duration,y=value,color=variable)) + geom_line(size=1.5)+
 	theme_bw()+xlab("Completed Duration (mo)")+ylab("Earnings Change (pct)")+ylim(c(-.4,.15))+
 	scale_color_manual( values = c(hcl(h=seq(15, 375, length=4), l=50, c=100)[c(1,2,1,2)]) ,
-						labels=c("Thru U","Thru N","",""))+
+						labels=c("EUE","EE","",""))+
 	theme(legend.title = element_blank(),
 		  legend.position = c(0.2,0.2),
 		  legend.background = element_rect(linetype = "solid",color = "white"))+
-	geom_point(data=wchngDatMelt, aes(x=Duration,y=value,color=variable))+geom_hline(yintercept = 0.13,size=1.5)
+	geom_point(data=wchngDatMelt, aes(x=Duration,y=value,color=variable))
 
 ggsave(paste0(outdir,"/wchngFit.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/wchngFit.png"),height=5,width=10)
+
+
 
 DTall[ seam==T & last.lfstat_wave==1, last.wavewage := shift(wavewage), by=id]
 

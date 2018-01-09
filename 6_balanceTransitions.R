@@ -303,8 +303,6 @@ wagechanges[, balancedEU := EU & shift(UE, 1, type = "lead"), by = id]
 wagechanges[, balancedUE := UE & shift(EU, 1, type = "lag"), by = id]
 wagechanges <- wagechanges[EE | balancedEU | balancedUE,]
 
-# take switchedocc from wave-level data
-wagechanges[ , switchedOcc :=switchedOcc_wave]
 
 wagechanges[, max.unempdur:= ifelse(UE==T & is.na(max.unempdur), shift(max.unempdur), max.unempdur) , by = id]
 wagechanges[, max.unempdur:= ifelse(UE==T & max.unempdur<shift(max.unempdur), shift(max.unempdur), max.unempdur) , by = id]
@@ -383,7 +381,7 @@ wagechanges[EU==T, balanceweightEUE := balanceweight*2]
 wagechanges[UE==T, balanceweightEUE := 0.]
 
 
-wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE","max.unempdur","balanceweight","switchedOcc"))
+wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE","max.unempdur","balanceweight"))
 
 setkey(DTall,id,date)
 DTall[is.finite(ustintid), balancedEU := any(UE,na.rm=T)==T & EU==T, by = list(id,ustintid)]
@@ -397,8 +395,6 @@ DTall[EU==T & balancedEU.y==F, c("wagechange_EUE","wagechange_month") := NA_real
 DTall[UE==T, UE := balancedUE.y==T]
 DTall[EU==T, EU := balancedEU.y==T]
 #there are a few from x that don't have ustintid, fill these with y.
-
-DTall[ is.finite(ustintid), switchedOcc := Mode(switchedOcc), by=list(id,ustintid)]
 
 DTall[ is.finite(ustintid), max.unempdur := max(c(max.unempdur.y, max.unempdur.x), na.rm=T), by=list(id,ustintid)]
 DTall[ !is.finite(balanceweight), balanceweight:= 0.]
