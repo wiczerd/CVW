@@ -106,7 +106,7 @@ stackedCdist <- stackedDist(DTseam,"g","wagechange_wave","pct1000_wagechange_wav
 
 ggplot(stackedCdist, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area() + theme_bw()+
   scale_fill_manual( values = c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]) ,
-                    labels=c("EE","UE","EU","Stay"))+ xlab("Residual Wage Change")+ylab("Fraction by Type")+
+                    labels=c("EE","UE","EU","Stay"))+ xlab("Residual Earnings Change")+ylab("Fraction by Type")+
   theme(legend.title = element_blank(),
         legend.position = c(0.8,0.8),
         legend.background = element_rect(linetype = "solid",color = "white"))
@@ -117,7 +117,7 @@ stackedCdist <- stackedDist(DTseam,"g","rawwgchange_wave","pct1000_rawwgchange_w
 
 ggplot(stackedCdist, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area() + theme_bw()+
   scale_fill_manual( values = c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]) ,
-                      labels=c("EE","UE","EU","Stay"))+xlab("Real Wage Change")+ylab("Fraction by Type")+
+                      labels=c("EE","UE","EU","Stay"))+xlab("Nominal Earnings Change")+ylab("Fraction by Type")+
   theme(legend.title = element_blank(),
         legend.position = c(0.8,0.8),
         legend.background = element_rect(linetype = "solid",color = "white"))
@@ -125,23 +125,77 @@ ggplot(stackedCdist, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area()
 ggsave(paste0(outdir,"/stacked_rawwgchange.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/stacked_rawwgchange.png"),height=5,width=10)
 
+
+# recession or not recession:
+stackedCdist_rec <- stackedDist(subset(DTseam,recIndic_wave==T),"g","wagechange_wave","pct1000_wagechange_wave")
+
+ggplot(stackedCdist_rec, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area() + theme_bw()+
+	scale_fill_manual( values = c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]) ,
+					   labels=c("EE","UE","EU","Stay"))+ xlab("Residual Earnings Change, Recession")+ylab("Fraction by Type")+
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.8,0.8),
+		  legend.background = element_rect(linetype = "solid",color = "white"))
+ggsave(paste0(outdir,"/stacked_wagechange_rec.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_wagechange_rec.png"),height=5,width=10)
+
+stackedCdist_exp <- stackedDist(subset(DTseam, recIndic_wave==F),"g","wagechange_wave","pct1000_wagechange_wave")
+
+ggplot(stackedCdist_exp, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area() + theme_bw()+
+	scale_fill_manual( values = c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]) ,
+					   labels=c("EE","UE","EU","Stay"))+ xlab("Residual Earnings Change, Expansion")+ylab("Fraction by Type")+
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.8,0.8),
+		  legend.background = element_rect(linetype = "solid",color = "white"))
+ggsave(paste0(outdir,"/stacked_wagechange_exp.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_wagechange_exp.png"),height=5,width=10)
+
+
 # Occupation switchers and not--------------
 
 DTseam[DTseam$switchedOcc_wave==T & DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F , s := 1]
-DTseam[DTseam$switchedOcc_wave==T & DTseam$EE_wave==F & DTseam$UE_wave==T & DTseam$EU_wave ==F , s := 2]
-DTseam[DTseam$switchedOcc_wave==T & DTseam$EE_wave==F & DTseam$UE_wave==F & DTseam$EU_wave ==T , s := 3]
-DTseam[DTseam$switchedOcc_wave==F & DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F , s := 4]
-DTseam[DTseam$switchedOcc_wave==F & DTseam$EE_wave==F & DTseam$UE_wave==T & DTseam$EU_wave ==F , s := 5]
+DTseam[DTseam$switchedOcc_wave==T & DTseam$EE_wave==F & DTseam$UE_wave==T & DTseam$EU_wave ==F , s := 3]
+DTseam[DTseam$switchedOcc_wave==T & DTseam$EE_wave==F & DTseam$UE_wave==F & DTseam$EU_wave ==T , s := 5]
+DTseam[DTseam$switchedOcc_wave==F & DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F , s := 2]
+DTseam[DTseam$switchedOcc_wave==F & DTseam$EE_wave==F & DTseam$UE_wave==T & DTseam$EU_wave ==F , s := 4]
 DTseam[DTseam$switchedOcc_wave==F & DTseam$EE_wave==F & DTseam$UE_wave==F & DTseam$EU_wave ==T , s := 6]
-DTseam[                      !(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T), s := 7]
-DTseam[!is.na(DTseam$s), s1 := ifelse(s==1,1,0)]
-DTseam[!is.na(DTseam$s), s2 := ifelse(s==2,1,0)]
-DTseam[!is.na(DTseam$s), s3 := ifelse(s==3,1,0)]
-DTseam[!is.na(DTseam$s), s4 := ifelse(s==4,1,0)]
-DTseam[!is.na(DTseam$s), s5 := ifelse(s==5,1,0)]
-DTseam[!is.na(DTseam$s), s6 := ifelse(s==6,1,0)]		
-DTseam[!is.na(DTseam$s), s7 := ifelse(s==7,1,0)]
+DTseam[DTseam$switchedOcc_wave==T &!(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T), s := 7]
+DTseam[DTseam$switchedOcc_wave==F &!(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T), s := 8]
 
+stackedCdist <- stackedDist(DTseam,"s","wagechange_wave","pct1000_wagechange_wave")
+
+ggplot(stackedCdist, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area() + theme_bw()+
+	scale_fill_manual( values = c(hcl(h=seq(15, 375, length=9), l=50, c=100)[c(1:8)]) ,
+					   labels=c("EE, Sw","EE, no Sw","UE, Sw","UE, no Sw","EU, Sw","EU, no Sw","Stay Sw", "Stay, no Sw"))+ 
+	xlab("Residual Earnings Change")+ylab("Fraction by Type")+
+	theme(legend.title = element_blank(),
+		  #legend.position = c(0.8,0.8),
+		  legend.background = element_rect(linetype = "solid",color = "white"))
+ggsave(paste0(outdir,"/stacked_occsw_wagechange.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_occsw_wagechange.png"),height=5,width=10)
+
+stackedCdist_rec <- stackedDist(subset(DTseam,recIndic_wave==T),"s","wagechange_wave","pct1000_wagechange_wave")
+
+ggplot(stackedCdist_rec, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area() + theme_bw()+
+	scale_fill_manual( values = c(hcl(h=seq(15, 375, length=9), l=50, c=100)[c(1:8)]) ,
+					   labels=c("EE, Sw","EE, no Sw","UE, Sw","UE, no Sw","EU, Sw","EU, no Sw","Stay Sw", "Stay, no Sw"))+ 
+	xlab("Residual Earnings Change, Recession")+ylab("Fraction by Type")+
+	theme(legend.title = element_blank(),
+		  #legend.position = c(0.8,0.8),
+		  legend.background = element_rect(linetype = "solid",color = "white"))
+ggsave(paste0(outdir,"/stacked_occsw_wagechange_rec.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_occsw_wagechange_rec.png"),height=5,width=10)
+
+stackedCdist_exp <- stackedDist(subset(DTseam,recIndic_wave==F),"s","wagechange_wave","pct1000_wagechange_wave")
+
+ggplot(stackedCdist_exp, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area() + theme_bw()+
+	scale_fill_manual( values = c(hcl(h=seq(15, 375, length=9), l=50, c=100)[c(1:8)]) ,
+					   labels=c("EE, Sw","EE, no Sw","UE, Sw","UE, no Sw","EU, Sw","EU, no Sw","Stay Sw", "Stay, no Sw"))+ 
+	xlab("Residual Earnings Change, Expansion")+ylab("Fraction by Type")+
+	theme(legend.title = element_blank(),
+		  #legend.position = c(0.8,0.8),
+		  legend.background = element_rect(linetype = "solid",color = "white"))
+ggsave(paste0(outdir,"/stacked_occsw_wagechange_exp.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_occsw_wagechange_exp.png"),height=5,width=10)
 
 
 # Figures with monthly data ----------------------------------

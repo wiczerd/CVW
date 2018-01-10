@@ -904,7 +904,17 @@ if(final_plots==T){
 	ggplot(swOc_wave, aes(date, swOc, color = panel, group = panel)) +
 		geom_point() + 
 		geom_smooth()
+
+	swOc_wave <- DTseam[ changer==T & (EE_wave==T|EU_wave==T|UE_wave==T) & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, truncweight, na.rm = TRUE)), by = list(panel, date)]
+	ggplot(swOc_wave, aes(date, swOc, color = panel, group = panel)) +
+		geom_point() + ylab("Switching rate during a transition")
+	ggsave("sw_rate_transit_ts.png")
 	
+	swOc_wave <- DTseam[stayer==T & !(EE_wave==T|EU_wave==T|UE_wave==T) & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, truncweight, na.rm = TRUE)), by = list(panel, date)]
+	ggplot(swOc_wave, aes(date, swOc, color = panel, group = panel)) +
+		geom_point() + ylab("Switching rate among same employer")	
+	ggsave("sw_rate_stay_ts.png")
+		
 	swOcEE_wave <- sipp[EE_wave==T & is.finite(switchedOcc_wave) , .(swOcEE = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(swOcEE_wave, aes(date, swOcEE, color = panel)) +
 		geom_point() + 
