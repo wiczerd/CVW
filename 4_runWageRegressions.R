@@ -58,6 +58,7 @@ DTall[lfstat==1 & is.finite(occ), occwage := fitted(lm(logearnm ~ experience + I
 
 DTall[ lfstat>=2, usewage:= 0. ]
 DTall[ lfstat>=2, occwage:= 0. ]
+DTall[ lfstat>=2, earnm  := 0. ]
 
 # remove regressor variables
 DTall[, c("race","experience","educ","yearsschool","nocol_col") := NULL]

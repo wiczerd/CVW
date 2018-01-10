@@ -54,10 +54,35 @@ Any_narm <- function(x) {
 		}
 	}
 }
-
+ 
+stackedDist <- function( DT,gg,wc,pwc ){
+	Ng <- DT[ is.finite(eval(as.name(gg)))==T , length(unique( eval(as.name(gg)) ))]
+	stackedCcount <- array(0.,dim=c(1001*Ng,3))
+	stackedCdist <- array(0.,dim=c(1001*Ng,3))
+	for(wi in seq(0,1000) ){
+		stackedCdist[wi*Ng+seq(1,Ng),1] <- seq(1,Ng)
+		stackedCcount[wi*Ng+seq(1,Ng),1] <- seq(1,Ng)
+		meanwagebin <-DT[ eval(as.name(pwc)) == wi, mean(eval(as.name(wc)))]
+		stackedCdist[wi*Ng+seq(1,Ng),2] <- meanwagebin
+		stackedCcount[wi*Ng+seq(1,Ng),2] <- meanwagebin
+		tmp<-DT[ eval(as.name(pwc))== wi & is.finite( eval(as.name(gg)) ), sum(is.finite(eval(as.name(pwc)))),by = eval(as.name(gg))]
+		names(tmp) <- c("gg","V1")
+		setkey(tmp,gg)
+		stackedCcount[as.integer(tmp$gg)+wi*Ng,3] <- tmp$V1
+		stackedCdist[as.integer(tmp$gg)+wi*Ng,3] <- tmp$V1/sum(tmp$V1)
+	}
+	stackedCdist <- as.data.table(stackedCdist)
+	names(stackedCdist) <- c("g","WageChange","Pct")
+	return( stackedCdist )
+}
 
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 
+
+DTseam <- subset(DTseam, changer==T|stayer==T)
+
+toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","wagechangeEUE_wave","recIndic_wave","date")
+DTseam <- subset(DTseam, is.finite(wagechange_wave) & is.finite(EU_wave) & is.finite(UE_wave)& is.finite(EE_wave))
 
 # Occupation switchers and not--------------
 
@@ -65,66 +90,33 @@ DTseam[  DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F , g := 1]
 DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==T & DTseam$EU_wave ==F , g := 2]
 DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==F & DTseam$EU_wave ==T , g := 3]
 DTseam[!(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T), g := 4]
-DTseam[!is.na(DTseam$s), g1 := ifelse(g==1,1,0)]
-DTseam[!is.na(DTseam$s), g2 := ifelse(g==2,1,0)]
-DTseam[!is.na(DTseam$s), g3 := ifelse(g==3,1,0)]
-DTseam[!is.na(DTseam$s), g4 := ifelse(g==4,1,0)]
-
-DTseam <- subset(DTseam, changer==T|stayer==T)
-
-toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","wagechangeEUE_wave","recIndic_wave","date")
-DTseam <- subset(DTseam, is.finite(wagechange_wave) & is.finite(EU_wave) & is.finite(UE_wave)& is.finite(EE_wave))
+DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
+DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
+DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
+DTseam[!is.na(DTseam$g), g4 := ifelse(g==4,1,0)]
 
 mid99 <-DTseam[ , quantile(wagechange_wave,probs = c(.005,.995))]
 DTseam[ wagechange_wave>mid99[1] & wagechange_wave<mid99[2], rnk_wagechange_wave  := frank(wagechange_wave)]
-DTseam[ , pct1000_wagechange_wave  := as.integer(round(1000*rnk_wagechange_wave/max(rnk_wagechange_wave),digits=0))]
-mid99 <-DTseam[ , quantile(rawwgchange_wave,probs = c(.005,.995))]
+DTseam[ , pct1000_wagechange_wave  := round(1000*rnk_wagechange_wave/max(rnk_wagechange_wave,na.rm=T),digits=0)]
+mid99 <- DTseam[ , quantile(rawwgchange_wave,probs = c(.005,.995),na.rm = T)]
 DTseam[ rawwgchange_wave>mid99[1] & rawwgchange_wave<mid99[2], rnk_rawwgchange_wave := frank(rawwgchange_wave)]
-DTseam[ , pct1000_rawwgchange_wave := as.integer(round(1000*rnk_rawwgchange_wave/max(rnk_rawwgchange_wave),digits=0))]
+DTseam[ , pct1000_rawwgchange_wave := as.integer(round(1000*rnk_rawwgchange_wave/max(rnk_rawwgchange_wave,na.rm=T),digits=0))]
 
-stackedCcount <- array(0.,dim=c(4004,3))
-stackedCdist <- array(0.,dim=c(4004,3))
-for(wc in seq(0,1000) ){
-  stackedCdist[wc*4+seq(1,4),1] <- seq(1,4)
-  stackedCcount[wc*4+seq(1,4),1] <- seq(1,4)
-  meanwagebin <-DTseam[ pct1000_wagechange_wave==wc,mean(wagechange_wave)]
-  stackedCdist[wc*4+seq(1,4),2] <- meanwagebin
-  stackedCcount[wc*4+seq(1,4),2] <- meanwagebin
-  tmp<-DTseam[ pct1000_wagechange_wave==wc & is.finite(g), sum(is.finite(pct1000_wagechange_wave)),by = g]
-  setkey(tmp,g)
-  stackedCcount[as.integer(tmp$g)+wc*4,3] <- tmp$V1
-  stackedCdist[as.integer(tmp$g)+wc*4,3] <- tmp$V1/sum(tmp$V1)
-}
-stackedCdist <- as.data.table(stackedCdist)
-names(stackedCdist) <- c("g","WageChange","Pct")
+stackedCdist <- stackedDist(DTseam,"g","wagechange_wave","pct1000_wagechange_wave")
 
 ggplot(stackedCdist, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area() + theme_bw()+
-  scale_color_manual( values = c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]) ,
-                    labels=c("EE","UE","EU","Stay"))+xlab("Residual Wage Change")+ylab("Fraction by Type")
+  scale_fill_manual( values = c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]) ,
+                    labels=c("EE","UE","EU","Stay"))+ xlab("Residual Wage Change")+ylab("Fraction by Type")+
   theme(legend.title = element_blank(),
         legend.position = c(0.8,0.8),
         legend.background = element_rect(linetype = "solid",color = "white"))
 ggsave(paste0(outdir,"/stacked_wagechange.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/stacked_wagechange.png"),height=5,width=10)
 
-stackedCcount <- array(0.,dim=c(4004,3))
-stackedCdist <- array(0.,dim=c(4004,3))
-for(wc in seq(0,1000) ){
-  stackedCdist[wc*4+seq(1,4),1] <- seq(1,4)
-  stackedCcount[wc*4+seq(1,4),1] <- seq(1,4)
-  meanwagebin <-DTseam[ pct1000_rawwgchange_wave==wc,mean(rawwgchange_wave)]
-  stackedCdist[wc*4+seq(1,4),2] <- meanwagebin
-  stackedCcount[wc*4+seq(1,4),2] <- meanwagebin
-  tmp<-DTseam[ pct1000_rawwgchange_wave==wc & is.finite(g), sum(is.finite(pct1000_rawwgchange_wave)),by = g]
-  setkey(tmp,g)
-  stackedCcount[as.integer(tmp$g)+wc*4,3] <- tmp$V1
-  stackedCdist[as.integer(tmp$g)+wc*4,3] <- tmp$V1/sum(tmp$V1)
-}
-stackedCdist <- as.data.table(stackedCdist)
-names(stackedCdist) <- c("g","WageChange","Pct")
+stackedCdist <- stackedDist(DTseam,"g","rawwgchange_wave","pct1000_rawwgchange_wave")
 
 ggplot(stackedCdist, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area() + theme_bw()+
-  scale_color_manual( values = c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]) ,
+  scale_fill_manual( values = c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]) ,
                       labels=c("EE","UE","EU","Stay"))+xlab("Real Wage Change")+ylab("Fraction by Type")+
   theme(legend.title = element_blank(),
         legend.position = c(0.8,0.8),
