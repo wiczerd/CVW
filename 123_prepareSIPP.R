@@ -81,7 +81,7 @@ toKeep <- c("year",
 	    "job",
 		"eyear","emonth","syear","smonth",
 		"ersend","estlemp",
-	    "occ","ind","ajbocc",
+	    "occ","ind",#"ajbocc",
 		# income variables
 	    "earnm","earn_imp","ui_a","ui_r","thearn","thtotinc"
 		)
@@ -235,8 +235,8 @@ sipp[, next.lfstat := shift(lfstat, 1, type = "lead"), by = id]
 # replace occ with soc2d (occ will now refer to soc2d)
 sipp[, occ90 := occ] 
 sipp[, occ   := soc2d]
-sipp[ajbocc>0, occ := NA ]
-sipp[ajbocc>0, coc := NA ]
+#sipp[ajbocc>0, occ := NA ]
+#sipp[ajbocc>0, coc := NA ]
 
 # very frequently occ is missing during an employment spell. Fill it forward then back where there're no conflicts:
 sipp[ lfstat==1 & is.finite(job), occ:= na.locf(occ,na.rm = F), by=list(id,job)]
@@ -829,7 +829,7 @@ sipp[is.finite(ersend_wave), displaced_empclosed := ersend_wave==9|ersend_wave==
 sipp[is.finite(ersend_wave), displaced_slackbiz := ersend_wave==13]
 ########## save prepared data--------------
 #a bit of cleanup
-sipp[ , c("ajbocc","date0","jobchng_max","EE_max","EU_max","UE_max","PCEPI","last.earnm","last.job","last.job_wave","last.occ","last.lfstat",
+sipp[ , c("date0","jobchng_max","EE_max","EU_max","UE_max","PCEPI","last.earnm","last.job","last.job_wave","last.occ","last.lfstat",
 		  "smonth","syear","epppnum","next.Estart","ui_r","coc","soc2d"):=NULL]
 
 setwd(outputdir)

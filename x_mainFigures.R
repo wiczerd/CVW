@@ -76,6 +76,30 @@ stackedDist <- function( DT,gg,wc,pwc ){
 	return( stackedCdist )
 }
 
+stackedDens <- function( DT,gg,wc,pwc ){
+	Ng <- DT[ is.finite(eval(as.name(gg)))==T , length(unique( eval(as.name(gg)) ))]
+	stackedCcount <- array(0.,dim=c(1001*Ng,3))
+	stackedCdist <- array(0.,dim=c(1001*Ng,3))
+	for(wi in seq(0,1000) ){
+		stackedCdist[wi*Ng+seq(1,Ng),1] <- seq(1,Ng)
+		stackedCcount[wi*Ng+seq(1,Ng),1] <- seq(1,Ng)
+		meanwagebin <-DT[ eval(as.name(pwc)) == wi, mean(eval(as.name(wc)))]
+		stackedCdist[wi*Ng+seq(1,Ng),2] <- meanwagebin
+		stackedCcount[wi*Ng+seq(1,Ng),2] <- meanwagebin
+		tmp<-DT[ eval(as.name(pwc))== wi & is.finite( eval(as.name(gg)) ), sum(is.finite(eval(as.name(pwc)))),by = eval(as.name(gg))]
+		names(tmp) <- c("gg","V1")
+		setkey(tmp,gg)
+		stackedCcount[as.integer(tmp$gg)+wi*Ng,3] <- tmp$V1
+		stackedCdist[as.integer(tmp$gg)+wi*Ng,3] <- tmp$V1/sum(tmp$V1)
+	}
+	stackedCcount <- as.data.table(stackedCcount)
+	names(stackedCcount) <- c("g","WageChange","Cnt")
+	stackedCcount[ , incr:= WageChange - shift(WageChange),by=g]
+	stackedCcount[ , incr:= na.locf(incr,fromLast=T)]
+	stackedCcount[ , Pct:= Cnt/sum(Cnt)*incr]
+	return( stackedCcount )
+}
+
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 
 
@@ -103,6 +127,7 @@ DTseam[ rawwgchange_wave>mid99[1] & rawwgchange_wave<mid99[2], rnk_rawwgchange_w
 DTseam[ , pct1000_rawwgchange_wave := as.integer(round(1000*rnk_rawwgchange_wave/max(rnk_rawwgchange_wave,na.rm=T),digits=0))]
 
 stackedCdist <- stackedDist(DTseam,"g","wagechange_wave","pct1000_wagechange_wave")
+stackedlogDens <- stackedDens(DTseam,"g","wagechange_wave","pct1000_wagechange_wave")
 
 ggplot(stackedCdist, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area() + theme_bw()+
   scale_fill_manual( values = c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]) ,
