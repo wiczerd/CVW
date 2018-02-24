@@ -91,6 +91,35 @@ toKeep <- c("year",
 
 setwd(datadir)
 
+# 1990 panel
+sipp90 <- read.dta13("./sippsets90ABDFG.dta", convert.factors = FALSE)
+sipp90 <- sipp90[toKeep]
+sipp90 <- subset(sipp90, !is.na(esr) & (age >= 16) & (age <= 65))
+sipp90 <- data.table(sipp90)
+sipp90$panel <- 1990
+
+# 1991 panel
+sipp91 <- read.dta13("./sippsets91ABDFG.dta", convert.factors = FALSE)
+sipp91 <- sipp91[toKeep]
+sipp91 <- subset(sipp91, !is.na(esr) & (age >= 16) & (age <= 65))
+sipp91 <- data.table(sipp91)
+sipp91$panel <- 1991
+
+# 1992 panel
+sipp92 <- read.dta13("./sippsets92ABDFG.dta", convert.factors = FALSE)
+sipp92 <- sipp93[toKeep]
+sipp92 <- subset(sipp92, !is.na(esr) & (age >= 16) & (age <= 65))
+sipp92 <- data.table(sipp92)
+sipp92$panel <- 1992
+
+# 1993 panel
+sipp93 <- read.dta13("./sippsets93ABDFG.dta", convert.factors = FALSE)
+sipp93 <- sipp93[toKeep]
+sipp93 <- subset(sipp93, !is.na(esr) & (age >= 16) & (age <= 65))
+sipp93 <- data.table(sipp93)
+sipp93$panel <- 1993
+
+
 # 1996 panel
 sipp96 <- read.dta13("./sippsets96ABDFG.dta", convert.factors = FALSE)#read.dta("./sippsets96ABDFG.dta", convert.factors = FALSE)
 sipp96 <- sipp96[toKeep]
