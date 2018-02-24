@@ -2,6 +2,7 @@
 # Daniel Eubanks
 # Read in SIPP data and prepare it for analysis
 library(foreign)
+library(readstata13)
 library(data.table)
 library(zoo)
 library(lubridate)
@@ -81,7 +82,7 @@ toKeep <- c("year",
 	    "job",
 		"eyear","emonth","syear","smonth",
 		"ersend","estlemp",
-	    "occ","ind",#"ajbocc",
+	    "occ","ind", #"ajbocc",
 		# income variables
 	    "earnm","earn_imp","ui_a","ui_r","thearn","thtotinc"
 		)
@@ -91,28 +92,28 @@ toKeep <- c("year",
 setwd(datadir)
 
 # 1996 panel
-sipp96 <- read.dta("./sippsets96ABDFG.dta", convert.factors = FALSE)
+sipp96 <- read.dta13("./sippsets96ABDFG.dta", convert.factors = FALSE)#read.dta("./sippsets96ABDFG.dta", convert.factors = FALSE)
 sipp96 <- sipp96[toKeep]
 sipp96 <- subset(sipp96, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp96 <- data.table(sipp96)
 sipp96$panel <- 1996
 
 # 2001 panel
-sipp01 <- read.dta("./sippsets01ABDFG.dta", convert.factors = FALSE)
+sipp01 <- read.dta13("./sippsets01ABDFG.dta", convert.factors = FALSE)
 sipp01 <- sipp01[toKeep]
 sipp01 <- subset(sipp01, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp01 <- data.table(sipp01)
 sipp01$panel <- 2001
 
 # 2004 panel
-sipp04 <- read.dta("./sippsets04ABDFG.dta", convert.factors = FALSE)
+sipp04 <- read.dta13("./sippsets04ABDFG.dta", convert.factors = FALSE)
 sipp04 <- sipp04[toKeep]
 sipp04 <- subset(sipp04, !is.na(esr) & (age >= 16) & (age <= 65) )
 sipp04 <- data.table(sipp04)
 sipp04$panel <- 2004
 
 # 2008 panel
-sipp08 <- read.dta("./sippsets08ABDFG.dta", convert.factors = FALSE)
+sipp08 <- read.dta13("./sippsets08ABDFG.dta", convert.factors = FALSE)
 sipp08 <- sipp08[toKeep]
 sipp08 <- subset(sipp08, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp08 <- data.table(sipp08)
@@ -765,7 +766,7 @@ sipp_ann[ , EE_ann := EE_max]
 
 sipp_ann[ , next.jobchng_ann:= shift(jobchng_ann,type="lead"),by=id]
 
-#correct for w/in wave transitions
+#correct for w/in year transitions
 sipp_ann[ , next.EEyrmon   := shift( EEyrmon  , type="lead"), by=id]# adjust because EE_ann will be counted before
 sipp_ann[ , next.EE_ann := shift( EE_ann, type="lead"), by=id]
 sipp_ann[ , next.recIndic_ann := shift( recIndic_ann, type="lead"), by=id]
