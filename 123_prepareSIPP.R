@@ -107,7 +107,7 @@ sipp91$panel <- 1991
 
 # 1992 panel
 sipp92 <- read.dta13("./sippsets92ABDFG.dta", convert.factors = FALSE)
-sipp92 <- sipp93[toKeep]
+sipp92 <- sipp92[toKeep]
 sipp92 <- subset(sipp92, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp92 <- data.table(sipp92)
 sipp92$panel <- 1992
@@ -157,10 +157,46 @@ setwd(datadir)
 occ1990_soc2d <- readRDS("./occ90_soc2d.RData")
 coc2000_occ1990 <- readRDS("./coc2000_occ1990.RData")
 coc1990_occ1990 <- readRDS("./coc1990_occ1990.RData")
+coc1980_occ1990 <- readRDS("./coc1980_occ1990.RData")
+
+# 1990 panel
+sipp90[, coc:= occ]
+sipp90[, coc80 := occ]
+sipp90 <- merge(sipp90, coc1980_occ1990, by  = "coc80", all.x = TRUE)
+sipp90[ occ1990>=999 , occ1990:=NA ]
+sipp90 <- merge(sipp90, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
+sipp90[, c("occ", "coc80") := NULL]
+setnames(sipp90, "occ1990", "occ")
+
+# 1991 panel
+sipp91[, coc:= occ]
+sipp91[, coc80 := occ]
+sipp91 <- merge(sipp91, coc1980_occ1990, by  = "coc80", all.x = TRUE)
+sipp91[ occ1990>=999 , occ1990:=NA ]
+sipp91 <- merge(sipp91, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
+sipp91[, c("occ", "coc80") := NULL]
+setnames(sipp91, "occ1990", "occ")
+
+# 1992 panel
+sipp92[, coc:= occ]
+sipp92[, coc80 := occ]
+sipp92 <- merge(sipp92, coc1980_occ1990, by  = "coc80", all.x = TRUE)
+sipp92[ occ1990>=999 , occ1990:=NA ]
+sipp92 <- merge(sipp92, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
+sipp92[, c("occ", "coc80") := NULL]
+setnames(sipp92, "occ1990", "occ")
+
+# 1993 panel
+sipp93[, coc:= occ]
+sipp93[, coc90 := occ]
+sipp93 <- merge(sipp93, coc1990_occ1990, by  = "coc90", all.x = TRUE)
+sipp93 <- merge(sipp93, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
+sipp93[, c("occ", "coc90") := NULL]
+setnames(sipp93, "occ1990", "occ")
 
 # 1996 panel
 sipp96[, coc:= occ]
-sipp96[, coc90 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
+sipp96[, coc90 := occ]
 sipp96 <- merge(sipp96, coc1990_occ1990, by  = "coc90", all.x = TRUE)
 sipp96 <- merge(sipp96, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
 sipp96[, c("occ", "coc90") := NULL]
@@ -195,8 +231,8 @@ rm(list=c("coc1990_occ1990", "coc2000_occ1990", "occ1990_soc2d"))
 
 ########## combine panels
 
-sipp <- rbind(sipp96, sipp01, sipp04, sipp08)
-rm(list=c("sipp96", "sipp01", "sipp04", "sipp08"))
+sipp <- rbind(sipp90,sipp91,sipp92,sipp93,sipp96, sipp01, sipp04, sipp08)
+rm(list=c("sipp90","sipp91","sipp92","sipp93","sipp96", "sipp01", "sipp04", "sipp08"))
 sipp <- data.table(sipp)
 sipp$panel <- as.factor(sipp$panel)
 

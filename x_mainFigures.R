@@ -76,28 +76,35 @@ stackedDist <- function( DT,gg,wc,pwc ){
 	return( stackedCdist )
 }
 
-stackedDens <- function( DT,gg,wc,pwc ){
+stackedDens <- function( DT,gg,wc ){
 	Ng <- DT[ is.finite(eval(as.name(gg)))==T , length(unique( eval(as.name(gg)) ))]
-	stackedCcount <- array(0.,dim=c(1001*Ng,3))
-	stackedCdist <- array(0.,dim=c(1001*Ng,3))
-	for(wi in seq(0,1000) ){
-		stackedCdist[wi*Ng+seq(1,Ng),1] <- seq(1,Ng)
-		stackedCcount[wi*Ng+seq(1,Ng),1] <- seq(1,Ng)
-		meanwagebin <-DT[ eval(as.name(pwc)) == wi, mean(eval(as.name(wc)))]
-		stackedCdist[wi*Ng+seq(1,Ng),2] <- meanwagebin
-		stackedCcount[wi*Ng+seq(1,Ng),2] <- meanwagebin
-		tmp<-DT[ eval(as.name(pwc))== wi & is.finite( eval(as.name(gg)) ), sum(is.finite(eval(as.name(pwc)))),by = eval(as.name(gg))]
-		names(tmp) <- c("gg","V1")
-		setkey(tmp,gg)
-		stackedCcount[as.integer(tmp$gg)+wi*Ng,3] <- tmp$V1
-		stackedCdist[as.integer(tmp$gg)+wi*Ng,3] <- tmp$V1/sum(tmp$V1)
+	wcgidensity <- array(0,dim=c(512,Ng*2))
+	for( gi in seq(1,Ng)){
+		tmp <- DT[ eval(as.name(gg)) == gi , density( eval(as.name(wc)) ,n=512)]
+		
+		wcgidensity[,(gi-1)*2+1] <- tmp$x
+		wcgidensity[,(gi-1)*2+2] <- (tmp$y)
+		
 	}
-	stackedCcount <- as.data.table(stackedCcount)
-	names(stackedCcount) <- c("g","WageChange","Cnt")
-	stackedCcount[ , incr:= WageChange - shift(WageChange),by=g]
-	stackedCcount[ , incr:= na.locf(incr,fromLast=T)]
-	stackedCcount[ , Pct:= Cnt/sum(Cnt)*incr]
-	return( stackedCcount )
+	wc_condldensity <- array(0,dim=c(512*Ng,Ng+1))
+	wc_condldensity[,1] <- rbind( wcgidensity[,seq(1,Ng*2-1,2)] )
+	wc_condldensity[,1] <- sort(wc_condldensity[,1])
+	for( gi in seq(1,Ng)){
+		densinterp <- approx(wcgidensity[,((gi-1)*2+1)],wcgidensity[,((gi-1)*2+2)],wc_condldensity[,1],yleft=0,yright=0)
+		wc_condldensity[,gi+1] <- densinterp$y
+	}
+	wc_totdensity <- wc_condldensity
+	for( gi in seq(2,Ng)){
+		wc_totdensity[,gi+1] <-wc_totdensity[,gi] +wc_condldensity[,gi+1]
+	}
+	wc_dtable <- wc_totdensity#cbind(wc_totdensity,wc_condldensity[,2:(Ng+1)])
+	wc_dtable <- data.table(wc_dtable)
+	names(wc_dtable)[1] <-"WageChange"
+	for(gi in seq(1,Ng)){
+		names(wc_dtable)[gi+1] <- paste0("TotPct",gi)
+	#	names(wc_dtable)[Ng + gi+1] <- paste0("CondlPct",gi)
+	}
+	return(wc_dtable)
 }
 
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
@@ -126,8 +133,16 @@ mid99 <- DTseam[ , quantile(rawwgchange_wave,probs = c(.005,.995),na.rm = T)]
 DTseam[ rawwgchange_wave>mid99[1] & rawwgchange_wave<mid99[2], rnk_rawwgchange_wave := frank(rawwgchange_wave)]
 DTseam[ , pct1000_rawwgchange_wave := as.integer(round(1000*rnk_rawwgchange_wave/max(rnk_rawwgchange_wave,na.rm=T),digits=0))]
 
-stackedCdist <- stackedDist(DTseam,"g","wagechange_wave","pct1000_wagechange_wave")
-stackedlogDens <- stackedDens(DTseam,"g","wagechange_wave","pct1000_wagechange_wave")
+#stackedCdist <- stackedDist(DTseam,"g","wagechange_wave","pct1000_wagechange_wave")
+DTseam[ g==2 & wagechange_wave< -5, g:=NA]
+stayerSwitcherDens <- stackedDens(DTseam,"g","wagechange_wave")
+stayerSwitcherMelt <- melt(stayerSwitcherDens, id.vars = "WageChange")
+stayerSwitcherMelt[value>exp(-15) , logValue := log(value)]
+
+#stackedlogDens <- stackedDens(DTseam,"g","wagechange_wave","pct1000_wagechange_wave")
+#stackedlogDens$logPct <- log(stackedlogDens$Pct)
+#stackedlogDens$logPct[!is.finite(stackedlogDens$logPct)] <- NA
+
 
 ggplot(stackedCdist, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area() + theme_bw()+
   scale_fill_manual( values = c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]) ,
