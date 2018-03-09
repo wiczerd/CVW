@@ -139,9 +139,33 @@ stayerSwitcherDens <- stackedDens(DTseam,"g","wagechange_wave")
 stayerSwitcherMelt <- melt(stayerSwitcherDens, id.vars = "WageChange")
 stayerSwitcherMelt[value>exp(-15) , logValue := log(value)]
 
-#stackedlogDens <- stackedDens(DTseam,"g","wagechange_wave","pct1000_wagechange_wave")
-#stackedlogDens$logPct <- log(stackedlogDens$Pct)
-#stackedlogDens$logPct[!is.finite(stackedlogDens$logPct)] <- NA
+#EE and stayer:
+DTseam[ g==1 , gEE := 1]
+DTseam[ g==4 , gEE := 2]
+stayerEEDens <- stackedDens(subset(DTseam, !(EU_wave|UE_wave)),"gEE","wagechange_wave")
+stayerEEmelt <- melt(stayerEEDens,id.vars = "WageChange")
+stayerEEmelt[ WageChange>-2 & WageChange<2, logValue:=log(value)]
+stayerEEmelt[ , g:=3L-as.integer(variable)]
+ggplot(subset(stayerEEmelt,is.finite(logValue)) ,aes(ymax=logValue,ymin=-4,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+	theme_bw()+xlab("Wage Change")+ylab("Stacked log density")+
+	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=4), l=50, c=100)[c(1:2)]), name="", label=c("Stay","EE"))
+ggsave(paste0(outdir,"/stacked_wagechangeEE.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_wagechangeEE.png"),height=5,width=10)
+
+#EE, EUE & stayer
+DTseam[ , g:=NULL]
+DTseam[  DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F , g := 1]
+DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==F & DTseam$EU_wave ==T , g := 2]
+DTseam[!(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T), g := 3]
+stayerEUEDens <- stackedDens(subset(DTseam, !UE_wave==T & is.finite(wagechangeEUE_wave)),"g","wagechangeEUE_wave")
+stayerEUEmelt <- melt(stayerEUEDens,id.vars = "WageChange")
+stayerEUEmelt[ WageChange>-4 & WageChange<4, logValue:=log(value)]
+stayerEUEmelt[ , g:=4L-as.integer(variable)]
+ggplot(subset(stayerEUEmelt,is.finite(logValue)) ,aes(ymax=logValue,ymin=-8,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+	theme_bw()+xlab("Wage Change")+ylab("Stacked log density")+
+	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=4), l=50, c=100)[c(1:3)]), name="", label=c("Stay","EE","EUE"))
+ggsave(paste0(outdir,"/stacked_wagechangeEUE.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_wagechangeEUE.png"),height=5,width=10)
 
 
 ggplot(stackedCdist, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area() + theme_bw()+
