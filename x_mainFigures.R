@@ -167,6 +167,12 @@ ggplot(subset(stayerEUEmelt,is.finite(logValue)) ,aes(ymax=logValue,ymin=-8,x=Wa
 ggsave(paste0(outdir,"/stacked_wagechangeEUE.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/stacked_wagechangeEUE.png"),height=5,width=10)
 
+ggplot(subset(stayerEUEmelt,is.finite(logValue)) ,aes(ymax=value,ymin=0,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+	theme_bw()+xlab("Wage Change")+ylab("Stacked density")+
+	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=4), l=50, c=100)[c(1:3)]), name="", label=c("Stay","EE","EUE"))
+ggsave(paste0(outdir,"/stackedlev_wagechangeEUE.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stackedlev_wagechangeEUE.png"),height=5,width=10)
+
 
 ggplot(stackedCdist, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area() + theme_bw()+
   scale_fill_manual( values = c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]) ,

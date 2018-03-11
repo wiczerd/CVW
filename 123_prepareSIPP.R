@@ -445,9 +445,7 @@ if(intermed_plots==T){
 ########## inflation, unemployment, and recession ----------------------------
 
 # create vector of recession dates
-recDates <- as.Date(c("2001-02-01", "2001-12-01","2007-11-01", "2009-07-01"))
-# create vector of recession dates : above 6%
-recDates2 <- as.Date(c("2003-04-01", "2003-10-01","2008-08-01", "2014-09-01"))
+recDates <- as.Date(c("1990-07-01","1991-03-01","2001-02-01", "2001-12-01","2007-11-01", "2009-07-01"))
 
 # get PCE and unemployment rate data
 setwd(datadir)
@@ -459,9 +457,11 @@ setwd(rootdir)
 filtered.unrate <- hpfilter(unrate$unrt,type = "lambda",freq=14400)
 unrate<-cbind(unrate,filtered.unrate$cycle)
 # create recession indicator
-sipp[, recIndic := (date > recDates[1] & date < recDates[2]) | 
-	 	(date > recDates[3] & date < recDates[4])]
-#recDates2 <- as.Date(unrate$date[unrate$unrateSA>6.5])
+sipp[, recIndic := (date >= recDates[1] & date <= recDates[2]) | 
+	 	(date >= recDates[3] & date <= recDates[4]) |
+	 	(date >= recDates[5] & date <= recDates[6]) ]
+
+# create vector of recession dates : above 6% or in the top 20%
 recDates2 <- unrate$date[ unrate$`filtered.unrate$cycle`>=quantile(unrate$`filtered.unrate$cycle`,probs = 4/5) ]
 sipp[, recIndic2 := date %in% recDates2]
 
