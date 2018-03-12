@@ -238,7 +238,6 @@ sipp$panel <- as.factor(sipp$panel)
 
 ### convert some types to save space
 sipp[ , occ:=as.integer(occ)]
-sipp[ , occ90:=as.integer(occ90)]
 sipp[ , soc2d:=as.integer(soc2d)]
 sipp[ , educ:=as.integer(educ)]
 sipp[ , state:=as.integer(stae)]
