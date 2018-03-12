@@ -44,6 +44,7 @@ sipp <- subset(sipp, seam==T)
 
 rec_dates <- read.table(textConnection(
 "Peak, Trough
+1990-07-01, 1991-03-01
 2001-03-01, 2001-11-01
 2007-12-01, 2009-06-01"), sep=',',header=TRUE, 
 colClasses=c('Date', 'Date'))

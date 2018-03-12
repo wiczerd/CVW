@@ -1,5 +1,5 @@
 # June 22, 2016
-# Daniel Eubanks
+
 # Read in SIPP data and prepare it for analysis
 library(foreign)
 library(readstata13)
@@ -188,10 +188,10 @@ setnames(sipp92, "occ1990", "occ")
 
 # 1993 panel
 sipp93[, coc:= occ]
-sipp93[, coc90 := occ]
-sipp93 <- merge(sipp93, coc1990_occ1990, by  = "coc90", all.x = TRUE)
+sipp93[, coc80 := occ]
+sipp93 <- merge(sipp93, coc1980_occ1990, by  = "coc80", all.x = TRUE)
 sipp93 <- merge(sipp93, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
-sipp93[, c("occ", "coc90") := NULL]
+sipp93[, c("occ", "coc80") := NULL]
 setnames(sipp93, "occ1990", "occ")
 
 # 1996 panel
@@ -235,6 +235,16 @@ sipp <- rbind(sipp90,sipp91,sipp92,sipp93,sipp96, sipp01, sipp04, sipp08)
 rm(list=c("sipp90","sipp91","sipp92","sipp93","sipp96", "sipp01", "sipp04", "sipp08"))
 sipp <- data.table(sipp)
 sipp$panel <- as.factor(sipp$panel)
+
+### convert some types to save space
+sipp[ , occ:=as.integer(occ)]
+sipp[ , occ90:=as.integer(occ90)]
+sipp[ , soc2d:=as.integer(soc2d)]
+sipp[ , educ:=as.integer(educ)]
+sipp[ , state:=as.integer(stae)]
+sipp[ , female:= as.logical(female)]
+
+
 
 # save intermediate result
 setwd(outputdir)
@@ -503,15 +513,6 @@ sipp[, HSCol := (educ >= 4) + (educ >= 2)]
 
 ########## attrition weights
 sipp[ , maxmis:= max(mis), by=id]
-# sipp[, panelmaxmis := max(maxmis), by=panel]
-# sipp[, attrition := maxmis < 0.9*panelmaxmis]
-# # use LPM to model probability of dropping out
-# attritionModel <- lm(attrition ~ age + female + earnm + factor(educ) + factor(soc2d),
-# 					 data=sipp, weights=1/maxmis, na.action=na.exclude)
-#sipp[, probAttrition := predict(attritionModel)]
-#sipp[, attritionWeights := wpfinwgt/(1-probAttrition)]
-#sipp[is.na(attritionWeights), attritionWeights := wpfinwgt]
-
 
 setwd(outputdir)
 saveRDS(sipp, "./sipp_2.RData")
