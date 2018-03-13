@@ -385,7 +385,7 @@ sipp[, switchedInd := ind !=next.ind]
 sipp[lfstat == 1 & next.lfstat == 1, Eend:= (year==eyear & month==emonth)]
 sipp[is.na(Eend)==T, Eend:= F]
 
-sipp[lfstat == 1 & next.lfstat == 1, Estart:= (year==syear & month==smonth)]
+sipp[lfstat == 1                   , Estart:= (year==syear & month==smonth)]
 sipp[is.na(Estart)==T, Estart:= F]
 sipp[ , next.Estart := shift(Estart, type="lead"), by=id]
 
@@ -393,7 +393,7 @@ sipp[ , next.Estart := shift(Estart, type="lead"), by=id]
 # create EU/UE/EE dummies
 sipp[lfstat == 1, EU := (next.lfstat == 2)]
 sipp[lfstat == 2, UE := (next.lfstat == 1)]
-sipp[lfstat == 1 & next.lfstat==1, EE := (Eend==T | next.Estart==T)]
+sipp[lfstat == 1 & next.lfstat==1, EE := Eend==T ]
 
 sipp[is.finite(lfstat) & is.finite(next.lfstat) & is.na(EU), EU :=F ]
 sipp[is.finite(lfstat) & is.finite(next.lfstat) & is.na(UE), UE :=F ]
@@ -446,13 +446,19 @@ if(intermed_plots==T){
 		geom_point() +
 		geom_line()
 	
-	EUsw <- sipp[lfstat==1 & EU==T, .(EU = weighted.mean(switchedOcc, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+	EUsw <- sipp[lfstat==1 & EU==T, .(EUsw = weighted.mean(switchedOcc, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(EU, aes(date, EU, color = panel, group = panel)) +
 		geom_point() + theme_bw()+
-		geom_line() + xlab("") + ylab("EU monthly rate")
-	ggsave(filename=paste0(outputdir,"/EUmo.eps"),height= 5,width=10)
+		geom_line() + xlab("") + ylab("switch|EU monthly rate")
+	ggsave(filename=paste0(outputdir,"/swEUmo.eps"),height= 5,width=10)
 	
-	rm(list=c("EU", "UE", "EE"))
+	EEsw <- sipp[lfstat==1 & EE==T, .(EEsw = weighted.mean(switchedOcc, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+	ggplot(EEsw, aes(date, EEsw, color = panel, group = panel)) +
+		geom_point() + theme_bw()+
+		geom_line() + xlab("") + ylab("switch|EE monthly rate")
+	ggsave(filename=paste0(outputdir,"/swEEmo.eps"),height= 5,width=10)
+	
+	rm(list=c("EU", "UE", "EE","EUsw","EEsw"))
 }
 
 ########## inflation, unemployment, and recession ----------------------------
