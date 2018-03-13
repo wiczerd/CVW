@@ -55,7 +55,7 @@ rootdir <- "~/workspace/CVW/R/"
 datadir <- paste(rootdir, "/InputDataDE", sep = "")
 outputdir <- paste(rootdir, "/Results", sep = "")
 figuredir <- paste(rootdir, "/Figures", sep = "")
-intermed_plots = F
+intermed_plots = T
 final_plots = F
 max_wavefreq = 1 # controls whether take max over months in wave or wave-frequency observation
 setwd(rootdir)
@@ -93,6 +93,7 @@ setwd(datadir)
 
 # 1990 panel
 sipp90 <- read.dta13("./sippsets90ABDFG.dta", convert.factors = FALSE)
+sipp90$job <-sipp90$job_orig
 sipp90 <- sipp90[toKeep]
 sipp90 <- subset(sipp90, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp90 <- data.table(sipp90)
@@ -100,6 +101,7 @@ sipp90$panel <- 1990
 
 # 1991 panel
 sipp91 <- read.dta13("./sippsets91ABDFG.dta", convert.factors = FALSE)
+sipp91$job <-sipp91$job_orig
 sipp91 <- sipp91[toKeep]
 sipp91 <- subset(sipp91, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp91 <- data.table(sipp91)
@@ -107,6 +109,7 @@ sipp91$panel <- 1991
 
 # 1992 panel
 sipp92 <- read.dta13("./sippsets92ABDFG.dta", convert.factors = FALSE)
+sipp92$job <-sipp92$job_orig
 sipp92 <- sipp92[toKeep]
 sipp92 <- subset(sipp92, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp92 <- data.table(sipp92)
@@ -114,6 +117,7 @@ sipp92$panel <- 1992
 
 # 1993 panel
 sipp93 <- read.dta13("./sippsets93ABDFG.dta", convert.factors = FALSE)
+sipp93$job <-sipp93$job_orig
 sipp93 <- sipp93[toKeep]
 sipp93 <- subset(sipp93, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp93 <- data.table(sipp93)
@@ -240,7 +244,7 @@ sipp$panel <- as.factor(sipp$panel)
 sipp[ , occ:=as.integer(occ)]
 sipp[ , soc2d:=as.integer(soc2d)]
 sipp[ , educ:=as.integer(educ)]
-sipp[ , state:=as.integer(stae)]
+sipp[ , state:=as.integer(state)]
 sipp[ , female:= as.logical(female)]
 
 
@@ -904,6 +908,14 @@ saveRDS(sipp, "./DTall_3.RData")
 
 
 if(final_plots==T){
+	recessions.df = read.table(textConnection(
+"Peak, Trough
+1990-07-01, 1991-03-01
+2001-03-01, 2001-11-01
+2007-12-01, 2009-06-01"), sep=',',
+colClasses=c('Date', 'Date'), header=TRUE)
+	
+	
 	# plot transitions time series for sanity check------------------
 	EU_wave <- sipp[lfstat_wave==1 &  is.finite(next.lfstat_wave), .(EU_wave = weighted.mean(EU_wave , wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(EU_wave, aes(date, EU_wave, color = panel, group = panel)) +
@@ -935,10 +947,11 @@ if(final_plots==T){
 	ggsave(filename = paste0(figuredir,"/UE_wave.png"),height= 5,width=10)
 	
 	
-	EE_wave <- sipp[lfstat_wave==1 & next.lfstat_wave==1 , .(EE_wave = weighted.mean(EE_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
-	ggplot(EE_wave, aes(date, EE_wave, color = panel, group = panel)) +
-		geom_point() +
-		geom_line() +xlab("") + ylab("EE wave-frequency")
+	EE_wave <- sipp[lfstat_wave==1 & next.lfstat_wave==1 & wave>1 & wave<maxwis-1 , .(EE_wave = weighted.mean(EE_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+	ggplot(EE_wave) + theme_bw()+
+		geom_point( aes(date, EE_wave, color = panel, group = panel)) +
+		geom_line( aes(date, EE_wave, color = panel, group = panel)) +xlab("") + ylab("EE wave-frequency") +
+		geom_rect(data=recessions.df, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='pink', alpha=0.2)
 	
 	EE_wave <- sipp[lfstat_wave==1 & next.lfstat_wave==1 & !(panel==2004 & year<2005), .(EE_wave = weighted.mean(EE_wave, wpfinwgt, na.rm = TRUE)), by = list(date)]
 	setkey(EE_wave,date)
@@ -949,7 +962,11 @@ if(final_plots==T){
 	ggsave(filename = paste0(figuredir,"/EE_wave.eps"),height= 5,width=10)
 	ggsave(filename = paste0(figuredir,"/EE_wave.png"),height= 5,width=10)
 	
-	
+	EE_mon <- sipp[lfstat==1 & next.lfstat==1, .(EE_mon=weighted.mean(EE, wpfinwgt, na.rm = TRUE)), by = list(panel,date)]
+	ggplot(EE_mon) + theme_bw()+
+		geom_point( aes(date, EE_mon, color = panel, group = panel)) +
+		geom_line( aes(date, EE_mon, color = panel, group = panel)) +xlab("") + ylab("EE month-frequency") +
+		geom_rect(data=recessions.df, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='pink', alpha=0.2)
 	
 	JC_wave <- sipp[, .(JC_wave = weighted.mean(jobchng_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(JC_wave, aes(date, JC_wave, color = panel, group = panel)) + ylim(0,0.1)+
@@ -957,9 +974,16 @@ if(final_plots==T){
 		geom_line()
 	
 	U_wave <- sipp[ , .(U_wave =  weighted.mean(lfstat_wave==2, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
-	ggplot(U_wave, aes(date, U_wave, color = panel, group = panel)) +
-		geom_point() + ylim(c(0,.10))+
-		geom_line()
+	ggplot(U_wave) + theme_bw()+
+		geom_point(aes(date, U_wave, color = panel, group = panel)) + ylim(c(0,.10))+
+		geom_line(aes(date, U_wave, color = panel, group = panel))+
+		geom_rect(data=recessions.df, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='pink', alpha=0.2)
+	U_mon <- sipp[ , .(U_mon =  weighted.mean(lfstat==2, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+	ggplot(U_mon) + theme_bw()+
+		geom_point(aes(date, U_mon, color = panel, group = panel)) + ylim(c(0,.10))+
+		geom_line(aes(date, U_mon, color = panel, group = panel))+
+		geom_rect(data=recessions.df, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='pink', alpha=0.2)	
+	
 	ui_wave <- sipp[ lfstat==2, .(ui_wave = weighted.mean((ui_a>0), wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(ui_wave, aes(date, ui_wave, color = panel, group = panel)) +
 		geom_point() + ylim(c(0,.40))+
