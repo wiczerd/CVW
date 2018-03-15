@@ -93,7 +93,6 @@ setwd(datadir)
 
 # 1990 panel
 sipp90 <- read.dta13("./sippsets90ABDFG.dta", convert.factors = FALSE)
-sipp90$job <-sipp90$job_orig
 sipp90 <- sipp90[toKeep]
 sipp90 <- subset(sipp90, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp90 <- data.table(sipp90)
@@ -101,7 +100,6 @@ sipp90$panel <- 1990
 
 # 1991 panel
 sipp91 <- read.dta13("./sippsets91ABDFG.dta", convert.factors = FALSE)
-sipp91$job <-sipp91$job_orig
 sipp91 <- sipp91[toKeep]
 sipp91 <- subset(sipp91, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp91 <- data.table(sipp91)
@@ -109,7 +107,6 @@ sipp91$panel <- 1991
 
 # 1992 panel
 sipp92 <- read.dta13("./sippsets92ABDFG.dta", convert.factors = FALSE)
-sipp92$job <-sipp92$job_orig
 sipp92 <- sipp92[toKeep]
 sipp92 <- subset(sipp92, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp92 <- data.table(sipp92)
@@ -117,7 +114,6 @@ sipp92$panel <- 1992
 
 # 1993 panel
 sipp93 <- read.dta13("./sippsets93ABDFG.dta", convert.factors = FALSE)
-sipp93$job <-sipp93$job_orig
 sipp93 <- sipp93[toKeep]
 sipp93 <- subset(sipp93, !is.na(esr) & (age >= 16) & (age <= 65))
 sipp93 <- data.table(sipp93)
@@ -250,15 +246,15 @@ sipp[ , female:= as.logical(female)]
 
 
 # save intermediate result
-setwd(outputdir)
-saveRDS(sipp, "./sipp.RData")
+#setwd(outputdir)
+saveRDS(sipp, paste0(outputdir,"/sipp.RData"))
 
 ################################## Prepare data  ----------------------------
 
 # load intermediate result if starting from here
 if(!exists("sipp")) {
-	setwd(outputdir)
-	sipp <- readRDS("./sipp.RData")
+	#setwd(outputdir)
+	sipp <- readRDS(paste0(outputdir,"/sipp.RData"))
 }
 
 ########## date, unique id, months in sample ----------------------------
@@ -312,7 +308,8 @@ sipp[, next.lfstat := shift(lfstat, 1, type = "lead"), by = id]
 ########## occupation and job ----------------------------
 
 # replace occ with soc2d (occ will now refer to soc2d)
-sipp[, occ90 := occ] 
+setnames(sipp, "occ", "occ90")
+setnames(sipp, "soc2d", "occ")
 sipp[, occ   := soc2d]
 #sipp[ajbocc>0, occ := NA ]
 #sipp[ajbocc>0, coc := NA ]
@@ -426,19 +423,19 @@ if(intermed_plots==T){
 	ggplot(EU, aes(date, EU, color = panel, group = panel)) +
 		geom_point() + theme_bw()+
 		geom_line() + xlab("") + ylab("EU monthly rate")
-	ggsave(filename=paste0(outputdir,"/EUmo.eps"),height= 5,width=10)
+	ggsave(filename=paste0(figuredir,"/EUmo.eps"),height= 5,width=10)
 	
 	UE <- sipp[lfstat==2, .(UE = weighted.mean(UE, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(UE, aes(date, UE, color = panel, group = panel)) +
 		geom_point() +
 		geom_line()+ xlab("") + ylab("UE monthly rate")+theme_bw()
-	ggsave(filename=paste0(outputdir,"/UEmo.eps"),height= 5,width=10)
+	ggsave(filename=paste0(figuredir,"/UEmo.eps"),height= 5,width=10)
 	
 	EE <- sipp[lfstat==1 & next.lfstat==1 & (is.finite(eyear) | is.finite(syear)), .(EE = weighted.mean( EE==T, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(EE, aes(date, EE, color = panel, group = panel)) +
 		geom_point() +
 		geom_line()+xlab("")+ ylab("EE monthly rate")+theme_bw()
-	ggsave(filename=paste0(outputdir,"/EEmo.eps"),height= 5,width=10)
+	ggsave(filename=paste0(figuredir,"/EEmo.eps"),height= 5,width=10)
 	
 	Umo <- sipp[lfstat<3, .(Umo = weighted.mean(lfstat==2, wpfinwgt, na.rm = TRUE)),
 						by = list(panel, date)]
@@ -450,13 +447,13 @@ if(intermed_plots==T){
 	ggplot(EU, aes(date, EU, color = panel, group = panel)) +
 		geom_point() + theme_bw()+
 		geom_line() + xlab("") + ylab("switch|EU monthly rate")
-	ggsave(filename=paste0(outputdir,"/swEUmo.eps"),height= 5,width=10)
+	ggsave(filename=paste0(figuredir,"/swEUmo.eps"),height= 5,width=10)
 	
 	EEsw <- sipp[lfstat==1 & EE==T, .(EEsw = weighted.mean(switchedOcc, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(EEsw, aes(date, EEsw, color = panel, group = panel)) +
 		geom_point() + theme_bw()+
 		geom_line() + xlab("") + ylab("switch|EE monthly rate")
-	ggsave(filename=paste0(outputdir,"/swEEmo.eps"),height= 5,width=10)
+	ggsave(filename=paste0(figuredir,"/swEEmo.eps"),height= 5,width=10)
 	
 	rm(list=c("EU", "UE", "EE","EUsw","EEsw"))
 }
@@ -921,6 +918,7 @@ if(final_plots==T){
 2007-12-01, 2009-06-01"), sep=',',
 colClasses=c('Date', 'Date'), header=TRUE)
 	
+	sipp[ ,maxwis:= max(wave),by=panel]
 	
 	# plot transitions time series for sanity check------------------
 	EU_wave <- sipp[lfstat_wave==1 &  is.finite(next.lfstat_wave), .(EU_wave = weighted.mean(EU_wave , wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
@@ -959,11 +957,11 @@ colClasses=c('Date', 'Date'), header=TRUE)
 		geom_line( aes(date, EE_wave, color = panel, group = panel)) +xlab("") + ylab("EE wave-frequency") +
 		geom_rect(data=recessions.df, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='pink', alpha=0.2)
 	
-	EE_wave <- sipp[lfstat_wave==1 & next.lfstat_wave==1 & !(panel==2004 & year<2005), .(EE_wave = weighted.mean(EE_wave, wpfinwgt, na.rm = TRUE)), by = list(date)]
+	EE_wave <- sipp[lfstat_wave==1 & next.lfstat_wave==1 , .(EE_wave = weighted.mean(EE_wave, wpfinwgt, na.rm = TRUE)), by = list(date)]
 	setkey(EE_wave,date)
 	EE_wave[ , EE_wave_apx:= na.approx(EE_wave,na.rm=F)]
 	ggplot(EE_wave, aes(date, EE_wave)) + theme_bw()+
-		geom_point()+ylim(c(0.,0.035))+
+		geom_point()+
 		geom_line( aes(date,EE_wave_apx)  ) +xlab("") + ylab("EE wave-frequency")
 	ggsave(filename = paste0(figuredir,"/EE_wave.eps"),height= 5,width=10)
 	ggsave(filename = paste0(figuredir,"/EE_wave.png"),height= 5,width=10)
@@ -974,7 +972,7 @@ colClasses=c('Date', 'Date'), header=TRUE)
 		geom_line( aes(date, EE_mon, color = panel, group = panel)) +xlab("") + ylab("EE month-frequency") +
 		geom_rect(data=recessions.df, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='pink', alpha=0.2)
 	
-	JC_wave <- sipp[, .(JC_wave = weighted.mean(jobchng_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+	JC_wave <- sipp[lfstat_wave==1 & next.lfstat_wave==1 & wave>1 & wave<maxwis-1, .(JC_wave = weighted.mean(jobchng_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(JC_wave, aes(date, JC_wave, color = panel, group = panel)) + ylim(0,0.1)+
 		geom_point() +
 		geom_line()
@@ -1006,20 +1004,20 @@ colClasses=c('Date', 'Date'), header=TRUE)
 		geom_point() + ylab("Switching rate during a transition")
 	ggsave("sw_rate_transit_ts.png")
 	
-	swOc_wave <- DTseam[stayer==T & !(EE_wave==T|EU_wave==T|UE_wave==T) & is.finite(switchedOcc_wave), .(swOc = weighted.mean(switchedOcc_wave, truncweight, na.rm = TRUE)), by = list(panel, date)]
+	swOc_wave <- sipp[ !(EE_wave==T|EU_wave==T|UE_wave==T) & is.finite(switchedOcc_wave) & wave<maxwis-1, .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(swOc_wave, aes(date, swOc, color = panel, group = panel)) +
 		geom_point() + ylab("Switching rate among same employer")	
 	ggsave("sw_rate_stay_ts.png")
 		
-	swOcEE_wave <- sipp[EE_wave==T & is.finite(switchedOcc_wave) , .(swOcEE = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+	swOcEE_wave <- sipp[EE_wave==T & is.finite(switchedOcc_wave) & wave<maxwis-1 & wave>1, .(swOcEE = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(swOcEE_wave, aes(date, swOcEE, color = panel)) +
 		geom_point() + 
-		geom_smooth()
+		geom_smooth(span=.2,se=F)
 	
 	swOcEUUE_wave <- sipp[(EU_wave==T|UE_wave==T) &  is.finite(switchedOcc_wave) , .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(swOcEUUE_wave, aes(date, swOc, color = panel)) +
 		geom_point() + 
-		geom_smooth() + ggtitle("Occupational Switching | EU,UE counted at EU")
+		geom_smooth(span=.2,se=F) + ggtitle("Occupational Switching | EU,UE counted at EU")
 	
 	 
 	swOc_wave <- sipp[EE_wave==T& is.finite(occ_wave) & is.finite(next.occ_wave) & !(panel=="2004" & (year<2005 | year>=2007)) , .(swOc_wave = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = date]
