@@ -248,7 +248,7 @@ sipp[ , female:= as.logical(female)]
 # save intermediate result
 #setwd(outputdir)
 saveRDS(sipp, paste0(outputdir,"/sipp.RData"))
-
+setwd(rootdir)
 ################################## Prepare data  ----------------------------
 
 # load intermediate result if starting from here
@@ -310,7 +310,7 @@ sipp[, next.lfstat := shift(lfstat, 1, type = "lead"), by = id]
 # replace occ with soc2d (occ will now refer to soc2d)
 setnames(sipp, "occ", "occ90")
 setnames(sipp, "soc2d", "occ")
-sipp[, occ   := soc2d]
+#sipp[, occ   := soc2d]
 #sipp[ajbocc>0, occ := NA ]
 #sipp[ajbocc>0, coc := NA ]
 
@@ -385,21 +385,27 @@ sipp[is.na(Eend)==T, Eend:= F]
 sipp[lfstat == 1                   , Estart:= (year==syear & month==smonth)]
 sipp[is.na(Estart)==T, Estart:= F]
 sipp[ , next.Estart := shift(Estart, type="lead"), by=id]
+#corroborate with job changes
+sipp[ , next.job := shift(job,type="lead"),by=id]
+sipp[ lfstat==1 & next.lfstat == 1 , JCend:= job != next.job]
+
+sipp[ , last.job := shift(job,type="lag" ),by=id]
+sipp[ lfstat==1 & last.lfstat == 1 , JCstart:= job != last.job]
+sipp[ , JCend_any := any(JCend, na.rm=F), by = list(id,wave)]
+sipp[ , JCstart_any := any(JCstart, na.rm=F), by = list(id,wave)]
+
 
 
 # create EU/UE/EE dummies
 sipp[lfstat == 1, EU := (next.lfstat == 2)]
 sipp[lfstat == 2, UE := (next.lfstat == 1)]
-sipp[lfstat == 1 & next.lfstat==1, EE := Eend==T ]
+sipp[lfstat == 1 & next.lfstat==1, EE := (Eend==T & JCend_any==T) | (Estart==T & JCstart_any==T) ]
 
 sipp[is.finite(lfstat) & is.finite(next.lfstat) & is.na(EU), EU :=F ]
 sipp[is.finite(lfstat) & is.finite(next.lfstat) & is.na(UE), UE :=F ]
 sipp[is.finite(lfstat) & is.finite(next.lfstat) & is.na(EE), EE :=F ]
 
 # create job change id.  Job id generally measured only at the wave frequency, mostly this shows up in srefmon=4
-# sipp[srefmon==4, next4.job := (job != next.job)]
-# sipp[lfstat == 1 & next.lfstat != 1, jobchng := NA]
-sipp[ , next.job := shift(job,type="lead"),by=id]
 sipp[lfstat==1 & next.lfstat==1 , jobchng := (job!=next.job)]
 
 #add EU to ustintid
@@ -431,11 +437,21 @@ if(intermed_plots==T){
 		geom_line()+ xlab("") + ylab("UE monthly rate")+theme_bw()
 	ggsave(filename=paste0(figuredir,"/UEmo.eps"),height= 5,width=10)
 	
-	EE <- sipp[lfstat==1 & next.lfstat==1 & (is.finite(eyear) | is.finite(syear)), .(EE = weighted.mean( EE==T, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+	EE <- sipp[lfstat==1 & next.lfstat==1 , .(EE = weighted.mean( EE==T, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(EE, aes(date, EE, color = panel, group = panel)) +
 		geom_point() +
 		geom_line()+xlab("")+ ylab("EE monthly rate")+theme_bw()
 	ggsave(filename=paste0(figuredir,"/EEmo.eps"),height= 5,width=10)
+	
+	Estart <- sipp[lfstat==1 & next.lfstat==1 , .(EE = weighted.mean( Estart==T & JCstart_any==T, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+	ggplot(Estart, aes(date, EE, color = panel, group = panel)) +
+		geom_point() +
+		geom_line()+xlab("")+ ylab("Estart monthly rate")+theme_bw()
+	Eend <- sipp[lfstat==1 & next.lfstat==1 , .(EE = weighted.mean( Eend==T & JCend_any==T, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+	ggplot(Eend, aes(date, EE, color = panel, group = panel)) +
+		geom_point() +
+		geom_line()+xlab("")+ ylab("Eend monthly rate")+theme_bw()
+	
 	
 	Umo <- sipp[lfstat<3, .(Umo = weighted.mean(lfstat==2, wpfinwgt, na.rm = TRUE)),
 						by = list(panel, date)]
