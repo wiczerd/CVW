@@ -52,9 +52,9 @@ Any_narm <- function(x) {
 
 #rootdir <- "G:/Research_Analyst/Eubanks/Occupation Switching/SIPP to go"
 rootdir <- "~/workspace/CVW/R/"
-datadir <- paste(rootdir, "/InputDataDE", sep = "")
-outputdir <- paste(rootdir, "/Results", sep = "")
-figuredir <- paste(rootdir, "/Figures", sep = "")
+datadir <- paste(rootdir, "InputDataDE", sep = "")
+outputdir <- paste(rootdir, "Results", sep = "")
+figuredir <- paste(rootdir, "Figures", sep = "")
 intermed_plots = T
 final_plots = F
 max_wavefreq = 1 # controls whether take max over months in wave or wave-frequency observation
@@ -301,6 +301,11 @@ sipp[esr == 8, lfstat := 3]
 #clean the 2->3 and 3->2 into 2
 #sipp[ lfstat==3 & (shift(lfstat, 1, type = "lag")==2 | shift(lfstat, 1, type = "lead")==2), lfstat:=2, by=id]
 
+#drop individuals who never work
+sipp[ , everwork:= any(lfstat==1) , by= id ]
+sipp <- subset(sipp, everwork==T)
+sipp[ , everwork:=NULL]
+
 # create lag/lead lfstat
 sipp[, last.lfstat := shift(lfstat, 1, type = "lag"), by = id]
 sipp[, next.lfstat := shift(lfstat, 1, type = "lead"), by = id]
@@ -371,9 +376,6 @@ sipp[lfstat != 1, last.occ := Mode(last.occ), by = list(id, ustintid)]
 
 sipp[, next.occ := shift(occ, 1, type = "lead"), by = id]
 sipp[, next.ind := shift(ind, 1, type = "lead"), by = id]
-sipp[, switchedOcc := occ !=next.occ]
-sipp[, switchedInd := ind !=next.ind]
-
 
 ########## transitions ----------------------------
 
@@ -423,6 +425,13 @@ sipp[ ustintid>0 & is.na(matched_EUUE)==T, matched_EUUE:=F ]
 sipp[, c("mis_UE","mis_EU"):=NULL]
 
 
+#occupation and industry switches
+sipp[, switchedOcc := occ !=next.occ]
+sipp[, switchedInd := ind !=next.ind]
+
+
+
+#######################################################
 # plot transitions time series for sanity check
 if(intermed_plots==T){
 	EU <- sipp[lfstat==1, .(EU = weighted.mean(EU, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
@@ -661,13 +670,13 @@ if(max_wavefreq==1){
 sipp_wave[ (EU_wave==T|lfstat_wave==2) , max.unempdur_wave:= Max_narm(max.unempdur_wave ), by=list(id,ustintid_wave)]
 
 #fill in occupation over u spells and compute switching
-#sipp_wave[ !(EU_wave ==T |UE_wave==T), occtest:=na.locf(occtest,na.rm=F,fromLast=T),by=id]
+
 sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & is.na(occ_wave) ,occ_wave:=999] #don't fill in missing EU's 
 sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & is.na(ind_wave) ,ind_wave:=999] #don't fill in missing EU's 
 sipp_wave[ ,occ_wave:=na.locf(occ_wave,na.rm = F,fromLast = T), by=id]
 sipp_wave[ ,ind_wave:=na.locf(ind_wave,na.rm = F,fromLast = T), by=id]
-sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & occ_wave>=990 ,occ_wave:=NA] #don't fill in missing EU's 
-sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & ind_wave>=990 ,ind_wave:=NA] #don't fill in missing EU's 
+sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & occ_wave>=990 ,occ_wave:=NA] 
+sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & ind_wave>=990 ,ind_wave:=NA] 
 
 sipp_wave[ wave+1 == shift(wave,type="lead"), next.occ_wave := shift(occ_wave,type="lead") , by=id] #recompute now that I've filled back U-spells
 sipp_wave[ wave-1 == shift(wave,type="lag" ), last.occ_wave := shift(occ_wave,type="lag" ) , by=id] #recompute now that I've filled back U-spells
@@ -794,11 +803,14 @@ sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","next.job_wave","job_
 										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","midEE","midEU","midUE","EEmon","UEmon","EUmon","ustintid_wave",
 										"recIndic_stint","recIndic2_stint","recIndic_EU","recIndic_UE","max.unempdur_wave","switchedOcc_wave","switchedInd_wave","wave","id"))
 
-sipp[ , c("EEmon","EUmon","UEmon","max.unempdur_wave"):=NULL]
+sipp[ , c("EEmon","EUmon","UEmon","max.unempdur_wave","occ_wave","ind_wave"):=NULL]
 
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
+sipp[ , c("esr","Estart","Estart_wave","Eend","Eend_wave","emonth","EE_max","EU_max","UE_max","next.Estart","next.job","next.job_wave","matched_EUUE_max","switchedOcc_max",
+		  "coc","last.lfstat","last.occ","JCstart","JCstart_any","JCend","JCend_any"):=NULL]
+rm(filtered.unrate)
 #*********************************************************
 #compute annual versions of things    ----------------------
 
