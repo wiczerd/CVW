@@ -393,8 +393,8 @@ sipp[ lfstat==1 & next.lfstat == 1 , JCend:= job != next.job]
 
 sipp[ , last.job := shift(job,type="lag" ),by=id]
 sipp[ lfstat==1 & last.lfstat == 1 , JCstart:= job != last.job]
-sipp[ , JCend_any := any(JCend, na.rm=F), by = list(id,wave)]
-sipp[ , JCstart_any := any(JCstart, na.rm=F), by = list(id,wave)]
+sipp[ , JCend_any := any(JCend, na.rm=T), by = list(id,wave)]
+sipp[ , JCstart_any := any(JCstart, na.rm=T), by = list(id,wave)]
 
 
 
@@ -572,7 +572,7 @@ sipp[, recIndic_wave := any(recIndic, na.rm=T), by=list(wave,id)]
 sipp[, recIndic2_wave := any(recIndic2, na.rm=T), by=list(wave,id)]
 
 sipp[ , lfstat_wave := as.integer(max(lfstat,na.rm=T)), by=list(id,wave)]
-sipp[ lfstat_wave>1, lfstat_wave := 3L-any(lfstat==2), by=list(id,wave)]
+sipp[ lfstat_wave>1, lfstat_wave := 3L-any(lfstat==2,na.rm=T), by=list(id,wave)]
 
 sipp[lfstat_wave==2 , max.unempdur_wave := max(max.unempdur, na.rm = T) , by=list(id,wave)]
 
@@ -702,8 +702,8 @@ sipp_wave[ UE_wave==T, wis_UE_wave:= wis]
 sipp_wave[ EU_wave==T, wis_EU_wave:= wis]
 sipp_wave[ ustintid_wave>0, wis_UE_wave := Max_narm(wis_UE_wave), by=list(id,ustintid_wave)]
 sipp_wave[ ustintid_wave>0, wis_EU_wave := Min_narm(wis_EU_wave), by=list(id,ustintid_wave)]
-sipp_wave[ ustintid_wave>0, any_EU_wave := any(EU_wave), by=list(id,ustintid_wave)]
-sipp_wave[ ustintid_wave>0, any_UE_wave := any(UE_wave), by=list(id,ustintid_wave)]
+sipp_wave[ ustintid_wave>0, any_EU_wave := any(EU_wave,na.rm=T), by=list(id,ustintid_wave)]
+sipp_wave[ ustintid_wave>0, any_UE_wave := any(UE_wave,na.rm=T), by=list(id,ustintid_wave)]
 sipp_wave[ ustintid_wave>0, matched_EUUE_wave := wis_EU_wave<=wis_UE_wave]
 sipp_wave[ is.na(matched_EUUE_wave), matched_EUUE_wave:= F]
 
@@ -833,7 +833,7 @@ sipp[, recIndic_ann := any(recIndic, na.rm=T), by=list(yri,id)]
 sipp[, recIndic2_ann := any(recIndic2, na.rm=T), by=list(yri,id)]
 
 sipp[ , lfstat_ann := as.integer(max(lfstat,na.rm=T)), by=list(id,yri)]
-sipp[ lfstat_ann>1, lfstat_ann := 3L-any(lfstat==2), by=list(id,yri)]
+sipp[ lfstat_ann>1, lfstat_ann := 3L-any(lfstat==2,na.rm=T), by=list(id,yri)]
 
 sipp[ EE==T, EEyrmon := yrrefmon]
 sipp[ is.na(EEyrmon), EEyrmon := 0]
