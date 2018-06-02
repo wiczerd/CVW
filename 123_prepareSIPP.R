@@ -811,10 +811,29 @@ sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 sipp[ , c("esr","Estart","Estart_wave","Eend","Eend_wave","emonth","EE_max","EU_max","UE_max","next.Estart","next.job","next.job_wave","matched_EUUE_max","switchedOcc_max",
 		  "coc","last.lfstat","last.occ","JCstart","JCstart_any","JCend","JCend_any"):=NULL]
 rm(filtered.unrate)
-#*********************************************************
-#compute annual versions of things    ----------------------
 
-sipp[ , c("EE_max","EU_max","UE_max"):=NULL]
+sipp[ EU ==T, EUmis:= mis ]
+sipp[ is.na(EUmis), EUmis:= 0 ]
+sipp[ ustintid>0, EUmis:= max(EUmis,na.rm = T), by=list(id,ustintid)]
+sipp[ , EUmis:= max(EUmis,na.rm=T), by=list(id,wave)]
+sipp[ (EU_wave==T|UE_wave==T)&!(midEU|midUE) & EUmis<=maxmis-12 & matched_EUUE_wave==T, validEUUE:=T]
+sipp[ is.na(validEUUE), validEUUE:=F]
+sipp[ , EUmis:=NULL]
+
+#sipp[ , ersend_wave:= Mode(ersend), by=list(id,wave)]
+sipp[ ustintid_wave>0 , ersend_wave:=Mode(ersend), by=list(id,ustintid_wave)]
+sipp[ !is.finite(ustintid_wave), ersend_wave := Mode(ersend), by=list(id,wave)]
+sipp[ ustintid_wave>0 , var_ersend:=var(ersend,na.rm = T), by=list(id,ustintid_wave)]
+sipp[ var_ersend>0 , ersend_wave:=NA]
+sipp[ , var_ersend:=NULL]
+
+sipp[ is.finite(ersend_wave) , displaced:= (ersend_wave>=9 & ersend_wave<=10)|(ersend_wave==1)|(ersend_wave==13)]
+
+sipp[is.finite(ersend_wave), displaced_layoff := ersend_wave==1]
+sipp[is.finite(ersend_wave), displaced_empclosed := ersend_wave==9|ersend_wave==10]
+sipp[is.finite(ersend_wave), displaced_slackbiz := ersend_wave==13]
+
+# prep for annual merging
 sipp[ , date0 := min(date), by=id]
 sipp[ date>= date0         & date<(date0+365  ), yri := 1]
 sipp[ date>= (date0+365)   & date<(date0+365*2), yri := 2]
@@ -823,6 +842,20 @@ sipp[ date>= (date0+365*3) & date<(date0+365*4), yri := 4]
 sipp[ date>= (date0+365*4) & date<(date0+365*5), yri := 5]
 sipp[ date>= (date0+365*5) & date<(date0+365*6), yri := 6]
 
+########## save prepared data--------------
+#a bit of cleanup
+sipp[ , c("PCEPI","last.earnm","last.job",
+		  "smonth","syear","epppnum","ui_r"):=NULL]
+
+sipp[ , date0:=NULL]
+#saveRDS(sipp, "./preparedSipp.RData")
+saveRDS(sipp, paste0(outputdir,"/DTall_3.RData"))
+
+
+#*********************************************************
+#compute annual versions of things    ----------------------
+
+sipp[ , date0 := min(date), by=id]
 sipp[ , yrseam := (yri !=shift(yri,type="lead")), by=id]
 sipp[ , month0:= month(date0)]
 sipp[ , yrrefmon := month(date) - month0+1]
@@ -902,40 +935,19 @@ sipp_ann[ midUE_ann == T , UE_ann:=T  ]
 sipp_ann[ (EU_ann==T | UE_ann==T) & EE_ann==T, EE_ann:=F]
 
 #merge them back
-sipp_ann <- subset(sipp_ann, select=c(	"jobchng_ann","EE_ann","EU_ann","UE_ann","midEE_ann","midEU_ann","midUE_ann","EEyrmon","UEyrmon","EUyrmon","yri","id"))
+sipp_ann <- subset(sipp_ann, select=c(	"jobchng_ann","EE_ann","EU_ann","UE_ann","midEE_ann","midEU_ann","midUE_ann","EEyrmon","UEyrmon","EUyrmon","yrseam","yri","id"))
+saveRDS(sipp_ann, "./sipp_ann.RData")
 
 sipp[ , c("EEyrmon","EUyrmon","UEyrmon","jobchng_ann"):=NULL]
 
 sipp <- merge(sipp,sipp_ann, by=c("id","yri"), all=T)
 
-sipp[ EU ==T, EUmis:= mis ]
-sipp[ is.na(EUmis), EUmis:= 0 ]
-sipp[ ustintid>0, EUmis:= max(EUmis,na.rm = T), by=list(id,ustintid)]
-sipp[ , EUmis:= max(EUmis,na.rm=T), by=list(id,wave)]
-sipp[ (EU_wave==T|UE_wave==T)&!(midEU|midUE) & EUmis<=maxmis-12 & matched_EUUE_wave==T, validEUUE:=T]
-sipp[ is.na(validEUUE), validEUUE:=F]
-sipp[ , EUmis:=NULL]
+#cleanup
+sipp[ , c("date0","jobchng_max","EE_max","EU_max","UE_max"):=NULL]
 
-#sipp[ , ersend_wave:= Mode(ersend), by=list(id,wave)]
-sipp[ ustintid_wave>0 , ersend_wave:=Mode(ersend), by=list(id,ustintid_wave)]
-sipp[ !is.finite(ustintid_wave), ersend_wave := Mode(ersend), by=list(id,wave)]
-sipp[ ustintid_wave>0 , var_ersend:=var(ersend,na.rm = T), by=list(id,ustintid_wave)]
-sipp[ var_ersend>0 , ersend_wave:=NA]
-sipp[ , var_ersend:=NULL]
 
-sipp[ is.finite(ersend_wave) , displaced:= (ersend_wave>=9 & ersend_wave<=10)|(ersend_wave==1)|(ersend_wave==13)]
-
-sipp[is.finite(ersend_wave), displaced_layoff := ersend_wave==1]
-sipp[is.finite(ersend_wave), displaced_empclosed := ersend_wave==9|ersend_wave==10]
-sipp[is.finite(ersend_wave), displaced_slackbiz := ersend_wave==13]
-########## save prepared data--------------
-#a bit of cleanup
-sipp[ , c("date0","jobchng_max","EE_max","EU_max","UE_max","PCEPI","last.earnm","last.job","last.job_wave","last.occ","last.lfstat",
-		  "smonth","syear","epppnum","next.Estart","ui_r","coc","soc2d"):=NULL]
-
-setwd(outputdir)
 #saveRDS(sipp, "./preparedSipp.RData")
-saveRDS(sipp, "./DTall_3.RData")
+saveRDS(sipp, "./DTall_3_ann.RData")
 
 
 if(final_plots==T){

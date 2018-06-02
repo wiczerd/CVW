@@ -239,8 +239,8 @@ DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_jcbad","wag
 DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
 #looking at occupation-level wage changes
-DTall[ , occwage_wave:= sum(1/2*(exp(occwage)-exp(-occwage)),na.rm=T) , by=list(id,wave)]
-DTall[ , occwage_wave:= log(occwage_wave + (1+occwage_wave^2)^.5)]
+DTall[ , occwage_wave:= sum(1/2*(exp(occwage)-exp(-occwage)),na.rm=T) , by=list(id,wave)] #sum in levels
+DTall[ , occwage_wave:= log(occwage_wave + (1+occwage_wave^2)^.5)] #convert back to inv hyperbolic sine
 DTall[ , nawavewage:= all(is.na(occwage) ),by= list(id,wave)]
 DTall[ nawavewage==T, occwage_wave:=NA_real_]
 
@@ -263,9 +263,13 @@ DTseam[ switchedOcc_wave==F, occwagechangeEUE_wave:= 0.]
 DTseam<-subset(DTseam, select = c("occwagechange_wave","occwagechangeEUE_wave","id","wave"))
 DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
+saveRDS(DTall, paste0(datadir,"/DTall_5.RData"))
+
+
 #************************************************************************
 #Annual wage changes ---------------------------
 #************************************************************************
+DTall<- merge(DTall,sipp_ann,by=c("id","yri"),all.x=T)
 
 DTann <- DTall[ yrseam==T,]
 #need to add change across waves (use wavewage)
