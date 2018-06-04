@@ -856,7 +856,7 @@ saveRDS(sipp, paste0(outputdir,"/DTall_3.RData"))
 #compute annual versions of things    ----------------------
 
 sipp[ , date0 := min(date), by=id]
-sipp[ , yrseam := (yri !=shift(yri,type="lead")), by=id]
+sipp[ , yrseam := (yri !=shift(yri,type="lead") | mis==maxmis), by=id]
 sipp[ , month0:= month(date0)]
 sipp[ , yrrefmon := month(date) - month0+1]
 sipp[ yrrefmon<=0, yrrefmon := 12+yrrefmon]
@@ -936,7 +936,7 @@ sipp_ann[ (EU_ann==T | UE_ann==T) & EE_ann==T, EE_ann:=F]
 
 #merge them back
 sipp_ann <- subset(sipp_ann, select=c(	"jobchng_ann","EE_ann","EU_ann","UE_ann","midEE_ann","midEU_ann","midUE_ann","EEyrmon","UEyrmon","EUyrmon","yrseam","yri","id"))
-saveRDS(sipp_ann, "./sipp_ann.RData")
+saveRDS(sipp_ann, paste0(outputdir,"/sipp_ann.RData"))
 
 sipp[ , c("EEyrmon","EUyrmon","UEyrmon","jobchng_ann"):=NULL]
 
@@ -947,7 +947,7 @@ sipp[ , c("date0","jobchng_max","EE_max","EU_max","UE_max"):=NULL]
 
 
 #saveRDS(sipp, "./preparedSipp.RData")
-saveRDS(sipp, "./DTall_3_ann.RData")
+saveRDS(sipp, paste0(outputdir,"/DTall_3_ann.RData"))
 
 
 if(final_plots==T){

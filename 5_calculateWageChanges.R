@@ -21,8 +21,7 @@ Mode <- function(x) {
 DTall <- readRDS(paste0(datadir,"/DTall_4.RData"))
 #drop some un-need variables
 DTall[ , nwhite := black==T|hispanic==T]
-DTall <- DTall[ , c("eyear","emonth","esr","next.earnm","logearnm","black","hispanic","filtered.unrate$cycle",
-					"matched_EUUE_max"):=NULL]
+DTall <- DTall[ , c("eyear","next.earnm","logearnm","black","hispanic","filtered.unrate$cycle"):=NULL]
 #I don't want to drop these ->  DTall <- DTall[ lfstat_wave<3, ]
 
 setkey(DTall, id, date)
@@ -98,13 +97,8 @@ DTall[ , nawavewage:= all(is.na(usewage) ),by= list(id,wave)]
 DTall[ nawavewage==T, wavewage:=NA_real_]
 #drop the lowest resid wages, implies working less than $80 /month:
 DTall[ lfstat_wave==1 & wavewage<log(80+(1+80^2)^.5), wavewage:=NA]
-#annual:
-DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,yri)]
-DTall[ , annwage := mean(levwage,na.rm = T)*nmo_lf1, by=list(id,yri)]
-DTall[ , annwage := log(annwage + (1+annwage^2)^0.5)]
-DTall[ , naannwage:= all(is.na(usewage) ),by= list(id,yri)]
-DTall[ naannwage==T, annwage:=NA_real_]
-DTall[ , c("levwage","nawavewage","naannwage"):=NULL]
+
+DTall[ , c("levwage","nawavewage"):=NULL]
 
 
 # raw wages
@@ -116,13 +110,8 @@ DTall[ nawavewage==T, waverawwg:=NA_real_]
 #drop the lowest wages, implies working less than $80 /month:
 DTall[ lfstat_wave==1 & waverawwg<log(80+(1+80^2)^.5), waverawwg:=NA]
 DTall[ lfstat_wave==1, earn_imp_wave := sum(earn_imp==1,na.rm=T), by=list(id,wave)]
-#annual
-DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,yri)]
-DTall[ , annrawwg := mean(earnm,na.rm = T)*nmo_lf1, by=list(id,yri)]
-DTall[ , annrawwg := log(annrawwg + (1+annrawwg^2)^0.5)]
-DTall[ , naannwage:= all(is.na(usewage) ),by= list(id,yri)]
-DTall[ naannwage==T, annrawwg:=NA_real_]
-DTall[ , c("naannwage","nawavewage","nmo_lf1"):=NULL]
+
+DTall[ , c("nawavewage","nmo_lf1"):=NULL]
 
 #************************************************************************************
 #wave frequency changes --------------------------------------------
@@ -217,7 +206,7 @@ DTseam[is.na(wagechange_wave_jcbad )==T , wagechange_wave_jcbad := F]
 DTseam[ , c("next.job_wave","last.job_wave"):=NULL]
 
 #wagechanges in the crazy 2004 months:
-DTseam[ wave>=7 & panel==2004, wagechange_wave_2004bad :=T]
+# ? DTseam[ wave>=7 & panel==2004, wagechange_wave_2004bad :=T]
 
 #lowest/highest wages out:
 lowwageqtls= DTseam[ lfstat_wave==1, quantile(waverawwg, na.rm = T, probs=c(.01,.02,.05))]
@@ -269,8 +258,31 @@ saveRDS(DTall, paste0(datadir,"/DTall_5.RData"))
 #************************************************************************
 #Annual wage changes ---------------------------
 #************************************************************************
+
+# residual wages
+DTall[!is.na(usewage) , levwage := 1/2*(exp(usewage)-exp(-usewage))]
+
+DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,yri)]
+DTall[ , annwage := mean(levwage,na.rm = T)*nmo_lf1, by=list(id,yri)]
+DTall[ , annwage := log(annwage + (1+annwage^2)^0.5)]
+DTall[ , naannwage:= all(is.na(usewage) ),by= list(id,yri)]
+DTall[ naannwage==T, annwage:=NA_real_]
+DTall[ , c("levwage","naannwage"):=NULL]
+
+# raw wages
+DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,yri)]
+DTall[ , annrawwg := mean(earnm,na.rm = T)*nmo_lf1, by=list(id,yri)]
+DTall[ , annrawwg := log(annrawwg + (1+annrawwg^2)^0.5)]
+DTall[ , naannwage:= all(is.na(usewage) ),by= list(id,yri)]
+DTall[ naannwage==T, annrawwg:=NA_real_]
+DTall[ , c("naannwage","nmo_lf1"):=NULL]
+
+
+#merge together transitions
+sipp_ann <- readRDS(paste0(datadir,"/sipp_ann.RData"))
 DTall<- merge(DTall,sipp_ann,by=c("id","yri"),all.x=T)
 
+DTall[ , yrseam := (yri !=shift(yri,type="lead") | mis==maxmis), by=id]
 DTann <- DTall[ yrseam==T,]
 #need to add change across waves (use wavewage)
 DTann[ , next.annwage := shift(annwage,1,type="lead"), by=id]
@@ -315,7 +327,7 @@ DTann<-subset(DTann, select = c("rawwgchange_ann","wagechange_ann","pctile.annra
 DTall<- merge(DTall,DTann,by=c("id","yri"),all.x=T)
 
 
-saveRDS(DTall, paste0(datadir,"/DTall_5.RData"))
+saveRDS(DTall, paste0(datadir,"/DTall_5_ann.RData"))
 
 #wc_wave <- DTall[seam==T & lfstat_wave==1 & next.lfstat_wave==1 & wagechange_wave_bad==F & wc_wave<0.2, .(wc_wave = weighted.mean(wagechange_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 #ggplot(wc_wave, aes(date, wc_wave, color = panel, group = panel)) +
