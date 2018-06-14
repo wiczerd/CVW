@@ -13,6 +13,8 @@ outputdir = "~/workspace/CVW/R/Results"
 recall_adj = T
 dur_adj = F
 
+check_durcomp = T
+
 setwd(wd0)
 Mode <- function(x) {
 	ux <- unique(x[!is.na(x)])
@@ -160,18 +162,44 @@ DTall[ is.na(cleaning_wts)==F, cleaning_wts:= cleaning_wts*wpfinwgt]
 
 #save only the seams as a 'wave-change' set ---------------------
 DTseam <- subset(DTall, seam==T)
- # 
+ 
 DTseam[ , c("EE","EU","UE"):= NULL]
 
+#construct duration coimposition by month
+if(check_durcomp==T){
+	maxdurUE_wave_t <- DTseam[ UE_wave==T & midUE==F ,  c(mean(max.unempdur_wave<=1),
+													 mean(max.unempdur_wave >1 & max.unempdur_wave<=3 ),
+													 mean(max.unempdur_wave >3 & max.unempdur_wave<=6 ),
+													 mean(max.unempdur_wave >6 & max.unempdur_wave<=12 ),
+													 mean(max.unempdur_wave >12) ),by=list(wave, panel)]
+	maxdurUE_t <- DTall[UE==T, c(mean(max.unempdur <=1),
+								 mean(max.unempdur  >1 & max.unempdur <=3 ),
+								 mean(max.unempdur  >3 & max.unempdur <=6 ),
+								 mean(max.unempdur  >6 & max.unempdur <=12 ),
+								 mean(max.unempdur  >12) ),by=list(wave, panel)]
+	
+	names(maxdurUE_t) <- c("wave","panel","frac")
+	maxdurUE_t[ , dur := c(0,1,2,3,4)]
+	maxdurUE_t <- reshape(maxdurUE_t,idvar=c("wave","panel"),timevar = "dur",direction="wide")
+	setkeyv(maxdurUE_t,c("panel","wave"))
+	
+	names(maxdurUE_wave_t) <- c("wave","panel","frac")
+	maxdurUE_wave_t[ , dur := c(0,1,2,3,4)]
+	maxdurUE_wave_t <- reshape(maxdurUE_wave_t,idvar=c("wave","panel"),timevar = "dur",direction="wide")
+	setkeyv(maxdurUE_wave_t,c("panel","wave"))
+}
+
 ##balance seams EU and UE
+DTseam[ is.finite(ustintid_wave), u_matched := any(matched_EUUE_wave), by=list(id,ustintid_wave)]
+
 #DTseam[ is.na(matched_EUUE_wave), matched_EUUE_wave:=F]
-DTseam[ ustintid_wave>0, EU_match:= any(UE_wave), by=list(id,ustintid_wave) ]
-DTseam[ ustintid_wave>0, UE_match:= any(EU_wave), by=list(id,ustintid_wave) ]
-DTseam[ ustintid_wave>0, matched_EUUE_wave:= UE_match & EU_match ]
-DTseam[ matched_EUUE_wave!=T & EU_wave==T, EU_nomatch:= T]
-DTseam[ is.na(EU_nomatch), EU_nomatch:= F]
-DTseam[ matched_EUUE_wave!=T & UE_wave==T, UE_nomatch:= T]
-DTseam[ is.na(UE_nomatch), UE_nomatch:= F]
+#DTseam[ ustintid_wave>0, EU_match:= any(UE_wave), by=list(id,ustintid_wave) ]
+#DTseam[ ustintid_wave>0, UE_match:= any(EU_wave), by=list(id,ustintid_wave) ]
+#DTseam[ ustintid_wave>0, matched_EUUE_wave:= UE_match & EU_match ]
+#DTseam[ matched_EUUE_wave!=T & EU_wave==T, EU_nomatch:= T]
+#DTseam[ is.na(EU_nomatch), EU_nomatch:= F]
+#DTseam[ matched_EUUE_wave!=T & UE_wave==T, UE_nomatch:= T]
+#DTseam[ is.na(UE_nomatch), UE_nomatch:= F]
 
 # these are equivalent to find non-matches:
 # DTseam[ (EU_wave ==T & midEU==F) | (UE_wave==T & midUE==F), EU_match := shift(UE_wave,1,type = "lead")==T & is.finite(shift(wagechange_wave,1,type = "lead")), by=id]
@@ -182,7 +210,9 @@ DTseam[ is.na(UE_nomatch), UE_nomatch:= F]
 # DTseam[ EU_match==T, EU_nomatch:= F]
 # DTseam[ UE_match==T, UE_nomatch:= F]
 
-DTseam[ is.finite(ustintid_wave), u_nomatch := any(EU_nomatch==T|UE_nomatch==T), by=list(id,ustintid_wave)]
+#DTseam[ is.finite(ustintid_wave), u_nomatch := any(EU_nomatch==T|UE_nomatch==T), by=list(id,ustintid_wave)]
+
+DTseam[ is.finite(ustintid_wave), u_nomatch := any((EU_wave==T & u_matched==F)|UE_wave==T & u_matched==F), by=list(id,ustintid_wave)]
 DTseam[, misRemaining := max(mis), by=list(id, panel)]
 DTseam[, misRemaining := misRemaining-mis , by=id]
 DTseam[ , wis:=seq(1,.N), by=id]
@@ -191,11 +221,11 @@ DTseam[, wisRemaining := wisRemaining-wis , by=id]
 
 DTseam[ , perwt:= mean(wpfinwgt), by=id]
 
-EUtruenomatchrt <- DTseam[(lfstat_wave==2|EU_wave==T) & wisRemaining > 3        , wtd.mean(EU_nomatch,weights = perwt,na.rm=T)]
-UEtruenomatchrt <- DTseam[UE_wave==T & wis > 3                                  , wtd.mean(UE_nomatch,weights = perwt,na.rm=T)]
+#EUtruenomatchrt <- DTseam[(lfstat_wave==2|EU_wave==T) & wisRemaining > 3        , wtd.mean(EU_nomatch,weights = perwt,na.rm=T)]
+#UEtruenomatchrt <- DTseam[UE_wave==T & wis > 3                                  , wtd.mean(UE_nomatch,weights = perwt,na.rm=T)]
 Utruenomatchrt  <- DTseam[wis > 3 & wisRemaining > 3 & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = perwt,na.rm=T)]
 
-DTseam[ EU_nomatch==T & EU_wave ==T, EU_wave := NA]
+DTseam[ EUUE_matched==F & EU_wave ==T, EU_wave := NA]
 DTseam[ UE_nomatch==T & UE_wave ==T, UE_wave := NA]
 
 #do some reweighting for left- and right-truncation

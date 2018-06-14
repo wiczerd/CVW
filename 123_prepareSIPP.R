@@ -574,7 +574,7 @@ sipp[, recIndic2_wave := any(recIndic2, na.rm=T), by=list(wave,id)]
 sipp[ , lfstat_wave := as.integer(max(lfstat,na.rm=T)), by=list(id,wave)]
 sipp[ lfstat_wave>1, lfstat_wave := 3L-any(lfstat==2,na.rm=T), by=list(id,wave)]
 
-sipp[lfstat_wave==2 , max.unempdur_wave := max(max.unempdur, na.rm = T) , by=list(id,wave)]
+sipp[lfstat_wave==2 , max.unempdur_wave := first(max.unempdur, na.rm = T) , by=list(id,wave)]
 
 sipp[ , Eend_wave:= any(Eend, na.rm=T), by=list(wave,id)]
 sipp[ , Estart_wave:= any(Estart, na.rm=T), by=list(wave,id)]
