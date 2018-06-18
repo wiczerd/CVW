@@ -225,8 +225,8 @@ DTseam[ , perwt:= mean(wpfinwgt), by=id]
 #UEtruenomatchrt <- DTseam[UE_wave==T & wis > 3                                  , wtd.mean(UE_nomatch,weights = perwt,na.rm=T)]
 Utruenomatchrt  <- DTseam[wis > 3 & wisRemaining > 3 & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = perwt,na.rm=T)]
 
-DTseam[ EUUE_matched==F & EU_wave ==T, EU_wave := NA]
-DTseam[ UE_nomatch==T & UE_wave ==T, UE_wave := NA]
+DTseam[ matched_EUUE_wave==F & EU_wave ==T, EU_wave := NA]
+DTseam[ matched_EUUE_wave==F & UE_wave ==T, UE_wave := NA]
 
 #do some reweighting for left- and right-truncation
 DTseam[ , truncweight := perwt]
