@@ -497,13 +497,15 @@ setwd(rootdir)
 
 filtered.unrate <- hpfilter(unrate$unrt,type = "lambda",freq=14400)
 unrate<-cbind(unrate,filtered.unrate$cycle)
+names(unrate) <- c("date","unrt","filunrt")
+
 # create recession indicator
 sipp[, recIndic := (date >= recDates[1] & date <= recDates[2]) | 
 	 	(date >= recDates[3] & date <= recDates[4]) |
 	 	(date >= recDates[5] & date <= recDates[6]) ]
 
 # create vector of recession dates : above 6% or in the top 20%
-recDates2 <- unrate$date[ unrate$`filtered.unrate$cycle`>=quantile(unrate$`filtered.unrate$cycle`,probs = 4/5) ]
+recDates2 <- unrate$date[ unrate$filunrt>=quantile(unrate$filunrt,probs = 4/5) ]
 sipp[, recIndic2 := date %in% recDates2]
 
 
