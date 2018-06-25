@@ -165,7 +165,7 @@ DTseam <- subset(DTall, seam==T)
  
 DTseam[ , c("EE","EU","UE"):= NULL]
 
-#construct duration coimposition by month
+#construct duration composition by month
 if(check_durcomp==T){
 	maxdurUE_wave_t <- DTseam[ UE_wave==T & midUE==F ,  c(mean(max.unempdur_wave<=1),
 													 mean(max.unempdur_wave >1 & max.unempdur_wave<=3 ),
