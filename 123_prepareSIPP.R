@@ -426,8 +426,52 @@ sipp[, c("mis_UE","mis_EU"):=NULL]
 
 
 #occupation and industry switches
-sipp[, switchedOcc := occ !=next.occ]
-sipp[, switchedInd := ind !=next.ind]
+sipp[ !(EU|EE) , switchedOcc := occ !=next.occ]
+sipp[ !(EU|EE) , switchedInd := ind !=next.ind]
+
+sipp[ , l1.job := shift(job,1)            , by=id]
+sipp[ , l2.job := shift(job,2)            , by=id]
+sipp[ , l3.job := shift(job,3)            , by=id]
+sipp[ , n1.job := shift(job,1,type="lead"), by=id]
+sipp[ , n2.job := shift(job,2,type="lead"), by=id]
+sipp[ , n3.job := shift(job,3,type="lead"), by=id]
+sipp[ , l1.occ := shift(occ,1)            , by=id]
+sipp[ , l2.occ := shift(occ,2)            , by=id]
+sipp[ , l3.occ := shift(occ,3)            , by=id]
+sipp[ , n1.occ := shift(occ,1,type="lead"), by=id]
+sipp[ , n2.occ := shift(occ,2,type="lead"), by=id]
+sipp[ , n3.occ := shift(occ,3,type="lead"), by=id]
+sipp[ , n4.occ := shift(occ,4,type="lead"), by=id]
+sipp[ , l1.ind := shift(ind,1)            , by=id]
+sipp[ , l2.ind := shift(ind,2)            , by=id]
+sipp[ , l3.ind := shift(ind,3)            , by=id]
+sipp[ , n1.ind := shift(ind,1,type="lead"), by=id]
+sipp[ , n2.ind := shift(ind,2,type="lead"), by=id]
+sipp[ , n3.ind := shift(ind,3,type="lead"), by=id]
+
+#for EEmon=1, go from l1 -> n1
+#for EEmon=2, go from l2 -> n1
+#for EEmon=3, go from l2 -> n2
+#for EEmon=4, go from l3 -> n1
+sipp[ EE==T & EEmon==1, switchedOcc := l1.occ != n1.occ]
+sipp[ EE==T & EEmon==2, switchedOcc := l2.occ != n1.occ]
+sipp[ EE==T & EEmon==3, switchedOcc := l2.occ != n2.occ]
+sipp[ EE==T & EEmon==4, switchedOcc := l3.occ != n1.occ]
+
+sipp[ EE==T & EEmon==1, switchedOcc := l1.ind != n1.ind]
+sipp[ EE==T & EEmon==2, switchedOcc := l2.ind != n1.ind]
+sipp[ EE==T & EEmon==3, switchedOcc := l2.ind != n2.ind]
+sipp[ EE==T & EEmon==4, switchedOcc := l3.ind != n1.ind]
+# switches by unemployment
+sipp[ EU==T & EUmon==1, switchedOcc := l1.occ != n1.occ]
+sipp[ EU==T & EUmon==2, switchedOcc := l2.occ != n1.occ]
+sipp[ EU==T & EUmon==3, switchedOcc := l2.occ != n2.occ]
+sipp[ EU==T & EUmon==4, switchedOcc := l3.occ != n1.occ]
+
+sipp[ EE==T & EEmon==1, switchedOcc := l1.ind != n1.ind]
+sipp[ EE==T & EEmon==2, switchedOcc := l2.ind != n1.ind]
+sipp[ EE==T & EEmon==3, switchedOcc := l2.ind != n2.ind]
+sipp[ EE==T & EEmon==4, switchedOcc := l3.ind != n1.ind]
 
 
 
@@ -599,13 +643,21 @@ sipp[ EU==T, occ_wave := occ]
 sipp[ EU==T, ind_wave := ind]
 sipp[ UE==T, occ_wave := occ]
 sipp[ UE==T, ind_wave := ind]
-sipp[  (UE_max==T|EU_max==T), occ_wave := Mode(occ_wave), by=list(id,wave)]
-sipp[  (UE_max==T|EU_max==T), ind_wave := Mode(ind_wave), by=list(id,wave)]
+
+
+sipp[  (UE_max==T|EU_max==T|EE_max==T), occ_wave := Mode(occ_wave), by=list(id,wave)]
+sipp[  (UE_max==T|EU_max==T|EE_max==T), ind_wave := Mode(ind_wave), by=list(id,wave)]
 sipp[ !(UE_max==T|EU_max==T) & seam==T, occ_wave := occ]
 sipp[ !(UE_max==T|EU_max==T) & seam==T, ind_wave := ind]
 
 
 sipp[ , jobchng_max := any(jobchng,na.rm=T), by=list(id,wave)]
+
+
+sipp[ srefmon==1 , job_mo1 := job]
+sipp[            , job_mo1 := Max_narm(job_mo1), by=list(id,wave)]
+sipp[ srefmon==1 , occ_mo1 := occ]
+sipp[            , occ_mo1 := Mode(job_mo1), by=list(id,wave)]
 
 #**************************************************************
 #sipp_wave begins here----------------------
@@ -684,13 +736,15 @@ sipp_wave[ wave-1 == last.wave, last.occ_wave := shift(occ_wave,type="lag" ) , b
 sipp_wave[ wave-1 == last.wave, last.EE_wave := shift(EE_wave), by = id]
 sipp_wave[ wave-1 == last.wave, last.EU_wave := shift(EU_wave), by = id]
 sipp_wave[ wave-1 == last.wave, last.UE_wave := shift(UE_wave), by = id]
-sipp_wave[                    , stable_emp := last.lfstat_wave==1 & last.UE_wave==F & last.EU_wave ==F & last.EE_wave == F]
-#sipp_wave[ EU_wave==T & EUmon<seammon , switchedOcc_wave := last.occ_wave != next.occ_wave] # was taking last occupation, but I'm already doing at that at monthly
-sipp_wave[ EU_wave==T & EUmon <seammon & stable_emp ==T , switchedOcc_wave := occ_wave != next.occ_wave]
-sipp_wave[ EU_wave==T & EUmon==seammon & stable_emp ==T , switchedOcc_wave := occ_wave != next.occ_wave]
+sipp_wave[                    , stable_emp := last.lfstat_wave==1 & last.EE_wave == F]
 
-sipp_wave[ EE_wave==T & EEmon<seammon  & stable_emp==T, switchedOcc_wave := last.occ_wave != next.occ_wave]
-sipp_wave[ EE_wave==T & EEmon==seammon & stable_emp==T, switchedOcc_wave := last.occ_wave != next.occ_wave]
+
+#sipp_wave[ EU_wave==T & EUmon<seammon , switchedOcc_wave := last.occ_wave != next.occ_wave] # was taking last occupation, but I'm already doing at that at monthly
+sipp_wave[ EU_wave==T & EUmon <seammon  , switchedOcc_wave := occ_wave != next.occ_wave]
+sipp_wave[ EU_wave==T & EUmon==seammon  , switchedOcc_wave := occ_wave != next.occ_wave]
+
+sipp_wave[ EE_wave==T & EEmon<seammon  , switchedOcc_wave := last.occ_wave != next.occ_wave]
+sipp_wave[ EE_wave==T & EEmon==seammon , switchedOcc_wave := last.occ_wave != next.occ_wave]
 sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T), switchedOcc_wave := occ_wave != next.occ_wave]
 
 sipp_wave[ wave+1 == next.wave, next.ind_wave := shift(ind_wave,type="lead") , by=id]
