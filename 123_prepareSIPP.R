@@ -473,7 +473,12 @@ sipp[ EE==T & EEmon==2, switchedOcc := l2.ind != n1.ind]
 sipp[ EE==T & EEmon==3, switchedOcc := l2.ind != n2.ind]
 sipp[ EE==T & EEmon==4, switchedOcc := l3.ind != n1.ind]
 
-
+sipp[ , c("l1.ind","l2.ind","l3.ind",
+		  "n1.ind","n2.ind","n3.ind",
+		  "l1.occ","l2.occ","l3.occ",
+		  "n1.occ","n2.occ","n3.occ",
+		  "l1.job","l2.job","l3.job",
+		  "n1.job","n2.job","n3.job"):=NULL]
 
 #######################################################
 # plot transitions time series for sanity check
