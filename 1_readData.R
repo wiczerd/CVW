@@ -1,218 +1,250 @@
-# December 17, 2015
-# Read in data and add basic variables
-# 1) read data into R
-# 2) select variables of interest
-# 3) create date variable
-# 4) create recession indicator
-# 5) add PCE data
-# 6) add SOC2d codes
+
+# Read in SIPP data and prepare it for analysis
 library(foreign)
+library(readstata13)
 library(data.table)
+library(zoo)
+library(lubridate)
+library(ggplot2)
+library(mFilter)
+Mode <- function(x) {
+	ux <- unique(x[!is.na(x)])
+	ux[which.max(tabulate(match(x, ux)))]
+}
 
-# eventually move data files to master directory
-wd0 = "~/workspace/CVW/R"
-xwalkdir = "~/workspace/CVW/R/Crosswalks"
-setwd(wd0)
+Max_narm <- function(x) {
+	ux <- unique(x[!is.na(x)])
+	if(length(ux)>0){
+		max(ux)
+	}else{
+		if(is.integer(x)){
+			NA_integer_
+		}else{
+			NA_real_
+		}
+	}
+}
+Min_narm <- function(x) {
+	ux <- unique(x[!is.na(x)])
+	if(length(ux)>0){
+		min(ux)
+	}else{
+		if(is.integer(x)){
+			NA_integer_
+		}else{
+			NA_real_
+		}
+	}
+}
+Any_narm <- function(x) {
+	ux <- unique(x[!is.na(x)])
+	if(length(ux)>0){
+		any(ux)
+	}else{
+		if(is.integer(x)){
+			NA_integer_
+		}else{
+			NA
+		}
+	}
+}
 
-# specify which variables to keep from CEPR sets A, B, and D
-keepVars <- c("age", 
-			  "educ", 
-			  "female", 
-			  "id",
-			  "race", 
-			  "month",
-			  "srefmon",
-			  "wpfinwgt", 
-			  "year", 
-			  "earnm",
-			  "occ", 
-			  "job","emonth","eyear",
-			  "esr","ersend","estlemp","rwkesr2","rmwkwjb","hours_m",
-			  "union",
-			  "shhadid",
-			  #"occ14", 
-			  "ind", "ind23",
-			  #"state", 
-			  "wave")
+#rootdir <- "G:/Research_Analyst/Eubanks/Occupation Switching/SIPP to go"
+rootdir <- "~/workspace/CVW/R/"
+datadir <- paste(rootdir, "InputDataDE", sep = "")
+outputdir <- paste(rootdir, "Results", sep = "")
+figuredir <- paste(rootdir, "Figures", sep = "")
+intermed_plots = T
+final_plots = F
+max_wavefreq = 1 # controls whether take max over months in wave or wave-frequency observation
+setwd(rootdir)
 
-# create vector of recession dates
-recDates <- as.Date(c("2001-02-01", "2001-12-01","2007-11-01", "2009-07-01"))
+############################## Read data, combine panels ##############################
 
-# get PCE data
-PCE <- readRDS("InputData/PCE.RData")
+# create list of variables to extract from the raw data
+toKeep <- c("year", 
+			"month",
+			# demographics
+			"age",
+			"educ",
+			"female",
+			"race","state",
+			# technical and weight variables
+			"id",
+			"wave",
+			"srefmon",
+			"wpfinwgt",
+			"epppnum",
+			# labor force status variables
+			"esr","rwkesr2",
+			# job variables
+			"job",
+			"eyear","emonth","syear","smonth",
+			"ersend","estlemp",
+			"occ","ind", #"ajbocc",
+			# income variables
+			"earnm","earn_imp","ui_a","ui_r","thearn","thtotinc"
+)
 
-# get crosswalk data
-occ90_soc2d <- readRDS(paste0(xwalkdir,"/occ90_soc2d.RData"))
-coc2000_occ1990 <- readRDS(paste0(xwalkdir,"/coc2000_occ1990.RData"))
-coc1990_occ1990 <- readRDS(paste0(xwalkdir,"/coc1990_occ1990.RData"))
+########## read in individual panels, extract variables, and subset sample
 
+setwd(datadir)
 
-CIC2002_CIC2000<- readRDS(paste0(xwalkdir,"/CIC2002_2_CIC2000.RData"))
-CIC2000_2_CIC1990<- readRDS(paste0(xwalkdir,"/CIC2000_2_CIC1990.RData"))
+# 1990 panel
+sipp90 <- read.dta13("./sippsets90ABDFG.dta", convert.factors = FALSE)
+sipp90 <- sipp90[toKeep]
+sipp90 <- subset(sipp90, !is.na(esr) & (age >= 16) & (age <= 65))
+sipp90 <- data.table(sipp90)
+sipp90$panel <- 1990
 
-# get unemployment data
+# 1991 panel
+sipp91 <- read.dta13("./sippsets91ABDFG.dta", convert.factors = FALSE)
+sipp91 <- sipp91[toKeep]
+sipp91 <- subset(sipp91, !is.na(esr) & (age >= 16) & (age <= 65))
+sipp91 <- data.table(sipp91)
+sipp91$panel <- 1991
 
-CPSunempRt <- readRDS("./InputData/CPSunempRt.RData")
-CPSunempRt$unrt <- CPSunempRt$unrt/100
+# 1992 panel
+sipp92 <- read.dta13("./sippsets92ABDFG.dta", convert.factors = FALSE)
+sipp92 <- sipp92[toKeep]
+sipp92 <- subset(sipp92, !is.na(esr) & (age >= 16) & (age <= 65))
+sipp92 <- data.table(sipp92)
+sipp92$panel <- 1992
 
-
-# 1996 panel --------------------------------------------------------------
-
-sipp96 <- read.dta("./Data/sippsets96ABD.dta", convert.factors = FALSE)
-sipp96 <- sipp96[keepVars]
-DT96 <- data.table(sipp96)
-rm(sipp96)
-
-# create date variable, remove year and month to save space
-DT96[, date := as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")]
-DT96[, c("year", "month") := NULL]
-
-# create recession indicator
-DT96[, recIndic := (date > recDates[1] & date < recDates[2]) | 
-     		   (date > recDates[3] & date < recDates[4])]
-
-#add unemployment
-DT96 <- merge(DT96, CPSunempRt, by = "date", all.x = TRUE)
-
-# add PCE data
-DT96 <- merge(DT96, PCE, by = "date", all.x = TRUE)
-
-# add soc2d codes
-DT96[, coc90 := occ]
-DT96 <- merge(DT96, coc1990_occ1990, by  = "coc90", all.x = TRUE)
-DT96 <- merge(DT96, occ90_soc2d, by  = "occ1990", all.x = TRUE)
-DT96[, c("occ","coc90") := NULL]
-setnames(DT96, "occ1990", "occ")
-
-#recode industry as ind23
-DT96[, ind:= ind23]
-DT96[, ind23:=NULL]
-
-#create panel ID
-DT96[, panelID:= 1996]
-
-saveRDS(DT96, file("./Data/DT96_1.RData"))
-rm(DT96)
-
-# 2001 panel --------------------------------------------------------------
-
-sipp01 <- read.dta("./Data/sippsets01ABD.dta", convert.factors = FALSE)
-sipp01 <- sipp01[keepVars]
-DT01 <- data.table(sipp01)
-rm(sipp01)
-
-# create date variable, remove year and month to save space
-DT01[, date := as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")]
-DT01[, c("year", "month") := NULL]
-
-# create recession indicator
-DT01[, recIndic := (date > recDates[1] & date < recDates[2]) | 
-     		   (date > recDates[3] & date < recDates[4])]
-
-# add PCE data
-DT01 <- merge(DT01, PCE, by = "date", all.x = TRUE)
-
-#add unemployment
-DT01 <- merge(DT01, CPSunempRt, by = "date", all.x = TRUE)
-
-# add soc2d codes
-DT01[, coc90 := occ]
-DT01 <- merge(DT01, coc1990_occ1990, by  = "coc90", all.x = TRUE)
-DT01 <- merge(DT01, occ90_soc2d, by  = "occ1990", all.x = TRUE)
-DT01[, c("occ","coc90") := NULL]
-setnames(DT01, "occ1990", "occ")
-#recode industry as ind23
-DT01[, ind:= ind23]
-DT01[, ind23:=NULL]
-#create panel ID
-DT01[, panelID:= 2001]
-
-saveRDS(DT01, file("./Data/DT01_1.RData"))
-rm(DT01)
-
-# 2004 panel --------------------------------------------------------------
-
-sipp04 <- read.dta("./Data/sippsets04ABD.dta", convert.factors = FALSE)
-sipp04 <- sipp04[keepVars]
-DT04 <- data.table(sipp04)
-rm(sipp04)
-
-# create date variable, remove year and month to save space
-DT04[, date := as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")]
-DT04[, c("year", "month") := NULL]
-
-# create recession indicator
-DT04[, recIndic := (date > recDates[1] & date < recDates[2]) | 
-     		   (date > recDates[3] & date < recDates[4])]
-
-# add PCE data
-DT04 <- merge(DT04, PCE, by = "date", all.x = TRUE)
-
-#add unemployment
-DT04 <- merge(DT04, CPSunempRt, by = "date", all.x = TRUE)
+# 1993 panel
+sipp93 <- read.dta13("./sippsets93ABDFG.dta", convert.factors = FALSE)
+sipp93 <- sipp93[toKeep]
+sipp93 <- subset(sipp93, !is.na(esr) & (age >= 16) & (age <= 65))
+sipp93 <- data.table(sipp93)
+sipp93$panel <- 1993
 
 
-# add soc2d codes
-DT04[, coc2000 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
-DT04 <- merge(DT04, coc2000_occ1990, by  = "coc2000", all.x = TRUE)
-DT04 <- merge(DT04, occ90_soc2d, by  = "occ1990", all.x = TRUE)
-DT04[, c("occ", "coc2000") := NULL]
-setnames(DT04, "occ1990", "occ")
+# 1996 panel
+sipp96 <- read.dta13("./sippsets96ABDFG.dta", convert.factors = FALSE)#read.dta("./sippsets96ABDFG.dta", convert.factors = FALSE)
+sipp96 <- sipp96[toKeep]
+sipp96 <- subset(sipp96, !is.na(esr) & (age >= 16) & (age <= 65))
+sipp96 <- data.table(sipp96)
+sipp96$panel <- 1996
 
-#add conversion to ind23
-#DT04 <- merge(DT04,CIC2002_CIC2000, by = "ind", all.x=T)
-#DT04[ , ind := CIC2000]
-DT04[ , ind := as.integer(ind/10)]
-DT04[ , ind23 := NULL]
-DT04 <- merge(DT04,CIC2000_2_CIC1990, by = "ind", all.x=T)
-DT04[ , ind := ind23]
-DT04[, ind23:=NULL]
+# 2001 panel
+sipp01 <- read.dta13("./sippsets01ABDFG.dta", convert.factors = FALSE)
+sipp01 <- sipp01[toKeep]
+sipp01 <- subset(sipp01, !is.na(esr) & (age >= 16) & (age <= 65))
+sipp01 <- data.table(sipp01)
+sipp01$panel <- 2001
 
-#create panel ID
-DT04[, panelID:= 2004]
+# 2004 panel
+sipp04 <- read.dta13("./sippsets04ABDFG.dta", convert.factors = FALSE)
+sipp04 <- sipp04[toKeep]
+sipp04 <- subset(sipp04, !is.na(esr) & (age >= 16) & (age <= 65) )
+sipp04 <- data.table(sipp04)
+sipp04$panel <- 2004
 
-saveRDS(DT04, file("./Data/DT04_1.RData"))
-rm(DT04)
+# 2008 panel
+sipp08 <- read.dta13("./sippsets08ABDFG.dta", convert.factors = FALSE)
+sipp08 <- sipp08[toKeep]
+sipp08 <- subset(sipp08, !is.na(esr) & (age >= 16) & (age <= 65))
+sipp08 <- data.table(sipp08)
+sipp08$panel <- 2008
 
-# 2008 panel --------------------------------------------------------------
+rm(toKeep)
 
-sipp08 <- read.dta("./Data/sippsets08ABD.dta", convert.factors = FALSE)
-sipp08 <- sipp08[keepVars]
-DT08 <- data.table(sipp08)
-rm(sipp08)
 
-# create date variable, remove year and month to save space
-DT08[, date := as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")]
-DT08[, c("year", "month") := NULL]
+########## add soc2d codes using crosswalks
 
-# create recession indicator
-DT08[, recIndic := (date > recDates[1] & date < recDates[2]) | 
-     		   (date > recDates[3] & date < recDates[4])]
+setwd(datadir)
+occ1990_soc2d <- readRDS("./occ90_soc2d.RData")
+coc2000_occ1990 <- readRDS("./coc2000_occ1990.RData")
+coc1990_occ1990 <- readRDS("./coc1990_occ1990.RData")
+coc1980_occ1990 <- readRDS("./coc1980_occ1990.RData")
 
-# add PCE data
-DT08 <- merge(DT08, PCE, by = "date", all.x = TRUE)
+# 1990 panel
+sipp90[, coc:= occ]
+sipp90[, coc80 := occ]
+sipp90 <- merge(sipp90, coc1980_occ1990, by  = "coc80", all.x = TRUE)
+sipp90[ occ1990>=999 , occ1990:=NA ]
+sipp90 <- merge(sipp90, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
+sipp90[, c("occ", "coc80") := NULL]
+setnames(sipp90, "occ1990", "occ")
 
-#add unemployment
-DT08 <- merge(DT08, CPSunempRt, by = "date", all.x = TRUE)
+# 1991 panel
+sipp91[, coc:= occ]
+sipp91[, coc80 := occ]
+sipp91 <- merge(sipp91, coc1980_occ1990, by  = "coc80", all.x = TRUE)
+sipp91[ occ1990>=999 , occ1990:=NA ]
+sipp91 <- merge(sipp91, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
+sipp91[, c("occ", "coc80") := NULL]
+setnames(sipp91, "occ1990", "occ")
 
-# add soc2d codes
-DT08[, coc2000 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
-DT08 <- merge(DT08, coc2000_occ1990, by  = "coc2000", all.x = TRUE)
-DT08 <- merge(DT08, occ90_soc2d, by  = "occ1990", all.x = TRUE)
-DT08[, c("occ", "coc2000") := NULL]
-setnames(DT08, "occ1990", "occ")
+# 1992 panel
+sipp92[, coc:= occ]
+sipp92[, coc80 := occ]
+sipp92 <- merge(sipp92, coc1980_occ1990, by  = "coc80", all.x = TRUE)
+sipp92[ occ1990>=999 , occ1990:=NA ]
+sipp92 <- merge(sipp92, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
+sipp92[, c("occ", "coc80") := NULL]
+setnames(sipp92, "occ1990", "occ")
 
-#add conversion to ind23
-#DT08 <- merge(DT08,CIC2002_CIC2000, by = "ind", all.x=T)
-#DT08[ , ind := CIC2000]
-DT08[ , ind := as.integer(ind/10)]
-DT08[ , ind23 := NULL]
-DT08 <- merge(DT08,CIC2000_2_CIC1990, by = "ind", all.x=T)
-DT08[ , ind := ind23]
-DT08[, ind23:=NULL]
+# 1993 panel
+sipp93[, coc:= occ]
+sipp93[, coc80 := occ]
+sipp93 <- merge(sipp93, coc1980_occ1990, by  = "coc80", all.x = TRUE)
+sipp93 <- merge(sipp93, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
+sipp93[, c("occ", "coc80") := NULL]
+setnames(sipp93, "occ1990", "occ")
 
-#create panel ID
-DT08[, panelID:= 2008]
+# 1996 panel
+sipp96[, coc:= occ]
+sipp96[, coc90 := occ]
+sipp96 <- merge(sipp96, coc1990_occ1990, by  = "coc90", all.x = TRUE)
+sipp96 <- merge(sipp96, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
+sipp96[, c("occ", "coc90") := NULL]
+setnames(sipp96, "occ1990", "occ")
 
-saveRDS(DT08, file("./Data/DT08_1.RData"))
-rm(list=ls())
+# 2001 panel
+sipp01[, coc:= occ]
+sipp01[, coc90 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
+sipp01 <- merge(sipp01, coc1990_occ1990, by  = "coc90", all.x = TRUE)
+sipp01 <- merge(sipp01, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
+sipp01[, c("occ", "coc90") := NULL]
+setnames(sipp01, "occ1990", "occ")
+
+# 2004 panel
+sipp04[, coc:= occ]
+sipp04[, coc2000 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
+sipp04 <- merge(sipp04, coc2000_occ1990, by  = "coc2000", all.x = TRUE)
+sipp04 <- merge(sipp04, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
+sipp04[, c("occ", "coc2000") := NULL]
+setnames(sipp04, "occ1990", "occ")
+
+# 2008 panel
+sipp08[, coc:=occ]
+sipp08[, coc2000 := as.integer(ifelse(occ >= 1000,  occ/10, occ))]
+sipp08 <- merge(sipp08, coc2000_occ1990, by  = "coc2000", all.x = TRUE)
+sipp08 <- merge(sipp08, occ1990_soc2d, by  = "occ1990", all.x = TRUE)
+sipp08[, c("occ", "coc2000") := NULL]
+setnames(sipp08, "occ1990", "occ")
+
+rm(list=c("coc1990_occ1990", "coc2000_occ1990", "occ1990_soc2d"))
+
+
+########## combine panels
+
+sipp <- rbind(sipp90,sipp91,sipp92,sipp93,sipp96, sipp01, sipp04, sipp08)
+rm(list=c("sipp90","sipp91","sipp92","sipp93","sipp96", "sipp01", "sipp04", "sipp08"))
+sipp <- data.table(sipp)
+sipp$panel <- as.factor(sipp$panel)
+
+### convert some types to save space
+sipp[ , occ:=as.integer(occ)]
+sipp[ , soc2d:=as.integer(soc2d)]
+sipp[ , educ:=as.integer(educ)]
+sipp[ , state:=as.integer(state)]
+sipp[ , female:= as.logical(female)]
+
+
+
+# save intermediate result
+#setwd(outputdir)
+saveRDS(sipp, paste0(outputdir,"/sipp.RData"))
+setwd(rootdir)
