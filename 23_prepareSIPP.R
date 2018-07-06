@@ -306,6 +306,8 @@ sipp[ (EU|EE) , switched    := switchedInd==T & switchedOcc==T]
 # plot transitions time series for sanity check
 if(intermed_plots==T){
 	#library(tidyquant)
+	sipp[ , panelmaxmis := max(mis),by=panel]
+	
 	EU <- sipp[lfstat==1, .(EU = weighted.mean(EU, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(EU, aes(date, EU, color = panel, group = panel)) +
 		geom_point() + theme_bw()+
@@ -320,7 +322,7 @@ if(intermed_plots==T){
 		geom_smooth(se=F,span=.1)+ xlab("") + ylab("UE monthly rate")+theme_bw()
 	ggsave(filename=paste0(figuredir,"/UEmo.eps"),height= 5,width=10)
 	
-	EE <- sipp[lfstat==1 & next.lfstat==1 & wave>2 , .(EE = weighted.mean( EE==T, wpfinwgt, na.rm = TRUE)), by = list(date)]
+	EE <- sipp[lfstat==1 & next.lfstat==1 & wave>2 & mis<panelmaxmis-4, .(EE = weighted.mean( EE==T, wpfinwgt, na.rm = TRUE)), by = list(date)]
 	ggplot(EE, aes(date, EE)) +
 		geom_point() +
 		geom_smooth(se=F,span=.1) +xlab("")+ ylab("EE monthly rate")+theme_bw()
@@ -360,6 +362,7 @@ if(intermed_plots==T){
 	ggsave(filename=paste0(figuredir,"/swEEmo.eps"),height= 5,width=10)
 	
 	rm(list=c("EU", "UE", "EE","EUsw","EEsw"))
+	sipp[ , panelmaxmis := NULL]
 }
 
 ########## inflation, unemployment, and recession ----------------------------
@@ -471,30 +474,38 @@ sipp[ , UEmon := max(UEmon), by=list(id,wave)]
 sipp[ , UE_max := any(NE,na.rm=T), by=list(id,wave)]
 sipp[ , EU_max := any(EU,na.rm=T), by=list(id,wave)]
 sipp[ , EE_max := any(EE,na.rm=T), by=list(id,wave)]
-sipp[ , switchedOcc_max := Any_narm(switchedOcc), by=list(id,wave)]
-sipp[ , switched_max := Any_narm(switched), by=list(id,wave)]
-sipp[ , matched_EUUE_max := any(matched_EUUE,na.rm = T), by=list(id,wave)]
+sipp[ , switchedOcc_max  := any(switchedOcc,na.rm=F), by=list(id,wave)]
+sipp[ , switchedInd_max  := any(switchedInd,na.rm=F), by=list(id,wave)]
+sipp[ , switched_max     := any(switched,na.rm=F), by=list(id,wave)]
+sipp[ , matched_EUUE_max := any(matched_EUUE,na.rm = F), by=list(id,wave)]
 
 #pick industry/occupation to be consistent with month-level switching established above.
-sipp[ EE==T & EEmon==1, occ_wave := l1.occ ]
-sipp[ EE==T & EEmon==2, occ_wave := l2.occ ]
-sipp[ EE==T & EEmon==3, occ_wave := l3.occ ]
-sipp[ EE==T & EEmon==4, occ_wave := l4.occ ]
+# sipp[ EE==T & EEmon==1, occ_wave := l1.occ ]
+# sipp[ EE==T & EEmon==2, occ_wave := l2.occ ]
+# sipp[ EE==T & EEmon==3, occ_wave := l3.occ ]
+# sipp[ EE==T & EEmon==4, occ_wave := l4.occ ]
+# 
+# sipp[ EE==T & EEmon==1, ind_wave := l1.ind ]
+# sipp[ EE==T & EEmon==2, ind_wave := l2.ind ]
+# sipp[ EE==T & EEmon==3, ind_wave := l3.ind ]
+# sipp[ EE==T & EEmon==4, ind_wave := l4.ind ]
+# # switches by unemployment
+# sipp[ EU==T & EUmon==1, occ_wave := l1.occ ]
+# sipp[ EU==T & EUmon==2, occ_wave := l2.occ ]
+# sipp[ EU==T & EUmon==3, occ_wave := l3.occ ]
+# sipp[ EU==T & EUmon==4, occ_wave := l4.occ ]
+# 
+# sipp[ EU==T & EUmon==1, ind_wave := l1.ind ]
+# sipp[ EU==T & EUmon==2, ind_wave := l2.ind ]
+# sipp[ EU==T & EUmon==3, ind_wave := l3.ind ]
+# sipp[ EU==T & EUmon==4, ind_wave := l4.ind ]
 
-sipp[ EE==T & EEmon==1, ind_wave := l1.ind ]
-sipp[ EE==T & EEmon==2, ind_wave := l2.ind ]
-sipp[ EE==T & EEmon==3, ind_wave := l3.ind ]
-sipp[ EE==T & EEmon==4, ind_wave := l4.ind ]
-# switches by unemployment
-sipp[ EU==T & EUmon==1, occ_wave := l1.occ ]
-sipp[ EU==T & EUmon==2, occ_wave := l2.occ ]
-sipp[ EU==T & EUmon==3, occ_wave := l3.occ ]
-sipp[ EU==T & EUmon==4, occ_wave := l4.occ ]
-
-sipp[ EU==T & EUmon==1, ind_wave := l1.ind ]
-sipp[ EU==T & EUmon==2, ind_wave := l2.ind ]
-sipp[ EU==T & EUmon==3, ind_wave := l3.ind ]
-sipp[ EU==T & EUmon==4, ind_wave := l4.ind ]
+sipp[ EU==T, occ_wave:= occ]
+sipp[ UE==T, occ_wave:= next.occ]
+sipp[ EE==T, occ_wave:= occ]
+sipp[ EU==T, ind_wave:= occ]
+sipp[ UE==T, ind_wave:= next.ind]
+sipp[ EE==T, ind_wave:= occ]
 
 sipp[ , c("l1.ind","l2.ind","l3.ind","l4.ind",
 		  "n1.ind","n2.ind","n3.ind","n4.ind",
@@ -510,7 +521,7 @@ sipp[ !(UE_max==T|EU_max==T|EE_max==T) & seam==T, occ_wave := occ]
 sipp[ !(UE_max==T|EU_max==T|EE_max==T) & seam==T, ind_wave := ind]
 
 
-sipp[ , jobchng_max := any(jobchng,na.rm=T), by=list(id,wave)]
+sipp[ , jobchng_max := any(jobchng==T & srefmon<4,na.rm=T), by=list(id,wave)]
 
 
 #**************************************************************
@@ -527,6 +538,8 @@ sipp_wave[ next.wave == wave+1, next.lfstat_wave := shift(lfstat_wave,type="lead
 sipp_wave[ last.wave == wave-1, last.lfstat_wave := shift(lfstat_wave,type="lag") , by=id]
 sipp_wave[ next.wave == wave+1, next.job_wave    := shift(job_wave,type="lead")   , by=id]
 sipp_wave[ last.wave == wave-1, last.job_wave    := shift(job_wave,type="lag")    , by=id]
+sipp_wave[ next.wave == wave+1, next.jobchng_max := shift(jobchng_max,type="lead")   , by=id]
+sipp_wave[ last.wave == wave-1, last.jobchng_max := shift(jobchng_max,type="lag")    , by=id]
 sipp_wave[ next.wave == wave+1, next.occ_wave    := shift(occ_wave,type="lead")   , by=id]
 sipp_wave[ last.wave == wave-1, last.occ_wave    := shift(occ_wave,type="lag")    , by=id]
 sipp_wave[ next.wave == wave+1, next.ind_wave    := shift(ind_wave,type="lead")   , by=id]
@@ -581,15 +594,15 @@ sipp_wave[ (EU_wave==T|lfstat_wave>=2) , max.unempdur_wave:= Max_narm(max.unempd
 #flag "stable" employment before and after
 sipp_wave[ wave-1 == last.wave, last.EE_wave := shift(EE_wave            ), by = id]
 sipp_wave[ wave+1 == next.wave, next.EE_wave := shift(EE_wave,type="lead"), by = id]
-sipp_wave[                    , last.stable_emp := last.lfstat_wave==1 & (last.EE_wave == F | shift(EEmon)==4)]
-sipp_wave[                    , next.stable_emp := next.lfstat_wave==1 & (next.EE_wave == F | shift(EEmon,type="lead")==1)]
+sipp_wave[                    , last.stable_emp := last.lfstat_wave==1 & last.jobchng_max==F & ((last.EE_wave == F) | shift(EEmon)==4)]
+sipp_wave[                    , next.stable_emp := next.lfstat_wave==1 & next.jobchng_max==F & ((next.EE_wave == F) | shift(EEmon,type="lead")==1)]
 sipp_wave[lfstat_wave>=2 & UE_wave==F, next.stable_emp:=NA] 
 
 #fill in occupation over u spells and compute switching
 
 sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & is.na(occ_wave) ,occ_wave:=999] #don't fill in missing EU's 
 sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & is.na(ind_wave) ,ind_wave:=999] #don't fill in missing EU's 
-sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & is.na(next.stable_emp) ,next.stable_emp:=999] 
+
 
 sipp_wave[ ,occ_wave:=na.locf(occ_wave,na.rm = F,fromLast = T), by=id]
 sipp_wave[ ,ind_wave:=na.locf(ind_wave,na.rm = F,fromLast = T), by=id]
@@ -598,34 +611,38 @@ sipp_wave[ ,next.stable_emp:=na.locf(next.stable_emp,na.rm = F,fromLast = T), by
 sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & occ_wave>=990 ,occ_wave:=NA] 
 sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & ind_wave>=990 ,ind_wave:=NA] 
 
+sipp_wave[ , stable_emp := lfstat_wave==1 & EE_wave==F & EU_wave==F & jobchng_max==F]
 
 if(max_wavefreq==2){
 	sipp_wave[ wave+1 == next.wave, next.occ_wave := shift(occ_wave,type="lead") , by=id] #recompute now that I've filled back U-spells
 	sipp_wave[ wave-1 == last.wave, last.occ_wave := shift(occ_wave,type="lag" ) , by=id] #recompute now that I've filled back U-spells
 	
 	#sipp_wave[ EU_wave==T & EUmon<seammon , switchedOcc_wave := last.occ_wave != next.occ_wave] # was taking last occupation, but I'm already doing at that at monthly
-	sipp_wave[ EU_wave==T & EUmon <seammon  , switchedOcc_wave := occ_wave != next.occ_wave]
-	sipp_wave[ EU_wave==T & EUmon==seammon  , switchedOcc_wave := occ_wave != next.occ_wave]
+	sipp_wave[ EU_wave==T & EUmon <seammon & last.stable_emp==T, switchedOcc_wave := occ_wave != next.occ_wave]
+	sipp_wave[ EU_wave==T & EUmon==seammon & last.stable_emp==T, switchedOcc_wave := occ_wave != next.occ_wave]
 	
-	sipp_wave[ EE_wave==T & EEmon<seammon  , switchedOcc_wave := occ_wave != next.occ_wave]
-	sipp_wave[ EE_wave==T & EEmon==seammon , switchedOcc_wave := occ_wave != next.occ_wave]
+	sipp_wave[ EE_wave==T & EEmon<seammon  & last.stable_emp==T & next.stable_emp==T, switchedOcc_wave := last.occ_wave != next.occ_wave]
+	sipp_wave[ EE_wave==T & EEmon==seammon & last.stable_emp==T & next.stable_emp==T, switchedOcc_wave := last.occ_wave != next.occ_wave]
 	
 	
 	sipp_wave[ wave+1 == next.wave, next.ind_wave := shift(ind_wave,type="lead") , by=id]
 	sipp_wave[ wave-1 == last.wave, last.ind_wave := shift(ind_wave,type="lag" ) , by=id] #recompute now that I've filled back U-spells
-	sipp_wave[ EU_wave==T & EUmon<seammon  & stable_emp==T, switchedInd_wave := ind_wave != next.ind_wave]
-	sipp_wave[ EU_wave==T & EUmon==seammon & stable_emp==T, switchedInd_wave := ind_wave != next.ind_wave]
-	sipp_wave[ EE_wave==T & EEmon<seammon  & stable_emp==T, switchedInd_wave := last.ind_wave != next.ind_wave]
-	sipp_wave[ EE_wave==T & EEmon==seammon & stable_emp==T, switchedInd_wave := last.ind_wave != next.ind_wave]
+	sipp_wave[ EU_wave==T & EUmon<seammon  & last.stable_emp==T, switchedInd_wave := ind_wave != next.ind_wave]
+	sipp_wave[ EU_wave==T & EUmon==seammon & last.stable_emp==T, switchedInd_wave := ind_wave != next.ind_wave]
+	sipp_wave[ EE_wave==T & EEmon<seammon  & last.stable_emp==T, switchedInd_wave := last.ind_wave != next.ind_wave]
+	sipp_wave[ EE_wave==T & EEmon==seammon & last.stable_emp==T, switchedInd_wave := last.ind_wave != next.ind_wave]
 }else{
 	sipp_wave[ , switchedOcc_wave := switchedOcc_max]
 	sipp_wave[ , switchedInd_wave := switchedInd_max]
+	sipp_wave[ , switched_wave    := switched_max]
 }
 sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T), switchedOcc_wave := occ_wave != next.occ_wave]
 sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T), switchedInd_wave := ind_wave != next.ind_wave]
+sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T), switched_wave    := switchedInd_wave & switchedOcc_wave]
 
 sipp_wave[ , next.switchedOcc_wave:= shift(switchedOcc_wave,type="lead"),by=id]
 sipp_wave[ , next.switchedInd_wave:= shift(switchedInd_wave,type="lead"),by=id]
+sipp_wave[ , next.switched_wave:= shift(switched_wave,type="lead"),by=id]
 
 #compute matched EUUE by ustintid ---- this will replace the one taken from monthly, level
 sipp_wave[ UE_wave==T, wis_UE_wave:= wis]
