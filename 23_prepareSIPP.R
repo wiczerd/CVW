@@ -643,6 +643,8 @@ sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wav
 sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T), switchedInd_wave := ind_wave != next.ind_wave]
 sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T), switched_wave    := switchedInd_wave & switchedOcc_wave]
 
+sipp_wave[ switched_wave ==F & (switchedOcc_wave ==T | switchedInd_wave==T), switched_wave:=NA]
+
 sipp_wave[ , next.switchedOcc_wave:= shift(switchedOcc_wave,type="lead"),by=id]
 sipp_wave[ , next.switchedInd_wave:= shift(switchedInd_wave,type="lead"),by=id]
 sipp_wave[ , next.switched_wave:= shift(switched_wave,type="lead"),by=id]
@@ -749,17 +751,17 @@ sipp_wave[is.na(ustintid_wave)|ustintid_wave==0 , recIndic_EU := recIndic_wave]
 #save intermediate result:
 saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
 
-sipp_wave <- subset(sipp_wave, select=c("next.lfstat_wave","next.job_wave","job_wave","next.occ_wave","occ_wave","occL","occD","ind_wave",
+sipp_wave <- subset(sipp_wave, select=c("job_wave","occ_wave","occL","occD","ind_wave","next.stable_emp","last.stable_emp",
 										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","midEE","midEU","midUE","EEmon","UEmon","EUmon","ustintid_wave",
-										"recIndic_stint","recIndic2_stint","recIndic_EU","recIndic_UE","max.unempdur_wave","switchedOcc_wave","switchedInd_wave","wave","id"))
+										"recIndic_stint","recIndic2_stint","recIndic_EU","recIndic_UE","max.unempdur_wave","switched_wave","switchedOcc_wave","switchedInd_wave","wave","id"))
 
 sipp[ , c("EEmon","EUmon","UEmon","max.unempdur_wave","occ_wave","ind_wave"):=NULL]
 
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
-sipp[ , c("esr","Estart","Estart_wave","Eend","Eend_wave","emonth","EE_max","EU_max","UE_max","next.Estart","next.job","next.job_wave","matched_EUUE_max","switchedOcc_max",
-		  "coc","last.lfstat","last.occ","JCstart","JCstart_any","JCend","JCend_any"):=NULL]
+sipp[ , c("esr","estlemp","Estart","Estart_wave","Eend","Eend_wave","emonth","EE_max","EU_max","UE_max","matched_EUUE_max","switchedOcc_max",
+		  "coc","last.EE","last.lfstat","last.occ","next.occ","next.Estart","next.job","next.ind","JCstart","JCstart_any","JCend","JCend_any"):=NULL]
 rm(filtered.unrate)
 
 sipp[ EU ==T, EUmis:= mis ]
