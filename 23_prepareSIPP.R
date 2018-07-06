@@ -213,7 +213,7 @@ sipp[lfstat >= 2, NE := (next.lfstat == 1)]
 sipp[lfstat == 1 & next.lfstat==1, EE := (Eend==T & JCend_any==T) | (Estart==T & JCstart_any==T) ]
 #take out consecutive EEs (this can happen with this definition) and only use the first
 sipp[ , last.EE:=shift(EE), by=id]
-sipp[ EE==T &last.EE==T, EE=F]
+sipp[ EE==T & last.EE==T, EE:=F]
 
 #only take job changes for pre-1993
 #sipp[ as.integer(panel) <=4 & EE==T & job==next.job, EE:=F]
@@ -596,7 +596,7 @@ sipp_wave[ wave-1 == last.wave, last.EE_wave := shift(EE_wave            ), by =
 sipp_wave[ wave+1 == next.wave, next.EE_wave := shift(EE_wave,type="lead"), by = id]
 sipp_wave[                    , last.stable_emp := last.lfstat_wave==1 & last.jobchng_max==F & ((last.EE_wave == F) | shift(EEmon)==4)]
 sipp_wave[                    , next.stable_emp := next.lfstat_wave==1 & next.jobchng_max==F & ((next.EE_wave == F) | shift(EEmon,type="lead")==1)]
-sipp_wave[lfstat_wave>=2 & UE_wave==F, next.stable_emp:=NA] 
+sipp_wave[(lfstat_wave>=2 | EU_wave==T) & UE_wave==F, next.stable_emp:=NA] 
 
 #fill in occupation over u spells and compute switching
 
@@ -632,9 +632,12 @@ if(max_wavefreq==2){
 	sipp_wave[ EE_wave==T & EEmon<seammon  & last.stable_emp==T, switchedInd_wave := last.ind_wave != next.ind_wave]
 	sipp_wave[ EE_wave==T & EEmon==seammon & last.stable_emp==T, switchedInd_wave := last.ind_wave != next.ind_wave]
 }else{
-	sipp_wave[ , switchedOcc_wave := switchedOcc_max]
-	sipp_wave[ , switchedInd_wave := switchedInd_max]
-	sipp_wave[ , switched_wave    := switched_max]
+	sipp_wave[ EE_wave==T & next.stable_emp & last.stable_emp, switchedOcc_wave := switchedOcc_max]
+	sipp_wave[ EE_wave==T & next.stable_emp & last.stable_emp, switchedInd_wave := switchedInd_max]
+	sipp_wave[ EE_wave==T & next.stable_emp & last.stable_emp, switched_wave    := switched_max]
+	sipp_wave[ EU_wave==T & next.stable_emp & last.stable_emp, switchedOcc_wave := switchedOcc_max]
+	sipp_wave[ EU_wave==T & next.stable_emp & last.stable_emp, switchedInd_wave := switchedInd_max]
+	sipp_wave[ EU_wave==T & next.stable_emp & last.stable_emp, switched_wave    := switched_max]
 }
 sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T), switchedOcc_wave := occ_wave != next.occ_wave]
 sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T), switchedInd_wave := ind_wave != next.ind_wave]
