@@ -231,13 +231,18 @@ sipp[ EU==T, ustintid:= next.ustintid]
 sipp[ , next.ustintid:=NULL]
 
 #match NE and EU:
-sipp[NE==T, mis_NE:=mis]
-sipp[EU==T, mis_EU:=mis]
-sipp[ ustintid>0, mis_NE := Max_narm(mis_NE), by =list(id,ustintid)]
-sipp[ ustintid>0, mis_EU := Min_narm(mis_EU), by =list(id,ustintid)]
-sipp[ ustintid>0, matched_EUUE := (mis_EU<=mis_NE) ]
-sipp[ ustintid>0 & is.na(matched_EUUE)==T, matched_EUUE:=F ]
-sipp[, c("mis_NE","mis_EU"):=NULL]
+sipp[NE==T     , exist_NE:=1]
+sipp[ lfstat==1 & !EU==T, exist_NE:=999]
+sipp[EU==T     , exist_EU:=1]
+sipp[ lfstat==1 & !NE==T, exist_EU:=999]
+sipp[          , exist_NE:=na.locf(exist_NE,fromLast=T,na.rm=F), by = id]
+sipp[          , exist_EU:=na.locf(exist_EU,na.rm=F), by = id]
+
+sipp[NE==T, matched_NE := (exist_EU==1) ]
+sipp[EU==T, matched_EU := (exist_NE==1) ]
+sipp[ ustintid>0 , mtot := sum(matched_NE==T,na.rm=T)+sum(matched_EU==T,na.rm=T), by = list(id, ustintid)]
+sipp[ ustintid>0 , matched_EUUE:= mtot==2 ]
+sipp[, c("exist_NE","exist_EU","mtot","matched_NE","matched_EU"):=NULL]
 
 #month of the transition:
 sipp[ EE==T, EEmon := srefmon]
