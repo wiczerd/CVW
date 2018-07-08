@@ -44,7 +44,7 @@ recallRecodeJobID <- function(DF){
 	DFseam[ , next.jobpos_wave := shift(jobpos_wave, type="lead"),by=id]
 	DFseam[ ustintid_wave>0 & UE_wave!=T, next.jobpos_wave:=NA]
 	DFseam[ ustintid_wave>0 , next.jobpos_wave:=Mode(next.jobpos_wave), by=list(id,ustintid_wave)]
-	DFseam[ EU_wave==T, recalled_wave := jobpos_wave== next.jobpos_wave]
+	DFseam[ EU_wave==T & matched_EUUE_max ==T , recalled_wave := jobpos_wave== next.jobpos_wave]
 	DFseam[ ustintid_wave>0, recalled_wave := any(recalled_wave,na.rm = T), by=list(id,ustintid_wave)]
 	DFseam[ ustintid_wave>0 & is.na(recalled_wave), recalled_wave := F]
 
@@ -59,7 +59,7 @@ recallRecodeJobID <- function(DF){
 	DF[EU_wave==T & recalled_wave==T, EU_wave:=NA]
 	DF[UE_wave==T & recalled_wave==T, UE_wave:=NA]
 	DF[lfstat_wave>=2 & recalled_wave==T, lfstat_wave:=NA]
-	return(DF)
+	#return(DF)
 }
 
 recallRecodeShorTerm <- function(DF){
@@ -107,6 +107,10 @@ recallRecodeShorTerm <- function(DF){
 }
 
 DTall <- readRDS(paste0(datadir,"/DTall_5.RData"))
+
+if(with(DTall,exists("matched_EUUE_max"))==F){
+	DTall[ , matched_EUUE_max:= any(matched_EUUE,na.rm=F), by=list(id,wave)]
+}
 # sum weights for UE, EU, and EE
 UEreadweight <- DTall[UE==T & !is.na(wagechange_month) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
 EUreadweight <- DTall[EU==T & !is.na(wagechange_month) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
@@ -118,7 +122,27 @@ EEreadweight_wave <- DTall[EE_wave==T & !is.na(wagechange_wave), sum(wpfinwgt, n
 
 if( recall_adj == T){
 	
-	DTall <-recallRecodeJobID(DTall)
+	DFseam <- DTall[seam==T, ]
+	DFseam[job_wave> 0 , jobpos_wave := job_wave]
+	DFseam[ , next.jobpos_wave := shift(jobpos_wave, type="lead"),by=id]
+	DFseam[ ustintid_wave>0 & UE_wave!=T, next.jobpos_wave:=NA]
+	DFseam[ ustintid_wave>0 , next.jobpos_wave:=Mode(next.jobpos_wave), by=list(id,ustintid_wave)]
+	DFseam[ EU_wave==T & matched_EUUE_max ==T , recalled_wave := jobpos_wave== next.jobpos_wave]
+	DFseam[ ustintid_wave>0, recalled_wave := any(recalled_wave,na.rm = T), by=list(id,ustintid_wave)]
+	DFseam[ ustintid_wave>0 & is.na(recalled_wave), recalled_wave := F]
+	
+	DFseam <- subset(DFseam, select= c("recalled_wave","id","wave"))
+	
+	#DTall<- merge(DTall,DFseam,by=c("id","wave"),all.x=T)
+	DTall <- DTall[DFseam,on=c("id","wave")]
+	DTall[is.finite(ustintid) &(EU==T | lfstat>=2 ), recalled:=any(recalled_wave) , by=list(id,ustintid)]
+	DTall[EU==T & recalled==T, EU:=NA]
+	DTall[UE==T & recalled==T, UE:=NA]
+	DTall[lfstat>=2 & recalled==T, lfstat:=NA]
+	
+	DTall[EU_wave==T & recalled_wave==T, EU_wave:=NA]
+	DTall[UE_wave==T & recalled_wave==T, UE_wave:=NA]
+	DTall[lfstat_wave>=2 & recalled_wave==T, lfstat_wave:=NA]
 	
 	UEnorecallweight <- DTall[UE==T & !is.na(wagechange_month) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
 	EUnorecallweight <- DTall[EU==T & !is.na(wagechange_month) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]

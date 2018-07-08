@@ -232,9 +232,9 @@ sipp[ , next.ustintid:=NULL]
 
 #match NE and EU:
 sipp[NE==T     , exist_NE:=1]
-sipp[ lfstat==1 & !EU==T, exist_NE:=999]
+sipp[ lfstat==1 & !(EU==T|NE==T), exist_NE:=999]
 sipp[EU==T     , exist_EU:=1]
-sipp[ lfstat==1 & !NE==T, exist_EU:=999]
+sipp[ lfstat==1 & !(NE==T|EU==T), exist_EU:=999]
 sipp[          , exist_NE:=na.locf(exist_NE,fromLast=T,na.rm=F), by = id]
 sipp[          , exist_EU:=na.locf(exist_EU,na.rm=F), by = id]
 
@@ -655,14 +655,21 @@ sipp_wave[ , next.switchedInd_wave:= shift(switchedInd_wave,type="lead"),by=id]
 sipp_wave[ , next.switched_wave:= shift(switched_wave,type="lead"),by=id]
 
 #compute matched EUUE by ustintid ---- this will replace the one taken from monthly, level
-sipp_wave[ UE_wave==T, wis_UE_wave:= wis]
-sipp_wave[ EU_wave==T, wis_EU_wave:= wis]
-sipp_wave[ ustintid_wave>0, wis_UE_wave := Max_narm(wis_UE_wave), by=list(id,ustintid_wave)]
-sipp_wave[ ustintid_wave>0, wis_EU_wave := Min_narm(wis_EU_wave), by=list(id,ustintid_wave)]
-sipp_wave[ ustintid_wave>0, any_EU_wave := any(EU_wave,na.rm=T), by=list(id,ustintid_wave)]
-sipp_wave[ ustintid_wave>0, any_UE_wave := any(UE_wave,na.rm=T), by=list(id,ustintid_wave)]
-sipp_wave[ ustintid_wave>0, matched_EUUE_wave := wis_EU_wave<=wis_UE_wave]
-sipp_wave[ is.na(matched_EUUE_wave), matched_EUUE_wave:= F]
+
+sipp_wave[UE_wave==T     , exist_NE:=1]
+sipp_wave[lfstat_wave==1 & !(EU_wave==T|UE_wave==T), exist_NE:=999]
+sipp_wave[EU_wave==T     , exist_EU:=1]
+sipp_wave[ lfstat_wave==1 & !(UE_wave==T|EU_wave==T), exist_EU:=999]
+#sipp_wave[ UE_wave==T & EU_wave==T & EUmon<UEmon, exist_NE:=1]
+#sipp_wave[ UE_wave==T & EU_wave==T & EUmon<UEmon, exist_EU:=1]
+sipp_wave[          , exist_NE:=na.locf(exist_NE,fromLast=T,na.rm=F), by = id]
+sipp_wave[          , exist_EU:=na.locf(exist_EU,na.rm=F), by = id]
+
+sipp_wave[UE_wave==T, matched_NE := (exist_EU==1) ]
+sipp_wave[EU_wave==T, matched_EU := (exist_NE==1) ]
+sipp_wave[ ustintid_wave>0 , mtot := sum(matched_NE==T,na.rm=T)+sum(matched_EU==T,na.rm=T), by = list(id, ustintid_wave)]
+sipp_wave[ ustintid_wave>0 , matched_EUUE_wave:= mtot==2 ]
+sipp_wave[, c("exist_NE","exist_EU","mtot","matched_NE","matched_EU"):=NULL]
 
 
 #correct for w/in wave transitions
@@ -765,7 +772,7 @@ sipp[ , c("EEmon","EUmon","UEmon","max.unempdur_wave","occ_wave","ind_wave"):=NU
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
-sipp[ , c("esr","estlemp","Estart","Estart_wave","Eend","Eend_wave","emonth","EE_max","EU_max","UE_max","matched_EUUE_max","switchedOcc_max",
+sipp[ , c("esr","estlemp","Estart","Estart_wave","Eend","Eend_wave","emonth","EE_max","EU_max","UE_max","switchedOcc_max",
 		  "coc","last.EE","last.lfstat","last.occ","next.occ","next.Estart","next.job","next.ind","JCstart","JCstart_any","JCend","JCend_any"):=NULL]
 rm(filtered.unrate)
 
