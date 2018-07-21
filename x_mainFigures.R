@@ -78,12 +78,15 @@ stackedDist <- function( DT,gg,wc,pwc ){
 
 stackedDens <- function( DT,gg,wc ){
 	Ng <- DT[ is.finite(eval(as.name(gg)))==T , length(unique( eval(as.name(gg)) ))]
+	#fraction in each group:
+	fracg <- DT[ is.finite(eval(as.name(gg)))==T, ftable( eval(as.name(gg)) )/sum(is.finite(eval(as.name(gg))) ) ]
+	
 	wcgidensity <- array(0,dim=c(512,Ng*2))
 	for( gi in seq(1,Ng)){
 		tmp <- DT[ eval(as.name(gg)) == gi , density( eval(as.name(wc)) ,n=512)]
 		
 		wcgidensity[,(gi-1)*2+1] <- tmp$x
-		wcgidensity[,(gi-1)*2+2] <- (tmp$y)
+		wcgidensity[,(gi-1)*2+2] <- tmp$y*fracg[gi]
 		
 	}
 	wc_condldensity <- array(0,dim=c(512*Ng,Ng+1))
@@ -172,6 +175,23 @@ ggplot(subset(stayerEUEmelt,is.finite(logValue)) ,aes(ymax=value,ymin=0,x=WageCh
 	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=4), l=50, c=100)[c(1:3)]), name="", label=c("Stay","EE","EUE"))
 ggsave(paste0(outdir,"/stackedlev_wagechangeEUE.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/stackedlev_wagechangeEUE.png"),height=5,width=10)
+
+
+# Recession and expansion:
+DTseam[  DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F & recIndic2_wave==F, g := 1]
+DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==F & DTseam$EU_wave ==T & recIndic2_wave==F, g := 2]
+DTseam[!(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T)& recIndic2_wave==F, g := 3]
+DTseam[  DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F & recIndic2_wave==T, g := 4]
+DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==F & DTseam$EU_wave ==T & recIndic2_wave==T, g := 5]
+DTseam[!(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T)& recIndic2_wave==T, g := 6]
+stayerEUEDens <- stackedDens(subset(DTseam, !UE_wave==T & is.finite(wagechangeEUE_wave)),"g","wagechangeEUE_wave")
+stayerEUEmelt <- melt(stayerEUEDens,id.vars = "WageChange")
+stayerEUEmelt[ WageChange>-4 & WageChange<4, logValue:=log(value)]
+stayerEUEmelt[ , g:=7L-as.integer(variable)]
+ggplot(subset(stayerEUEmelt,is.finite(logValue)) ,aes(ymax=logValue,ymin=-8,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+	theme_bw()+xlab("Wage Change")+ylab("Stacked log density")+
+	scale_fill_manual(values=hcl(h=seq(15, 3/4*(375-15)-15, length=3), l=c(50,50,50,80,80,80), c=100), name="", label=c("Stay, expansion","EE, expansion","EUE, expansion",
+																									 "Stay, recession","EE, recession","EUE, recession"))
 
 
 ggplot(stackedCdist, aes(x=WageChange,y=Pct, fill = as.factor(g))) + geom_area() + theme_bw()+

@@ -1,6 +1,6 @@
 # January 21, 2016
 # Calculate wage changes
-# 1) create wagechange, wagechange_stayer, wagechange_EUE, and wagechange_all variables
+# 1) create wagechange, wagechange_stayer, wagechangeEUE, and wagechange_all variables
 # 2) create occwagechange variable
 # 3) save intermediate result, DTall_5.RData
 
@@ -21,21 +21,24 @@ Mode <- function(x) {
 DTall <- readRDS(paste0(datadir,"/DTall_4.RData"))
 #drop some un-need variables
 DTall[ , nwhite := black==T|hispanic==T]
-DTall <- DTall[ , c("eyear","next.earnm","logearnm","black","hispanic","filtered.unrate$cycle"):=NULL]
+DTall <- DTall[ , c("eyear","next.earnm","logearnm","black","hispanic"):=NULL]
 #I don't want to drop these ->  DTall <- DTall[ lfstat_wave<3, ]
 
 setkey(DTall, id, date)
+
+DTall[ , last.lfstat:= shift(lfstat), by=id] #will need this later
 #clear out the super-low earnings
 DTall[ lfstat==1 & usewage<log(20+(1+20^2)^.5), usewage:=NA]
 DTall[ , calmon := (wave-1)*4+srefmon]
 DTall[ calmon+1 == shift(calmon,type="lead"), next.usewage := shift(usewage,type="lead"), by=id]
 DTall[ calmon-1 == shift(calmon,type="lag" ), last.usewage := shift(usewage,type="lag"), by=id]
+DTall[ next.lfstat==1 & next.usewage<log(20+(1+20^2)^.5), next.usewage:=NA]
+DTall[ last.lfstat==1 & last.usewage<log(20+(1+20^2)^.5), last.usewage:=NA]
 
 # fill wages upwards to fill in unemployment spells
 DTall[EE==T|UE == T, nextwage := next.usewage]
 DTall[lfstat>=2 | EU==T, nextwage := Mode(nextwage), by = list(id,ustintid)] #replace within  unemp stints
 
-DTall[ , last.lfstat:= shift(lfstat), by=id]
 DTall[last.lfstat==1, tuw := last.usewage]
 
 
@@ -60,11 +63,11 @@ DTall[ is.na(wagechange_stayer_bad), wagechange_stayer_bad :=  F]
 DTall[ wagechange_stayer_bad==T, wagechange_stayer := NA]
 
 
-# create wagechange_EUE variable -----------------------------------
-DTall[EU==T | EE==T, wagechange_EUE := nextwage - tuw]
+# create wagechangeEUE variable -----------------------------------
+DTall[EU==T | EE==T, wagechangeEUE := nextwage - tuw]
 # fill across whole ustintid
-DTall[lfstat>=2 | EU==T, wagechange_EUE := Mode(wagechange_EUE), by=list(id,ustintid)]
-DTall[!(EU==T | EE==T | UE==T), wagechange_EUE := wagechange_stayer]
+DTall[lfstat>=2 | EU==T, wagechangeEUE := Mode(wagechangeEUE), by=list(id,ustintid)]
+DTall[!(EU==T | EE==T | UE==T), wagechangeEUE := wagechange_stayer]
 
 # create wagechange_month variable
 # if ifelse() condition is NA, end result is NA.
@@ -121,13 +124,11 @@ DTseam[ wave+1==shift(wave,type = "lead"), next.wavewage    := shift(wavewage,1,
 DTseam[ wave-1==shift(wave,type = "lag" ), last.wavewage    := shift(wavewage,1,type="lag") , by=id]
 DTseam[ wave+1==shift(wave,type = "lead"), next.lfstat_wave := shift(lfstat_wave,1,type="lead"), by=id]
 DTseam[ wave-1==shift(wave,type = "lag" ), last.lfstat_wave := shift(lfstat_wave,1,type="lag") , by=id]
+DTseam[ next.lfstat_wave==1 & next.wavewage<log(80+(1+80^2)^.5) , next.wavewage := NA_real_]
+DTseam[ last.lfstat_wave==1 & last.wavewage<log(80+(1+80^2)^.5) , last.wavewage := NA_real_]
 
 
-
-DTseam[ , nw:= next.wavewage]
-DTseam[ , tw:= wavewage]
-
-DTseam[ , wagechange_wave := nw - tw] #just using straight, period-wise wage changes. 
+DTseam[ , wagechange_wave := next.wavewage - wavewage] #just using straight, period-wise wage changes. 
 
 #for EE that spans waves:
 #DTseam[ EE_wave==T , wagechange_wave:= NA]
@@ -161,11 +162,10 @@ DTseam[ , c("wageAtEU","wageAfterUE","EU_wave_first", "UE_wave_last"):=NULL]
 
 DTseam[ wave+1==shift(wave,type = "lead"), next.waverawwg := shift(waverawwg,1,type="lead"), by=id]
 DTseam[ wave-1==shift(wave,type = "lag" ), last.waverawwg := shift(waverawwg,1,type="lag"), by=id]
+DTseam[ next.lfstat_wave==1 & next.waverawwg<log(80+(1+80^2)^.5) , next.waverawwg := NA_real_]
+DTseam[ last.lfstat_wave==1 & last.waverawwg<log(80+(1+80^2)^.5) , last.waverawwg := NA_real_]
 
-DTseam[ , nw:= next.waverawwg]
-DTseam[ , tw:= waverawwg]
-
-DTseam[ , rawwgchange_wave := nw - tw]
+DTseam[ , rawwgchange_wave := next.waverawwg - waverawwg]
 #for EE that spans waves:
 #DTseam[ EE_wave==T & EEmon<seammon , rawwgchange_wave:= NA]
 #DTseam[ EE_wave==T & shift(midEE)==T , rawwgchange_wave:= (next.waverawwg - last.waverawwg)]
@@ -196,13 +196,17 @@ DTseam[ , c("wageAtEU","wageAfterUE","EU_wave_first", "UE_wave_last"):=NULL]
 #cleaning the stayers:-----------------------------------------------------------------
 # wagechange wave =NA for large gains or losses that revert
 
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_bad2 := (rawwgchange_wave>2|rawwgchange_wave<(-2))  & abs(next.waverawwg - last.waverawwg)<.1 &
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_notransbad := (rawwgchange_wave>2|rawwgchange_wave<(-2))  & abs(next.waverawwg - last.waverawwg)<.1 &
 	   	(last.lfstat_wave==1) & (next.lfstat_wave==1)] 
 
-DTseam[ is.na(wagechange_wave_bad2)  , wagechange_wave_bad2 :=F] 
+minwaverawwg <- DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1, min(waverawwg,na.rm=T)]
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1 & next.lfstat_wave==1 ,
+	   wagechange_notransbad := (next.waverawwg<minwaverawwg)|(wagechange_notransbad==T)] 
+
+DTseam[ is.na(wagechange_notransbad)  , wagechange_notransbad :=F] 
 
 #wagechange between 2 0's:
-DTseam[lfstat_wave>=2 & next.lfstat_wave>=2 & !(EU_wave==T|UE_wave==T|EE_wave==T) , wagechange_wave_bad2:= T] 
+DTseam[lfstat_wave>=2 & next.lfstat_wave>=2 & !(EU_wave==T|UE_wave==T|EE_wave==T) , wagechange_notransbad:= T] 
 
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave_jcbad := T]
 DTseam[ , next.job_wave := shift(job_wave,type="lead"),by=id]
@@ -216,10 +220,10 @@ DTseam[ , c("next.job_wave","last.job_wave"):=NULL]
 # ? DTseam[ wave>=7 & panel==2004, wagechange_wave_2004bad :=T]
 
 #lowest/highest wages out:
-lowwageqtls= DTseam[ lfstat_wave==1, quantile(waverawwg, na.rm = T, probs=c(.01,.02,.05))]
-DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_low :=waverawwg<lowwageqtls[2] | next.waverawwg<lowwageqtls[2] ]
-highwageqtls= DTseam[ lfstat_wave==1, quantile(waverawwg, na.rm = T, probs=c(.95,.98,.99))]
-DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_high :=waverawwg>highwageqtls[2] | next.waverawwg>highwageqtls[2] ]
+lowwageqtls= DTseam[ lfstat_wave==1, quantile(waverawwg, na.rm = T, probs=c(.02))]
+DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_low :=waverawwg<lowwageqtls[1] | next.waverawwg<lowwageqtls[1] ]
+highwageqtls= DTseam[ lfstat_wave==1, quantile(waverawwg, na.rm = T, probs=c(.98))]
+DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_wave_high :=waverawwg>highwageqtls[1] | next.waverawwg>highwageqtls[1] ]
 
 # take out the early attrition
 DTseam[ , panelmaxmis:= max(maxmis,na.rm = T), by=panel]
@@ -230,7 +234,7 @@ DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T) & (earn_imp_wave>=1 | shift(earn_imp
 DTseam[ is.na(wagechange_wave_imp)==T, wagechange_wave_imp := F]
 
 
-DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_jcbad","wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high","wagechange_wave_imp","pctmaxmis"
+DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_jcbad","wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_imp","pctmaxmis"
 								  ,"wagechangeEUE_wave","next.wavewage","rawwgchangeEUE_wave","rawwgchange_wave","id","wave"))
 DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
@@ -257,7 +261,7 @@ DTseam[ EE_wave==T, occwagechangeEUE_wave:= occwagechange_wave]
 DTseam[ switchedOcc_wave==F, occwagechangeEUE_wave:= 0.]
 
 DTseam<-subset(DTseam, select = c("occwagechange_wave","occwagechangeEUE_wave","id","wave"))
-DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
+DTall <-merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
 saveRDS(DTall, paste0(datadir,"/DTall_5.RData"))
 

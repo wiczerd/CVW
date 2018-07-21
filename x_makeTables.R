@@ -5,7 +5,7 @@ library(zoo)
 library(Hmisc)
 library(reshape2)
 library(xtable)
-library(quantreg)
+#library(quantreg)
 library(texreg)
 library(ggplot2)
 
@@ -90,9 +90,6 @@ wtd.4qtlmoments <- function(xt,wt){
 }
 
 
-CPSunempRt <- readRDS("./InputData/CPSunempRt.RData")
-CPSunempRt$unrt <- CPSunempRt$unrt/100
-
 #*********************************************************************
 
 toKeep_wave <- c("switchedOcc_wave",
@@ -104,7 +101,7 @@ toKeep_wave <- c("switchedOcc_wave",
             "unrt","wpfinwgt","perwt","cycweight","truncweight","cleaningtruncweight",
 			"lfstat_wave","next.lfstat_wave","wave","id","date","panel")
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
-DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
+#DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
 
 # select toKeep columns only
 DTseam <- DTseam[, toKeep_wave, with = FALSE]

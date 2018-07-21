@@ -81,8 +81,8 @@ recallRecodeShorTerm <- function(DF){
 	DF[ , ENEwseam := ( max.unempdur<=2 & lfstat ==2 ) &
 	   	(wave != shift(wave) | wave != shift(wave,1,type="lead")) ,by=id]
 	DF[is.na(ENEwseam), ENEwseam:=F]
-	predrecall <- glm( recalled ~ wagechange_EUE + I(wagechange_EUE^2) + recIndic + factor(esr) + union + 
-					   	factor(HSCol) + factor(Young)  + I(wagechange_EUE>(-.5)) + I(wagechange_EUE<.5 & wagechange_EUE>(-.5))
+	predrecall <- glm( recalled ~ wagechangeEUE + I(wagechangeEUE^2) + recIndic + factor(esr) + union + 
+					   	factor(HSCol) + factor(Young)  + I(wagechangeEUE>(-.5)) + I(wagechangeEUE<.5 & wagechangeEUE>(-.5))
 					   + switchedOcc + switchedAddress, 
 					   na.action = na.exclude, data= subset(DF,ENEnoseam),family=binomial(link="probit"))
 	DF[ (ENEwseam | ENEnoseam), 
@@ -123,6 +123,7 @@ EEreadweight_wave <- DTall[EE_wave==T & !is.na(wagechange_wave), sum(wpfinwgt, n
 if( recall_adj == T){
 	
 	DFseam <- DTall[seam==T, ]
+	DFseam[ , next.lfstat_wave := shift(lfstat_wave,type="lead"),by=id]
 	DFseam[job_wave> 0 , jobpos_wave := job_wave]
 	DFseam[ , next.jobpos_wave := shift(jobpos_wave, type="lead"),by=id]
 	DFseam[ ustintid_wave>0 & UE_wave!=T, next.jobpos_wave:=NA]
@@ -130,11 +131,11 @@ if( recall_adj == T){
 	DFseam[ EU_wave==T & matched_EUUE_max ==T , recalled_wave := jobpos_wave== next.jobpos_wave]
 	DFseam[ ustintid_wave>0, recalled_wave := any(recalled_wave,na.rm = T), by=list(id,ustintid_wave)]
 	DFseam[ ustintid_wave>0 & is.na(recalled_wave), recalled_wave := F]
+		
+	DFseam <- subset(DFseam, select= c("recalled_wave","next.lfstat_wave","id","wave"))
 	
-	DFseam <- subset(DFseam, select= c("recalled_wave","id","wave"))
-	
-	#DTall<- merge(DTall,DFseam,by=c("id","wave"),all.x=T)
-	DTall <- DTall[DFseam,on=c("id","wave")]
+	DTall<- merge(DTall,DFseam,by=c("id","wave"),all.x=T)
+	#DTall <- DTall[DFseam,on=c("id","wave")]
 	DTall[is.finite(ustintid) &(EU==T | lfstat>=2 ), recalled:=any(recalled_wave) , by=list(id,ustintid)]
 	DTall[EU==T & recalled==T, EU:=NA]
 	DTall[UE==T & recalled==T, UE:=NA]
@@ -158,22 +159,12 @@ if( recall_adj == T){
 	
 }
 
-
-#deal with all of the un-counted transitions (there should be none):
-# DTall[ , EE_max := any(EE,na.rm = T), by=list(wave,id)]
-# DTall[ EE_max==T & EE_wave!=T & jobchng_wave==F, EE_wave:=NA]
-DTall[ lfstat_wave==2 & next.lfstat_wave==2 & !(EU_wave==T|UE_wave==T) & wagechange_wave<0., EU_wave2 := (wagechange_wave<0.)]
-DTall[ lfstat_wave==2 & next.lfstat_wave==2 & !(EU_wave==T|UE_wave==T) & wagechange_wave>0., UE_wave2 := (wagechange_wave>0.)]
-DTall[ (lfstat_wave==2 & !is.finite(EU_wave2))|lfstat_wave==1, EU_wave2 := F]
-DTall[ (lfstat_wave==2 & !is.finite(UE_wave2))|lfstat_wave==1, UE_wave2 := F]
-
-
 #now subset everyone:
-DTall[wagechange_wave_bad2==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &  wagechange_wave_imp==F &
+DTall[wagechange_notransbad==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &  wagechange_wave_imp==F &
 	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & 
 	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
 
-DTall[wagechange_wave_bad2==F  & # wagechange_wave_jcbad==F & 
+DTall[wagechange_notransbad==F  & # wagechange_wave_jcbad==F & 
 	   	(EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
 
 DTall[changer==T, stayer:= F]
@@ -214,7 +205,7 @@ if(check_durcomp==T){
 }
 
 ##balance seams EU and UE
-DTseam[ is.finite(ustintid_wave), u_matched := any(matched_EUUE_wave), by=list(id,ustintid_wave)]
+DTseam[ is.finite(ustintid_wave), u_matched := any(matched_EUUE_max,na.rm=F), by=list(id,ustintid_wave)]
 
 #DTseam[ is.na(matched_EUUE_wave), matched_EUUE_wave:=F]
 #DTseam[ ustintid_wave>0, EU_match:= any(UE_wave), by=list(id,ustintid_wave) ]
@@ -237,6 +228,8 @@ DTseam[ is.finite(ustintid_wave), u_matched := any(matched_EUUE_wave), by=list(i
 #DTseam[ is.finite(ustintid_wave), u_nomatch := any(EU_nomatch==T|UE_nomatch==T), by=list(id,ustintid_wave)]
 
 DTseam[ is.finite(ustintid_wave), u_nomatch := any((EU_wave==T & u_matched==F)|UE_wave==T & u_matched==F), by=list(id,ustintid_wave)]
+DTseam[ is.finite(ustintid_wave), EU_nomatch := any((EU_wave==T & matched_EUUE_max==F)), by=list(id,ustintid_wave)]
+DTseam[ is.finite(ustintid_wave), UE_nomatch := any((UE_wave==T & matched_EUUE_max==F)), by=list(id,ustintid_wave)]
 DTseam[, misRemaining := max(mis), by=list(id, panel)]
 DTseam[, misRemaining := misRemaining-mis , by=id]
 DTseam[ , wis:=seq(1,.N), by=id]
@@ -245,21 +238,21 @@ DTseam[, wisRemaining := wisRemaining-wis , by=id]
 
 DTseam[ , perwt:= mean(wpfinwgt), by=id]
 
-#EUtruenomatchrt <- DTseam[(lfstat_wave==2|EU_wave==T) & wisRemaining > 3        , wtd.mean(EU_nomatch,weights = perwt,na.rm=T)]
-#UEtruenomatchrt <- DTseam[UE_wave==T & wis > 3                                  , wtd.mean(UE_nomatch,weights = perwt,na.rm=T)]
+EUtruenomatchrt <- DTseam[(lfstat_wave==2|EU_wave==T) & wisRemaining > 3        , wtd.mean(EU_nomatch,weights = perwt,na.rm=T)]
+UEtruenomatchrt <- DTseam[UE_wave==T & wis > 3                                  , wtd.mean(UE_nomatch,weights = perwt,na.rm=T)]
 Utruenomatchrt  <- DTseam[wis > 3 & wisRemaining > 3 & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = perwt,na.rm=T)]
 
-DTseam[ matched_EUUE_wave==F & EU_wave ==T, EU_wave := NA]
-DTseam[ matched_EUUE_wave==F & UE_wave ==T, UE_wave := NA]
+DTseam[ matched_EUUE_max==F & EU_wave ==T, EU_wave := NA]
+DTseam[ matched_EUUE_max==F & UE_wave ==T, UE_wave := NA]
 
 #do some reweighting for left- and right-truncation
 DTseam[ , truncweight := perwt]
 #reweight entire u stint
 wtsdisp <- array(0.,dim=(2))
-for (mi in seq(2,3)){
-	Utruncnomatchrt <-DTseam[(wisRemaining < mi | wis < mi) & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = perwt,na.rm=T)]
-	DTseam[ (wisRemaining < mi | wis < mi) & is.finite(ustintid_wave), truncweight := perwt*(1.-Utruenomatchrt)/(1.-Utruncnomatchrt)]
-	wtsdisp[mi-1] <- (1.-Utruenomatchrt)/(1.-Utruncnomatchrt)
+for (wi in seq(2,3)){
+	Utruncnomatchrt <-DTseam[(wisRemaining < wi | wis < wi) & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = perwt,na.rm=T)]
+	DTseam[ (wisRemaining < wi | wis < wi) & is.finite(ustintid_wave), truncweight := perwt*(1.-Utruenomatchrt)/(1.-Utruncnomatchrt)]
+	wtsdisp[wi-1] <- (1.-Utruenomatchrt)/(1.-Utruncnomatchrt)
 }
 
 DTseam[ , cycweight := perwt]
@@ -443,8 +436,8 @@ DTall[is.finite(ustintid), balancedUE := any(EU,na.rm=T)==T & UE==T, by = list(i
 DTall<- merge(DTall,wagechangesBalanced,by=c("id","date"),all.x=T)
 
 #make the wage changes NA if not-balanced
-DTall[UE==T & balancedUE.y==F, c("wagechange_EUE","wagechange_month") := NA_real_]
-DTall[EU==T & balancedEU.y==F, c("wagechange_EUE","wagechange_month") := NA_real_]
+DTall[UE==T & balancedUE.y==F, c("wagechangeEUE","wagechange_month") := NA_real_]
+DTall[EU==T & balancedEU.y==F, c("wagechangeEUE","wagechange_month") := NA_real_]
 
 DTall[UE==T, UE := balancedUE.y==T]
 DTall[EU==T, EU := balancedEU.y==T]
@@ -463,8 +456,8 @@ DTall[EU==T|UE==T|EE==T, allwt := balanceweight]
 DTall[                 , allwtEUE := allwt]
 DTall[EU==T            , allwtEUE := allwtEUE*2.]
 DTall[UE==T            , allwtEUE := 0.]
-DTall[                 , wagechange_EUE := ifelse(EU==T, wagechange_EUE,wagechange_month)]
-DTall[UE==T            , wagechange_EUE := NA_real_]
+DTall[                 , wagechangeEUE := ifelse(EU==T, wagechangeEUE,wagechange_month)]
+DTall[UE==T            , wagechangeEUE := NA_real_]
 
 wagechanges[EE==T      , balanceweightEUE:=balanceweight]
 wagechanges[EU==T      , balanceweightEUE:=balanceweight*2]
