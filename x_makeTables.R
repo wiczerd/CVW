@@ -226,7 +226,9 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 			dat_wavedist <- tab_wavedist	
 		}
 	}
-	#output it to tables
+
+	#output it to tables:
+	
 	tab_wavedist <- dat_wavedist
 	tab_wavedist <- data.table(tab_wavedist)
 	names(tab_wavedist) <- c("Mean",as.character( tabqtls))
@@ -242,7 +244,7 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 	
 	nametab <- "wavedist"
 	
-	tab_wavedist <- xtable(tab_wavedist, digits=2, 
+	tab_wavedist <- xtable(tab_wavedist, digits=3, 
 	                       align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 	if(demolbl>=1 & demolbl<=7){
 		print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)), 
@@ -251,6 +253,16 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 		print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)), 
 			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 	}
+	
+	
+	#output it to a box-whisker's plot:
+	dat_wavedist <- data.table(dat_wavedist[4:9,])
+	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
+	dat_wavedist[ , cat := as.factor(c("All-Exp","SameEmp-Exp","ChngEmp-Exp","All-Rec","SameEmp-Rec","ChngEmp-Rec"))]
+	ggplot( dat_wavedist , aes(cat)) + 
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ),stat="identity")
+	
+	
 	tab_wavedistci <- array(0.,dim=c(2*nrow(tab_wavedist),2*ncol(tab_wavedist)))
 	tab_wavedistse <- array(0.,dim=c(2*nrow(tab_wavedist),ncol(tab_wavedist)))
 	if(bootse == T){
@@ -266,8 +278,8 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 		#output it to tables
 		
 		#pre-round it:
-		tab_wavedistse <- round(100*tab_wavedistse,digits=2)
-		tab_wavedistci <- round(100*tab_wavedistci,digits=2)
+		tab_wavedistse <- round(1000*tab_wavedistse,digits=3)
+		tab_wavedistci <- round(1000*tab_wavedistci,digits=3)
 		
 		parens <- function(x, i, j){
 			x[i,j] <- sprintf("(%s)", x[i,j])

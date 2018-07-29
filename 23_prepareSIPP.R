@@ -506,10 +506,10 @@ sipp[ , matched_EUUE_max := any(matched_EUUE,na.rm = F), by=list(id,wave)]
 # sipp[ EU==T & EUmon==4, ind_wave := l4.ind ]
 
 sipp[ EU==T, occ_wave:= occ]
-sipp[ UE==T, occ_wave:= next.occ]
+sipp[ NE==T, occ_wave:= next.occ]
 sipp[ EE==T, occ_wave:= occ]
 sipp[ EU==T, ind_wave:= occ]
-sipp[ UE==T, ind_wave:= next.ind]
+sipp[ NE==T, ind_wave:= next.ind]
 sipp[ EE==T, ind_wave:= occ]
 
 sipp[ , c("l1.ind","l2.ind","l3.ind","l4.ind",
@@ -528,6 +528,9 @@ sipp[ !(UE_max==T|EU_max==T|EE_max==T) & seam==T, ind_wave := ind]
 
 sipp[ , jobchng_max := any(jobchng==T & srefmon<4,na.rm=T), by=list(id,wave)]
 
+
+#give a "max"-type ustintid
+sipp[ , ustintid_max := Max_narm(ustintid), by=list(id,wave)]
 
 #**************************************************************
 #sipp_wave begins here----------------------
@@ -550,21 +553,9 @@ sipp_wave[ last.wave == wave-1, last.occ_wave    := shift(occ_wave,type="lag")  
 sipp_wave[ next.wave == wave+1, next.ind_wave    := shift(ind_wave,type="lead")   , by=id]
 sipp_wave[ last.wave == wave-1, last.ind_wave    := shift(ind_wave,type="lag")    , by=id]
 
-##create wave-level ustintid_wave
-#sipp[ , ustintid_wave := Mode(ustintid), by=list(wave,id)]
-#test: ~0.8% of waves have mutliple spells sipp[ , varustintwave := var(ustintid,na.rm = T), by=list(wave,id)]
-# or compute akin to how we did earlier
 sipp_wave[ , wis := seq_len(.N), by = id]
 sipp_wave[ , maxwis := Max_narm(wis), by = id]
 sipp_wave[ , panelmaxwis := Max_narm(wis), by = panel]
-
-sipp_wave[, newunemp_wave := lfstat_wave >1 & (last.lfstat_wave == 1 | wis == 1)]
-sipp_wave[newunemp_wave == T, ustintid_wave := cumsum(newunemp_wave), by = id]
-sipp_wave[lfstat_wave   == 1, ustintid_wave := 9999]
-sipp_wave[                  , ustintid_wave := na.locf(ustintid_wave, na.rm = F), by = id]
-sipp_wave[lfstat_wave == 1 | ustintid_wave  == 9999, ustintid_wave := NA]
-sipp_wave[, newunemp_wave := NULL]
-sipp_wave[ , next.ustintid_wave:= shift(ustintid_wave,type="lead")]
 
 # create EU/UE/EE dummies
 if(max_wavefreq==2){
@@ -581,6 +572,7 @@ if(max_wavefreq==2){
 #set up jobchng_wave and EU_wave with ustintid
 sipp_wave[ EE_wave==T & (lfstat_wave>1 | next.lfstat_wave>1), EE_wave:=F]
 if(max_wavefreq==1){
+	sipp_wave[ ustintid_wave := ustintid_max]
 	sipp_wave[last.lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := jobchng_max ] #& (last.job_wave != next.job_wave)
 	sipp_wave[ , next.jobchng_wave := shift(jobchng_wave,type="lead"), by=id]
 	#sipp_wave[is.na(last.lfstat_wave) == T & is.na(lfstat_wave) == F &
@@ -589,6 +581,16 @@ if(max_wavefreq==1){
 	#add EU_wave, EUmon==4 to next ustintid_wave
 	sipp_wave[EU_wave==T & EUmon==seammon, ustintid_wave:=next.ustintid_wave  ]
 }else{#wavefreq==2
+	##create wave-level ustintid_wave
+	
+	sipp_wave[, newunemp_wave := lfstat_wave >1 & (last.lfstat_wave == 1 | wis == 1)]
+	sipp_wave[newunemp_wave == T, ustintid_wave := cumsum(newunemp_wave), by = id]
+	sipp_wave[lfstat_wave   == 1, ustintid_wave := 9999]
+	sipp_wave[                  , ustintid_wave := na.locf(ustintid_wave, na.rm = F), by = id]
+	sipp_wave[lfstat_wave == 1 | ustintid_wave  == 9999, ustintid_wave := NA]
+	sipp_wave[, newunemp_wave := NULL]
+	sipp_wave[ , next.ustintid_wave:= shift(ustintid_wave,type="lead")]
+	
 	sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := (job_wave != next.job_wave) ] #& (last.job_wave != next.job_wave)
 	#sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] #knocks out ~5% of the changes
 }
