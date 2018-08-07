@@ -531,6 +531,9 @@ sipp[ , jobchng_max := any(jobchng==T & srefmon<4,na.rm=T), by=list(id,wave)]
 
 #give a "max"-type ustintid
 sipp[ , ustintid_max := Max_narm(ustintid), by=list(id,wave)]
+sipp[ is.finite(ustintid_max) & shift(is.na(ustintid_max)), ustintid_tmp:= ustintid_max]
+sipp[ is.finite(ustintid_max) & mis==1, ustintid_tmp:= ustintid_max]
+sipp[ is.finite(ustintid_max) , ustintid_tmp:= na.locf(ustintid_tmp,na.rm=F), by=id]
 
 #**************************************************************
 #sipp_wave begins here----------------------
@@ -572,14 +575,14 @@ if(max_wavefreq==2){
 #set up jobchng_wave and EU_wave with ustintid
 sipp_wave[ EE_wave==T & (lfstat_wave>1 | next.lfstat_wave>1), EE_wave:=F]
 if(max_wavefreq==1){
-	sipp_wave[ ustintid_wave := ustintid_max]
+	sipp_wave[ ,ustintid_wave := ustintid_max]
+	
 	sipp_wave[last.lfstat_wave == 1 & next.lfstat_wave == 1 , jobchng_wave := jobchng_max ] #& (last.job_wave != next.job_wave)
 	sipp_wave[ , next.jobchng_wave := shift(jobchng_wave,type="lead"), by=id]
-	#sipp_wave[is.na(last.lfstat_wave) == T & is.na(lfstat_wave) == F &
-	#		  	next.lfstat_wave == 1 , jobchng_wave := (last.job_wave != next.job_wave) ] #in case it's the first observation
-	#This cleaning will happen in 5_ with the rest of the cleaning sipp_wave[EE_wave==T & !(jobchng_wave==T) , EE_wave := NA] 
-	#add EU_wave, EUmon==4 to next ustintid_wave
-	sipp_wave[EU_wave==T & EUmon==seammon, ustintid_wave:=next.ustintid_wave  ]
+
+	#add EU_wave to next ustintid_wave
+	sipp_wave[ next.wave == wave+1, next.ustintid_wave := shift(ustintid_wave,type="lead")   , by=id]
+	sipp_wave[EU_wave==T , ustintid_wave:=next.ustintid_wave  ]
 }else{#wavefreq==2
 	##create wave-level ustintid_wave
 	
@@ -602,7 +605,9 @@ sipp_wave[ (EU_wave==T|lfstat_wave>=2) , max.unempdur_wave:= Max_narm(max.unempd
 sipp_wave[ wave-1 == last.wave, last.EE_wave := shift(EE_wave            ), by = id]
 sipp_wave[ wave+1 == next.wave, next.EE_wave := shift(EE_wave,type="lead"), by = id]
 sipp_wave[                    , last.stable_emp := last.lfstat_wave==1 & last.jobchng_max==F & ((last.EE_wave == F) | shift(EEmon)==4)]
+sipp_wave[ wis == 1           , last.stable_emp := T]
 sipp_wave[                    , next.stable_emp := next.lfstat_wave==1 & next.jobchng_max==F & ((next.EE_wave == F) | shift(EEmon,type="lead")==1)]
+sipp_wave[ wis == maxwis      , next.stable_emp := T]
 sipp_wave[(lfstat_wave>=2 | EU_wave==T) & UE_wave==F, next.stable_emp:=NA] 
 
 #fill in occupation over u spells and compute switching
@@ -639,18 +644,18 @@ if(max_wavefreq==2){
 	sipp_wave[ EE_wave==T & EEmon<seammon  & last.stable_emp==T, switchedInd_wave := last.ind_wave != next.ind_wave]
 	sipp_wave[ EE_wave==T & EEmon==seammon & last.stable_emp==T, switchedInd_wave := last.ind_wave != next.ind_wave]
 }else{
-	sipp_wave[ EE_wave==T & next.stable_emp & last.stable_emp, switchedOcc_wave := switchedOcc_max]
-	sipp_wave[ EE_wave==T & next.stable_emp & last.stable_emp, switchedInd_wave := switchedInd_max]
-	sipp_wave[ EE_wave==T & next.stable_emp & last.stable_emp, switched_wave    := switched_max]
-	sipp_wave[ EU_wave==T & next.stable_emp & last.stable_emp, switchedOcc_wave := switchedOcc_max]
-	sipp_wave[ EU_wave==T & next.stable_emp & last.stable_emp, switchedInd_wave := switchedInd_max]
-	sipp_wave[ EU_wave==T & next.stable_emp & last.stable_emp, switched_wave    := switched_max]
+	sipp_wave[ EE_wave==T , switchedOcc_wave := switchedOcc_max]
+	sipp_wave[ EE_wave==T , switchedInd_wave := switchedInd_max]
+	sipp_wave[ EE_wave==T , switched_wave    := switched_max]
+	sipp_wave[ EU_wave==T , switchedOcc_wave := switchedOcc_max]
+	sipp_wave[ EU_wave==T , switchedInd_wave := switchedInd_max]
+	sipp_wave[ EU_wave==T , switched_wave    := switched_max]
 }
 sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T), switchedOcc_wave := occ_wave != next.occ_wave]
 sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T), switchedInd_wave := ind_wave != next.ind_wave]
 sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T), switched_wave    := switchedInd_wave & switchedOcc_wave]
 
-sipp_wave[ switched_wave ==F & (switchedOcc_wave ==T | switchedInd_wave==T), switched_wave:=NA]
+#sipp_wave[ switched_wave ==F & (switchedOcc_wave ==T | switchedInd_wave==T), switched_wave:=NA]
 
 sipp_wave[ , next.switchedOcc_wave:= shift(switchedOcc_wave,type="lead"),by=id]
 sipp_wave[ , next.switchedInd_wave:= shift(switchedInd_wave,type="lead"),by=id]
@@ -685,6 +690,7 @@ sipp_wave[ midEE  ==T , EEmon := next.EEmon]
 sipp_wave[ midEE  ==T , EE_wave:=T  ]
 sipp_wave[ midEE  ==T , switchedOcc_wave:=next.switchedOcc_wave  ]
 sipp_wave[ midEE  ==T , switchedInd_wave:=next.switchedInd_wave  ]
+sipp_wave[ midEE  ==T , switched_wave:=next.switched_wave  ]
 sipp_wave[ midEE  ==T , jobchng_wave:=next.jobchng_wave  ]
 sipp_wave[ midEE  ==T , recIndic_wave := next.recIndic_wave  ]
 sipp_wave[ midEE  ==T , recIndic2_wave:= next.recIndic2_wave  ]
@@ -736,6 +742,8 @@ sipp_wave[ ustintid_wave>0 & EU_wave!=T & midEU!=T, switchedOcc_wave:=NA]
 sipp_wave[ ustintid_wave>0 , switchedOcc_wave := Any_narm(switchedOcc_wave), by=list(id,ustintid_wave)]
 sipp_wave[ ustintid_wave>0 & EU_wave!=T & midEU!=T, switchedInd_wave:=NA]
 sipp_wave[ ustintid_wave>0 , switchedInd_wave := Any_narm(switchedInd_wave), by=list(id,ustintid_wave)]
+sipp_wave[ ustintid_wave>0 & EU_wave!=T & midEU!=T, switched_wave:=NA]
+sipp_wave[ ustintid_wave>0 , switched_wave := Any_narm(switched_wave), by=list(id,ustintid_wave)]
 sipp_wave[ EU_wave==T & midEU!=T & EUmon< seammon, occL:= last.occ_wave]
 sipp_wave[ EU_wave==T & midEU!=T & EUmon==seammon, occL:= occ_wave]
 sipp_wave[ EU_wave==T & midEU!=T, occD := next.occ_wave]
