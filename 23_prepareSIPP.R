@@ -773,7 +773,7 @@ sipp_wave[is.na(ustintid_wave)|ustintid_wave==0 , recIndic_EU := recIndic_wave]
 #save intermediate result:
 saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
 
-sipp_wave <- subset(sipp_wave, select=c("job_wave","occ_wave","occL","occD","ind_wave","next.stable_emp","last.stable_emp",
+sipp_wave <- subset(sipp_wave, select=c("job_wave","occ_wave","occL","occD","ind_wave","next.stable_emp","last.stable_emp","next.lfstat_wave",
 										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","midEE","midEU","midUE","EEmon","UEmon","EUmon","ustintid_wave",
 										"recIndic_stint","recIndic2_stint","recIndic_EU","recIndic_UE","max.unempdur_wave","switched_wave","switchedOcc_wave","switchedInd_wave","wave","id"))
 
@@ -782,9 +782,8 @@ sipp[ , c("EEmon","EUmon","UEmon","max.unempdur_wave","occ_wave","ind_wave"):=NU
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
-sipp[ , c("esr","estlemp","Estart","Estart_wave","Eend","Eend_wave","emonth","EE_max","EU_max","UE_max","switchedOcc_max",
+sipp[ , c("esr","estlemp","Estart","Estart_wave","Eend","Eend_wave","emonth","EE_max","EU_max","UE_max","switchedOcc_max","next.earnm",
 		  "coc","last.EE","last.lfstat","last.occ","next.occ","next.Estart","next.job","next.ind","JCstart","JCstart_any","JCend","JCend_any"):=NULL]
-rm(filtered.unrate)
 
 sipp[ EU ==T, EUmis:= mis ]
 sipp[ is.na(EUmis), EUmis:= 0 ]
@@ -927,12 +926,12 @@ saveRDS(sipp, paste0(outputdir,"/DTall_3_ann.RData"))
 
 if(final_plots==T){
 	recessions.df = read.table(textConnection(
-"Peak, Trough
-1990-07-01, 1991-03-01
-2001-03-01, 2001-11-01
-2007-12-01, 2009-06-01"), sep=',',
-colClasses=c('Date', 'Date'), header=TRUE)
-	
+	"Peak, Trough
+	1990-07-01, 1991-03-01
+	2001-03-01, 2001-11-01
+	2007-12-01, 2009-06-01"), sep=',',
+	colClasses=c('Date', 'Date'), header=TRUE)
+		
 	sipp[ ,maxwis:= max(wave),by=panel]
 	
 	# plot transitions time series for sanity check------------------
@@ -1014,7 +1013,7 @@ colClasses=c('Date', 'Date'), header=TRUE)
 					   .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(swOc_wave, aes(date, swOc, color = panel, group = panel)) +
 		geom_point() + 
-		geom_smooth()
+		geom_smooth(se=F)
 
 	# swOc_wave <- DTseam[ changer==T & (EE_wave==T|EU_wave==T|UE_wave==T) & is.finite(switchedOcc_wave),
 	# 					 .(swOc = weighted.mean(switchedOcc_wave, truncweight, na.rm = TRUE)), by = list(panel, date)]
@@ -1028,8 +1027,8 @@ colClasses=c('Date', 'Date'), header=TRUE)
 		geom_point() + ylab("Switching rate among same employer")	
 	ggsave("sw_rate_stay_ts.png")
 		
-	swOcEE_wave <- sipp_wave[EE_wave==T  & is.finite(switchedOcc_max) & wave<panelmaxwis-1 & wave>2,
-						.(swOcEE = weighted.mean(switchedOcc_max, wpfinwgt, na.rm = TRUE)), by = list(date)]
+	swOcEE_wave <- sipp[EE_wave==T & midEE==F  & is.finite(switched_wave) & wave<maxwis-1 & wave>2 &last.stable_emp==T&next.stable_emp==T & maxwis==panel.maxwis,
+						.(swOcEE = weighted.mean(switched_wave, wpfinwgt, na.rm = TRUE)), by = list(date)]
 	ggplot(swOcEE_wave, aes(date, swOcEE)) +
 		geom_point() + 
 		geom_smooth(span=.1,se=F)
@@ -1040,13 +1039,18 @@ colClasses=c('Date', 'Date'), header=TRUE)
 		geom_point() + ylim(.45,.75)+ 
 		geom_smooth(span=.2,se=F) + ggtitle("Occupational Switching | EU,UE ")
 	
-	swOcUE_wave <- sipp[((UE_wave==T & midEU==F)) &  is.finite(switchedOcc_wave)  & wave<maxwis-1 & wave>1,
-						  .(swOc = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+	swOcUE_wave <- sipp[((UE_wave==T & midEU==F)) &  is.finite(switched_wave)  & wave<maxwis-1 & wave>1,
+						  .(swOc = weighted.mean(switched_wave, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(swOcUE_wave, aes(date, swOc, color = panel)) +
 		geom_point() + ylim(.45,.75)+
 		geom_smooth(span=.2,se=F) + ggtitle("Occupational Switching | UE")
 	
-	 
+	swNAEE_wave <- sipp[EE_wave==T & wave<maxwis-1 & wave>2 & maxwis == panel.maxwis,
+						.(swNAEE = weighted.mean(is.na(switched_wave), wpfinwgt, na.rm = TRUE)), by = list(date)]
+	ggplot(swNAEE_wave, aes(date, swNAEE)) +
+		geom_point() + 
+		geom_smooth(span=.1,se=F)
+	
 	swOc_wave <- sipp[EE_wave==T& is.finite(occ_wave) & is.finite(next.occ_wave) & !(panel=="2004" & (year<2005 | year>=2007)) ,
 					  .(swOc_wave = weighted.mean(switchedOcc_wave, wpfinwgt, na.rm = TRUE)), by = date]
 	setkey(swOc_wave,date)
@@ -1068,6 +1072,11 @@ colClasses=c('Date', 'Date'), header=TRUE)
 	
 	misSwOcUE_wave <- sipp[matched_EUUE_wave==T & UE_wave==T &midUE==F, .(misSwOcUE_wave = mean(is.na(switchedOcc_wave))), by=list(panel,date)]
 	ggplot( misSwOcUE_wave, aes(date, misSwOcUE_wave, color=panel, group=panel) ) +
+		geom_point() +
+		geom_smooth(span=.1,se=F)
+	
+	Nworking <- sipp[lfstat==1 & maxmis>=12, .(Nworking = .N), by=list(panel,date)]
+	ggplot( Nworking, aes(date, Nworking, color=panel, group=panel) ) +
 		geom_point() +
 		geom_smooth(span=.1,se=F)
 	
