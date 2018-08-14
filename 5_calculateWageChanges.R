@@ -122,7 +122,6 @@ DTseam <- DTall[ seam==T,]
 #need to add change across waves (use wavewage)
 DTseam[ wave+1==shift(wave,type = "lead"), next.wavewage    := shift(wavewage,1,type="lead"), by=id]
 DTseam[ wave-1==shift(wave,type = "lag" ), last.wavewage    := shift(wavewage,1,type="lag") , by=id]
-DTseam[ wave+1==shift(wave,type = "lead"), next.lfstat_wave := shift(lfstat_wave,1,type="lead"), by=id]
 DTseam[ wave-1==shift(wave,type = "lag" ), last.lfstat_wave := shift(lfstat_wave,1,type="lag") , by=id]
 DTseam[ next.lfstat_wave==1 & next.wavewage<log(80+(1+80^2)^.5) , next.wavewage := NA_real_]
 DTseam[ last.lfstat_wave==1 & last.wavewage<log(80+(1+80^2)^.5) , last.wavewage := NA_real_]
