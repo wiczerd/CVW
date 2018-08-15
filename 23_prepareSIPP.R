@@ -581,8 +581,8 @@ if(max_wavefreq==1){
 	sipp_wave[ , next.jobchng_wave := shift(jobchng_wave,type="lead"), by=id]
 
 	#add EU_wave to next ustintid_wave
-	sipp_wave[ next.wave == wave+1, next.ustintid_wave := shift(ustintid_wave,type="lead")   , by=id]
-	sipp_wave[EU_wave==T , ustintid_wave:=next.ustintid_wave  ]
+	#sipp_wave[ next.wave == wave+1, next.ustintid_wave := shift(ustintid_wave,type="lead")   , by=id]
+	#sipp_wave[EU_wave==T , ustintid_wave:=next.ustintid_wave  ]
 }else{#wavefreq==2
 	##create wave-level ustintid_wave
 	
@@ -731,6 +731,7 @@ sipp_wave[ UE_wave==T & EU_wave==T & UEfollows==T, UE_wave :=F ] #combine unemp 
 sipp_wave[ UE_wave==T & EU_wave==T & EUpreceds==T, EU_wave :=F ] #combine unemp spells with a UE EU in the middle of a wave
 
 #associate ustintid_wave for the middle ones
+sipp_wave[ next.wave == wave+1, next.ustintid_wave := shift(ustintid_wave,type="lead")   , by=id]
 sipp_wave[UE_wave==T & midUE ==T , ustintid_wave   :=next.ustintid_wave  ]
 sipp_wave[EU_wave==T & midEU ==T , ustintid_wave   :=next.ustintid_wave  ]
 

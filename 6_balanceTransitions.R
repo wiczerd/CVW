@@ -123,7 +123,6 @@ EEreadweight_wave <- DTall[EE_wave==T & !is.na(wagechange_wave), sum(wpfinwgt, n
 if( recall_adj == T){
 	
 	DFseam <- DTall[seam==T, ]
-	DFseam[ , next.lfstat_wave := shift(lfstat_wave,type="lead"),by=id]
 	DFseam[job_wave> 0 , jobpos_wave := job_wave]
 	DFseam[ , next.jobpos_wave := shift(jobpos_wave, type="lead"),by=id]
 	DFseam[ ustintid_wave>0 & UE_wave!=T, next.jobpos_wave:=NA]
@@ -132,7 +131,7 @@ if( recall_adj == T){
 	DFseam[ ustintid_wave>0, recalled_wave := any(recalled_wave,na.rm = T), by=list(id,ustintid_wave)]
 	DFseam[ ustintid_wave>0 & is.na(recalled_wave), recalled_wave := F]
 		
-	DFseam <- subset(DFseam, select= c("recalled_wave","next.lfstat_wave","id","wave"))
+	DFseam <- subset(DFseam, select= c("recalled_wave","id","wave"))
 	
 	DTall<- merge(DTall,DFseam,by=c("id","wave"),all.x=T)
 	#DTall <- DTall[DFseam,on=c("id","wave")]
@@ -238,11 +237,11 @@ DTseam[, wisRemaining := wisRemaining-wis , by=id]
 
 DTseam[ , perwt:= mean(wpfinwgt), by=id]
 
-EUtruenomatchrt <- DTseam[(lfstat_wave==2|(EU_wave==T&midEU==F)) & wisRemaining > 3  & is.finite(ustintid_wave), 
+EUtruenomatchrt <- DTseam[((EU_wave==T&midEU==F)) & wisRemaining > 4  & is.finite(ustintid_wave), 
 						  sum(EU_nomatch*perwt,na.rm=T)/sum(perwt)] #missing counts as not matched
-UEtruenomatchrt <- DTseam[(UE_wave==T&midUE==F) & wis > 3  & is.finite(ustintid_wave), 
+UEtruenomatchrt <- DTseam[ lfstat_wave==2 & (UE_wave==T&midUE==F) & wis > 4  & is.finite(ustintid_wave), 
 						  sum(UE_nomatch*perwt,na.rm=T)/sum(perwt)]
-Utruenomatchrt  <- DTseam[wis > 3 & wisRemaining > 3 & is.finite(ustintid_wave) , 
+Utruenomatchrt  <- DTseam[wis > 4 & wisRemaining > 4 & is.finite(ustintid_wave) , 
 						  sum(u_nomatch*perwt,na.rm=T)/sum(perwt)]
 
 DTseam[ matched_EUUE_max==F & EU_wave ==T, EU_wave := NA]
@@ -251,15 +250,20 @@ DTseam[ matched_EUUE_max==F & UE_wave ==T, UE_wave := NA]
 #do some reweighting for left- and right-truncation
 DTseam[ , truncweight := perwt]
 #reweight entire u stint
-wtsdisp <- array(0.,dim=(2))
-for (wi in seq(2,3)){
-	Utruncnomatchrt <-DTseam[(wisRemaining < wi | wis < wi) & is.finite(ustintid_wave), wtd.mean(u_nomatch,weights = perwt,na.rm=T)]
-	DTseam[ (wisRemaining < wi | wis < wi) & is.finite(ustintid_wave), truncweight := perwt*(1.-Utruenomatchrt)/(1.-Utruncnomatchrt)]
-	wtsdisp[wi-1] <- (1.-Utruenomatchrt)/(1.-Utruncnomatchrt)
-	EUtruncnomatchrt <- DTseam[(lfstat_wave==2|(EU_wave==T&midEU==F))& (wisRemaining < wi ) & is.finite(ustintid_wave), 
+wtsdisp <- array(0.,dim=(6))
+for (wi in seq(2,3,4)){
+	
+	EUtruncnomatchrt <- DTseam[((EU_wave==T&midEU==F))& (wisRemaining < wi ) & is.finite(ustintid_wave), 
 							  sum(EU_nomatch*perwt,na.rm=T)/sum(perwt)]
-	DTseam[ (wisRemaining < wi ) & is.finite(ustintid_wave), truncweight := perwt*(1.-EUtruenomatchrt)/(1.-EUtruncnomatchrt)]
-	wtsdisp[wi-1] <- (1.-EUtruenomatchrt)/(1.-EUtruncnomatchrt)
+	wtsdisp[wi-1] <- EUtruncnomatchrt/EUtruenomatchrt
+	DTseam[ (wisRemaining < wi ) & is.finite(ustintid_wave), truncweight := perwt*wtsdisp[wi-1]]
+	
+	UEtruncnomatchrt <- DTseam[(lfstat_wave==2&(UE_wave==T&midUE==F))& (wis < wi ) & is.finite(ustintid_wave), 
+							   sum(UE_nomatch*perwt,na.rm=T)/sum(perwt)]
+	wtsdisp[wi+3] <- UEtruncnomatchrt/UEtruenomatchrt
+	
+	DTseam[ (wis < wi ) & is.finite(ustintid_wave), truncweight := perwt*wtsdisp[wi+3]]
+	
 	
 }
 
