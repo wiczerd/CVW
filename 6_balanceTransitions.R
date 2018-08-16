@@ -260,7 +260,7 @@ for (wi in seq(2,3,4)){
 	
 	UEtruncnomatchrt <- DTseam[(lfstat_wave==2&(UE_wave==T&midUE==F))& (wis < wi ) & is.finite(ustintid_wave), 
 							   sum(UE_nomatch*perwt,na.rm=T)/sum(perwt)]
-	wtsdisp[wi+3] <- UEtruncnomatchrt/UEtruenomatchrt
+	wtsdisp[wi+2] <- UEtruncnomatchrt/UEtruenomatchrt
 	
 	DTseam[ (wis < wi ) & is.finite(ustintid_wave), truncweight := perwt*wtsdisp[wi+3]]
 	
