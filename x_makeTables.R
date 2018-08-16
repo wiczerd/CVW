@@ -96,7 +96,7 @@ toKeep_wave <- c("switchedOcc_wave",
             "ageGrp","HSCol",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint",
             "wagechange_month","wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave",
-            "wagechange_wave_bad2","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad",
+            "wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad",
             "EE_wave","EU_wave","UE_wave","changer","stayer",
             "unrt","wpfinwgt","perwt","cycweight","truncweight","cleaningtruncweight",
 			"lfstat_wave","next.lfstat_wave","wave","id","date","panel")
