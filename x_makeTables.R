@@ -93,12 +93,12 @@ wtd.4qtlmoments <- function(xt,wt){
 #*********************************************************************
 
 toKeep_wave <- c("switchedOcc_wave",
-            "ageGrp","HSCol",
+            "ageGrp","HSCol","next.stable_emp","last.stable_emp",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint",
             "wagechange_month","wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave",
-            "wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad",
-            "EE_wave","EU_wave","UE_wave","changer","stayer",
-            "unrt","wpfinwgt","perwt","cycweight","truncweight","cleaningtruncweight",
+            "wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad","pctmaxmis",
+            "EE_wave","EU_wave","UE_wave","changer","changermo","stayer",
+            "unrt","wpfinwgt","perwt","truncweight","cleaningtruncweight",
 			"lfstat_wave","next.lfstat_wave","wave","id","date","panel")
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 #DTseam <- merge(DTseam, CPSunempRt, by = "date", all.x = TRUE)
@@ -254,13 +254,16 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 			  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 	}
 	
-	
+	#_______________________________________
 	#output it to a box-whisker's plot:
+
 	dat_wavedist <- data.table(dat_wavedist[4:9,])
+	dat_wavedist <- data.table(dat_wavedist[c(2,3,5,6),])
 	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
-	dat_wavedist[ , cat := as.factor(c("All-Exp","SameEmp-Exp","ChngEmp-Exp","All-Rec","SameEmp-Rec","ChngEmp-Rec"))]
+	dat_wavedist[ , cat := as.factor(c("SameEmp-Exp","ChngEmp-Exp","SameEmp-Rec","ChngEmp-Rec"))]
 	ggplot( dat_wavedist , aes(cat)) + 
-		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ),stat="identity")
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ),stat="identity")+
+		scale_x_discrete(labels=c("Changers, Expansion","Changers, Recession","Stayers, Expansion","Stayers, Recession"))
 	
 	
 	tab_wavedistci <- array(0.,dim=c(2*nrow(tab_wavedist),2*ncol(tab_wavedist)))
