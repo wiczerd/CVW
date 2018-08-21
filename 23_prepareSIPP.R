@@ -549,14 +549,22 @@ sipp_wave[                    , next.lfstat_wave := shift(lfstat_wave,type="lead
 sipp_wave[ next.wave != wave+1, next.lfstat_wave := NA]
 sipp_wave[                    , last.lfstat_wave := shift(lfstat_wave,type="lag") , by=id]
 sipp_wave[ last.wave != wave-1, last.lfstat_wave := NA]
-sipp_wave[ next.wave == wave+1, next.job_wave    := shift(job_wave,type="lead")   , by=id]
-sipp_wave[ last.wave == wave-1, last.job_wave    := shift(job_wave,type="lag")    , by=id]
-sipp_wave[ next.wave == wave+1, next.jobchng_max := shift(jobchng_max,type="lead")   , by=id]
-sipp_wave[ last.wave == wave-1, last.jobchng_max := shift(jobchng_max,type="lag")    , by=id]
-sipp_wave[ next.wave == wave+1, next.occ_wave    := shift(occ_wave,type="lead")   , by=id]
-sipp_wave[ last.wave == wave-1, last.occ_wave    := shift(occ_wave,type="lag")    , by=id]
-sipp_wave[ next.wave == wave+1, next.ind_wave    := shift(ind_wave,type="lead")   , by=id]
-sipp_wave[ last.wave == wave-1, last.ind_wave    := shift(ind_wave,type="lag")    , by=id]
+sipp_wave[                    , next.job_wave    := shift(job_wave,type="lead")   , by=id]
+sipp_wave[ next.wave != wave+1, next.job_wave    := NA]
+sipp_wave[                    , last.job_wave    := shift(job_wave,type="lag")    , by=id]
+sipp_wave[ last.wave != wave-1, last.job_wave    := NA]
+sipp_wave[                    , next.jobchng_max := shift(jobchng_max,type="lead"), by=id]
+sipp_wave[ next.wave != wave+1, next.jobchng_max := NA]
+sipp_wave[                    , last.jobchng_max := shift(jobchng_max,type="lag") , by=id]
+sipp_wave[ last.wave != wave-1, last.jobchng_max := NA]
+sipp_wave[                    , next.occ_wave    := shift(occ_wave,type="lead")   , by=id]
+sipp_wave[ next.wave != wave+1, next.occ_wave    := NA]
+sipp_wave[                    , last.occ_wave    := shift(occ_wave,type="lag")    , by=id]
+sipp_wave[ last.wave != wave-1, last.occ_wave    := NA]
+sipp_wave[                    , next.ind_wave    := shift(ind_wave,type="lead")   , by=id]
+sipp_wave[ next.wave != wave+1, next.ind_wave    := NA]
+sipp_wave[                    , last.ind_wave    := shift(ind_wave,type="lag")    , by=id]
+sipp_wave[ last.wave != wave-1, last.ind_wave    := NA]
 
 sipp_wave[ , wis := seq_len(.N), by = id]
 sipp_wave[ , maxwis := Max_narm(wis), by = id]
@@ -604,8 +612,10 @@ sipp_wave[ (EU_wave==T|lfstat_wave>=2) , max.unempdur_wave:= Max_narm(max.unempd
 
 
 #flag "stable" employment before and after
-sipp_wave[ wave-1 == last.wave, last.EE_wave := shift(EE_wave            ), by = id]
-sipp_wave[ wave+1 == next.wave, next.EE_wave := shift(EE_wave,type="lead"), by = id]
+sipp_wave[ , last.EE_wave := shift(EE_wave            ), by = id]
+sipp_wave[ , next.EE_wave := shift(EE_wave,type="lead"), by = id]
+sipp_wave[ wave-1 != last.wave, last.EE_wave := NA]
+sipp_wave[ wave+1 == next.wave, next.EE_wave := NA]
 sipp_wave[                    , last.stable_emp := last.lfstat_wave==1 & last.jobchng_max==F & ((last.EE_wave == F) | shift(EEmon)==4)]
 sipp_wave[ wis == 1           , last.stable_emp := T]
 sipp_wave[                    , next.stable_emp := next.lfstat_wave==1 & next.jobchng_max==F & ((next.EE_wave == F) | shift(EEmon,type="lead")==1)]
@@ -628,8 +638,8 @@ sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & ind_wave>=990 ,ind_wave:=NA]
 sipp_wave[ , stable_emp := lfstat_wave==1 & EE_wave==F & EU_wave==F & jobchng_max==F]
 
 if(max_wavefreq==2){
-	sipp_wave[ wave+1 == next.wave, next.occ_wave := shift(occ_wave,type="lead") , by=id] #recompute now that I've filled back U-spells
-	sipp_wave[ wave-1 == last.wave, last.occ_wave := shift(occ_wave,type="lag" ) , by=id] #recompute now that I've filled back U-spells
+	sipp_wave[ , next.occ_wave := shift(occ_wave,type="lead") , by=id] #recompute now that I've filled back U-spells
+	sipp_wave[ , last.occ_wave := shift(occ_wave,type="lag" ) , by=id] #recompute now that I've filled back U-spells
 	
 	#sipp_wave[ EU_wave==T & EUmon<seammon , switchedOcc_wave := last.occ_wave != next.occ_wave] # was taking last occupation, but I'm already doing at that at monthly
 	sipp_wave[ EU_wave==T & EUmon <seammon & last.stable_emp==T, switchedOcc_wave := occ_wave != next.occ_wave]
