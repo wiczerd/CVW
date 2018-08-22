@@ -120,9 +120,12 @@ DTall[ , c("nawavewage","nmo_lf1"):=NULL]
 #wave frequency changes --------------------------------------------
 DTseam <- DTall[ seam==T,]
 #need to add change across waves (use wavewage)
-DTseam[ wave+1==shift(wave,type = "lead"), next.wavewage    := shift(wavewage,1,type="lead"), by=id]
-DTseam[ wave-1==shift(wave,type = "lag" ), last.wavewage    := shift(wavewage,1,type="lag") , by=id]
-DTseam[ wave-1==shift(wave,type = "lag" ), last.lfstat_wave := shift(lfstat_wave,1,type="lag") , by=id]
+DTseam[                                  , next.wavewage    := shift(wavewage,1,type="lead"), by=id]
+DTseam[ wave+1!=shift(wave,type = "lead"), next.wavewage    := NA]
+DTseam[                                  , last.wavewage    := shift(wavewage,1,type="lag") , by=id]
+DTseam[ wave-1!=shift(wave,type = "lag" ), last.wavewage    := NA]
+DTseam[                                  , last.lfstat_wave := shift(lfstat_wave,1,type="lag") , by=id]
+DTseam[ wave-1!=shift(wave,type = "lag" ), last.lfstat_wave := NA]
 DTseam[ next.lfstat_wave==1 & next.wavewage<log(80+(1+80^2)^.5) , next.wavewage := NA_real_]
 DTseam[ last.lfstat_wave==1 & last.wavewage<log(80+(1+80^2)^.5) , last.wavewage := NA_real_]
 
@@ -159,8 +162,10 @@ DTseam[ , c("wageAtEU","wageAfterUE","EU_wave_first", "UE_wave_last"):=NULL]
 #adding the raw-earnings changes:-----------------------------------------------------
 #************************************************************************************
 
-DTseam[ wave+1==shift(wave,type = "lead"), next.waverawwg := shift(waverawwg,1,type="lead"), by=id]
-DTseam[ wave-1==shift(wave,type = "lag" ), last.waverawwg := shift(waverawwg,1,type="lag"), by=id]
+DTseam[                                  , next.waverawwg := shift(waverawwg,1,type="lead"), by=id]
+DTseam[ wave+1!=shift(wave,type = "lead"), next.waverawwg := NA]
+DTseam[                                  , last.waverawwg := shift(waverawwg,1,type="lag"), by=id]
+DTseam[ wave-1!=shift(wave,type = "lag" ), last.waverawwg := NA]
 DTseam[ next.lfstat_wave==1 & next.waverawwg<log(80+(1+80^2)^.5) , next.waverawwg := NA_real_]
 DTseam[ last.lfstat_wave==1 & last.waverawwg<log(80+(1+80^2)^.5) , last.waverawwg := NA_real_]
 
