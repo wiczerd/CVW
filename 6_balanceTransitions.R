@@ -169,7 +169,8 @@ DTall[wagechange_notransbad==F  & # wagechange_wave_jcbad==F &
 DTall[changer==T, stayer:= F]
 DTall[stayer ==T, changer:=F]
 
-DTall[(changer ==T & !(midEE|midEU|midUE) )| stayer==F, changermo:=T]
+DTall[(changer ==T & !(midEE|midEU|midUE) ), changermo:=T]
+DTall[stayer==T, changermo:=F]
 
 
 DTall[ !(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1 & next.lfstat_wave==1, cleaning_wts:= sum(wpfinwgt>0,na.rm = T)/sum(stayer==T,na.rm=T)  , by=date]

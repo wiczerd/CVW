@@ -92,7 +92,7 @@ wtd.4qtlmoments <- function(xt,wt){
 
 #*********************************************************************
 
-toKeep_wave <- c("switchedOcc_wave",
+toKeep_wave <- c("switchedOcc_wave","switched_wave",
             "ageGrp","HSCol","next.stable_emp","last.stable_emp",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint",
             "wagechange_month","wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave",
@@ -106,7 +106,7 @@ DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 # select toKeep columns only
 DTseam <- DTseam[, toKeep_wave, with = FALSE]
 DTseam <- subset(DTseam, (stayer|changer))
-
+DTseam <- subset(DTseam, pctmaxmis>.9)
 
 
 # loop over wage measures here:
@@ -770,6 +770,7 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 			dat_wavechngmoments_rec <- tab_wavechngmoments_rec
 		}
 	}#si, sim
+	
 	#output it to tables
 	tab_wavechngdist_rec <- dat_wavechngdist_rec
 	tab_wavechngmoments_rec<-dat_wavechngmoments_rec
