@@ -160,7 +160,7 @@ if( recall_adj == T){
 
 #now subset everyone:
 DTall[wagechange_notransbad==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &  wagechange_wave_imp==F &
-	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & 
+	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & next.stable_emp==T &
 	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
 
 DTall[wagechange_notransbad==F  & # wagechange_wave_jcbad==F & 
