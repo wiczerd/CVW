@@ -17,7 +17,7 @@ setwd(wd0)
 
 
 recDef <- "recIndic2_wave"
-wt <- "perwt"
+wt <- "truncweight"
 wc <- "rawwgchangeEUE_wave"
 
 demolbl <- 0 #or choose number from categories in demotxt
@@ -92,12 +92,12 @@ wtd.4qtlmoments <- function(xt,wt){
 
 #*********************************************************************
 
-toKeep_wave <- c("switchedOcc_wave","switched_wave",
+toKeep_wave <- c("switchedOcc_wave","switched_wave","esr_max",
             "ageGrp","HSCol","next.stable_emp","last.stable_emp",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint",
             "wagechange_month","wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave",
             "wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad","pctmaxmis",
-            "EE_wave","EU_wave","UE_wave","changer","changermo","stayer",
+            "EE_wave","EU_wave","UE_wave","changer","changermo","stayer","midEU","midUE","midEE",
             "unrt","wpfinwgt","perwt","truncweight","cleaningtruncweight",
 			"lfstat_wave","next.lfstat_wave","wave","id","date","panel")
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
@@ -106,6 +106,7 @@ DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 # select toKeep columns only
 DTseam <- DTseam[, toKeep_wave, with = FALSE]
 DTseam <- subset(DTseam, (stayer|changer))
+DTseam[ , last.esr_max := shift(esr_max)]
 #DTseam <- subset(DTseam, pctmaxmis>.9)
 DTseam[ , panelmaxwave := max(wave), by=panel]
 DTseam <- subset(DTseam, wave>1 & wave<panelmaxwave)

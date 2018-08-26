@@ -128,7 +128,7 @@ DTseam[                                  , last.lfstat_wave := shift(lfstat_wave
 DTseam[ wave-1!=shift(wave,type = "lag" ), last.lfstat_wave := NA]
 DTseam[ next.lfstat_wave==1 & next.wavewage<log(80+(1+80^2)^.5) , next.wavewage := NA_real_]
 DTseam[ last.lfstat_wave==1 & last.wavewage<log(80+(1+80^2)^.5) , last.wavewage := NA_real_]
-
+DTseam[ , next.esr_max := shift(esr_max, type="lead")]
 
 DTseam[ , wagechange_wave := next.wavewage - wavewage] #just using straight, period-wise wage changes. 
 
@@ -154,6 +154,10 @@ DTseam[UE_wave_last == T, wagechangeEUE_wave := wageAfterUE - wageAtEU]
 DTseam[, wagechangeEUE_wave:= Mode(wagechangeEUE_wave), by=list(ustintid_wave, id)]
 DTseam[ EE_wave==T & midEE==F & last.stable_emp==T & next.stable_emp==T, wagechangeEUE_wave := next.wavewage - last.wavewage]
 DTseam[ !(EU_wave|UE_wave|EE_wave), wagechangeEUE_wave := wagechange_wave]
+
+DTseam[next.lfstat_wave==1 & UE_wave_last  == T & next.stable_emp==T, esrAfterUE := next.esr_max]
+DTseam[ustintid_wave>0 , esrAfterUE := Mode(esrAfterUE),by = list(ustintid_wave,id)]
+DTseam[EU_wave==T ,    next.esr_max := esrAfterUE]
 
 DTseam[ , c("wageAtEU","wageAfterUE","EU_wave_first", "UE_wave_last"):=NULL]
 
