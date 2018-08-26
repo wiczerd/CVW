@@ -236,7 +236,7 @@ DTseam[ is.finite(ustintid_wave), UE_nomatch := any((UE_wave==T & matched_EUUE_w
 DTseam[, misRemaining := max(mis), by=list(id, panel)]
 DTseam[, misRemaining := misRemaining-mis , by=id]
 DTseam[ , wis:=seq(1,.N), by=id]
-DTseam[, wisRemaining := max(wis), by=list(id, panel)]
+DTseam[, wisRemaining := max(wis), by=id]
 DTseam[, wisRemaining := wisRemaining-wis , by=id]
 
 DTseam[ , perwt:= mean(wpfinwgt), by=id]
@@ -253,23 +253,23 @@ DTseam[ matched_EUUE_max==F & UE_wave ==T, UE_wave := NA]
 
 #do some reweighting for left- and right-truncation
 DTseam[ , truncweight := perwt]
+
+DTseam[ wisRemaining < 4 , truncweight := 0.]
 #reweight entire u stint
-wtsdisp <- array(0.,dim=(6))
-for (wi in seq(2,4)){
-	
-	EUtruncnomatchrt <- DTseam[((EU_wave==T&midEU==F))& (wisRemaining < wi ) & is.finite(ustintid_wave), 
-							  sum(EU_nomatch*perwt,na.rm=T)/sum(perwt)]
-	wtsdisp[wi-1] <- (1.-EUtruenomatchrt)/(1.-EUtruncnomatchrt)
-	DTseam[ (wisRemaining < wi ) & is.finite(ustintid_wave), truncweight := perwt*wtsdisp[wi-1]]
-	
-	UEtruncnomatchrt <- DTseam[(lfstat_wave==2&(UE_wave==T&midUE==F))& (wis < wi ) & is.finite(ustintid_wave), 
-							   sum(UE_nomatch*perwt,na.rm=T)/sum(perwt)]
-	wtsdisp[wi+2] <- (1.-UEtruenomatchrt)/(1.-UEtruncnomatchrt)
-	
-	DTseam[ (wis < wi ) & is.finite(ustintid_wave), truncweight := perwt*wtsdisp[wi+2]]
-	
-	
-}
+# wtsdisp <- array(0.,dim=(6))
+# for (wi in seq(2,4)){
+# 	EUtruncnomatchrt <- DTseam[((EU_wave==T&midEU==F))& (wisRemaining < wi ) & is.finite(ustintid_wave), 
+# 							  sum(EU_nomatch*perwt,na.rm=T)/sum(perwt)]
+# 	wtsdisp[wi-1] <- (1.-EUtruenomatchrt)/(1.-EUtruncnomatchrt)
+# 	DTseam[ (wisRemaining < wi ) & is.finite(ustintid_wave), truncweight := perwt*wtsdisp[wi-1]]
+# 	
+# 	UEtruncnomatchrt <- DTseam[(lfstat_wave==2&(UE_wave==T&midUE==F))& (wis < wi ) & is.finite(ustintid_wave), 
+# 							   sum(UE_nomatch*perwt,na.rm=T)/sum(perwt)]
+# 	wtsdisp[wi+2] <- (1.-UEtruenomatchrt)/(1.-UEtruncnomatchrt)
+# 	
+# 	DTseam[ (wis < wi ) & is.finite(ustintid_wave), truncweight := perwt*wtsdisp[wi+2]]
+# }
+
 
 DTseam[ , cycweight := perwt]
 #do some re-weighting for the cycle
