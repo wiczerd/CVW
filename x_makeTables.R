@@ -17,7 +17,7 @@ setwd(wd0)
 
 
 recDef <- "recIndic2_wave"
-wt <- "truncweight"
+wt <- "perwt"
 wc <- "rawwgchangeEUE_wave"
 
 demolbl <- 0 #or choose number from categories in demotxt

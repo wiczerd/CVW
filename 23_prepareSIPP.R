@@ -484,6 +484,8 @@ sipp[ , switchedInd_max  := any(switchedInd,na.rm=F), by=list(id,wave)]
 sipp[ , switched_max     := any(switched,na.rm=F), by=list(id,wave)]
 sipp[ , matched_EUUE_max := any(matched_EUUE,na.rm = F), by=list(id,wave)]
 
+sipp[ , esr_max := max(esr,na.rm=F), by=list(id,wave)]
+
 #pick industry/occupation to be consistent with month-level switching established above.
 # sipp[ EE==T & EEmon==1, occ_wave := l1.occ ]
 # sipp[ EE==T & EEmon==2, occ_wave := l2.occ ]
