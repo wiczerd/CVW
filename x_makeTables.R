@@ -262,8 +262,10 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 	dat_wavedist <- data.table(dat_wavedist[c(2,3,5,6),])
 	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
 	dat_wavedist[ , cat := as.factor(c("SameEmp-Exp","ChngEmp-Exp","SameEmp-Rec","ChngEmp-Rec"))]
+	dat_wavedist[ , cyc := as.factor(c("Exp","Exp","Rec","Rec"))]
+	
 	ggplot( dat_wavedist , aes(cat)) + theme_bw()+
-		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ),stat="identity")+
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 , color=cyc),stat="identity")+
 		scale_x_discrete(labels=c("Changers, Expansion","Changers, Recession","Stayers, Expansion","Stayers, Recession"))
 	nametab = "box_staychng"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10)
