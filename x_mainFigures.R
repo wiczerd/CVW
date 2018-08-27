@@ -176,7 +176,7 @@ DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==F & DTseam$EU_wave ==T , g := 2]
 DTseam[!(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T), g := 3]
 stayerEUEDens <- stackedDens(subset(DTseam, !UE_wave==T & is.finite(wagechangeEUE_wave)),"g","wagechangeEUE_wave")
 stayerEUEmelt <- melt(stayerEUEDens,id.vars = "WageChange")
-stayerEUEmelt[ WageChange>-4 & WageChange<4, logValue:=log(value)]
+stayerEUEmelt[ WageChange>-3 & WageChange<3, logValue:=log(value)]
 stayerEUEmelt[ , g:=4L-as.integer(variable)]
 ggplot(subset(stayerEUEmelt,is.finite(logValue)) ,aes(ymax=logValue,ymin=-8,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
 	theme_bw()+xlab("Wage Change")+ylab("Stacked log density")+

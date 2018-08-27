@@ -48,7 +48,7 @@ DTall[, hispanic := race == 3]
 # usewage
 const <- DTall[ is.finite(logearnm), sum(logearnm * wpfinwgt, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
 DTall[lfstat==1, usewage := const +  residuals(lm(logearnm ~ experience + I(experience^2) + factor(nocol_col) + 
-				       	female + black + hispanic + factor(occ) + factor(month),
+				       	female + black + hispanic + factor(month),
 				       na.action = na.exclude, weights = wpfinwgt))]
 
 # occwage (NA observations of occ cause issues -- ~10% of employed)

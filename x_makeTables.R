@@ -17,8 +17,8 @@ setwd(wd0)
 
 
 recDef <- "recIndic2_wave"
-wt <- "truncweight"
-wc <- "rawwgchangeEUE_wave"
+wt <- "perwt"
+wc <- "wagechangeEUE_wave"
 
 demolbl <- 0 #or choose number from categories in demotxt
 demotxt <- c("Young", "Prime","Old","HS","Col","Male","Female")
@@ -712,6 +712,7 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 	tab_wavechngdist_rec    <- array(NA,dim=c(9*3,tN))
 	plt_wavechngdist_rec    <- array(NA,dim=c(2^3,tN))
 	tab_wavestaydist_rec    <- array(NA,dim=c(3*3,tN))
+	plt_wavestaydist_rec    <- array(NA,dim=c(2^2,tN))
 	tab_wavechngmoments_rec     <- array(NA, dim=c(9*3,5))
 	if(bootse == T){
 		set.seed(seedint)
