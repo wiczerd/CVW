@@ -26,63 +26,6 @@ DTall <- DTall[ , c("eyear","next.earnm","logearnm","black","hispanic"):=NULL]
 
 setkey(DTall, id, date)
 
-DTall[ , last.lfstat:= shift(lfstat), by=id] #will need this later
-#clear out the super-low earnings
-DTall[ lfstat==1 & usewage<log(20+(1+20^2)^.5), usewage:=NA]
-DTall[ , calmon := (wave-1)*4+srefmon]
-DTall[ calmon+1 == shift(calmon,type="lead"), next.usewage := shift(usewage,type="lead"), by=id]
-DTall[ calmon-1 == shift(calmon,type="lag" ), last.usewage := shift(usewage,type="lag"), by=id]
-DTall[ next.lfstat==1 & next.usewage<log(20+(1+20^2)^.5), next.usewage:=NA]
-DTall[ last.lfstat==1 & last.usewage<log(20+(1+20^2)^.5), last.usewage:=NA]
-
-# fill wages upwards to fill in unemployment spells
-DTall[EE==T|UE == T, nextwage := next.usewage]
-DTall[lfstat>=2 | EU==T, nextwage := Mode(nextwage), by = list(id,ustintid)] #replace within  unemp stints
-
-DTall[last.lfstat==1, tuw := last.usewage]
-
-
-# create wagechange variable---------------------------------------------
-DTall[EE == T, wagechange := nextwage - tuw] #worksbetter with usewage
-DTall[EU == T, wagechange := log(1.0) - tuw]
-DTall[UE == T, wagechange := nextwage - log(1.0)]
-
-# create wagechange_stayer variable------------------------------
-DTall[ !(EE==T|EU==T|UE==T), wagechange_stayer := next.usewage - last.usewage]
-DTall[job == 0 & shift(job,type="lead") == 0,
-      wagechange_stayer := 0.0, by = id]
-
-#do not allow stayers to change job listings without having a marked transition
-DTall[ !(EE==T|EU==T|UE==T) & jobchng_wave ==T, wagechange_stayer:=NA]
-#do not allow stayers to gain/lose more than 200% change in earnings w/o change in status with changes that revert
-DTall[ !(EE==T|EU==T|UE==T) & (wagechange_stayer<(-2.) | wagechange_stayer>(2.))&
-	   (((usewage - last.usewage)<(-2.)& (next.usewage - usewage)>(2.)) | (usewage - last.usewage)>(2.)& (next.usewage - usewage)<(-2.))
-	   , wagechange_stayer_bad :=  T ]
-DTall[ is.na(wagechange_stayer_bad), wagechange_stayer_bad :=  F]
-
-DTall[ wagechange_stayer_bad==T, wagechange_stayer := NA]
-
-
-# create wagechangeEUE variable -----------------------------------
-DTall[EU==T | EE==T, wagechangeEUE := nextwage - tuw]
-# fill across whole ustintid
-DTall[lfstat>=2 | EU==T, wagechangeEUE := Mode(wagechangeEUE), by=list(id,ustintid)]
-DTall[!(EU==T | EE==T | UE==T), wagechangeEUE := wagechange_stayer]
-
-# create wagechange_month variable
-# if ifelse() condition is NA, end result is NA.
-DTall[!(EE | UE | EU), wagechange_month := wagechange_stayer]
-DTall[(EE | UE | EU), wagechange_month := wagechange]
-DTall[ , c("wagechange_stayer","wagechange","wagechange_stayer_bad","tuw","last.lfstat"):=NULL]
-
-# create occwagechange variable
-#DTall[, leadwage := shift(occwage, 1, type = "lead"), by = id]
-#DTall[, last.occwage := shift(occwage, 1, type = "lag"), by = id]
-#DTall[EE==T|UE == T, nextoccwage := leadwage, by = id]
-#DTall[lfstat>=2 | EU==T, nextoccwage := Mode(nextoccwage), by = list(id,ustintid)] #replace if it's UE
-#DTall[, leadwage:=NULL]
-# DTall[switchedOcc_wave ==T, occwagechange := nextoccwage - last.occwage]
-# DTall[ , c("nextoccwage","last.occwage"):=NULL]
 
 #***********************************************************************
 #***********************************************************************
@@ -94,27 +37,27 @@ DTall[ , c("wagechange_stayer","wagechange","wagechange_stayer_bad","tuw","last.
 DTall[!is.na(usewage) , levwage := 1/2*(exp(usewage)-exp(-usewage))]
 
 DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
-DTall[ , wavewage := mean(levwage,na.rm=T)*nmo_lf1, by= list(id,wave)] #if one month is missing, give it the average of the other 3
-DTall[ , wavewage := log(wavewage + (1+wavewage^2)^.5) ]
+DTall[ , levwage := mean(levwage,na.rm=T)*nmo_lf1, by= list(id,wave)] #if one month is missing, give it the average of the other 3
+DTall[ , wavewage := log(levwage + (1+levwage^2)^.5) ]
 DTall[ , nawavewage:= all(is.na(usewage) ),by= list(id,wave)]
 DTall[ nawavewage==T, wavewage:=NA_real_]
 #drop the lowest resid wages, implies working less than $80 /month:
 DTall[ lfstat_wave==1 & wavewage<log(80+(1+80^2)^.5), wavewage:=NA]
 
-DTall[ , c("levwage","nawavewage"):=NULL]
+DTall[ , c("nawavewage"):=NULL]
 
 
 # raw wages
 DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
-DTall[ , waverawwg := mean(earnm,na.rm=T)*nmo_lf1, by= list(id,wave)] #if one month is missing, give it the average of the other 3
-DTall[ , waverawwg := log(waverawwg + (1+waverawwg^2)^.5) ]
+DTall[ , waveearnm := mean(earnm,na.rm=T)*nmo_lf1, by= list(id,wave)] #if one month is missing, give it the average of the other 3
+DTall[ , waverawwg := log(waveearnm + (1+waveearnm^2)^.5) ]
 DTall[ , nawavewage:= all(is.na(usewage) ),by= list(id,wave)]
 DTall[ nawavewage==T, waverawwg:=NA_real_]
 #drop the lowest wages, implies working less than $80 /month:
 DTall[ lfstat_wave==1 & waverawwg<log(80+(1+80^2)^.5), waverawwg:=NA]
 DTall[ lfstat_wave==1, earn_imp_wave := sum(earn_imp==1,na.rm=T), by=list(id,wave)]
 
-DTall[ , c("nawavewage","nmo_lf1"):=NULL]
+DTall[ , c("nawavewage"):=NULL]
 
 #************************************************************************************
 #wave frequency changes --------------------------------------------
@@ -124,6 +67,7 @@ DTseam <- DTall[ seam==T,]
 DTseam[ , next2.lfstat_wave := shift(lfstat_wave,2,type="lead"), by=id] 
 DTseam[ , next3.lfstat_wave := shift(lfstat_wave,3,type="lead"), by=id] 
 
+	
 #need to add change across waves (use wavewage)
 DTseam[                                    , next.wavewage     := shift(wavewage,1,type="lead"), by=id]
 DTseam[ wave+1!=shift(wave,type = "lead")  , next.wavewage     := NA]
@@ -131,6 +75,10 @@ DTseam[                                    , next2.wavewage    := shift(wavewage
 DTseam[ wave+2!=shift(wave,2,type = "lead"), next2.wavewage    := NA]
 DTseam[                                    , next3.wavewage    := shift(wavewage,3,type="lead"), by=id]
 DTseam[ wave+3!=shift(wave,3,type = "lead"), next3.wavewage    := NA]
+
+DTseam[ , nextann.wavewage := levwage + shift(levwage,type="lead") + shift(levwage,2,type="lead")  , by=id]
+DTseam[ wave+1!=shift(wave,type = "lead") | wave+2!=shift(wave,2,type = "lead") , nextann.wavewage := NA]
+DTseam[ , nextann.wavewage := log(nextann.wavewage + (1+nextann.wavewage^2)^.5) ]
 
 DTseam[                                  , last.wavewage    := shift(wavewage,1,type="lag") , by=id]
 DTseam[ wave-1!=shift(wave,type = "lag" ), last.wavewage    := NA]
@@ -145,6 +93,12 @@ DTseam[ , next.esr_max := shift(esr_max, type="lead")]
 DTseam[ , wagechange_wave  := next.wavewage   - wavewage] #just using straight, period-wise wage changes. 
 DTseam[ , wagechange2_wave := next2.wavewage  - wavewage] 
 DTseam[ , wagechange3_wave := next3.wavewage  - wavewage] 
+
+DTseam[ , last.wavewage_ann:= shift(levwage)*3, by=id]
+DTseam[ , last.wavewage_ann:= log(last.wavewage_ann + (1+last.wavewage_ann^2)^.5 )]
+
+DTseam[ , wagechange_wvan := nextann.wavewage - last.wavewage_ann]
+
 
 #for EE that spans waves:
 #DTseam[ EE_wave==T , wagechange_wave:= NA]
