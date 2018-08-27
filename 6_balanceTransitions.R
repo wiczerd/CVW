@@ -254,7 +254,7 @@ DTseam[ matched_EUUE_max==F & UE_wave ==T, UE_wave := NA]
 #do some reweighting for left- and right-truncation
 DTseam[ , truncweight := perwt]
 
-DTseam[ wisRemaining < 4 , truncweight := 0.]
+DTseam[ wisRemaining < 3 , truncweight := 0.]
 #reweight entire u stint
 # wtsdisp <- array(0.,dim=(6))
 # for (wi in seq(2,4)){

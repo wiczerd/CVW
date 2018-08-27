@@ -115,6 +115,20 @@ DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 
 DTseam <- subset(DTseam, changer==T|stayer==T)
 
+DTseam[ , c("pct_wcEUE_wave","rank_wcEUE_wave"):=NULL]
+DTseam[changermo ==T & is.finite(wagechangeEUE_wave) & (EU_wave), rank_wcEUE_wave := frank(wagechangeEUE_wave)/.N ]
+DTseam[, pct_wcEUE_wave :=as.integer( round(100*rank_wcEUE_wave),5)]
+
+wc_occwc <- data.table(DTseam[ switched_wave==T, wtd.mean(wagechangeEUE_wave,weights=truncweight,na.rm=T), by=pct_wcEUE_wave])
+wc_occwc <- merge(wc_occwc,data.table(DTseam[ switched_wave==T, wtd.quantile(occwagechangeEUE_wave,prob=0.10,weights=truncweight,na.rm=T), by=pct_wcEUE_wave]), by = "pct_wcEUE_wave")
+wc_occwc <- merge(wc_occwc,data.table(DTseam[ switched_wave==T, wtd.quantile(occwagechangeEUE_wave,prob=0.5,weights=truncweight,na.rm=T), by=pct_wcEUE_wave]), by = "pct_wcEUE_wave")
+wc_occwc <- merge(wc_occwc,data.table(DTseam[ switched_wave==T, wtd.quantile(occwagechangeEUE_wave,prob=0.90,weights=truncweight,na.rm=T), by=pct_wcEUE_wave]), by = "pct_wcEUE_wave")
+
+names(wc_occwc) <- c("pct","wchng","P10occhcng","P50occchng","P90occchng")
+wc_occwc <- melt(wc_occwc,id.vars="pct")
+ggplot(wc_occwc, aes( x=pct,y=value, color=variable ))+geom_line()
+
+
 toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","wagechangeEUE_wave","recIndic_wave","date")
 DTseam <- subset(DTseam, is.finite(wagechange_wave) & is.finite(EU_wave) & is.finite(UE_wave)& is.finite(EE_wave))
 
