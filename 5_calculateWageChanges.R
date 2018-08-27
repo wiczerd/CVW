@@ -142,7 +142,9 @@ DTseam[ next3.lfstat_wave==1 & next3.wavewage<log(80+(1+80^2)^.5) , next3.wavewa
 DTseam[ last.lfstat_wave==1  & last.wavewage <log(80+(1+80^2)^.5) , last.wavewage := NA_real_]
 DTseam[ , next.esr_max := shift(esr_max, type="lead")]
 
-DTseam[ , wagechange_wave  := next.wavewage  - wavewage] #just using straight, period-wise wage changes. 
+DTseam[ , wagechange_wave  := next.wavewage   - wavewage] #just using straight, period-wise wage changes. 
+DTseam[ , wagechange2_wave := next2.wavewage  - wavewage] 
+DTseam[ , wagechange3_wave := next3.wavewage  - wavewage] 
 
 #for EE that spans waves:
 #DTseam[ EE_wave==T , wagechange_wave:= NA]

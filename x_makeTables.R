@@ -17,7 +17,7 @@ setwd(wd0)
 
 
 recDef <- "recIndic2_wave"
-wt <- "perwt"
+wt <- "truncweight"
 wc <- "wagechangeEUE_wave"
 
 demolbl <- 0 #or choose number from categories in demotxt
@@ -185,6 +185,7 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 	
 	# wage quantiles ---------------------------------------------------------------
 	tabqtls <- c(.1,.25,.5,.75,.9)
+	overalltabqtls <- c(0.01,.1,.5,.9,0.99)
 	tN <- (length(tabqtls)+1)
 	tab_wavedist <- array(0., dim=c(9,length(tabqtls)+1))
 	
@@ -259,6 +260,7 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 	#_______________________________________
 	#output it to a box-whisker's plot:
 
+	
 	dat_wavedist <- data.table(dat_wavedist[4:9,])
 	dat_wavedist <- data.table(dat_wavedist[c(2,3,5,6),])
 	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
