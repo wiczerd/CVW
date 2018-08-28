@@ -81,8 +81,8 @@ recallRecodeShorTerm <- function(DF){
 	DF[ , ENEwseam := ( max.unempdur<=2 & lfstat ==2 ) &
 	   	(wave != shift(wave) | wave != shift(wave,1,type="lead")) ,by=id]
 	DF[is.na(ENEwseam), ENEwseam:=F]
-	predrecall <- glm( recalled ~ wagechangeEUE + I(wagechangeEUE^2) + recIndic + factor(esr) + union + 
-					   	factor(HSCol) + factor(Young)  + I(wagechangeEUE>(-.5)) + I(wagechangeEUE<.5 & wagechangeEUE>(-.5))
+	predrecall <- glm( recalled ~ wagechangeEUE_wave + I(wagechangeEUE_wave^2) + recIndic + factor(esr) + union + 
+					   	factor(HSCol) + factor(Young)  + I(wagechangeEUE_wave>(-.5)) + I(wagechangeEUE_wave<.5 & wagechangeEUE_wave>(-.5))
 					   + switchedOcc + switchedAddress, 
 					   na.action = na.exclude, data= subset(DF,ENEnoseam),family=binomial(link="probit"))
 	DF[ (ENEwseam | ENEnoseam), 
@@ -112,9 +112,6 @@ if(with(DTall,exists("matched_EUUE_max"))==F){
 	DTall[ , matched_EUUE_max:= any(matched_EUUE,na.rm=F), by=list(id,wave)]
 }
 # sum weights for UE, EU, and EE
-UEreadweight <- DTall[UE==T & !is.na(wagechange_month) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
-EUreadweight <- DTall[EU==T & !is.na(wagechange_month) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
-EEreadweight <- DTall[EE==T & !is.na(wagechange_month), sum(wpfinwgt, na.rm = TRUE)]
 
 UEreadweight_wave <- DTall[UE_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
 EUreadweight_wave <- DTall[EU_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
@@ -144,16 +141,12 @@ if( recall_adj == T){
 	DTall[UE_wave==T & recalled_wave==T, UE_wave:=NA]
 	DTall[lfstat_wave>=2 & recalled_wave==T, lfstat_wave:=NA]
 	
-	UEnorecallweight <- DTall[UE==T & !is.na(wagechange_month) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
-	EUnorecallweight <- DTall[EU==T & !is.na(wagechange_month) & is.finite(ustintid), sum(wpfinwgt, na.rm = TRUE)]
-	EEnorecallweight <- DTall[EE==T & !is.na(wagechange_month), sum(wpfinwgt, na.rm = TRUE)]
 	
 	UEnorecallweight_wave <- DTall[UE_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
 	EUnorecallweight_wave <- DTall[EU_wave==T & !is.na(wagechange_wave) & is.finite(ustintid_wave), sum(wpfinwgt, na.rm = TRUE)]
 	EEnorecallweight_wave <- DTall[EE_wave==T & !is.na(wagechange_wave), sum(wpfinwgt, na.rm = TRUE)]
 	
 	#recall rate:
-	1.-UEnorecallweight/UEreadweight
 	1.-UEnorecallweight_wave/UEreadweight_wave
 	
 }
