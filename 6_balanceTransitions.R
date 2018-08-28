@@ -347,116 +347,11 @@ DTseam[ !(is.finite(EE_wave) & is.finite(EU_wave)&is.finite(UE_wave)), changer:=
 DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
 saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))
 
-
-
-# create data set with defined wage changes only ------------------------------
-wagechanges <- DTall[!is.infinite(wagechange_month) & !is.na(wagechange_month),]
-setkey(wagechanges, id, date)
-
-
-# keep only count EEs and balanced EUs and UEs
-wagechanges[, balancedEU := EU & shift(UE, 1, type = "lead"), by = id]
-wagechanges[, balancedUE := UE & shift(EU, 1, type = "lag"), by = id]
-wagechanges <- wagechanges[EE | balancedEU | balancedUE,]
-
-
-wagechanges[, max.unempdur:= ifelse(UE==T & is.na(max.unempdur), shift(max.unempdur), max.unempdur) , by = id]
-wagechanges[, max.unempdur:= ifelse(UE==T & max.unempdur<shift(max.unempdur), shift(max.unempdur), max.unempdur) , by = id]
-wagechanges[, max.unempdur:= ifelse(EU==T & max.unempdur<shift(max.unempdur,1,type="lead"), shift(max.unempdur,1,type="lead"), max.unempdur) , by = id]
-wagechanges[, ustintid := ifelse( EU==T & is.na(ustintid), shift(ustintid,1,type="lead"), ustintid ), by=id]
-wagechanges[, ustintid := ifelse( UE==T & is.na(ustintid), shift(ustintid,1,type="lag"), ustintid ), by=id]
-
-# set HSCol and Young to max over panel to ensure balance
-wagechanges[, HSCol := max(HSCol), by = id]
-wagechanges[, Young := as.logical(max(Young)), by = id]
-
-# create new person weights
-wagechanges[, perwt := mean(wpfinwgt, na.rm = TRUE), by = id]
-DTall[, perwt := mean(wpfinwgt, na.rm = TRUE), by = id]
-
-
-# re-weight for total distribution
-UEweight.balanced <- wagechanges[UE & !is.na(wagechange_month), sum(perwt, na.rm = TRUE)]
-EUweight.balanced <- wagechanges[EU & !is.na(wagechange_month), sum(perwt, na.rm = TRUE)]
-EEweight.balanced <- wagechanges[EE & !is.na(wagechange_month), sum(perwt, na.rm = TRUE)]
-
-# re-inflate weights for workers who enter and leave as unemployed & divide by 2 for the whole transition
-# this should take the UE, because many EU will leave sample by exit LF
-wagechanges[, balanceweight := perwt]
-
-if(dur_adj==T){
-	
-	# change weight among unemployed to match <15 weeks, 15-26 weeks, 27+ from CPS
-	wagechanges <- merge(wagechanges, CPSunempdur, by = "date", all.x = TRUE)
-	wagechanges$year <-as.integer(format(wagechanges$date, "%Y") )
-	wagechanges[ UE ==T | EU==T, year := shift(year,1,type="lag")] # be sure UE is in the same year as EU
-	
-	#for( yi in seq(min(wagechanges$year, na.rm=T),max(wagechanges$year, na.rm=T)  )){
-		#this is the failure rate
-		wagechanges[,SIPPmax_LT15  :=wtd.mean( (max.unempdur< 15*12/52)                         , perwt,na.rm = T)]
-		wagechanges[,SIPPmax_15_26 :=wtd.mean( (max.unempdur>=15*12/52 & max.unempdur<=26*12/52) , perwt,na.rm = T)]
-		wagechanges[,SIPPmax_GT26  :=wtd.mean( (max.unempdur> 26*12/52)                         , perwt,na.rm = T)]
-		#this is the cumulative survival rate
-		wagechanges[,CPSsurv_LT15  :=(mean(FRM5_14  ,na.rm = T) + mean(LT5,na.rm = T))/100]
-		wagechanges[,CPSsurv_15_26 :=(mean(FRM15_26 ,na.rm = T))/100]
-		wagechanges[,CPSsurv_GT26  :=(mean(GT26     ,na.rm = T))/100]
-		#1-durwt_LT15*SIPPmax_LT15 = CPSsurv_GT26+ CPSsurv_15_26
-		wagechanges[(max.unempdur<15*12/52), durwt := (1.-CPSsurv_GT26+ CPSsurv_15_26)/SIPPmax_LT15]
-		#durwt_FRM1526*SIPPmax_15_26 = CPSsurv_15_26
-		wagechanges[(max.unempdur>=15*12/52 & max.unempdur<=26*12/52), durwt :=  CPSsurv_15_26/SIPPmax_15_26]
-		#durwt_GT26*SIPPmax_GT26 = CPSsurv_GT26
-		wagechanges[(max.unempdur>26*12/52), durwt :=  CPSsurv_GT26/SIPPmax_GT26]
-	#}
-	wagechanges[ (max.unempdur<15*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
-	wagechanges[ (max.unempdur>=15*12/52 & max.unempdur<=26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
-	wagechanges[ (max.unempdur>26*12/52), quantile(durwt, na.rm=T,probs = c(.1,.25,.5,.75,.9))]
-	
-	wagechanges[ , c("SIPPmax_LT15","SIPPmax_15_26","SIPPmax_GT26","CPSsurv_LT15","CPSsurv_15_26","CPSsurv_GT26")
-				:= NULL]
-	#do not increase the incidence of unemployment
-	balwtEU <- sum(wagechanges$balanceweight[wagechanges$EU], na.rm=T)
-	balwtUE <- sum(wagechanges$balanceweight[wagechanges$UE], na.rm=T)
-	
-	wagechanges$balanceweight <- wagechanges$balanceweight*wagechanges$durwt
-	wagechanges$balanceweight[wagechanges$EU] <- wagechanges$balanceweight[wagechanges$EU]/
-		sum(wagechanges$balanceweight[wagechanges$EU], na.rm=T)*balwtEU
-	wagechanges$balanceweight[wagechanges$UE] <- wagechanges$balanceweight[wagechanges$UE]/
-		sum(wagechanges$balanceweight[wagechanges$UE], na.rm=T)*balwtUE
-	
-	wagechanges[,c("year","durwt"):=NULL]
-}
-
-
-# scale weights back to original total
-wtscale <- wagechanges[, sum(balanceweight, na.rm = TRUE)/sum(wpfinwgt, na.rm = TRUE)]
-wagechanges[, balanceweight := balanceweight/wtscale]
-
-# create EUE balance weights that give double weight to the EU and zero to the UE
-wagechanges[, balanceweightEUE := balanceweight]
-wagechanges[EU==T, balanceweightEUE := balanceweight*2]
-wagechanges[UE==T, balanceweightEUE := 0.]
-
-
-wagechangesBalanced<-subset(wagechanges, select=c("id","date","balancedEU","balancedUE","max.unempdur","balanceweight"))
+DTall <-merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
 setkey(DTall,id,date)
 DTall[is.finite(ustintid), balancedEU := any(UE,na.rm=T)==T & EU==T, by = list(id,ustintid)]
 DTall[is.finite(ustintid), balancedUE := any(EU,na.rm=T)==T & UE==T, by = list(id,ustintid)]
-DTall<- merge(DTall,wagechangesBalanced,by=c("id","date"),all.x=T)
-
-#make the wage changes NA if not-balanced
-DTall[UE==T & balancedUE.y==F, c("wagechangeEUE","wagechange_month") := NA_real_]
-DTall[EU==T & balancedEU.y==F, c("wagechangeEUE","wagechange_month") := NA_real_]
-
-DTall[UE==T, UE := balancedUE.y==T]
-DTall[EU==T, EU := balancedEU.y==T]
-#there are a few from x that don't have ustintid, fill these with y.
-
-DTall[ is.finite(ustintid), max.unempdur := max(c(max.unempdur.y, max.unempdur.x), na.rm=T), by=list(id,ustintid)]
-DTall[ !is.finite(balanceweight), balanceweight:= 0.]
-DTall[, balanceweight := max(balanceweight, na.rm=T), by=list(id,ustintid)]
-
-DTall[, c("max.unempdur.x","max.unempdur.y","balancedEU.x","balancedEU.y") := NULL ]
 
 # create weights & EUE specific stuff
 
@@ -465,12 +360,7 @@ DTall[EU==T|UE==T|EE==T, allwt := balanceweight]
 DTall[                 , allwtEUE := allwt]
 DTall[EU==T            , allwtEUE := allwtEUE*2.]
 DTall[UE==T            , allwtEUE := 0.]
-DTall[                 , wagechangeEUE := ifelse(EU==T, wagechangeEUE,wagechange_month)]
-DTall[UE==T            , wagechangeEUE := NA_real_]
 
-wagechanges[EE==T      , balanceweightEUE:=balanceweight]
-wagechanges[EU==T      , balanceweightEUE:=balanceweight*2]
-wagechanges[UE==T      , balanceweightEUE:=0.]
 
 saveRDS(DTall,paste0(outputdir,"/DTall_6.RData"))
 
