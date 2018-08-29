@@ -95,7 +95,7 @@ wtd.4qtlmoments <- function(xt,wt){
 toKeep_wave <- c("switchedOcc_wave","switched_wave","esr_max",
             "ageGrp","HSCol","next.stable_emp","last.stable_emp",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint",
-            "wagechange_month","wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave",
+            "wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave",
             "wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad","pctmaxmis",
             "EE_wave","EU_wave","UE_wave","changer","changermo","stayer","midEU","midUE","midEE",
             "unrt","wpfinwgt","perwt","truncweight","cleaningtruncweight",
@@ -265,11 +265,12 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 	dat_wavedist <- data.table(dat_wavedist[c(2,3,5,6),])
 	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
 	dat_wavedist[ , cat := as.factor(c("SameEmp-Exp","ChngEmp-Exp","SameEmp-Rec","ChngEmp-Rec"))]
-	dat_wavedist[ , cyc := as.factor(c("Exp","Exp","Rec","Rec"))]
+	dat_wavedist[ , Cycle := as.factor(c("Exp","Exp","Rec","Rec"))]
 	
-	ggplot( dat_wavedist , aes(cat)) + theme_bw()+
-		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 , color=cyc),stat="identity")+
-		scale_x_discrete(labels=c("Changers, Expansion","Changers, Recession","Stayers, Expansion","Stayers, Recession"))
+	ggplot( dat_wavedist , aes(cat)) + theme_classic()+
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 , color=Cycle),stat="identity")+
+		scale_x_discrete(labels=c("Changers, Expansion","Changers, Recession","Stayers, Expansion","Stayers, Recession"))+
+		scale_color_manual(values=c("blue","red"))
 	nametab = "box_staychng"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10)
 	
@@ -805,6 +806,10 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 			tab_wavestaydist_rec[2+ridx,2:tN] <- DThr[stayer==T &demo==T &switchedOcc_wave==F &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 			tab_wavestaydist_rec[3+ridx,1   ] <- DThr[stayer==T &demo==T &switchedOcc_wave==T &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 			tab_wavestaydist_rec[3+ridx,2:tN] <- DThr[stayer==T &demo==T &switchedOcc_wave==T &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+			plt_wavestaydist_rec[1+as.integer(rI)*2,1]    <- tab_wavestaydist_rec[2+ridx,1   ]
+			plt_wavestaydist_rec[1+as.integer(rI)*2,2:tN] <- tab_wavestaydist_rec[2+ridx,2:tN]
+			plt_wavestaydist_rec[2+as.integer(rI)*2,1]    <- tab_wavestaydist_rec[3+ridx,1   ]
+			plt_wavestaydist_rec[2+as.integer(rI)*2,2:tN] <- tab_wavestaydist_rec[3+ridx,2:tN]
 		}
 		if(si>1){
 			se_wavechngdist_rec[,,si-1] = tab_wavechngdist_rec
@@ -821,13 +826,14 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 	#________________________________________
 	# Output to a box plot
 	#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-	dat_wavedist <- data.table(dat_wavestaydist_rec[4:9,])
-	dat_wavedist <- data.table(dat_wavedist[c(3,4,6,7),])
+	dat_wavedist <- data.table(plt_wavestaydist_rec)
 	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
 	dat_wavedist[ , cat := as.factor(c("NoSw-Exp","Sw-Exp","NoSw-Rec","Sw-Rec"))]
+	dat_wavedist[ , Cycle := as.factor(c("Expansion","Expansion","Recession","Recession"))]
 	ggplot( dat_wavedist , aes(cat)) + theme_bw()+
-		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ),stat="identity")+
-		scale_x_discrete(labels=c("No Switch, Expansion","No Switch, Recession","Switchers, Expansion","Switchers, Recession"))
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ,color=Cycle),stat="identity")+
+		scale_color_manual(values=c("blue","red"))+
+		scale_x_discrete(labels=c("No Switch, Exp","No Switch, Rec","Switchers, Exp","Switchers, Rec"))
 	nametab = "box_stayrec"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10)
 	
@@ -835,11 +841,36 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 	dat_wavedist <- data.table(plt_wavechngdist_rec)
 	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
 	dat_wavedist[ , cat := as.factor(c("EE-NoSw-Exp","EE-Sw-Exp","EE-NoSw-Rec","EE-Sw-Rec","EU-NoSw-Exp","EU-Sw-Exp","EU-NoSw-Rec","EU-Sw-Rec"))]
+	dat_wavedist[ , Cycle := as.factor(c("Expansion","Expansion","Recession","Recession","Expansion","Expansion","Recession","Recession"))]
+	
 	ggplot( dat_wavedist , aes(cat)) + theme_bw()+
-		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ),stat="identity")+
-		scale_x_discrete(labels=c("EE/No Switch, Expansion","EE/No Switch, Recession","EE/Switchers, Expansion","EE/Switchers, Recession",
-								  "EU/No Switch, Expansion","EU/No Switch, Recession","EU/Switchers, Expansion","EU/Switchers, Recession"))
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90,color=Cycle ),stat="identity")+
+		scale_color_manual(values=c("blue","red"))+
+		scale_x_discrete(labels=c("EE/No Switch, Exp","EE/No Switch, Rec","EE/Switchers, Exp","EE/Switchers, Rec",
+								  "EU/No Switch, Exp","EU/No Switch, Rec","EU/Switchers, Exp","EU/Switchers, Rec"))
 	nametab = "box_chngrec"
+	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10)
+	
+	dat_wavedist <- data.table(plt_wavechngdist_rec[c(1,2,3,4),])
+	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
+	dat_wavedist[ , cat := as.factor(c("EE-NoSw-Exp","EE-Sw-Exp","EE-NoSw-Rec","EE-Sw-Rec"))]
+	dat_wavedist[ , Cycle := as.factor(c("Expansion","Expansion","Recession","Recession"))]
+	ggplot( dat_wavedist , aes(cat)) + theme_bw()+
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90,color=Cycle ),stat="identity")+
+		scale_color_manual(values=c("blue","red"))+
+		scale_x_discrete(labels=c("EE/No Switch, Exp","EE/No Switch, Rec","EE/Switchers, Exp","EE/Switchers, Rec"))
+	nametab = "box_EEchngrec"
+	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10)
+	
+	dat_wavedist <- data.table(plt_wavechngdist_rec[c(5,6,7,8),])
+	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
+	dat_wavedist[ , cat := as.factor(c("EU-NoSw-Exp","EU-Sw-Exp","EU-NoSw-Rec","EU-Sw-Rec"))]
+	dat_wavedist[ , Cycle := as.factor(c("Expansion","Expansion","Recession","Recession"))]
+	ggplot( dat_wavedist , aes(cat)) + theme_bw()+
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90,color=Cycle ),stat="identity")+
+		scale_color_manual(values=c("blue","red"))+
+		scale_x_discrete(labels=c("EU/No Switch, Exp","EU/No Switch, Rec","EU/Switchers, Exp","EU/Switchers, Rec"))
+	nametab = "box_EUchngrec"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10)
 	
 	
