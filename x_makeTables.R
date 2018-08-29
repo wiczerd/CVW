@@ -846,8 +846,8 @@ for( wc in c("wagechange_wave","rawwgchange_wave","wagechangeEUE_wave","rawwgcha
 	ggplot( dat_wavedist , aes(cat)) + theme_bw()+
 		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90,color=Cycle ),stat="identity")+
 		scale_color_manual(values=c("blue","red"))+
-		scale_x_discrete(labels=c("EE/No Switch, Exp","EE/No Switch, Rec","EE/Switchers, Exp","EE/Switchers, Rec",
-								  "EU/No Switch, Exp","EU/No Switch, Rec","EU/Switchers, Exp","EU/Switchers, Rec"))
+		scale_x_discrete(labels=c("EE/No Switch","EE/No Switch","EE/Switchers","EE/Switchers",
+								  "EU/No Switch","EU/No Switch","EU/Switchers","EU/Switchers"))
 	nametab = "box_chngrec"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10)
 	

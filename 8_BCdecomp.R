@@ -16,6 +16,8 @@ outputdir = "~/workspace/CVW/R/Results"
 setwd(wd0)
 
 
+wt <- "truncweight"
+wc <- "wagechangeEUE_wave"
 
 qtlgridEst  <- c(seq(.02,.1,.02),seq(0.15,0.85,0.05),seq(.9,.98,.02))
 qtlgridOut <- seq(.02,0.98,0.01)
@@ -106,81 +108,79 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 	}
 	
 	# setup subgroup indices
-	if(no_occ == F){
-		if(NS==7){
-			# 7 subgroups, Sw X (EE UE EU) + stay, sets up conditional distributions.
-			wcDF[wcDF$switch==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F , s := 1]
-			wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F , s := 2]
-			wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T , s := 3]
-			wcDF[wcDF$switch==F & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F , s := 4]
-			wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F , s := 5]
-			wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T , s := 6]
-			wcDF[                    !(wcDF$EE==T | wcDF$UE==T | wcDF$EU ==T), s := 7]
-			wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
-			wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
-			wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
-			wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
-			wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]
-			wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]		
-			wcDF[!is.na(wcDF$s), s7 := ifelse(s==7,1,0)]
-		}else if(NS==4){
-			# 4 subgroups, Sw X (EE EU), sets up conditional distributions.
-			wcDF[  wcDF$EE==T & wcDF$EU ==F & wcDF$UE ==F , s := 1]
-			wcDF[  wcDF$EE==F & wcDF$EU ==T & wcDF$UE ==F , s := 2]
-			wcDF[  wcDF$EE==F & wcDF$EU ==F & wcDF$UE ==T , s := 3]
-			wcDF[!(wcDF$EE==T | wcDF$EU ==T | wcDF$UE ==T), s := 4]
-			wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
-			wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
-			wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
-			wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
-		}else if(NS==5){
-			# 4 subgroups, Sw X (EE EU) + stay, sets up conditional distributions.
-			wcDF[wcDF$switch==T & wcDF$EE==T & wcDF$EU ==F , s := 1]
-			wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$EU ==T , s := 2]
-			wcDF[wcDF$switch==F & wcDF$EE==T & wcDF$EU ==F , s := 3]
-			wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$EU ==T , s := 4]
-			wcDF[                    !(wcDF$EE==T | wcDF$EU ==T), s := 5]
-			wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
-			wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
-			wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
-			wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
-			wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]		
-		}
-		else if(NS==6){
-			# 6 subgroups, Sw X (EE EU Stay) , sets up conditional distributions.
-			wcDF[wcDF$switch==T & wcDF$EE==T & wcDF$EU ==F , s := 1]
-			wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$EU ==T , s := 2]
-			wcDF[wcDF$switch==F & wcDF$EE==T & wcDF$EU ==F , s := 3]
-			wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$EU ==T , s := 4]
-			wcDF[wcDF$switch==F & !(wcDF$EE==T | wcDF$EU ==T), s := 5]
-			wcDF[wcDF$switch==T & !(wcDF$EE==T | wcDF$EU ==T), s := 6]
-			wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
-			wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
-			wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
-			wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
-			wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]		
-		}
-	}else{
-		if(NS==4){
-			# 4 subgroups, (EE EU UE) + stay, sets up conditional distributions.
-			wcDF[  wcDF$EE==T & wcDF$EU ==F & wcDF$UE ==F , s := 1]
-			wcDF[  wcDF$EE==F & wcDF$EU ==T & wcDF$UE ==F , s := 2]
-			wcDF[  wcDF$EE==F & wcDF$EU ==F & wcDF$UE ==T , s := 3]
-			wcDF[!(wcDF$EE==T | wcDF$EU ==T | wcDF$UE ==T), s := 4]
-			wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
-			wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
-			wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
-			wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
-		}else if(NS==3){
-			# 4 subgroups, (EE EU) + stay, sets up conditional distributions.
-			wcDF[  wcDF$EE==T & wcDF$EU ==F & wcDF$UE ==F , s := 1]
-			wcDF[  wcDF$EE==F & wcDF$EU ==T , s := 2]
-			wcDF[!(wcDF$EE==T | wcDF$EU ==T), s := 3]
-			wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
-			wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
-			wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
-		}
+
+	if(NS==7){
+		# 7 subgroups, Sw X (EE UE EU) + stay, sets up conditional distributions.
+		wcDF[wcDF$switch==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F , s := 1]
+		wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F , s := 2]
+		wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T , s := 3]
+		wcDF[wcDF$switch==F & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F , s := 4]
+		wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F , s := 5]
+		wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T , s := 6]
+		wcDF[                    !(wcDF$EE==T | wcDF$UE==T | wcDF$EU ==T), s := 7]
+		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]
+		wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]		
+		wcDF[!is.na(wcDF$s), s7 := ifelse(s==7,1,0)]
+	}else if(NS==4){
+		# 4 subgroups, Sw X (EE EU), sets up conditional distributions.
+		wcDF[  wcDF$EE==T & wcDF$EU ==F & wcDF$UE ==F , s := 1]
+		wcDF[  wcDF$EE==F & wcDF$EU ==T & wcDF$UE ==F , s := 2]
+		wcDF[  wcDF$EE==F & wcDF$EU ==F & wcDF$UE ==T , s := 3]
+		wcDF[!(wcDF$EE==T | wcDF$EU ==T | wcDF$UE ==T), s := 4]
+		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+	}else if(NS==5){
+		# 4 subgroups, Sw X (EE EU) + stay, sets up conditional distributions.
+		wcDF[wcDF$switch==T & wcDF$EE==T & wcDF$EU ==F , s := 1]
+		wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$EU ==T , s := 2]
+		wcDF[wcDF$switch==F & wcDF$EE==T & wcDF$EU ==F , s := 3]
+		wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$EU ==T , s := 4]
+		wcDF[                    !(wcDF$EE==T | wcDF$EU ==T), s := 5]
+		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]		
+	}else if(NS==6){
+		# 6 subgroups, Sw X (EE EU Stay) , sets up conditional distributions.
+		wcDF[wcDF$switch==T & wcDF$EE==T & wcDF$EU ==F , s := 1]
+		wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$EU ==T , s := 2]
+		wcDF[wcDF$switch==F & wcDF$EE==T & wcDF$EU ==F , s := 3]
+		wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$EU ==T , s := 4]
+		wcDF[wcDF$switch==F & !(wcDF$EE==T | wcDF$EU ==T), s := 5]
+		wcDF[wcDF$switch==T & !(wcDF$EE==T | wcDF$EU ==T), s := 6]
+		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]		
+		wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]
+	}else if(NS==4){
+		# 4 subgroups, (EE EU UE) + stay, sets up conditional distributions.
+		wcDF[  wcDF$EE==T & wcDF$EU ==F & wcDF$UE ==F , s := 1]
+		wcDF[  wcDF$EE==F & wcDF$EU ==T & wcDF$UE ==F , s := 2]
+		wcDF[  wcDF$EE==F & wcDF$EU ==F & wcDF$UE ==T , s := 3]
+		wcDF[!(wcDF$EE==T | wcDF$EU ==T | wcDF$UE ==T), s := 4]
+		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+	}else if(NS==3){
+		# 4 subgroups, (EE EU) + stay, sets up conditional distributions.
+		wcDF[  wcDF$EE==T & wcDF$EU ==F & wcDF$UE ==F , s := 1]
+		wcDF[  wcDF$EE==F & wcDF$EU ==T , s := 2]
+		wcDF[!(wcDF$EE==T | wcDF$EU ==T), s := 3]
+		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
 	}
+
 	wcDF<- subset(wcDF,is.finite(wcDF$s))
 	wcRec <- subset(wcDF, rec==T)
 	wcExp <- subset(wcDF, rec==F)
@@ -532,7 +532,7 @@ moments_compute_qtls <- function(qtlpts, distpts){
 
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 
-DTseam <- subset(DTseam, changer==T|stayer==T)
+DTseam <- subset(DTseam, changermo==T|stayer==T)
 
 toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","switched_wave","wagechange_wave","wagechangeEUE_wave",
 			"recIndic_wave","recIndic2_wave","changer","changermo","stayer","date")
@@ -546,11 +546,11 @@ DTseam[ , EU := EU_wave]
 DTseam[ , UE := UE_wave]
 DTseam[ stayer ==T, switch := switchedOcc_wave]
 DTseam[ changer==T, switch := switched_wave]
-DTseamchng <- subset(DTseam, EU_wave==T|UE_wave==T|EE_wave==T)
+
 
 
 MM_waveall_betaE_betaR_IR <- MMdecomp(DTseam,7,"recIndic2_wave","wagechange_wave","truncweight",std_errs = MMstd_errs, no_occ = F)
-MM_waveallEUE_betaE_betaR_IR <- MMdecomp(DTseam,5,"recIndic2_wave","wagechangeEUE_wave","truncweight",std_errs = MMstd_errs, no_occ = F)
+MM_waveallEUE_betaE_betaR_IR <- MMdecomp(DTseam,6,"recIndic2_wave",wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = T)
 
 saveRDS(MM_waveall_betaE_betaR_IR,paste0(outputdir,"/MM_waveall.RData"))
 saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
