@@ -220,6 +220,9 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 	wc_exp_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
 	wc_exp_moments <- array(0.,dim=c(Nmoments,Nsims))
 	
+	wc_BR_exstay_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
+	wc_BR_exstay_moments <- array(0.,dim=c(Nmoments,Nsims))
+	
 	for( simiter in seq(1,Nsims)){	
 		
 		set.seed(seedint+simiter*Nsims)		
@@ -437,7 +440,22 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 		wc_exp_moments[2:5,simiter] <- wtd.4qtlmoments( xt=wc_exp,wt=array(1,dim=dim(wc_exp)) )
 		rm(wc_exp)
 				
-		#some additional counter-factuals		
+		#some additional counter-factuals
+		if(NS==6|NS==8){
+			wc_BR_exstay <- matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
+			qi=1
+			for(q in qtlgridSamp){
+				wc_BR_exstay[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
+								betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
+								betaR[4,qi]*s4 + betaE[5,qi]*s5 + betaR[6,qi]*s6] 
+				qi = qi+1
+			}
+			wc_BR_exstay_pctile[,simiter] <- quantile(wc_BR_exstay,probs=qtlgridOut,na.rm=T)
+			wc_BR_exstay_moments[1,simiter] <- mean( wc_BR_exstay,na.rm = T )
+			wc_BR_exstay_moments[2:5,simiter] <- wtd.4qtlmoments( xt=wc_BR_exstay,wt=array(1,dim=dim(wc_BR_exstay)) )
+			
+		}
+		
 		if(no_occ ==F){
 			qi=1
 			wc_IR_sw <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only switch

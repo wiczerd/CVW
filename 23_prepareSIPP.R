@@ -327,7 +327,13 @@ if(intermed_plots==T){
 		geom_smooth(se=F,span=.1)+ xlab("") + ylab("UE monthly rate")+theme_bw()
 	ggsave(filename=paste0(figuredir,"/UEmo.eps"),height= 5,width=10)
 	
-	EE <- sipp[lfstat==1 & next.lfstat==1 & wave>2 & mis<panelmaxmis-4, .(EE = weighted.mean( EE==T, wpfinwgt, na.rm = TRUE)), by = list(date)]
+	UIrt <- sipp[lfstat==2, .(UIrt = weighted.mean(ui_a>0, wpfinwgt, na.rm = TRUE)), by = list(date,panel)]
+	ggplot(UIrt, aes(date, UIrt, color=panel, group=panel)) +
+		geom_point() +
+		geom_smooth(se=F,span=.1)+ xlab("") + ylab("UI collection rate")+theme_bw()
+	
+	
+	EE <- sipp[lfstat==1 & next.lfstat==1 & wave>2, .(EE = weighted.mean( EE==T, wpfinwgt, na.rm = TRUE)), by = list(date)]
 	ggplot(EE, aes(date, EE)) +
 		geom_point() +
 		geom_smooth(se=F,span=.1) +xlab("")+ ylab("EE monthly rate")+theme_bw()

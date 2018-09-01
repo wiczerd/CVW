@@ -96,8 +96,11 @@ DTseam[ , wagechange3_wave := next3.wavewage  - wavewage]
 
 DTseam[ , last.wavewage_ann:= shift(levwage)*3, by=id]
 DTseam[ , last.wavewage_ann:= log(last.wavewage_ann + (1+last.wavewage_ann^2)^.5 )]
+DTseam[ , lastann.wavewage:= shift(levwage) + shift(levwage,2) + shift(levwage,3), by=id]
+DTseam[ , lastann.wavewage:= log(lastann.wavewage + (1+lastann.wavewage^2)^.5 )]
 
 DTseam[ , wagechange_wvan := nextann.wavewage - last.wavewage_ann]
+DTseam[ , wagechange_anan := nextann.wavewage - lastann.wavewage]
 
 
 #for EE that spans waves:
@@ -235,7 +238,7 @@ DTseam[ is.na(wagechange_wave_imp)==T, wagechange_wave_imp := F]
 
 
 DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_jcbad","wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_imp","pctmaxmis"
-								  ,"wagechangeEUE_wave","next.wavewage","rawwgchangeEUE_wave","rawwgchange_wave","wagechange2EUE_wave","wagechange3EUE_wave","wagechange_wvan",
+								  ,"wagechangeEUE_wave","next.wavewage","rawwgchangeEUE_wave","rawwgchange_wave","wagechange2EUE_wave","wagechange3EUE_wave","wagechange_wvan","wagechange_anan",
 								  "id","wave"))
 DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
