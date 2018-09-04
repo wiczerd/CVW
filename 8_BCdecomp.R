@@ -89,7 +89,7 @@ wtd.4qtlmoments <- function(xt,wt){
 	return(c(median,mad,GrnMd,Moors))
 }
 
-MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
+MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F){
 	# wcDF : data set
 	# NS   : Number of subgroups
 	# recname	: name of recession indicator
@@ -106,9 +106,13 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 	if(missing(no_occ)){
 		no_occ = F
 	}
+	if(missing(durEU)){
+		durEU = F
+	}
+	
+	wcDF <- subset(wcDF,wt>0)
 	
 	# setup subgroup indices
-
 	if(NS==7){
 		# 7 subgroups, Sw X (EE UE EU) + stay, sets up conditional distributions.
 		wcDF[wcDF$switch==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F , s := 1]
@@ -141,7 +145,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 		wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$EU ==T , s := 2]
 		wcDF[wcDF$switch==F & wcDF$EE==T & wcDF$EU ==F , s := 3]
 		wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$EU ==T , s := 4]
-		wcDF[                    !(wcDF$EE==T | wcDF$EU ==T), s := 5]
+		wcDF[               !(wcDF$EE==T | wcDF$EU ==T), s := 5]
 		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
 		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
 		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
@@ -180,6 +184,12 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
 		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
 	}
+	if(durEU==T){
+		wcDF[ !(wcDF$EU==T), dur := 0]
+		wcDF[ is.na(wcDF$dur)==T, dur := 0]
+		
+	}
+
 
 	wcDF<- subset(wcDF,is.finite(wcDF$s))
 	wcRec <- subset(wcDF, rec==T)
@@ -231,11 +241,16 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 		wcExp <- subset(wcDF, rec==F)
 		if(std_errs == T){
 			datsampR <- sample(nrow(wcRec),nrow(wcRec),replace=T) # <-,prob=wcRec$wt do not weight the sample. I will weight the regression and stuff
-			datsampE <- sample(nrow(wcExp),nrow(wcExp),replace=T) #,prob=wcExp$wt
+			datsampE <- sample(nrow(wcExp),nrow(wcExp),replace=T) #   ,prob=wcExp$wt
 			wcRec <- wcRec[datsampR,]
 			wcExp <- wcExp[datsampE,]
 		}
 		
+		if(durEU==T){
+			regform <- formula(paste(c("wc~factor(s)","dur","0"),collapse=" + ") )
+		}else{
+			regform <- formula(paste(c("wc~factor(s)","0"),collapse=" + ") )
+		}
 		rhere <- rq( wc ~ factor(s)+0 ,tau= qtlgridEst, data=wcRec, weights = wt, method="fn")
 		betaptsR = t(rhere$coefficients)
 	
@@ -291,64 +306,76 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F){
 		
 		qi = 1
 		for(q in qtlgridSamp){
-
-			if(NS == 6){
-				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-					  	betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-					  	betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6] 
-				wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
-						betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
-						betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6] 
-			}else if(NS==7){
-				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-						betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-						betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 + 
-						betaR[7,qi]*s7]
-				wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
-						betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
-						betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 + 
-						betaE[7,qi]*s7]
-			}else if(NS==8){
-				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-						betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-						betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 + 
-						betaR[7,qi]*s7 + betaR[8,qi]*s8]
-				wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
-						betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
-						betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 + 
-						betaE[7,qi]*s7 + betaE[8,qi]*s8]
-			}else if(NS==5){
-				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-						betaE[3,qi]*s3 + betaE[4,qi]*s4 +
-						betaR[5,qi]*s5	]
-				wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
-						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
-						betaR[3,qi]*s3 + betaR[4,qi]*s4 +
-						betaE[5,qi]*s5	]
-			}else if(NS==4){
-				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-						betaE[3,qi]*s3 + 
-						betaR[4,qi]*s4]
-				wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
-						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
-						betaR[3,qi]*s3 + 
-						betaE[4,qi]*s4]
-			}else if(NS==3){
-				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-						betaE[3,qi]*s3 ]
-				wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
-						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
-						betaR[3,qi]*s3 ]
-			}else{
-				wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ]  = 0.
-				for(si in seq(1,NS)){
-					wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],betaE[si,qi]*eval(as.name(paste0("s",si))) ] + wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] 
-					wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],betaR[si,qi]*eval(as.name(paste0("s",si))) ] + wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] 
-				}
+			sumChar <- ""
+			for(si in seq(1,NS) ){
+				sumBetaE <- paste(sumChar,paste0("betaE[",as.character(si),",qi]*s",as.character(si) ) , collapse=" + ")
+				sumBetaR <- paste(sumChar,paste0("betaR[",as.character(si),",qi]*s",as.character(si) ) , collapse=" + ")
 			}
+			if( durEU == T){
+				sumBetaE <- paste(sumChar,paste0("betaE[",as.character(si),",qi]*s",as.character(si) ) , collapse=" + ")
+				sumBetaR <- paste(sumChar,paste0("betaR[",as.character(si),",qi]*s",as.character(si) ) , collapse=" + ")
+			}
+			
+			wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[ sampR[,qi] , eval(parse(sumBetaE))]
+			wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(sumBetaR))]
+
+			# if(NS == 6){
+			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
+			# 		  	betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+			# 		  	betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6] 
+			# 	wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
+			# 			betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
+			# 			betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6] 
+			# }else if(NS==7){
+			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
+			# 			betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+			# 			betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 + 
+			# 			betaR[7,qi]*s7]
+			# 	wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
+			# 			betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
+			# 			betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 + 
+			# 			betaE[7,qi]*s7]
+			# }else if(NS==8){
+			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
+			# 			betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
+			# 			betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 + 
+			# 			betaR[7,qi]*s7 + betaR[8,qi]*s8]
+			# 	wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
+			# 			betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
+			# 			betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 + 
+			# 			betaE[7,qi]*s7 + betaE[8,qi]*s8]
+			# }else if(NS==5){
+			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
+			# 			betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
+			# 			betaE[3,qi]*s3 + betaE[4,qi]*s4 +
+			# 			betaR[5,qi]*s5	]
+			# 	wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
+			# 			betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
+			# 			betaR[3,qi]*s3 + betaR[4,qi]*s4 +
+			# 			betaE[5,qi]*s5	]
+			# }else if(NS==4){
+			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
+			# 			betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
+			# 			betaE[3,qi]*s3 + 
+			# 			betaR[4,qi]*s4]
+			# 	wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
+			# 			betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
+			# 			betaR[3,qi]*s3 + 
+			# 			betaE[4,qi]*s4]
+			# }else if(NS==3){
+			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
+			# 			betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
+			# 			betaE[3,qi]*s3 ]
+			# 	wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
+			# 			betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
+			# 			betaR[3,qi]*s3 ]
+			# }else{
+			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ]  = 0.
+			# 	for(si in seq(1,NS)){
+			# 		wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],betaE[si,qi]*eval(as.name(paste0("s",si))) ] + wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] 
+			# 		wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],betaR[si,qi]*eval(as.name(paste0("s",si))) ] + wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] 
+			# 	}
+			# }
 			qi = qi+1
 		}
 		#clean up the space:
@@ -553,7 +580,7 @@ DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 DTseam <- subset(DTseam, changermo==T|stayer==T)
 
 toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","switched_wave","wagechange_wave","wagechangeEUE_wave",
-			"recIndic_wave","recIndic2_wave","changer","changermo","stayer","date")
+			"max.unempdur_wave","wagechange_wvan","wagechange_anan","recIndic_wave","recIndic2_wave","changer","changermo","stayer","date")
 
 
 # select toKeep columns only
@@ -564,6 +591,8 @@ DTseam[ , EU := EU_wave]
 DTseam[ , UE := UE_wave]
 DTseam[ stayer ==T, switch := switchedOcc_wave]
 DTseam[ changer==T, switch := switched_wave]
+DTseam[ , dur := max.unempdur_wave]
+
 
 
 

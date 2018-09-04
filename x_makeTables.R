@@ -95,7 +95,7 @@ wtd.4qtlmoments <- function(xt,wt){
 toKeep_wave <- c("switchedOcc_wave","switched_wave","esr_max",
             "ageGrp","HSCol","next.stable_emp","last.stable_emp",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint",
-            "wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave","wagechange_wvan",
+            "wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave","wagechange_wvan","wagechange_anan",
             "wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad","pctmaxmis",
             "EE_wave","EU_wave","UE_wave","changer","changermo","stayer","midEU","midUE","midEE",
             "unrt","wpfinwgt","perwt","truncweight","cleaningtruncweight",
@@ -166,19 +166,19 @@ for( wc in c("wagechangeEUE_wave","rawwgchangeEUE_wave","wagechange_wave","rawwg
 	tabqtls <- c(.05,.10,.25,.5,.75,.90,.95)
 	tN <- (length(tabqtls)+1)
 	ann_wavedist <- array(0., dim=c(2,length(tabqtls)+1))
-	ann_wavedist[1,1]   <- DTseam[!(eval(as.name(recDef)) == T) 
+	ann_wavedist[1,1]   <- DTseam[!(eval(as.name(recDef)) & is.finite(wagechange_anan) | shift(eval(as.name(recDef)),2,type="lead") | shift(eval(as.name(recDef)),1,type="lead") ) 
 								  &	last.stable_emp  &demo==T,    wtd.mean(wagechange_wvan,na.rm=T,weights=truncweight)]
-	ann_wavedist[1,2:tN]<- DTseam[!(eval(as.name(recDef)) == T) 
+	ann_wavedist[1,2:tN]<- DTseam[!(eval(as.name(recDef)) & is.finite(wagechange_anan) | shift(eval(as.name(recDef)),2,type="lead") | shift(eval(as.name(recDef)),1,type="lead") ) 
 								  &	last.stable_emp&demo==T, wtd.quantile(wagechange_wvan,na.rm=T,weights=truncweight, probs=tabqtls)]
-	ann_wavedist[2,1]   <- DTseam[ (eval(as.name(recDef)) == T) 
+	ann_wavedist[2,1]   <- DTseam[ (eval(as.name(recDef)) & is.finite(wagechange_anan) & shift(eval(as.name(recDef)),2,type="lead") & shift(eval(as.name(recDef)),1,type="lead") )
 								  & last.stable_emp&demo==T,     wtd.mean(wagechange_wvan,na.rm=T,weights=truncweight)]
-	ann_wavedist[2,2:tN]<- DTseam[ (eval(as.name(recDef)) == T) 
+	ann_wavedist[2,2:tN]<- DTseam[ (eval(as.name(recDef)) & is.finite(wagechange_anan) & shift(eval(as.name(recDef)),2,type="lead") & shift(eval(as.name(recDef)),1,type="lead") )
 								  & last.stable_emp&demo==T, wtd.quantile(wagechange_wvan,na.rm=T,weights=truncweight, probs=tabqtls)]
 	
-	nexp <- DTseam[!(shift(eval(as.name(recDef)),type="lead") == T | shift(eval(as.name(recDef)),2,type="lead") == T | eval(as.name(recDef)) == T) 
-				   &	last.stable_emp & (stayer|changermo)&demo==T,    sum(is.finite(wagechange_wvan)*truncweight)]
-	nrec <- DTseam[ (shift(eval(as.name(recDef)),type="lead") == T & shift(eval(as.name(recDef)),2,type="lead") == T & eval(as.name(recDef)) == T) 
-				   &	last.stable_emp & (stayer|changermo)&demo==T,    sum(is.finite(wagechange_wvan)*truncweight)]
+	nexp <- DTseam[!(eval(as.name(recDef)) )#| shift(eval(as.name(recDef)),2,type="lead") | shift(eval(as.name(recDef)),1,type="lead") )  
+				   &	last.stable_emp & (stayer|changermo)&demo==T,    sum(is.finite(wagechange_anan)*truncweight)]
+	nrec <- DTseam[ (eval(as.name(recDef)) )#& shift(eval(as.name(recDef)),2,type="lead") & shift(eval(as.name(recDef)),1,type="lead") )
+				   &	last.stable_emp & (stayer|changermo)&demo==T,    sum(is.finite(wagechange_anan)*truncweight)]
 	nrec/(nexp+nrec)
 	plt_wavedist <- data.table(ann_wavedist)
 	names(plt_wavedist) <- c("Mean","P5","P10","P25","P50","P75","P90","P95")
@@ -189,7 +189,7 @@ for( wc in c("wagechangeEUE_wave","rawwgchangeEUE_wave","wagechange_wave","rawwg
 		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 , color=Cycle),stat="identity")+
 		scale_x_discrete(labels=c("Changers, Expansion","Changers, Recession","Stayers, Expansion","Stayers, Recession"))+
 		scale_color_manual(values=c("blue","red")) 
-	nametab = "box_ann_1st"
+	nametab = "box_ann"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10)
 	
 	
