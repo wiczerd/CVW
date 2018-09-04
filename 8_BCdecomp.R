@@ -251,10 +251,10 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		}else{
 			regform <- formula(paste(c("wc~factor(s)","0"),collapse=" + ") )
 		}
-		rhere <- rq( wc ~ factor(s)+0 ,tau= qtlgridEst, data=wcRec, weights = wt, method="fn")
+		rhere <- rq( regform ,tau= qtlgridEst, data=wcRec, weights = wt, method="fn")
 		betaptsR = t(rhere$coefficients)
 	
-		rhere <- rq( wc ~factor(s) +0,tau= qtlgridEst, data=wcExp, weights = wt, method="fn") #
+		rhere <- rq( regform ,tau= qtlgridEst, data=wcExp, weights = wt, method="fn") #
 		betaptsE = t(rhere$coefficients)
 		rm(rhere)
 	
@@ -591,10 +591,8 @@ DTseam[ , EU := EU_wave]
 DTseam[ , UE := UE_wave]
 DTseam[ stayer ==T, switch := switchedOcc_wave]
 DTseam[ changer==T, switch := switched_wave]
-DTseam[ , dur := max.unempdur_wave]
-
-
-
+DTseam[ EU==T, dur := max.unempdur_wave]
+DTseam[ !EU==T | !is.finite(dur), dur := 0.]
 
 MM_waveall_betaE_betaR_IR <- MMdecomp(DTseam,7,"recIndic2_wave","wagechange_wave","truncweight",std_errs = MMstd_errs, no_occ = F)
 MM_waveallEUE_betaE_betaR_IR <- MMdecomp(DTseam,6,"recIndic2_wave",wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = T)
