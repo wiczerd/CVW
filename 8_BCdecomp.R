@@ -268,8 +268,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			colnames(betaptsE) <-c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay")
 			colnames(betaptsR) <-c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay")
 		}else if(NS==6){
-			colnames(betaptsE) <-c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay_nosw","stay_sw")
-			colnames(betaptsR) <-c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay_nosw","stay_sw")
+			colnames(betaptsE) <-c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay_nosw","stay_sw","dur")
+			names<- c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay_nosw","stay_sw","dur")
 		}else if(NS==4){
 			colnames(betaptsE) <-c("EE","UE","EU","stay")
 			colnames(betaptsR) <-c("EE","UE","EU","stay")
@@ -277,7 +277,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			colnames(betaptsE) <-c("EE","EU","stay")
 			colnames(betaptsR) <-c("EE","EU","stay")
 		}
-		
+		colnames(betaptsE) <-names 
+		colnames(betaptsR) <-names
 		
 		betaE <- array(0.,dim=c(NS,length(qtlgridSamp)) )
 		betaR <- array(0.,dim=c(NS,length(qtlgridSamp)) )
