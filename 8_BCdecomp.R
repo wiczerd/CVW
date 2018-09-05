@@ -259,30 +259,34 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		rm(rhere)
 	
 		if(NS==7){
-			colnames(betaptsE) <-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay")
-			colnames(betaptsR) <-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay")
+			names <-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay")
 		}else if(NS==8){
-			colnames(betaptsE) <-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay_nosw","stay_sw")
-			colnames(betaptsR) <-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay_nosw","stay_sw")
+			names <-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay_nosw","stay_sw")
 		}else if(NS==5){
-			colnames(betaptsE) <-c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay")
-			colnames(betaptsR) <-c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay")
+			names <-c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay")
 		}else if(NS==6){
-			colnames(betaptsE) <-c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay_nosw","stay_sw","dur")
-			names<- c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay_nosw","stay_sw","dur")
+		  names <- c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay_nosw","stay_sw")
 		}else if(NS==4){
-			colnames(betaptsE) <-c("EE","UE","EU","stay")
-			colnames(betaptsR) <-c("EE","UE","EU","stay")
+			names <- c("EE","UE","EU","stay")
 		}else if(NS==3){
-			colnames(betaptsE) <-c("EE","EU","stay")
-			colnames(betaptsR) <-c("EE","EU","stay")
+			names <-c("EE","EU","stay")
 		}
-		colnames(betaptsE) <-names 
-		colnames(betaptsR) <-names
+		if(durEU==T){
+  		colnames(betaptsE) <-c(names,"dur")
+  		colnames(betaptsR) <-c(names,"dur")
+		}else{
+		  colnames(betaptsE) <-names
+		  colnames(betaptsR) <-names
+		}
 		
-		betaE <- array(0.,dim=c(NS,length(qtlgridSamp)) )
-		betaR <- array(0.,dim=c(NS,length(qtlgridSamp)) )
-		for(si in seq(1,NS)){
+		if(durEU=T){
+		  betaE <- array(0.,dim=c(NS+1,length(qtlgridSamp)) )
+		  betaR <- array(0.,dim=c(NS+1,length(qtlgridSamp)) )
+		}else{
+		  betaE <- array(0.,dim=c(NS,length(qtlgridSamp)) )
+		  betaR <- array(0.,dim=c(NS,length(qtlgridSamp)) )
+		}
+		for(si in seq(1,length(betaE))){
 			gpE <- c(T,betaptsE[2:length(qtlgridEst),si]>=betaptsE[1:length(qtlgridEst)-1,si]) #ensure monotonicity
 			gpR <- c(T,betaptsR[2:length(qtlgridEst),si]>=betaptsR[1:length(qtlgridEst)-1,si]) #ensure monotonicity
 			if(min(qtlgridSamp)<min(qtlgridEst[gpR]) | max(qtlgridSamp)>max(qtlgridEst[gpR])){
@@ -307,18 +311,19 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		
 		qi = 1
 		for(q in qtlgridSamp){
-			sumChar <- ""
+		  sumBetaE <- ""
+		  sumBetaR <- ""
 			for(si in seq(1,NS) ){
-				sumBetaE <- paste(sumChar,paste0("betaE[",as.character(si),",qi]*s",as.character(si) ) , collapse=" + ")
-				sumBetaR <- paste(sumChar,paste0("betaR[",as.character(si),",qi]*s",as.character(si) ) , collapse=" + ")
+				sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
+				sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
 			}
 			if( durEU == T){
-				sumBetaE <- paste(sumChar,paste0("betaE[",as.character(si),",qi]*s",as.character(si) ) , collapse=" + ")
-				sumBetaR <- paste(sumChar,paste0("betaR[",as.character(si),",qi]*s",as.character(si) ) , collapse=" + ")
+				sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(NS+1),",qi]*dur" ))
+				sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
 			}
 			
-			wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[ sampR[,qi] , eval(parse(sumBetaE))]
-			wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(sumBetaR))]
+			wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[ sampR[,qi] , eval(parse(text=sumBetaE))]
+			wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaR))]
 
 			# if(NS == 6){
 			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
