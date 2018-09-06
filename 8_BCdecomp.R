@@ -17,7 +17,7 @@ setwd(wd0)
 
 
 wt <- "truncweight"
-wc <- "wagechangeEUE_wvan"
+wc <- "wagechange_wvan"
 
 qtlgridEst  <- c(seq(.02,.1,.02),seq(0.15,0.85,0.05),seq(.9,.98,.02))
 qtlgridOut <- seq(.02,0.98,0.01)
@@ -153,12 +153,13 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]		
 	}else if(NS==6){
 		# 6 subgroups, Sw X (EE EU Stay) , sets up conditional distributions.
-		wcDF[wcDF$switch==T & wcDF$EE==T & wcDF$EU ==F , s := 1]
-		wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$EU ==T , s := 2]
-		wcDF[wcDF$switch==F & wcDF$EE==T & wcDF$EU ==F , s := 3]
-		wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$EU ==T , s := 4]
-		wcDF[wcDF$switch==F & !(wcDF$EE==T | wcDF$EU ==T), s := 5]
-		wcDF[wcDF$switch==T & !(wcDF$EE==T | wcDF$EU ==T), s := 6]
+		wcDF[wcDF$switch==T & wcDF$EE==T & wcDF$EU ==F & wcDF$UE==F, s := 1]
+		wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$EU ==T & wcDF$UE==F , s := 2]
+		wcDF[wcDF$switch==F & wcDF$EE==T & wcDF$EU ==F & wcDF$UE==F , s := 3]
+		wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$EU ==T & wcDF$UE==F , s := 4]
+		wcDF[wcDF$switch==F & !(wcDF$EE==T | wcDF$EU ==T | wcDF$UE==T), s := 5]
+		wcDF[wcDF$switch==T & !(wcDF$EE==T | wcDF$EU ==T | wcDF$UE==T), s := 6]
+		wcDF[ !last.stable_emp==T, s:= NA]
 		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
 		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
 		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
@@ -187,7 +188,6 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 	if(durEU==T){
 		wcDF[ !(wcDF$EU==T), dur := 0]
 		wcDF[ is.na(wcDF$dur)==T, dur := 0]
-		
 	}
 	wcDF<- subset(wcDF,is.finite(wcDF$s))
 	wcRec <- subset(wcDF, rec==T)
@@ -488,7 +488,7 @@ moments_compute_qtls <- function(qtlpts, distpts){
 
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 
-DTseam <- subset(DTseam, changermo==T|stayer==T)
+DTseam <- subset(DTseam, changer==T|stayer==T)
 
 toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","switched_wave","wagechange_wave","wagechangeEUE_wave",
 			"max.unempdur_wave","wagechange_wvan","wagechange_anan","recIndic_wave","recIndic2_wave","changer","changermo","stayer","date")
@@ -497,9 +497,9 @@ toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","
 # select toKeep columns only
 #DTseam <- DTseam[, toKeep, with = FALSE]
 DTseam <- subset(DTseam, is.finite(wagechange_wave) & is.finite(EU_wave) & is.finite(UE_wave)& is.finite(EE_wave))
-DTseam[ , EE := EE_wave]
-DTseam[ , EU := EU_wave]
-DTseam[ , UE := UE_wave]
+DTseam[ , EE := EE_wave==T & midEE==F]
+DTseam[ , EU := EU_wave==T & midEU==F]
+DTseam[ , UE := UE_wave==T & midUE==F]
 DTseam[ stayer ==T, switch := switchedOcc_wave]
 DTseam[ changer==T, switch := switched_wave]
 DTseam[ EU==T, dur := max.unempdur_wave]
