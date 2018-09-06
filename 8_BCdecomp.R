@@ -17,7 +17,7 @@ setwd(wd0)
 
 
 wt <- "truncweight"
-wc <- "wagechangeEUE_wave"
+wc <- "wagechangeEUE_wvan"
 
 qtlgridEst  <- c(seq(.02,.1,.02),seq(0.15,0.85,0.05),seq(.9,.98,.02))
 qtlgridOut <- seq(.02,0.98,0.01)
@@ -110,7 +110,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		durEU = F
 	}
 	
-	wcDF <- subset(wcDF,wt>0)
+	wcDF <- subset(wcDF,wt>0 & is.finite(wc))
 	
 	# setup subgroup indices
 	if(NS==7){
@@ -189,8 +189,6 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		wcDF[ is.na(wcDF$dur)==T, dur := 0]
 		
 	}
-
-
 	wcDF<- subset(wcDF,is.finite(wcDF$s))
 	wcRec <- subset(wcDF, rec==T)
 	wcExp <- subset(wcDF, rec==F)
@@ -272,21 +270,21 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			names <-c("EE","EU","stay")
 		}
 		if(durEU==T){
-  		colnames(betaptsE) <-c(names,"dur")
-  		colnames(betaptsR) <-c(names,"dur")
+  			colnames(betaptsE) <-c(names,"dur")
+  			colnames(betaptsR) <-c(names,"dur")
 		}else{
 		  colnames(betaptsE) <-names
 		  colnames(betaptsR) <-names
 		}
 		
-		if(durEU=T){
+		if(durEU==T){
 		  betaE <- array(0.,dim=c(NS+1,length(qtlgridSamp)) )
 		  betaR <- array(0.,dim=c(NS+1,length(qtlgridSamp)) )
 		}else{
 		  betaE <- array(0.,dim=c(NS,length(qtlgridSamp)) )
 		  betaR <- array(0.,dim=c(NS,length(qtlgridSamp)) )
 		}
-		for(si in seq(1,length(betaE))){
+		for(si in seq(1,NS)){
 			gpE <- c(T,betaptsE[2:length(qtlgridEst),si]>=betaptsE[1:length(qtlgridEst)-1,si]) #ensure monotonicity
 			gpR <- c(T,betaptsR[2:length(qtlgridEst),si]>=betaptsR[1:length(qtlgridEst)-1,si]) #ensure monotonicity
 			if(min(qtlgridSamp)<min(qtlgridEst[gpR]) | max(qtlgridSamp)>max(qtlgridEst[gpR])){
@@ -311,8 +309,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		
 		qi = 1
 		for(q in qtlgridSamp){
-		  sumBetaE <- ""
-		  sumBetaR <- ""
+			sumBetaE <- ""
+			sumBetaR <- ""
 			for(si in seq(1,NS) ){
 				sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
 				sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
@@ -325,63 +323,6 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[ sampR[,qi] , eval(parse(text=sumBetaE))]
 			wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaR))]
 
-			# if(NS == 6){
-			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-			# 		  	betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-			# 		  	betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6] 
-			# 	wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
-			# 			betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
-			# 			betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6] 
-			# }else if(NS==7){
-			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-			# 			betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-			# 			betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 + 
-			# 			betaR[7,qi]*s7]
-			# 	wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
-			# 			betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
-			# 			betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 + 
-			# 			betaE[7,qi]*s7]
-			# }else if(NS==8){
-			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-			# 			betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-			# 			betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 + 
-			# 			betaR[7,qi]*s7 + betaR[8,qi]*s8]
-			# 	wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
-			# 			betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
-			# 			betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 + 
-			# 			betaE[7,qi]*s7 + betaE[8,qi]*s8]
-			# }else if(NS==5){
-			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-			# 			betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-			# 			betaE[3,qi]*s3 + betaE[4,qi]*s4 +
-			# 			betaR[5,qi]*s5	]
-			# 	wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
-			# 			betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
-			# 			betaR[3,qi]*s3 + betaR[4,qi]*s4 +
-			# 			betaE[5,qi]*s5	]
-			# }else if(NS==4){
-			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-			# 			betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-			# 			betaE[3,qi]*s3 + 
-			# 			betaR[4,qi]*s4]
-			# 	wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
-			# 			betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
-			# 			betaR[3,qi]*s3 + 
-			# 			betaE[4,qi]*s4]
-			# }else if(NS==3){
-			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-			# 			betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-			# 			betaE[3,qi]*s3 ]
-			# 	wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
-			# 			betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
-			# 			betaR[3,qi]*s3 ]
-			# }else{
-			# 	wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ]  = 0.
-			# 	for(si in seq(1,NS)){
-			# 		wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],betaE[si,qi]*eval(as.name(paste0("s",si))) ] + wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] 
-			# 		wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],betaR[si,qi]*eval(as.name(paste0("s",si))) ] + wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] 
-			# 	}
-			# }
 			qi = qi+1
 		}
 		#clean up the space:
@@ -398,34 +339,16 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		qi=1
 		wc_rec <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
 		for(q in qtlgridSamp){
-			if(NS == 6){
-				wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-						betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
-						betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6] 
-			}else if(NS == 7){
-				wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-						betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
-						betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 +
-						betaR[7,qi]*s7]
-			}else if(NS == 8){
-				wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-						betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
-						betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 +
-						betaR[7,qi]*s7 + betaR[8,qi]*s8]
-			}else if(NS==4){
-				wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
-						betaR[3,qi]*s3 + betaR[4,qi]*s4]
-			}else if(NS==5){
-				wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
-						betaR[3,qi]*s3 + betaR[4,qi]*s4 +
-						betaR[5,qi]*s5]
-			}else if(NS==3){
-				wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-						betaR[1,qi]*s1 + betaR[2,qi]*s2 + 
-						betaR[3,qi]*s3 ]
-		}
+			sumBetaR <- ""
+			for(si in seq(1,NS) ){
+				sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
+			}
+			if( durEU == T){
+				sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
+			}
+
+			wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], eval(parse(text=sumBetaR)) ] 
+		
 			qi = qi+1
 		}
 		#clean up the space:
@@ -437,34 +360,16 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		qi=1
 		wc_exp <- matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
 		for(q in qtlgridSamp){
-			if(NS == 6){
-				wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
-						betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-						betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6] 
-			}else if(NS == 7){
-				wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
-						betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-						betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 +
-						betaE[7,qi]*s7]
-			}else if(NS == 8){
-				wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
-						betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-						betaE[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 +
-						betaE[7,qi]*s7 + betaE[8,qi]*s8]
-			}else if(NS==4){
-				wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
-						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-						betaE[3,qi]*s3 + betaE[4,qi]*s4]
-			}else if(NS==5){
-				wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
-						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-						betaE[3,qi]*s3 + betaE[4,qi]*s4 +
-						betaE[5,qi]*s5]
-			}else if(NS==3){
-				wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi], 
-						betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-						betaE[3,qi]*s3]
+			sumBetaE <- ""
+			for(si in seq(1,NS) ){
+				sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
 			}
+			if( durEU == T){
+				sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(NS+1),",qi]*dur" ))
+			}
+			
+			wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaE))]
+			
 			qi = qi+1
 		}
 		#clean up the space:
@@ -480,7 +385,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			for(q in qtlgridSamp){
 				wc_BR_exstay[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
 								betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
-								betaR[4,qi]*s4 + betaE[5,qi]*s5 + betaR[6,qi]*s6] 
+								betaR[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 + betaR[7,qi]*dur] 
 				qi = qi+1
 			}
 			wc_BR_exstay_pctile[,simiter] <- quantile(wc_BR_exstay,probs=qtlgridOut,na.rm=T)

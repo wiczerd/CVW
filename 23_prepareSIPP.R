@@ -397,8 +397,8 @@ sipp[, recIndic := (date >= recDates[1] & date <= recDates[2]) |
 	 	(date >= recDates[3] & date <= recDates[4]) |
 	 	(date >= recDates[5] & date <= recDates[6]) ]
 
-# create vector of recession dates : above 6% or in the top 20%
-recDates2 <- unrate$date[ unrate$filunrt>=quantile(unrate$filunrt,probs = 4/5) ]
+# create vector of recession dates in the top 25%
+recDates2 <- unrate$date[ unrate$filunrt>=quantile(unrate$filunrt,probs = 3/4) ]
 sipp[, recIndic2 := date %in% recDates2]
 
 
