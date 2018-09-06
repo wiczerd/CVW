@@ -367,9 +367,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			if( durEU == T){
 				sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(NS+1),",qi]*dur" ))
 			}
-			
 			wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaE))]
-			
 			qi = qi+1
 		}
 		#clean up the space:
@@ -379,45 +377,52 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		rm(wc_exp)
 				
 		#some additional counter-factuals
-		if(NS==6|NS==8){
-			wc_BR_exstay <- matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
-			qi=1
-			for(q in qtlgridSamp){
-				wc_BR_exstay[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[sampE[,qi],
-								betaR[1,qi]*s1 + betaR[2,qi]*s2 + betaR[3,qi]*s3 + 
-								betaR[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 + betaR[7,qi]*dur] 
-				qi = qi+1
+		# try replacing stayers:
+		qi=1
+		wc_BR_exstay <- matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
+		idxstay <- grepl("stay", colnames(betaptsR)) #picks up any "stay"
+		for(q in qtlgridSamp){
+			sumBetaR <- ""
+			for(si in seq(1,NS) ){
+				if(idxstay[si] ==F){
+					sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
+				}
+				else{# use the expansions coefficients
+					sumBetaR <- paste(sumBetaR,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
+				}
 			}
-			wc_BR_exstay_pctile[,simiter] <- quantile(wc_BR_exstay,probs=qtlgridOut,na.rm=T)
-			wc_BR_exstay_moments[1,simiter] <- mean( wc_BR_exstay,na.rm = T )
-			wc_BR_exstay_moments[2:5,simiter] <- wtd.4qtlmoments( xt=wc_BR_exstay,wt=array(1,dim=dim(wc_BR_exstay)) )
-			
+			if( durEU == T){
+				sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
+			}
+			wc_BR_exstay[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaR))]
+			qi = qi+1
 		}
+		wc_BR_exstay_pctile[,simiter] <- quantile(wc_BR_exstay,probs=qtlgridOut,na.rm=T)
+		wc_BR_exstay_moments[1,simiter] <- mean( wc_BR_exstay,na.rm = T )
+		wc_BR_exstay_moments[2:5,simiter] <- wtd.4qtlmoments( xt=wc_BR_exstay,wt=array(1,dim=dim(wc_BR_exstay)) )
+	
 		
 		if(no_occ ==F){
+			#contribution of occupation switchers
+			idxsw <- grepl("_sw", colnames(betaptsR))
 			qi=1
 			wc_IR_sw <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only switch
 			wc_IR_sw_moments <- matrix(NA,Nmoments,Nsims)
 			for(q in qtlgridSamp){
-				if(NS == 6){
-					wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-								betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-								betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6] 
-				}else if(NS == 7){
-					wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-								betaE[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-								betaR[4,qi]*s4 + betaR[5,qi]*s5 + betaR[6,qi]*s6 + 
-								betaR[7,qi]*s7]
-				}else if(NS==4){
-					wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-								betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-								betaR[3,qi]*s3 + betaR[4,qi]*s4]
-				}else if(NS==5){
-					wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-								betaE[1,qi]*s1 + betaE[2,qi]*s2 + 
-								betaR[3,qi]*s3 + betaR[4,qi]*s4 + 
-								betaR[5,qi]*s5]
+				sumBetaE <- ""
+				for(si in seq(1,NS) ){
+					if(idxsw[si] ==F){
+						sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
+					}
+					else{# use the expansions coefficients
+						sumBetaE <- paste(sumBetaE,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
+					}
 				}
+				if( durEU == T){
+					sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(NS+1),",qi]*dur" ))
+				}
+				
+				wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],eval(parse(text=sumBetaE))] 
 				qi = qi+1
 			}
 			#clean up the space:
