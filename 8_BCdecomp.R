@@ -107,7 +107,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		no_occ = F
 	}
 	if(missing(durEU)){
-		durEU = F
+		durEU = T
 	}
 	
 	wcDF <- subset(wcDF,wt>0 & is.finite(wc))
@@ -276,8 +276,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
   			colnames(betaptsE) <-c(names,"dur")
   			colnames(betaptsR) <-c(names,"dur")
 		}else{
-		  colnames(betaptsE) <-names
-		  colnames(betaptsR) <-names
+			colnames(betaptsE) <-names
+			colnames(betaptsR) <-names
 		}
 		
 		if(durEU==T){
@@ -287,20 +287,27 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		  betaE <- array(0.,dim=c(NS,length(qtlgridSamp)) )
 		  betaR <- array(0.,dim=c(NS,length(qtlgridSamp)) )
 		}
-		for(si in seq(1,NS)){
-			gpE <- c(T,betaptsE[2:length(qtlgridEst),si]>=betaptsE[1:length(qtlgridEst)-1,si]) #ensure monotonicity
-			gpR <- c(T,betaptsR[2:length(qtlgridEst),si]>=betaptsR[1:length(qtlgridEst)-1,si]) #ensure monotonicity
+		for(si in seq(1,NS+1)){
+			if(si<=NS){
+				gpE <- c(T,betaptsE[2:length(qtlgridEst),si]>=betaptsE[1:length(qtlgridEst)-1,si]) #ensure monotonicity
+				gpR <- c(T,betaptsR[2:length(qtlgridEst),si]>=betaptsR[1:length(qtlgridEst)-1,si]) #ensure monotonicity
+				methodhr = "hyman"
+			}else{
+				gpE <- gpE==gpE
+				gpR <- gpR==gpR #just setting them all to true
+				methodhr = "monoH.FC"
+			}
 			if(min(qtlgridSamp)<min(qtlgridEst[gpR]) | max(qtlgridSamp)>max(qtlgridEst[gpR])){
 				betaE[si,] <- spline(x=c(min(qtlgridSamp) ,qtlgridEst[gpE], max(qtlgridSamp)), 
-									 y=c(min(betaptsE[gpE,si]), betaptsE[gpE,si],max(betaptsE[gpE,si])), method="hyman", xout=qtlgridSamp)$y
+									 y=c(min(betaptsE[gpE,si]), betaptsE[gpE,si],max(betaptsE[gpE,si])), method=methodhr, xout=qtlgridSamp)$y
 			}
 			if(min(qtlgridSamp)<min(qtlgridEst[gpR]) | max(qtlgridSamp)>max(qtlgridEst[gpR])){
 				betaR[si,] <- spline(x=c(min(qtlgridSamp) ,qtlgridEst[gpR], max(qtlgridSamp)), 
-									 y=c(min(betaptsR[gpR,si]),betaptsR[gpR,si],max(betaptsR[gpR,si])), method="hyman", xout=qtlgridSamp)$y	
+									 y=c(min(betaptsR[gpR,si]),betaptsR[gpR,si],max(betaptsR[gpR,si])), method=methodhr, xout=qtlgridSamp)$y	
 			}
 			if( min(qtlgridSamp)>=min(qtlgridEst) & max(qtlgridSamp)<=max(qtlgridEst[gpR]) & max(qtlgridSamp)<=max(qtlgridEst[gpE])){
-				betaE[si,] <- spline(x=qtlgridEst[gpE], y=betaptsE[gpE,si], method="hyman", xout=qtlgridSamp)$y
-				betaR[si,] <- spline(x=qtlgridEst[gpR], y=betaptsR[gpR,si], method="hyman", xout=qtlgridSamp)$y
+				betaE[si,] <- spline(x=qtlgridEst[gpE], y=betaptsE[gpE,si], method=methodhr, xout=qtlgridSamp)$y
+				betaR[si,] <- spline(x=qtlgridEst[gpR], y=betaptsR[gpR,si], method=methodhr, xout=qtlgridSamp)$y
 			}
 			if( any(gpE ==F) | any(gpR==F) ){
 				warning(c('non-monotone regression coefficients, ',as.character(sum(gpE==F) + sum(gpR==F)), ' time(s)') )
@@ -487,10 +494,13 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 	if(no_occ==F){	
 		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_sw= wc_IR_sw_pctile, wc_IR_un= wc_IR_un_pctile,
 				wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile,wc_BR_mmts = wc_BR_moments,wc_IR_mmts = wc_IR_moments, 
-				wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments, wc_IR_sw_mmts = wc_IR_sw_moments))
+				wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments, wc_IR_sw_mmts = wc_IR_sw_moments,
+				wc_BR_exi_mmts = wc_BR_exi_moments))
 	}else{
-		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile,
-					wc_BR_mmts = wc_BR_moments,wc_IR_mmts = wc_IR_moments,wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments))
+		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_un= wc_IR_un_pctile,
+					wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile,
+					wc_BR_mmts = wc_BR_moments,wc_IR_mmts = wc_IR_moments,wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments,
+					wc_BR_exi_mmts = wc_BR_exi_moments))
 	}
 }
 
@@ -532,8 +542,8 @@ DTseam[ changer==T, switch := switched_wave]
 DTseam[ EU==T, dur := max.unempdur_wave]
 DTseam[ !EU==T | !is.finite(dur), dur := 0.]
 
-MM_waveall_betaE_betaR_IR <- MMdecomp(DTseam,7,"recIndic2_wave","wagechange_wave","truncweight",std_errs = MMstd_errs, no_occ = F)
-MM_waveallEUE_betaE_betaR_IR <- MMdecomp(DTseam,6,"recIndic2_wave",wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = T)
+
+MM_betaE_betaR_IR <- MMdecomp(DTseam,6,"recIndic2_wave",wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
 
 saveRDS(MM_waveall_betaE_betaR_IR,paste0(outputdir,"/MM_waveall.RData"))
 saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
