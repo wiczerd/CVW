@@ -234,6 +234,9 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 	wc_BR_exi_moments <- array(0.,dim=c(Nmoments,NS,Nsims))
 	wc_BR_exi_pctile <- array(0.,dim=c(length(qtlgridOut),NS,Nsims))
 	
+	wc_BR_onlyi_pctile <- array(0.,dim=c(length(qtlgridOut),NS,Nsims))
+	wc_BR_onlyi_moments <- array(0.,dim=c(Nmoments,NS,Nsims))
+	
 	for( simiter in seq(1,Nsims)){	
 		
 		set.seed(seedint+simiter*Nsims)		
@@ -293,9 +296,10 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 				gpR <- c(T,betaptsR[2:length(qtlgridEst),si]>=betaptsR[1:length(qtlgridEst)-1,si]) #ensure monotonicity
 				methodhr = "hyman"
 			}else{
+				#doesn't have to be monotone in duration
 				gpE <- gpE==gpE
 				gpR <- gpR==gpR #just setting them all to true
-				methodhr = "monoH.FC"
+				methodhr = "natural"
 			}
 			if(min(qtlgridSamp)<min(qtlgridEst[gpR]) | max(qtlgridSamp)>max(qtlgridEst[gpR])){
 				betaE[si,] <- spline(x=c(min(qtlgridSamp) ,qtlgridEst[gpE], max(qtlgridSamp)), 
@@ -415,6 +419,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		#turn off each individually
 		wc_BR_exi <-matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1)
 		for(ni in seq(1,NS)){
+			qi = 1
 			for(q in qtlgridSamp){
 				sumBetaR <- ""
 				for(si in seq(1,NS) ){
@@ -434,6 +439,30 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			wc_BR_exi_pctile[,ni,simiter] <- quantile(wc_BR_exi,probs=qtlgridOut,na.rm=T)
 			wc_BR_exi_moments[1,ni,simiter] <- mean( wc_BR_exi,na.rm = T )
 			wc_BR_exi_moments[2:5,ni,simiter] <- wtd.4qtlmoments( xt=wc_BR_exi,wt=array(1,dim=dim(wc_BR_exi)) )
+		}
+		#turn on each individually
+		wc_BR_onlyi <-matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1)
+		for(ni in seq(1,NS)){
+			qi = 1
+			for(q in qtlgridSamp){
+				sumBetaE <- ""
+				for(si in seq(1,NS) ){
+					if(si == ni){
+						sumBetaE <- paste(sumBetaE,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
+					}
+					else{# use the expansions coefficients
+						sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
+					}
+				}
+				if( durEU == T){
+					sumBetaE <- paste(sumBetaE,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
+				}
+				wc_BR_onlyi[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaE))]
+				qi = qi+1
+			}
+			wc_BR_onlyi_pctile[,ni,simiter] <- quantile(wc_BR_onlyi,probs=qtlgridOut,na.rm=T)
+			wc_BR_onlyi_moments[1,ni,simiter] <- mean( wc_BR_onlyi,na.rm = T )
+			wc_BR_onlyi_moments[2:5,ni,simiter] <- wtd.4qtlmoments( xt=wc_BR_onlyi,wt=array(1,dim=dim(wc_BR_onlyi)) )
 		}
 		
 		if(no_occ ==F){
@@ -467,7 +496,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			
 		}			
 		wc_IR_un <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
-		idxun <- grep("EU_", colnames(betaptsR))
+		idxun <- grepl("EU_", colnames(betaptsR))
 		qi=1
 		for(q in qtlgridSamp){
 			sumBetaE <- ""
@@ -500,7 +529,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_un= wc_IR_un_pctile,
 					wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile,
 					wc_BR_mmts = wc_BR_moments,wc_IR_mmts = wc_IR_moments,wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments,
-					wc_BR_exi_mmts = wc_BR_exi_moments))
+					wc_BR_exi_mmts = wc_BR_exi_moments, wc_BR_onlyi_mmts = wc_BR_onlyi_moments))
 	}
 }
 
@@ -545,7 +574,7 @@ DTseam[ !EU==T | !is.finite(dur), dur := 0.]
 
 MM_betaE_betaR_IR <- MMdecomp(DTseam,6,"recIndic2_wave",wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
 
-saveRDS(MM_waveall_betaE_betaR_IR,paste0(outputdir,"/MM_waveall.RData"))
+saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_wvan.RData"))
 saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
 
 MM_wavenooc_betaE_betaR_IR <- MMdecomp(DTseam,4,"recIndic_wave","wagechange_wave","truncweight",std_errs = MMstd_errs, no_occ = T)
