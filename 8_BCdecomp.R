@@ -231,6 +231,9 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 	wc_BR_exstay_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
 	wc_BR_exstay_moments <- array(0.,dim=c(Nmoments,Nsims))
 	
+	wc_BR_exi_moments <- array(0.,dim=c(Nmoments,NS,Nsims))
+	wc_BR_exi_pctile <- array(0.,dim=c(length(qtlgridOut),NS,Nsims))
+	
 	for( simiter in seq(1,Nsims)){	
 		
 		set.seed(seedint+simiter*Nsims)		
@@ -379,7 +382,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		#some additional counter-factuals
 		# try replacing stayers:
 		qi=1
-		wc_BR_exstay <- matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
+		wc_BR_exstay <- matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1)
 		idxstay <- grepl("stay", colnames(betaptsR)) #picks up any "stay"
 		for(q in qtlgridSamp){
 			sumBetaR <- ""
@@ -402,12 +405,36 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		wc_BR_exstay_moments[2:5,simiter] <- wtd.4qtlmoments( xt=wc_BR_exstay,wt=array(1,dim=dim(wc_BR_exstay)) )
 	
 		
+		#turn off each individually
+		wc_BR_exi <-matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1)
+		for(ni in seq(1,NS)){
+			for(q in qtlgridSamp){
+				sumBetaR <- ""
+				for(si in seq(1,NS) ){
+					if(si != ni){
+						sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
+					}
+					else{# use the expansions coefficients
+						sumBetaR <- paste(sumBetaR,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
+					}
+				}
+				if( durEU == T){
+					sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
+				}
+				wc_BR_exi[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaR))]
+				qi = qi+1
+			}
+			wc_BR_exi_pctile[,ni,simiter] <- quantile(wc_BR_exi,probs=qtlgridOut,na.rm=T)
+			wc_BR_exi_moments[1,ni,simiter] <- mean( wc_BR_exi,na.rm = T )
+			wc_BR_exi_moments[2:5,ni,simiter] <- wtd.4qtlmoments( xt=wc_BR_exi,wt=array(1,dim=dim(wc_BR_exi)) )
+		}
+		
 		if(no_occ ==F){
 			#contribution of occupation switchers
 			idxsw <- grepl("_sw", colnames(betaptsR))
-			qi=1
 			wc_IR_sw <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only switch
 			wc_IR_sw_moments <- matrix(NA,Nmoments,Nsims)
+			qi=1
 			for(q in qtlgridSamp){
 				sumBetaE <- ""
 				for(si in seq(1,NS) ){
@@ -431,35 +458,30 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			wc_IR_sw_moments[2:5,simiter] <- wtd.4qtlmoments( xt=wc_IR_sw,wt=array(1,dim=dim(wc_IR_sw)) )
 			rm(wc_IR_sw)
 			
-			
-			qi=1
-			wc_IR_un <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
-			for(q in qtlgridSamp){
-				if(NS == 6){
-					wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-								betaR[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-								betaR[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6] 
-				}else if(NS == 7){
-					wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],
-								betaR[1,qi]*s1 + betaE[2,qi]*s2 + betaE[3,qi]*s3 + 
-								betaR[4,qi]*s4 + betaE[5,qi]*s5 + betaE[6,qi]*s6 +
-								betaR[7,qi]*s7]
-				}else if(NS==4){
-					wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-								betaR[1,qi]*s1 + betaE[2,qi]*s2 + 
-								betaR[3,qi]*s3 + betaE[4,qi]*s4]
-				}else if(NS==5){
-					wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], 
-								betaR[1,qi]*s1 + betaE[2,qi]*s2 + 
-								betaR[3,qi]*s3 + betaE[4,qi]*s4 +
-								betaR[5,qi]*s5]
+		}			
+		wc_IR_un <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
+		idxun <- grep("EU_", colnames(betaptsR))
+		qi=1
+		for(q in qtlgridSamp){
+			sumBetaE <- ""
+			for(si in seq(1,NS) ){
+				if(idxun[si] ==F){
+					sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
 				}
-				qi = qi+1
+				else{# use the expansions coefficients
+					sumBetaE <- paste(sumBetaE,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
+				}
 			}
-			#clean up the space:
-			wc_IR_un_pctile[,simiter] <- quantile(wc_IR_un,probs=qtlgridOut,na.rm=T)
-			rm(wc_IR_un)
+			if( durEU == T){
+				sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(NS+1),",qi]*dur" ))
+			}
+			wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],eval(parse(text=sumBetaE))] 
+			qi = qi+1
 		}
+		#clean up the space:
+		wc_IR_un_pctile[,simiter] <- quantile(wc_IR_un,probs=qtlgridOut,na.rm=T)
+		rm(wc_IR_un)
+
 	}#simiter	
 	
 	if(no_occ==F){	
