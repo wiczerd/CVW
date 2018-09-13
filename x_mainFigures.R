@@ -77,13 +77,14 @@ stackedDist <- function( DT,gg,wc,pwc ){
 }
 
 stackedDens <- function( DT,gg,wc ){
+	
 	Ng <- DT[ is.finite(eval(as.name(gg)))==T , length(unique( eval(as.name(gg)) ))]
 	#fraction in each group:
 	fracg <- DT[ is.finite(eval(as.name(gg)))==T, ftable( eval(as.name(gg)) )/sum(is.finite(eval(as.name(gg))) ) ]
 	
 	wcgidensity <- array(0,dim=c(512,Ng*2))
 	for( gi in seq(1,Ng)){
-		tmp <- DT[ eval(as.name(gg)) == gi , density( eval(as.name(wc)) ,n=512)]
+		tmp <- DT[ eval(as.name(gg)) == gi & is.finite(eval(as.name(wc))) , density( eval(as.name(wc)) ,n=512)]
 		
 		wcgidensity[,(gi-1)*2+1] <- tmp$x
 		wcgidensity[,(gi-1)*2+2] <- tmp$y*fracg[gi]
@@ -136,8 +137,8 @@ ggsave(paste0(outdir,"/occwgEE.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/occwgEE.png"),height=5,width=10)
 
 
-toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","wagechangeEUE_wave","recIndic_wave","date")
-DTseam <- subset(DTseam, is.finite(wagechange_wave) & is.finite(EU_wave) & is.finite(UE_wave)& is.finite(EE_wave))
+toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","wagechangeEUE_wave", "wagechange_wvan","recIndic2_wave","date")
+DTseam <- subset(DTseam, is.finite(EU_wave) & is.finite(UE_wave)& is.finite(EE_wave))
 
 # Occupation switchers and not--------------
 
@@ -150,18 +151,37 @@ DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
 DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
 DTseam[!is.na(DTseam$g), g4 := ifelse(g==4,1,0)]
 
-mid99 <-DTseam[ , quantile(wagechange_wave,probs = c(.005,.995))]
-DTseam[ wagechange_wave>mid99[1] & wagechange_wave<mid99[2], rnk_wagechange_wave  := frank(wagechange_wave)]
-DTseam[ , pct1000_wagechange_wave  := round(1000*rnk_wagechange_wave/max(rnk_wagechange_wave,na.rm=T),digits=0)]
-mid99 <- DTseam[ , quantile(rawwgchange_wave,probs = c(.005,.995),na.rm = T)]
-DTseam[ rawwgchange_wave>mid99[1] & rawwgchange_wave<mid99[2], rnk_rawwgchange_wave := frank(rawwgchange_wave)]
-DTseam[ , pct1000_rawwgchange_wave := as.integer(round(1000*rnk_rawwgchange_wave/max(rnk_rawwgchange_wave,na.rm=T),digits=0))]
-
 #stackedCdist <- stackedDist(DTseam,"g","wagechange_wave","pct1000_wagechange_wave")
-DTseam[ g==2 & wagechange_wave< -5, g:=NA]
-stayerSwitcherDens <- stackedDens(DTseam,"g","wagechange_wave")
+#DTseam[ g==2 & wagechange_wave< -5, g:=NA]
+stayerSwitcherDens <- stackedDens(DTseam,"g","wagechange_wvan")
 stayerSwitcherMelt <- melt(stayerSwitcherDens, id.vars = "WageChange")
 stayerSwitcherMelt[value>exp(-15) , logValue := log(value)]
+stayerSwitcherMelt[ , g:=5L-as.integer(variable)]
+ggplot(subset(stayerSwitcherMelt,is.finite(logValue)) ,aes(ymax=logValue,ymin=-15,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+	theme_bw()+xlab("Wage Change")+ylab("Stacked log density")+
+	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]), name="")
+ggsave(paste0(outdir,"/stacked_wagechange.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_wagechange.png"),height=5,width=10)
+
+
+DTseam[  DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F , g := 2]
+DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==T | DTseam$EU_wave ==T , g := 1]
+DTseam[!(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T), g := 3]
+DTseam[ !last.stable_emp==T, g:=NA]
+DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
+DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
+DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
+
+wcwvanDens <- stackedDens(DTseam,"g","wagechange_wvan")
+wcwvanMelt <- melt(wcwvanDens, id.vars = "WageChange")
+wcwvanMelt[value>exp(-10) , logValue := log(value)]
+wcwvanMelt[ , g:=4L-as.integer(variable)]
+ggplot(subset(wcwvanMelt,is.finite(logValue)) ,aes(ymax=logValue,ymin=-10,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+	theme_bw()+xlab("Annual Wage Change")+ylab("Stacked log density")+xlim(c(-5,5))+
+	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]), name="",label=c("stay","EE","EU,UE") )
+ggsave(paste0(outdir,"/stacked_wagechange.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_wagechange.png"),height=5,width=10)
+
 
 #EE and stayer:
 DTseam[ g==1 , gEE := 1]
@@ -179,7 +199,7 @@ ggsave(paste0(outdir,"/stacked_wagechangeEE.png"),height=5,width=10)
 #EE, EUE & stayer
 DTseam[ , g:=NULL]
 DTseam[  DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F , g := 1]
-DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==F & DTseam$EU_wave ==T , g := 2]
+DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==T & DTseam$EU_wave ==T , g := 2]
 DTseam[!(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T), g := 3]
 stayerEUEDens <- stackedDens(subset(DTseam, !UE_wave==T & is.finite(wagechangeEUE_wave)),"g","wagechangeEUE_wave")
 stayerEUEmelt <- melt(stayerEUEDens,id.vars = "WageChange")
