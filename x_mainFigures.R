@@ -116,6 +116,52 @@ DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 
 DTseam <- subset(DTseam, changer==T|stayer==T)
 
+DTseam[ , last2.stable_emp := shift(last.stable_emp), by=id]
+DTseam[ wave-2!=shift(wave,2), last2.stable_emp := NA, by =id]
+DTseam[ , last3.stable_emp := shift(last.stable_emp,2), by=id]
+DTseam[ wave-3!=shift(wave,3), last3.stable_emp := NA, by =id]
+
+DTseam[  DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F , g := 2]
+DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==T | DTseam$EU_wave ==T , g := 1]
+DTseam[!(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T), g := 3]
+DTseam[ !last.stable_emp==T & g==3, g:=NA]
+DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
+DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
+DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
+
+wcwvanDens <- stackedDens(DTseam,"g","wagechange_wvan")
+wcwvanMelt <- melt(wcwvanDens, id.vars = "WageChange")
+wcwvanMelt[value>exp(-10) , logValue := log(value)]
+wcwvanMelt[ , g:=4L-as.integer(variable)]
+ggplot(subset(wcwvanMelt,is.finite(logValue)) ,aes(ymax=logValue,ymin=-10,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+	theme_bw()+xlab("Wave-Annual Earnings Change")+ylab("log density")+xlim(c(-5,5))+
+	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]), name="",label=c("stay","EE","EU,UE") ) +
+	geom_vline(xintercept = 0.)
+ggsave(paste0(outdir,"/stacked_wagechange_wvan.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_wagechange_wvan.png"),height=5,width=10)
+
+
+DTseam[  DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F , g := 2]
+DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==T | DTseam$EU_wave ==T , g := 1]
+DTseam[!(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T), g := 3]
+#DTseam[ g==3 & !last.stable_emp==T, g:=NA]
+DTseam[ g==3 & (!last.stable_emp==T | !shift(last.stable_emp) | !shift(last.stable_emp,2)), g:=NA]
+DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
+DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
+DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
+
+wcananDens <- stackedDens(DTseam,"g","wagechange_anan")
+wcananMelt <- melt(wcananDens, id.vars = "WageChange")
+wcananMelt[value>exp(-8) , logValue := log(value)]
+wcananMelt[ , g:=4L-as.integer(variable)]
+ggplot(subset(wcananMelt,is.finite(logValue)) ,aes(ymax=logValue,ymin=-8,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+	theme_bw()+xlab("Annual-Annual Earnings Change")+ylab("log density")+xlim(c(-5,5))+
+	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]), name="",label=c("stay","EE","EU,UE") ) +
+	geom_vline(xintercept = 0.) 
+ggsave(paste0(outdir,"/stacked_wagechange_anan.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_wagechange_anan.png"),height=5,width=10)
+
+
 DTseam[ , c("pct_wcEUE_wave","rank_wcEUE_wave"):=NULL]
 DTseam[changermo ==T & is.finite(wagechangeEUE_wave) & (EE_wave), rank_wcEUE_wave := frank(wagechangeEUE_wave)/.N ]
 DTseam[, pct_wcEUE_wave :=as.integer( round(100*rank_wcEUE_wave),5)]
@@ -160,25 +206,6 @@ stayerSwitcherMelt[ , g:=5L-as.integer(variable)]
 ggplot(subset(stayerSwitcherMelt,is.finite(logValue)) ,aes(ymax=logValue,ymin=-15,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
 	theme_bw()+xlab("Wage Change")+ylab("Stacked log density")+
 	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]), name="")
-ggsave(paste0(outdir,"/stacked_wagechange.eps"),height=5,width=10)
-ggsave(paste0(outdir,"/stacked_wagechange.png"),height=5,width=10)
-
-
-DTseam[  DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F , g := 2]
-DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==T | DTseam$EU_wave ==T , g := 1]
-DTseam[!(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T), g := 3]
-DTseam[ !last.stable_emp==T, g:=NA]
-DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
-DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
-DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
-
-wcwvanDens <- stackedDens(DTseam,"g","wagechange_wvan")
-wcwvanMelt <- melt(wcwvanDens, id.vars = "WageChange")
-wcwvanMelt[value>exp(-10) , logValue := log(value)]
-wcwvanMelt[ , g:=4L-as.integer(variable)]
-ggplot(subset(wcwvanMelt,is.finite(logValue)) ,aes(ymax=logValue,ymin=-10,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
-	theme_bw()+xlab("Annual Wage Change")+ylab("Stacked log density")+xlim(c(-5,5))+
-	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]), name="",label=c("stay","EE","EU,UE") )
 ggsave(paste0(outdir,"/stacked_wagechange.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/stacked_wagechange.png"),height=5,width=10)
 
