@@ -76,16 +76,27 @@ stackedDist <- function( DT,gg,wc,pwc ){
 	return( stackedCdist )
 }
 
-stackedDens <- function( DT,gg,wc ){
+stackedDens <- function( DT,gg,wc,wt=NULL ){
 	
 	Ng <- DT[ is.finite(eval(as.name(gg)))==T , length(unique( eval(as.name(gg)) ))]
 	#fraction in each group:
-	fracg <- DT[ is.finite(eval(as.name(gg)))==T, ftable( eval(as.name(gg)) )/sum(is.finite(eval(as.name(gg))) ) ]
+	#fracg <- DT[ is.finite(eval(as.name(gg)))==T, ftable( eval(as.name(gg)) )/sum(is.finite(eval(as.name(gg))) ) ]
+	if( !is.null(wt) ){
+		fracg <- DT[ is.finite(eval(as.name(gg)))==T, sum(eval(as.name(wt)) ), by = gg ]
+		setkey(fracg,g)
+		fracg <- fracg$V1/sum(fracg$V1)
+	}else{
+		fracg <- DT[ is.finite(eval(as.name(gg)))==T, ftable( eval(as.name(gg)) )/sum(is.finite(eval(as.name(gg))) ) ]
+	}
 	
 	wcgidensity <- array(0,dim=c(512,Ng*2))
 	for( gi in seq(1,Ng)){
-		tmp <- DT[ eval(as.name(gg)) == gi & is.finite(eval(as.name(wc))) , density( eval(as.name(wc)) ,n=512)]
-		
+		if(!is.null(wt)){
+			wtsum <- DT[ eval(as.name(gg)) == gi & is.finite(eval(as.name(wc))) , sum( eval(as.name(wt)))]
+			tmp <- DT[ eval(as.name(gg)) == gi & is.finite(eval(as.name(wc))) , density( eval(as.name(wc)), weights = eval(as.name(wt))/wtsum ,n=512)]
+		}else{
+			tmp <- DT[ eval(as.name(gg)) == gi & is.finite(eval(as.name(wc))) , density( eval(as.name(wc)) ,n=512)]
+		}
 		wcgidensity[,(gi-1)*2+1] <- tmp$x
 		wcgidensity[,(gi-1)*2+2] <- tmp$y*fracg[gi]
 		
@@ -129,7 +140,7 @@ DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
 DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
 DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
 
-wcwvanDens <- stackedDens(DTseam,"g","wagechange_wvan")
+wcwvanDens <- stackedDens(DTseam,"g","wagechange_wvan","truncweight")
 wcwvanMelt <- melt(wcwvanDens, id.vars = "WageChange")
 wcwvanMelt[value>exp(-10) , logValue := log(value)]
 wcwvanMelt[ , g:=4L-as.integer(variable)]
