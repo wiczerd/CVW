@@ -630,6 +630,7 @@ sipp_wave[ wis == 1           , last.stable_emp := T]
 sipp_wave[                    , next.stable_emp := next.lfstat_wave==1 & next.jobchng_max==F & ((next.EE_wave == F) | shift(EEmon,type="lead")==1)]
 sipp_wave[ wis == maxwis      , next.stable_emp := T]
 sipp_wave[(lfstat_wave>=2 | EU_wave==T) & UE_wave==F, next.stable_emp:=NA] 
+sipp_wave[(lfstat_wave>=2 | UE_wave==T) & EU_wave==F, last.stable_emp:=NA] 
 
 #fill in occupation over u spells and compute switching
 
@@ -639,7 +640,8 @@ sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & is.na(ind_wave) ,ind_wave:=99
 
 sipp_wave[ ,occ_wave:=na.locf(occ_wave,na.rm = F,fromLast = T), by=id]
 sipp_wave[ ,ind_wave:=na.locf(ind_wave,na.rm = F,fromLast = T), by=id]
-sipp_wave[ ,next.stable_emp:=na.locf(next.stable_emp,na.rm = F,fromLast = T), by=id]
+sipp_wave[ is.finite(ustintid_wave),next.stable_emp:=na.locf(next.stable_emp,na.rm = F,fromLast = T), by=list(ustintid_wave,id)]
+sipp_wave[ is.finite(ustintid_wave),last.stable_emp:=na.locf(last.stable_emp,na.rm = F,fromLast = F), by=list(ustintid_wave,id)]
 
 sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & occ_wave>=990 ,occ_wave:=NA] 
 sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & ind_wave>=990 ,ind_wave:=NA] 
