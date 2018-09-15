@@ -58,6 +58,7 @@ figuredir <- paste(rootdir, "Figures", sep = "")
 intermed_plots = T
 final_plots = F
 max_wavefreq = 1 # controls whether take max over months in wave or wave-frequency observation
+midTrans = 0 # controls whether to mark w/in wave transitions in the prior wave too
 setwd(rootdir)
 
 ################################## Prepare data  ----------------------------
@@ -700,41 +701,52 @@ sipp_wave[, c("exist_NE","exist_EU","mtot","matched_NE","matched_EU"):=NULL]
 
 
 #correct for w/in wave transitions
-sipp_wave[ , next.EEmon   := shift( EEmon  , type="lead"), by=id]# adjust because EE_wave will be counted before
-sipp_wave[ , next.EE_wave := shift( EE_wave, type="lead"), by=id]
-sipp_wave[ , next.recIndic_wave := shift( recIndic_wave, type="lead"), by=id]
-sipp_wave[ , next.recIndic2_wave := shift( recIndic2_wave, type="lead"), by=id]
-sipp_wave[ next.EEmon>0 & next.EEmon<4 & next.EE_wave==T & lfstat_wave==1 , midEE  :=T  ]
-sipp_wave[ is.na(midEE)==T, midEE:=F]
-sipp_wave[ midEE  ==T , EEmon := next.EEmon]
-sipp_wave[ midEE  ==T , EE_wave:=T  ]
-sipp_wave[ midEE  ==T , switchedOcc_wave:=next.switchedOcc_wave  ]
-sipp_wave[ midEE  ==T , switchedInd_wave:=next.switchedInd_wave  ]
-sipp_wave[ midEE  ==T , switched_wave:=next.switched_wave  ]
-sipp_wave[ midEE  ==T , jobchng_wave:=next.jobchng_wave  ]
-sipp_wave[ midEE  ==T , recIndic_wave := next.recIndic_wave  ]
-sipp_wave[ midEE  ==T , recIndic2_wave:= next.recIndic2_wave  ]
+if(midTrans == 1){
+	sipp_wave[ , next.EEmon   := shift( EEmon  , type="lead"), by=id]# adjust because EE_wave will be counted before
+	sipp_wave[ , next.EE_wave := shift( EE_wave, type="lead"), by=id]
+	sipp_wave[ , next.recIndic_wave := shift( recIndic_wave, type="lead"), by=id]
+	sipp_wave[ , next.recIndic2_wave := shift( recIndic2_wave, type="lead"), by=id]
+	sipp_wave[ next.EEmon>0 & next.EEmon<4 & next.EE_wave==T & lfstat_wave==1 , midEE  :=T  ]
+	sipp_wave[ is.na(midEE)==T, midEE:=F]
+	sipp_wave[ midEE  ==T , EEmon := next.EEmon]
+	sipp_wave[ midEE  ==T , EE_wave:=T  ]
+	sipp_wave[ midEE  ==T , switchedOcc_wave:=next.switchedOcc_wave  ]
+	sipp_wave[ midEE  ==T , switchedInd_wave:=next.switchedInd_wave  ]
+	sipp_wave[ midEE  ==T , switched_wave:=next.switched_wave  ]
+	sipp_wave[ midEE  ==T , jobchng_wave:=next.jobchng_wave  ]
+	sipp_wave[ midEE  ==T , recIndic_wave := next.recIndic_wave  ]
+	sipp_wave[ midEE  ==T , recIndic2_wave:= next.recIndic2_wave  ]
+}else{
+	sipp_wave[ , midEE:=F]
+}
 
+if(midTrans == 1){
+	sipp_wave[ , next.EUmon   := shift( EUmon  , type="lead" ), by= id]
+	sipp_wave[ , next.EU_wave := shift( EU_wave, type="lead" ), by= id]
+	sipp_wave[ , next.max.unempdur_wave := shift( max.unempdur_wave, type="lead" ), by= id]
+	sipp_wave[ next.EUmon>0 & next.EUmon<seammon & next.EU_wave ==T & lfstat_wave==1 , midEU  :=T  ]
+	sipp_wave[ is.na(midEU)==T, midEU:=F]
+	sipp_wave[ midEU ==T , EUmon := next.EUmon]
+	sipp_wave[ midEU ==T , EU_wave:=T  ]
+	sipp_wave[ midEU ==T , max.unempdur_wave:=next.max.unempdur_wave  ]
+	sipp_wave[ midEU  ==T , recIndic_wave := next.recIndic_wave  ]
+	sipp_wave[ midEU  ==T , recIndic2_wave:= next.recIndic2_wave  ]
+}else{
+	sipp_wave[ , midEU:=F]
+}
 
-sipp_wave[ , next.EUmon   := shift( EUmon  , type="lead" ), by= id]
-sipp_wave[ , next.EU_wave := shift( EU_wave, type="lead" ), by= id]
-sipp_wave[ , next.max.unempdur_wave := shift( max.unempdur_wave, type="lead" ), by= id]
-sipp_wave[ next.EUmon>0 & next.EUmon<seammon & next.EU_wave ==T & lfstat_wave==1 , midEU  :=T  ]
-sipp_wave[ is.na(midEU)==T, midEU:=F]
-sipp_wave[ midEU ==T , EUmon := next.EUmon]
-sipp_wave[ midEU ==T , EU_wave:=T  ]
-sipp_wave[ midEU ==T , max.unempdur_wave:=next.max.unempdur_wave  ]
-sipp_wave[ midEU  ==T , recIndic_wave := next.recIndic_wave  ]
-sipp_wave[ midEU  ==T , recIndic2_wave:= next.recIndic2_wave  ]
-
-sipp_wave[ , next.UEmon   := shift( UEmon  , type="lead" ), by= id]
-sipp_wave[ , next.UE_wave := shift( UE_wave, type="lead" ), by= id]
-sipp_wave[ next.UEmon>0 & next.UEmon<seammon & next.UE_wave ==T & lfstat_wave>=2 , midUE  :=T  ]
-sipp_wave[ is.na(midUE)==T, midUE:=F]
-sipp_wave[ midUE == T , UEmon := next.UEmon]
-sipp_wave[ midUE  ==T , recIndic_wave := next.recIndic_wave  ]
-sipp_wave[ midUE  ==T , recIndic2_wave:= next.recIndic2_wave  ]
-sipp_wave[ midUE == T , UE_wave:=T  ]
+if(midTrans == T){
+	sipp_wave[ , next.UEmon   := shift( UEmon  , type="lead" ), by= id]
+	sipp_wave[ , next.UE_wave := shift( UE_wave, type="lead" ), by= id]
+	sipp_wave[ next.UEmon>0 & next.UEmon<seammon & next.UE_wave ==T & lfstat_wave>=2 , midUE  :=T  ]
+	sipp_wave[ is.na(midUE)==T, midUE:=F]
+	sipp_wave[ midUE == T , UEmon := next.UEmon]
+	sipp_wave[ midUE  ==T , recIndic_wave := next.recIndic_wave  ]
+	sipp_wave[ midUE  ==T , recIndic2_wave:= next.recIndic2_wave  ]
+	sipp_wave[ midUE == T , UE_wave:=T  ]
+}else{
+	sipp_wave[ , midUE:=F]
+}
 
 # clean-up the EU, UE in 1 wave
 sipp_wave[ EU_wave==T & UE_wave==T & midUE==T , UE_wave := F]
