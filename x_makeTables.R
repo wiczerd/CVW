@@ -111,8 +111,8 @@ DTseam[ wave-2!=shift(wave,2), last2.stable_emp := NA, by =id]
 DTseam[ , last3.stable_emp := shift(last.stable_emp,2), by=id]
 DTseam[ wave-3!=shift(wave,3), last3.stable_emp := NA, by =id]
 
-DTseam[ !(last.stable_emp & last2.stable_emp & last3.stable_emp), stayer:=F]
-#DTseam[ !(last.stable_emp | last2.stable_emp | last3.stable_emp), changer:=F]
+#DTseam[ !(last.stable_emp & last2.stable_emp & last3.stable_emp), stayer:=F]
+#DTseam[ !(last.stable_emp)& changer == T & (EU_wave==T|EE_wave==T), changer:=F]
 
 
 DTseam <- subset(DTseam, (stayer|changer))
@@ -178,13 +178,13 @@ for( wc in c("wagechangeEUE_wave","rawwgchangeEUE_wave","wagechange_wave","rawwg
 	tN <- (length(tabqtls)+1)
 	ann_wavedist <- array(0., dim=c(2,length(tabqtls)+1))
 	ann_wavedist[1,1]   <- DTseam[!(eval(as.name(recDef)) )#| shift(eval(as.name(recDef)),2,type="lead") | shift(eval(as.name(recDef)),1,type="lead") ) 
-								  &(changer|stayer)&demo==T,    wtd.mean(wagechange_wvan,na.rm=T,weights=truncweight)]
+								  &last.stable_emp&(changer|stayer)&demo==T,    wtd.mean(wagechange_wvan,na.rm=T,weights=truncweight)]
 	ann_wavedist[1,2:tN]<- DTseam[!(eval(as.name(recDef)) )#| shift(eval(as.name(recDef)),2,type="lead") | shift(eval(as.name(recDef)),1,type="lead") ) 
-								  &(changer|stayer)&demo==T, wtd.quantile(wagechange_wvan,na.rm=T,weights=truncweight, probs=tabqtls)]
+								  &last.stable_emp&(changer|stayer)&demo==T, wtd.quantile(wagechange_wvan,na.rm=T,weights=truncweight, probs=tabqtls)]
 	ann_wavedist[2,1]   <- DTseam[ (eval(as.name(recDef))  )#& shift(eval(as.name(recDef)),2,type="lead") & shift(eval(as.name(recDef)),1,type="lead") )
-								  &(changer|stayer)&demo==T,     wtd.mean(wagechange_wvan,na.rm=T,weights=truncweight)]
+								   &last.stable_emp&(changer|stayer)&demo==T,     wtd.mean(wagechange_wvan,na.rm=T,weights=truncweight)]
 	ann_wavedist[2,2:tN]<- DTseam[ (eval(as.name(recDef))  )#& shift(eval(as.name(recDef)),2,type="lead") & shift(eval(as.name(recDef)),1,type="lead") )
-								   &(changer|stayer)&demo==T, wtd.quantile(wagechange_wvan,na.rm=T,weights=truncweight, probs=tabqtls)]
+								   &last.stable_emp&(changer|stayer)&demo==T, wtd.quantile(wagechange_wvan,na.rm=T,weights=truncweight, probs=tabqtls)]
 	
 	nexp <- DTseam[!(eval(as.name(recDef)) )#| shift(eval(as.name(recDef)),2,type="lead") | shift(eval(as.name(recDef)),1,type="lead") )  
 				   &	(stayer|changer)&demo==T,    sum(is.finite(wagechange_anan)*truncweight)]

@@ -640,6 +640,7 @@ sipp_wave[(EU_wave==T|lfstat_wave==1|UE_wave==T) & is.na(ind_wave) ,ind_wave:=99
 
 sipp_wave[ ,occ_wave:=na.locf(occ_wave,na.rm = F,fromLast = T), by=id]
 sipp_wave[ ,ind_wave:=na.locf(ind_wave,na.rm = F,fromLast = T), by=id]
+sipp_wave[ ,next.stable_emp := na.locf(next.stable_emp,na.rm = F,fromLast = T), by=id]
 #sipp_wave[ is.finite(ustintid_wave),next.stable_emp:=na.locf(next.stable_emp,na.rm = F,fromLast = T), by=list(ustintid_wave,id)]
 #sipp_wave[ is.finite(ustintid_wave),last.stable_emp:=na.locf(last.stable_emp,na.rm = F,fromLast = F), by=list(ustintid_wave,id)]
 
