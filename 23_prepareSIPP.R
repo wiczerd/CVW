@@ -383,11 +383,11 @@ if(intermed_plots==T){
 recDates <- as.Date(c("1990-07-01","1991-03-01","2001-02-01", "2001-12-01","2007-11-01", "2009-07-01"))
 
 # get PCE and unemployment rate data
-setwd(datadir)
-PCE <- readRDS("./PCE.RData")
-unrate <- readRDS("./unrate.RData")
-unrate <- readRDS("./CPSunempRt.RData")
-setwd(rootdir)
+
+PCE <- readRDS(paste0(datadir,"/PCE.RData"))
+unrate <- readRDS(paste0(datadir,"/unrate.RData"))
+unrate <- readRDS(paste0(datadir,"/CPSunempRt.RData"))
+
 
 filtered.unrate <- hpfilter(unrate$unrt,type = "lambda",freq=14400)
 unrate<-cbind(unrate,filtered.unrate$cycle)
