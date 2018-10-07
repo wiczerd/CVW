@@ -209,6 +209,7 @@ sipp[ , JCstart_any := any(JCstart, na.rm=T), by = list(id,wave)]
 
 # create EU/UE/EE dummies
 sipp[lfstat == 1, EU := (next.lfstat == 2)]
+sipp[lfstat == 1, EN := (next.lfstat >= 2)]
 sipp[lfstat == 2, UE := (next.lfstat == 1)]
 sipp[lfstat >= 2, NE := (next.lfstat == 1)]
 sipp[lfstat == 1 & next.lfstat==1, EE := (Eend==T & JCend_any==T) | (Estart==T & JCstart_any==T) ]
@@ -228,34 +229,34 @@ sipp[lfstat==1 & next.lfstat==1 , jobchng := (job!=next.job)]
 
 #add EU to ustintid
 sipp[ , next.ustintid := shift(ustintid,type="lead"), by=id]
-sipp[ EU==T, ustintid:= next.ustintid]
+sipp[ EN==T, ustintid:= next.ustintid]
 sipp[ , next.ustintid:=NULL]
 
-#match NE and EU:
+#match NE and EN:
 sipp[NE==T     , exist_NE:=1]
-sipp[ lfstat==1 & !(EU==T|NE==T), exist_NE:=999]
-sipp[EU==T     , exist_EU:=1]
-sipp[ lfstat==1 & !(NE==T|EU==T), exist_EU:=999]
+sipp[ lfstat==1 & !(EN==T|NE==T), exist_NE:=999]
+sipp[EN==T     , exist_EN:=1]
+sipp[ lfstat==1 & !(NE==T|EN==T), exist_EN:=999]
 sipp[          , exist_NE:=na.locf(exist_NE,fromLast=T,na.rm=F), by = id]
-sipp[          , exist_EU:=na.locf(exist_EU,na.rm=F), by = id]
+sipp[          , exist_EN:=na.locf(exist_EN,na.rm=F), by = id]
 
-sipp[NE==T, matched_NE := (exist_EU==1) ]
-sipp[EU==T, matched_EU := (exist_NE==1) ]
-sipp[ ustintid>0 , mtot := sum(matched_NE==T,na.rm=T)+sum(matched_EU==T,na.rm=T), by = list(id, ustintid)]
+sipp[NE==T, matched_NE := (exist_EN==1) ]
+sipp[EN==T, matched_EN := (exist_NE==1) ]
+sipp[ ustintid>0 , mtot := sum(matched_NE==T,na.rm=T)+sum(matched_EN==T,na.rm=T), by = list(id, ustintid)]
 sipp[ ustintid>0 , matched_EUUE:= mtot==2 ]
-sipp[, c("exist_NE","exist_EU","mtot","matched_NE","matched_EU"):=NULL]
+sipp[, c("exist_NE","exist_EN","mtot","matched_NE","matched_EN"):=NULL]
 
 #month of the transition:
 sipp[ EE==T, EEmon := srefmon]
-sipp[ EU==T, EUmon := srefmon]
+sipp[ EN==T, EUmon := srefmon]
 sipp[ NE==T, UEmon := srefmon]
 
 
 #occupation and industry switches
-sipp[ !(EU|EE) , switchedOcc := occ !=next.occ]
-sipp[ !(EU|EE) , switchedInd := ind !=next.ind]
+sipp[ !(EN|EE) , switchedOcc := occ !=next.occ]
+sipp[ !(EN|EE) , switchedInd := ind !=next.ind]
 
-sipp[ !(EU|EE) , switched    := switchedInd==T & switchedOcc==T]
+sipp[ !(EN|EE) , switched    := switchedInd==T & switchedOcc==T]
 
 sipp[ , l1.job := shift(job,1)            , by=id]
 sipp[ , l2.job := shift(job,2)            , by=id]
@@ -296,17 +297,17 @@ sipp[ EE==T & EEmon==2 & l2.job != n3.job, switchedInd := l2.ind != n3.ind]
 sipp[ EE==T & EEmon==3 & l3.job != n2.job, switchedInd := l3.ind != n2.ind]
 sipp[ EE==T & EEmon==4 & l4.job != n1.job, switchedInd := l4.ind != n1.ind]
 # switches by unemployment
-sipp[ EU==T & EUmon==1, switchedOcc := l1.occ != n1.occ]
-sipp[ EU==T & EUmon==2, switchedOcc := l2.occ != n1.occ]
-sipp[ EU==T & EUmon==3, switchedOcc := l3.occ != n1.occ]
-sipp[ EU==T & EUmon==4, switchedOcc := l4.occ != n1.occ]
+sipp[ EN==T & EUmon==1, switchedOcc := l1.occ != n1.occ]
+sipp[ EN==T & EUmon==2, switchedOcc := l2.occ != n1.occ]
+sipp[ EN==T & EUmon==3, switchedOcc := l3.occ != n1.occ]
+sipp[ EN==T & EUmon==4, switchedOcc := l4.occ != n1.occ]
 
-sipp[ EU==T & EUmon==1, switchedInd := l1.ind != n1.ind]
-sipp[ EU==T & EUmon==2, switchedInd := l2.ind != n1.ind]
-sipp[ EU==T & EUmon==3, switchedInd := l3.ind != n1.ind]
-sipp[ EU==T & EUmon==4, switchedInd := l4.ind != n1.ind]
+sipp[ EN==T & EUmon==1, switchedInd := l1.ind != n1.ind]
+sipp[ EN==T & EUmon==2, switchedInd := l2.ind != n1.ind]
+sipp[ EN==T & EUmon==3, switchedInd := l3.ind != n1.ind]
+sipp[ EN==T & EUmon==4, switchedInd := l4.ind != n1.ind]
 
-sipp[ (EU|EE) , switched    := switchedInd==T & switchedOcc==T]
+sipp[ (EN|EE) , switched    := switchedInd==T & switchedOcc==T]
 
 #######################################################
 # plot transitions time series for sanity check
@@ -422,7 +423,7 @@ sipp[, nomearnm := earnm]
 sipp[, earnm := earnm/PCEPI*100]
 sipp[, badearn := abs(log(next.earnm/earnm)) > 2.0 & 
       	abs(log(next.earnm/last.earnm)) < 0.1]
-sipp[NE == T | EU == T | EE==T, badearn := F]
+sipp[NE == T | EN == T | EE==T, badearn := F]
 sipp[badearn == T, earnm := NA]
 sipp[, c("badearn", "nomearnm") := NULL]
 
@@ -476,7 +477,7 @@ sipp[ , Estart_wave:= any(Estart, na.rm=T), by=list(wave,id)]
 sipp[ EE==T, EEmon := srefmon]
 sipp[ is.na(EEmon), EEmon := 0]
 sipp[ , EEmon := max(EEmon), by=list(id,wave)]
-sipp[ EU==T, EUmon := srefmon]
+sipp[ EN==T, EUmon := srefmon]
 sipp[ is.na(EUmon), EUmon := 0]
 sipp[ , EUmon := max(EUmon), by=list(id,wave)]
 sipp[ NE==T, UEmon := srefmon]
@@ -484,7 +485,7 @@ sipp[ is.na(UEmon), UEmon := 0]
 sipp[ , UEmon := max(UEmon), by=list(id,wave)]
 #now check EU, UE, EE as max over months in the wave
 sipp[ , UE_max := any(NE,na.rm=T), by=list(id,wave)]
-sipp[ , EU_max := any(EU,na.rm=T), by=list(id,wave)]
+sipp[ , EU_max := any(EN,na.rm=T), by=list(id,wave)]
 sipp[ , EE_max := any(EE,na.rm=T), by=list(id,wave)]
 sipp[ , switchedOcc_max  := any(switchedOcc,na.rm=F), by=list(id,wave)]
 sipp[ , switchedInd_max  := any(switchedInd,na.rm=F), by=list(id,wave)]
@@ -514,10 +515,10 @@ sipp[ , esr_max := max(esr,na.rm=F), by=list(id,wave)]
 # sipp[ EU==T & EUmon==3, ind_wave := l3.ind ]
 # sipp[ EU==T & EUmon==4, ind_wave := l4.ind ]
 
-sipp[ EU==T, occ_wave:= occ]
+sipp[ EN==T, occ_wave:= occ]
 sipp[ NE==T, occ_wave:= next.occ]
 sipp[ EE==T, occ_wave:= occ]
-sipp[ EU==T, ind_wave:= occ]
+sipp[ EN==T, ind_wave:= occ]
 sipp[ NE==T, ind_wave:= next.ind]
 sipp[ EE==T, ind_wave:= occ]
 
@@ -581,8 +582,8 @@ sipp_wave[ , panelmaxwis := Max_narm(wis), by = panel]
 
 # create EU/UE/EE dummies
 if(max_wavefreq==2){
-	sipp_wave[lfstat_wave == 1, EU_wave := (next.lfstat_wave == 2)]
-	sipp_wave[lfstat_wave == 2, UE_wave := (next.lfstat_wave == 1)]
+	sipp_wave[lfstat_wave == 1, EU_wave := (next.lfstat_wave >= 2)]
+	sipp_wave[lfstat_wave >= 2, UE_wave := (next.lfstat_wave == 1)]
 	sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 , EE_wave := (Eend_wave == T | Estart_wave==T)]
 	sipp_wave[lfstat_wave == 1 & next.lfstat_wave == 1 & EEmon==4, EE_wave := (Eend_wave == T | next.Estart_wave==T)]
 }else{ #max_wavefreq=1
