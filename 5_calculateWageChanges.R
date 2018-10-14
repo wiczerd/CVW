@@ -97,7 +97,7 @@ DTseam[ , wagechange3_wave := next3.wavewage  - wavewage]
 DTseam[ , last.wavewage_ann:= shift(levwage)*3, by=id]
 DTseam[ , last.wavewage_ann:= log(last.wavewage_ann + (1+last.wavewage_ann^2)^.5 )]
 DTseam[ , lastann.wavewage:= shift(levwage) + shift(levwage,2) + shift(levwage,3), by=id]
-DTseam[ wave-1!=shift(wave)|wave-2!=shift(wave,2)|wave-3:=shift(wave,3), lastann.wavewage := NA]
+DTseam[ wave-1!=shift(wave)|wave-2!=shift(wave,2)|wave-3!=shift(wave,3), lastann.wavewage := NA]
 DTseam[ , lastann.wavewage:= log(lastann.wavewage + (1+lastann.wavewage^2)^.5 )]
 
 DTseam[ , wagechange_wvan := nextann.wavewage - last.wavewage_ann]

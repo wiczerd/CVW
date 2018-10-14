@@ -143,8 +143,8 @@ DTseam[  EE_wave==F & UE_wave==T | EU_wave ==T , g := 1]
 DTseam[!(EE_wave==T | UE_wave==T | EU_wave ==T), g := 3]
 #DTseam[ g==3 & !last.stable_emp==T, g:=NA]
 DTseam[ g==3 & (!last.stable_emp==T | !last2.stable_emp | !last3.stable_emp), g:=NA]
-#DTseam[ g< 3 & (last.anwage > 15.), g:=NA]
-DTseam[ last.anwage<1040 , g:=NA]
+#DTseam[ g< 3 & (lastann.wavewage > 15.), g:=NA]
+DTseam[ lastann.wavewage<14 , g:=NA]
 DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
 DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
 DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
@@ -160,7 +160,7 @@ ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=logValue,ymin=-6,x=WageChan
 ggsave(paste0(outdir,"/stacked_wagechange_anan.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/stacked_wagechange_anan.png"),height=5,width=10)
 
-DTseam[ truncweight>0 & (last.stable_emp|last2.stable_emp|last3.stable_emp) & is.finite(last.anwage), rank_w_tm1 := frank(last.anwage) ]
+DTseam[ truncweight>0 & (last.stable_emp|last2.stable_emp|last3.stable_emp) & is.finite(lastann.wavewage), rank_w_tm1 := frank(lastann.wavewage) ]
 DTseam[ truncweight>0 & (last.stable_emp|last2.stable_emp|last3.stable_emp) , rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
 DTseam[ truncweight>0 & is.finite(rank_w_tm1), pct_w_tm1 :=as.integer( round(100*rank_w_tm1))]
 
@@ -182,7 +182,7 @@ ggsave(paste0(outdir,"/pctwtm1_wc.png"),height=5,width=10)
 
 #do it among stayers
 DTseam[ , c("rank_w_tm1","pct_w_tm1") :=NULL]
-DTseam[ truncweight>0 & (last.stable_emp&last2.stable_emp&last3.stable_emp) & is.finite(last.anwage), rank_w_tm1 := frank(last.anwage) ]
+DTseam[ truncweight>0 & (last.stable_emp&last2.stable_emp&last3.stable_emp) & is.finite(lastann.wavewage), rank_w_tm1 := frank(lastann.wavewage) ]
 DTseam[ truncweight>0 & (last.stable_emp&last2.stable_emp*last3.stable_emp) , rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
 DTseam[ truncweight>0 & is.finite(rank_w_tm1), pct_w_tm1 :=as.integer( round(100*rank_w_tm1))]
 pct_w_tm1 <- data.table(DTseam[ , wtd.mean( wagechange_anan,weights=truncweight,na.rm=T), by=pct_w_tm1])
@@ -203,8 +203,8 @@ ggsave(paste0(outdir,"/pctwtm1_wc_stable.png"),height=5,width=10)
 
 #do it among anyone with high-enough earnings
 DTseam[ , c("rank_w_tm1","pct_w_tm1") :=NULL]
-DTseam[truncweight>0 & last.anwage>1040 & is.finite(last.anwage), rank_w_tm1 := frank(last.anwage) ]
-DTseam[truncweight>0 & last.anwage>1040 & is.finite(last.anwage) , rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
+DTseam[truncweight>0 & lastann.wavewage>14 & is.finite(lastann.wavewage), rank_w_tm1 := frank(lastann.wavewage) ]
+DTseam[truncweight>0 & lastann.wavewage>14 & is.finite(lastann.wavewage) , rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
 DTseam[truncweight>0 & is.finite(rank_w_tm1), pct_w_tm1 :=as.integer( round(100*rank_w_tm1))]
 pct_w_tm1 <- data.table(DTseam[ , wtd.mean( wagechange_anan,weights=truncweight,na.rm=T), by=pct_w_tm1])
 pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,prob=0.10,weights=truncweight,na.rm=T), by=pct_w_tm1]), by = "pct_w_tm1")
