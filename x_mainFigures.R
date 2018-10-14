@@ -10,7 +10,7 @@ library(ggplot2)
 
 library(xtable)
 
-#setwd("G:/Research_Analyst/Eubanks/Occupation Switching")
+
 wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
 datadir = "~/workspace/CVW/R/Results"
@@ -57,26 +57,6 @@ Any_narm <- function(x) {
 	}
 }
  
-stackedDist <- function( DT,gg,wc,pwc ){
-	Ng <- DT[ is.finite(eval(as.name(gg)))==T , length(unique( eval(as.name(gg)) ))]
-	stackedCcount <- array(0.,dim=c(1001*Ng,3))
-	stackedCdist <- array(0.,dim=c(1001*Ng,3))
-	for(wi in seq(0,1000) ){
-		stackedCdist[wi*Ng+seq(1,Ng),1] <- seq(1,Ng)
-		stackedCcount[wi*Ng+seq(1,Ng),1] <- seq(1,Ng)
-		meanwagebin <-DT[ eval(as.name(pwc)) == wi, mean(eval(as.name(wc)))]
-		stackedCdist[wi*Ng+seq(1,Ng),2] <- meanwagebin
-		stackedCcount[wi*Ng+seq(1,Ng),2] <- meanwagebin
-		tmp<-DT[ eval(as.name(pwc))== wi & is.finite( eval(as.name(gg)) ), sum(is.finite(eval(as.name(pwc)))),by = eval(as.name(gg))]
-		names(tmp) <- c("gg","V1")
-		setkey(tmp,gg)
-		stackedCcount[as.integer(tmp$gg)+wi*Ng,3] <- tmp$V1
-		stackedCdist[as.integer(tmp$gg)+wi*Ng,3] <- tmp$V1/sum(tmp$V1)
-	}
-	stackedCdist <- as.data.table(stackedCdist)
-	names(stackedCdist) <- c("g","WageChange","Pct")
-	return( stackedCdist )
-}
 
 stackedDens <- function( DT,gg,wc,wt=NULL ){
 	
@@ -129,35 +109,57 @@ DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 
 DTseam <- subset(DTseam, changer==T|stayer==T)
 
+#DTseam[ , last.anwage := shift(levwage)+shift(levwage,2)+shift(levwage,3),by=id]
+
 DTseam[ , last2.stable_emp := shift(last.stable_emp), by=id]
 DTseam[ wave-2!=shift(wave,2), last2.stable_emp := NA, by =id]
 DTseam[ , last3.stable_emp := shift(last.stable_emp,2), by=id]
 DTseam[ wave-3!=shift(wave,3), last3.stable_emp := NA, by =id]
-DTseam[ , last.anwage := shift(wavewage)+shift(wavewage,2)+shift(wavewage,3),by=id]
+
+DTseam[ , last.EE_wave := shift(last.EE_wave), by=id]
+DTseam[ wave-1!=shift(wave), last.EE_wave := NA, by =id]
+DTseam[ , last2.EE_wave := shift(last.EE_wave), by=id]
+DTseam[ wave-2!=shift(wave,2), last2.EE_wave := NA, by =id]
+DTseam[ , last3.EE_wave := shift(last.EE_wave,2), by=id]
+DTseam[ wave-3!=shift(wave,3), last3.EE_wave := NA, by =id]
+
+DTseam[ , last.EU_wave := shift(last.EU_wave), by=id]
+DTseam[ wave-1!=shift(wave), last.EU_wave := NA, by =id]
+DTseam[ , last2.EU_wave := shift(last.EU_wave), by=id]
+DTseam[ wave-2!=shift(wave,2), last2.EU_wave := NA, by =id]
+DTseam[ , last3.EU_wave := shift(last.EU_wave,2), by=id]
+DTseam[ wave-3!=shift(wave,3), last3.EU_wave := NA, by =id]
+
+DTseam[ , last.UE_wave := shift(last.UE_wave), by=id]
+DTseam[ wave-1!=shift(wave), last.UE_wave := NA, by =id]
+DTseam[ , last2.UE_wave := shift(last.UE_wave), by=id]
+DTseam[ wave-2!=shift(wave,2), last2.UE_wave := NA, by =id]
+DTseam[ , last3.UE_wave := shift(last.UE_wave,2), by=id]
+DTseam[ wave-3!=shift(wave,3), last3.UE_wave := NA, by =id]
 
 
-DTseam[  DTseam$EE_wave==T & DTseam$UE_wave==F & DTseam$EU_wave ==F , g := 2]
-DTseam[  DTseam$EE_wave==F & DTseam$UE_wave==T | DTseam$EU_wave ==T , g := 1]
-DTseam[!(DTseam$EE_wave==T | DTseam$UE_wave==T | DTseam$EU_wave ==T), g := 3]
+DTseam[  EE_wave==T & UE_wave==F & EU_wave ==F , g := 2]
+DTseam[  EE_wave==F & UE_wave==T | EU_wave ==T , g := 1]
+DTseam[!(EE_wave==T | UE_wave==T | EU_wave ==T), g := 3]
 #DTseam[ g==3 & !last.stable_emp==T, g:=NA]
 DTseam[ g==3 & (!last.stable_emp==T | !last2.stable_emp | !last3.stable_emp), g:=NA]
-DTseam[ g< 3 & (last.anwage > 22.), g:=NA]
+#DTseam[ g< 3 & (last.anwage > 15.), g:=NA]
+DTseam[ last.anwage<1040 , g:=NA]
 DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
 DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
 DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
 
-wcananDens <- stackedDens(DTseam,"g","wagechange_anan")
+wcananDens <- stackedDens(DTseam,"g","wagechange_anan", wt="truncweight")
 wcananMelt <- melt(wcananDens, id.vars = "WageChange")
-wcananMelt[value>exp(-8) , logValue := log(value)]
+wcananMelt[value>exp(-6) , logValue := log(value)]
 wcananMelt[ , g:=4L-as.integer(variable)]
-ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=logValue,ymin=-8,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
-	theme_bw()+xlab("Annual-Annual Log Earnings Change")+ylab("log density")+xlim(c(-2.5,2.5)) + 
+ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=logValue,ymin=-6,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+	theme_bw()+xlab("Annual-Annual Log Earnings Change")+ylab("log density")+xlim(c(-3,3)) + 
 	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]), name="",label=c("stay","EE","EU,UE") ) +
 	geom_vline(xintercept = 0.) 
 ggsave(paste0(outdir,"/stacked_wagechange_anan.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/stacked_wagechange_anan.png"),height=5,width=10)
 
-DTseam[ , last.anwage := shift(wavewage)+shift(wavewage,2)+shift(wavewage,3),by=id]
 DTseam[ truncweight>0 & (last.stable_emp|last2.stable_emp|last3.stable_emp) & is.finite(last.anwage), rank_w_tm1 := frank(last.anwage) ]
 DTseam[ truncweight>0 & (last.stable_emp|last2.stable_emp|last3.stable_emp) , rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
 DTseam[ truncweight>0 & is.finite(rank_w_tm1), pct_w_tm1 :=as.integer( round(100*rank_w_tm1))]
@@ -201,9 +203,9 @@ ggsave(paste0(outdir,"/pctwtm1_wc_stable.png"),height=5,width=10)
 
 #do it among anyone with high-enough earnings
 DTseam[ , c("rank_w_tm1","pct_w_tm1") :=NULL]
-DTseam[ truncweight>0 & last.anwage>22 & is.finite(last.anwage), rank_w_tm1 := frank(last.anwage) ]
-DTseam[ truncweight>0 & last.anwage>22 & is.finite(last.anwage) , rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
-DTseam[ truncweight>0 & is.finite(rank_w_tm1), pct_w_tm1 :=as.integer( round(100*rank_w_tm1))]
+DTseam[truncweight>0 & last.anwage>1040 & is.finite(last.anwage), rank_w_tm1 := frank(last.anwage) ]
+DTseam[truncweight>0 & last.anwage>1040 & is.finite(last.anwage) , rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
+DTseam[truncweight>0 & is.finite(rank_w_tm1), pct_w_tm1 :=as.integer( round(100*rank_w_tm1))]
 pct_w_tm1 <- data.table(DTseam[ , wtd.mean( wagechange_anan,weights=truncweight,na.rm=T), by=pct_w_tm1])
 pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,prob=0.10,weights=truncweight,na.rm=T), by=pct_w_tm1]), by = "pct_w_tm1")
 pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,prob=0.50,weights=truncweight,na.rm=T), by=pct_w_tm1]), by = "pct_w_tm1")

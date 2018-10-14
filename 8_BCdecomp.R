@@ -17,7 +17,7 @@ setwd(wd0)
 
 
 wt <- "truncweight"
-wc <- "wagechange_wvan"
+wc <- "wagechange_anan"
 
 qtlgridEst  <- c(seq(.02,.1,.02),seq(0.15,0.85,0.05),seq(.9,.98,.02))
 qtlgridOut <- seq(.02,0.98,0.01)
