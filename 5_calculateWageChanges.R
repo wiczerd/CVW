@@ -8,6 +8,9 @@ library(data.table)
 library(zoo)
 library(stats)
 
+#the minimum 3 month earnings allowable
+minEarn <- 1040 #10 hours, $8/hour, 13-weeks
+
 #setwd("G:/Research_Analyst/Eubanks/Occupation Switching")
 wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
@@ -42,7 +45,7 @@ DTall[ , wavewage := log(levwage + (1+levwage^2)^.5) ]
 DTall[ , nawavewage:= all(is.na(usewage) ),by= list(id,wave)]
 DTall[ nawavewage==T, wavewage:=NA_real_]
 #drop the lowest resid wages, implies working less than $80 /month:
-DTall[ lfstat_wave==1 & wavewage<log(80+(1+80^2)^.5), wavewage:=NA]
+DTall[ lfstat_wave==1 & wavewage<log(minEarn+(1+minEarn^2)^.5), wavewage:=NA]
 
 DTall[ , c("nawavewage"):=NULL]
 
@@ -54,7 +57,7 @@ DTall[ , waverawwg := log(waveearnm + (1+waveearnm^2)^.5) ]
 DTall[ , nawavewage:= all(is.na(usewage) ),by= list(id,wave)]
 DTall[ nawavewage==T, waverawwg:=NA_real_]
 #drop the lowest wages, implies working less than $80 /month:
-DTall[ lfstat_wave==1 & waverawwg<log(80+(1+80^2)^.5), waverawwg:=NA]
+DTall[ lfstat_wave==1 & waverawwg<log(minEarn+(1+minEarn^2)^.5), waverawwg:=NA]
 DTall[ lfstat_wave==1, earn_imp_wave := sum(earn_imp==1,na.rm=T), by=list(id,wave)]
 
 DTall[ , c("nawavewage"):=NULL]
@@ -84,10 +87,10 @@ DTseam[                                  , last.wavewage    := shift(wavewage,1,
 DTseam[ wave-1!=shift(wave,type = "lag" ), last.wavewage    := NA]
 DTseam[                                  , last.lfstat_wave := shift(lfstat_wave,1,type="lag") , by=id]
 DTseam[ wave-1!=shift(wave,type = "lag" ), last.lfstat_wave := NA]
-DTseam[ next.lfstat_wave==1  &  next.wavewage<log(80+(1+80^2)^.5) , next.wavewage  := NA_real_]
-DTseam[ next2.lfstat_wave==1 & next2.wavewage<log(80+(1+80^2)^.5) , next2.wavewage := NA_real_]
-DTseam[ next3.lfstat_wave==1 & next3.wavewage<log(80+(1+80^2)^.5) , next3.wavewage := NA_real_]
-DTseam[ last.lfstat_wave==1  & last.wavewage <log(80+(1+80^2)^.5) , last.wavewage := NA_real_]
+DTseam[ next.lfstat_wave==1  &  next.wavewage<log(minEarn+(1+minEarn^2)^.5) , next.wavewage  := NA_real_]
+DTseam[ next2.lfstat_wave==1 & next2.wavewage<log(minEarn+(1+minEarn^2)^.5) , next2.wavewage := NA_real_]
+DTseam[ next3.lfstat_wave==1 & next3.wavewage<log(minEarn+(1+minEarn^2)^.5) , next3.wavewage := NA_real_]
+DTseam[ last.lfstat_wave==1  & last.wavewage <log(minEarn+(1+minEarn^2)^.5) , last.wavewage := NA_real_]
 DTseam[ , next.esr_max := shift(esr_max, type="lead")]
 
 DTseam[ , wagechange_wave  := next.wavewage   - wavewage] #just using straight, period-wise wage changes. 
@@ -155,10 +158,10 @@ DTseam[                                    , next3.waverawwg := shift(waverawwg,
 DTseam[ wave+3!=shift(wave,3,type = "lead"), next3.waverawwg := NA]
 DTseam[                                    , last.waverawwg  := shift(waverawwg,1,type="lag"), by=id]
 DTseam[ wave-1!=shift(wave,type = "lag" )  , last.waverawwg  := NA]
-DTseam[ next.lfstat_wave==1 & next.waverawwg<log(80+(1+80^2)^.5)  , next.waverawwg := NA_real_]
-DTseam[ next.lfstat_wave==1 & next3.waverawwg<log(80+(1+80^2)^.5) , next2.waverawwg := NA_real_]
-DTseam[ next.lfstat_wave==1 & next2.waverawwg<log(80+(1+80^2)^.5) , next3.waverawwg := NA_real_]
-DTseam[ last.lfstat_wave==1 & last.waverawwg<log(80+(1+80^2)^.5)  , last.waverawwg := NA_real_]
+DTseam[ next.lfstat_wave==1 & next.waverawwg< log(minEarn+(1+minEarn^2)^.5)  , next.waverawwg := NA_real_]
+DTseam[ next.lfstat_wave==1 & next3.waverawwg<log(minEarn+(1+minEarn^2)^.5) , next2.waverawwg := NA_real_]
+DTseam[ next.lfstat_wave==1 & next2.waverawwg<log(minEarn+(1+minEarn^2)^.5) , next3.waverawwg := NA_real_]
+DTseam[ last.lfstat_wave==1 & last.waverawwg< log(minEarn+(1+minEarn^2)^.5)  , last.waverawwg := NA_real_]
 
 DTseam[ , rawwgchange_wave := next.waverawwg - waverawwg]
 #for EE that spans waves:

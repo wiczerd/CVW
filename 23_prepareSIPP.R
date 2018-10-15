@@ -167,15 +167,6 @@ sipp[is.na(ustintid), unempdur := NA]
 # create max unemployment duration
 sipp[lfstat>=2, max.unempdur := max(unempdur,na.rm = T), by = list(id, ustintid)]
 
-# This removed occupation codes that changed during a job spell:
-#sipp[ , varoccjob := var(occ,na.rm = T), by=list(id,estintid)] #in about 6\% of cases, occupation changes during job
-#sipp[ , varjobidjob := var(job,na.rm = T), by=list(id,estintid)]
-#sipp[ lfstat==1, occ_mode := Mode(occ), by=list(id,estintid)]
-#sipp[ varoccjob>0 & varjobidjob==0 & lfstat==1, occ:=occ_mode, by=list(id,estintid)]
-# some employment not list occupation
-#sipp[ lfstat==1 & is.na(occ), occ:= occ_mode]
-#sipp[ , c("varoccjob","varjobidjob","occ_mode"):=NULL]
-
 # fill in occupation with next occupation during unemployment stints
 sipp[, next.occ := shift(occ, 1, type = "lead"), by = id]
 sipp[lfstat != 1, occ := Mode(next.occ), by = list(id, ustintid)]
