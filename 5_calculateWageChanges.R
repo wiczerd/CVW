@@ -116,8 +116,8 @@ DTseam[ , last.wagechange_wave := shift(wagechange_wave, type="lag" ),by=id]
 
 # create wave-level EUE wage change-----------------------------------------
 # find wage in period before an EU and one period after UE
-DTseam[ , EU_wave_first := EU_wave==T & !(midEU==T), by=id]
-DTseam[ , UE_wave_last  := UE_wave==T & !(midUE==T), by=id]
+DTseam[ , EU_wave_first := EU_wave==T , by=id]
+DTseam[ , UE_wave_last  := UE_wave==T , by=id]
 
 DTseam[ , last.lfstat_wave:= shift(lfstat_wave), by=id]
 DTseam[last.lfstat_wave==1 & EU_wave_first == T & last.stable_emp==T, wageAtEU     := last.wavewage]
@@ -134,9 +134,9 @@ DTseam[UE_wave_last == T, wagechange3EUE_wave := wage3AfterUE - wageAtEU]
 DTseam[, wagechangeEUE_wave := Mode(wagechangeEUE_wave) , by=list(ustintid_wave, id)]
 DTseam[, wagechange2EUE_wave:= Mode(wagechange2EUE_wave), by=list(ustintid_wave, id)]
 DTseam[, wagechange3EUE_wave:= Mode(wagechange3EUE_wave), by=list(ustintid_wave, id)]
-DTseam[ EE_wave==T & midEE==F & last.stable_emp==T & next.stable_emp==T, wagechangeEUE_wave  := next.wavewage  - last.wavewage]
-DTseam[ EE_wave==T & midEE==F & last.stable_emp==T & next.stable_emp==T, wagechange2EUE_wave := next2.wavewage - last.wavewage]
-DTseam[ EE_wave==T & midEE==F & last.stable_emp==T & next.stable_emp==T, wagechange3EUE_wave := next3.wavewage - last.wavewage]
+DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, wagechangeEUE_wave  := next.wavewage  - last.wavewage]
+DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, wagechange2EUE_wave := next2.wavewage - last.wavewage]
+DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, wagechange3EUE_wave := next3.wavewage - last.wavewage]
 DTseam[ !(EU_wave|UE_wave|EE_wave), wagechangeEUE_wave := wagechange_wave]
 
 DTseam[next.lfstat_wave==1 & UE_wave_last  == T & next.stable_emp==T, esrAfterUE := next.esr_max]
@@ -175,8 +175,8 @@ DTseam[ , last.rawwgchange_wave := shift(rawwgchange_wave, type="lag" ),by=id]
 
 # create wave-level EUE wage change-----------------------------------------
 # find wage in period before an EU and one period after UE
-DTseam[ , EU_wave_first := EU_wave==T & !(midEU==T), by=id]
-DTseam[ , UE_wave_last  := UE_wave==T & !(midUE==T), by=id]
+DTseam[ , EU_wave_first := EU_wave==T , by=id]
+DTseam[ , UE_wave_last  := UE_wave==T , by=id]
 
 DTseam[last.lfstat_wave==1 & EU_wave_first == T & last.stable_emp==T, wageAtEU     := last.waverawwg]
 DTseam[next.lfstat_wave==1 & UE_wave_last  == T & next.stable_emp==T, wageAfterUE  := next.waverawwg]
@@ -192,9 +192,9 @@ DTseam[UE_wave_last == T, rawwgchange3EUE_wave := wage3AfterUE - wageAtEU]
 DTseam[, rawwgchangeEUE_wave := Mode(rawwgchangeEUE_wave) , by=list(ustintid_wave, id)]
 DTseam[, rawwgchange2EUE_wave:= Mode(rawwgchange2EUE_wave), by=list(ustintid_wave, id)]
 DTseam[, rawwgchange3EUE_wave:= Mode(rawwgchange3EUE_wave), by=list(ustintid_wave, id)]
-DTseam[ EE_wave==T & midEE==F & last.stable_emp==T & next.stable_emp==T, rawwgchangeEUE_wave  := next.waverawwg  - last.waverawwg]
-DTseam[ EE_wave==T & midEE==F & last.stable_emp==T & next.stable_emp==T, rawwgchange2EUE_wave := next2.waverawwg - last.waverawwg]
-DTseam[ EE_wave==T & midEE==F & last.stable_emp==T & next.stable_emp==T, rawwgchange3EUE_wave := next3.waverawwg - last.waverawwg]
+DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, rawwgchangeEUE_wave  := next.waverawwg  - last.waverawwg]
+DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, rawwgchange2EUE_wave := next2.waverawwg - last.waverawwg]
+DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, rawwgchange3EUE_wave := next3.waverawwg - last.waverawwg]
 DTseam[ !(EU_wave|UE_wave|EE_wave), rawwgchangeEUE_wave := rawwgchange_wave]
 
 DTseam[ , c("wageAtEU","wageAfterUE","wage2AfterUE","wage3AfterUE","EU_wave_first", "UE_wave_last"):=NULL]
@@ -205,6 +205,10 @@ DTseam[ , c("wageAtEU","wageAfterUE","wage2AfterUE","wage3AfterUE","EU_wave_firs
 
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_notransbad := (rawwgchange_wave>2|rawwgchange_wave<(-2))  & abs(next.waverawwg - last.waverawwg)<.1 &
 	   	(last.lfstat_wave==1) & (next.lfstat_wave==1)] 
+
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_notransbad := (rawwgchange_wave>2|rawwgchange_wave<(-2))  & abs(next.waverawwg - last.waverawwg)<.1 &
+	   	(last.lfstat_wave==1) & (next.lfstat_wave==1)] 
+
 
 minwaverawwg <- DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1, min(waverawwg,na.rm=T)]
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1 & next.lfstat_wave==1 ,

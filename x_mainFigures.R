@@ -10,6 +10,8 @@ library(ggplot2)
 
 library(xtable)
 
+minEarn = 1040 
+minLEarn = log(2*minEarn)
 
 wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
@@ -111,30 +113,30 @@ DTseam <- subset(DTseam, changer==T|stayer==T)
 
 #DTseam[ , last.anwage := shift(levwage)+shift(levwage,2)+shift(levwage,3),by=id]
 
-DTseam[ , last2.stable_emp := shift(last.stable_emp), by=id]
+DTseam[                      , last2.stable_emp := shift(last.stable_emp), by=id]
 DTseam[ wave-2!=shift(wave,2), last2.stable_emp := NA, by =id]
-DTseam[ , last3.stable_emp := shift(last.stable_emp,2), by=id]
+DTseam[                      , last3.stable_emp := shift(last.stable_emp,2), by=id]
 DTseam[ wave-3!=shift(wave,3), last3.stable_emp := NA, by =id]
 
-DTseam[ , last.EE_wave := shift(EE_wave), by=id]
-DTseam[ wave-1!=shift(wave), last.EE_wave := NA, by =id]
-DTseam[ , last2.EE_wave := shift(last.EE_wave), by=id]
+DTseam[                      , last.EE_wave := shift(EE_wave), by=id]
+DTseam[ wave-1!=shift(wave)  , last.EE_wave := NA, by =id]
+DTseam[                      , last2.EE_wave := shift(last.EE_wave), by=id]
 DTseam[ wave-2!=shift(wave,2), last2.EE_wave := NA, by =id]
-DTseam[ , last3.EE_wave := shift(last.EE_wave,2), by=id]
+DTseam[                      , last3.EE_wave := shift(last.EE_wave,2), by=id]
 DTseam[ wave-3!=shift(wave,3), last3.EE_wave := NA, by =id]
 
-DTseam[ , last.EU_wave := shift(EU_wave), by=id]
-DTseam[ wave-1!=shift(wave), last.EU_wave := NA, by =id]
-DTseam[ , last2.EU_wave := shift(last.EU_wave), by=id]
+DTseam[                      , last.EU_wave := shift(EU_wave), by=id]
+DTseam[ wave-1!=shift(wave)  , last.EU_wave := NA, by =id]
+DTseam[                      , last2.EU_wave := shift(last.EU_wave), by=id]
 DTseam[ wave-2!=shift(wave,2), last2.EU_wave := NA, by =id]
-DTseam[ , last3.EU_wave := shift(last.EU_wave,2), by=id]
+DTseam[                      , last3.EU_wave := shift(last.EU_wave,2), by=id]
 DTseam[ wave-3!=shift(wave,3), last3.EU_wave := NA, by =id]
 
-DTseam[ , last.UE_wave := shift(UE_wave), by=id]
-DTseam[ wave-1!=shift(wave), last.UE_wave := NA, by =id]
-DTseam[ , last2.UE_wave := shift(last.UE_wave), by=id]
+DTseam[                      , last.UE_wave := shift(UE_wave), by=id]
+DTseam[ wave-1!=shift(wave)  , last.UE_wave := NA, by =id]
+DTseam[                      , last2.UE_wave := shift(last.UE_wave), by=id]
 DTseam[ wave-2!=shift(wave,2), last2.UE_wave := NA, by =id]
-DTseam[ , last3.UE_wave := shift(last.UE_wave,2), by=id]
+DTseam[                      , last3.UE_wave := shift(last.UE_wave,2), by=id]
 DTseam[ wave-3!=shift(wave,3), last3.UE_wave := NA, by =id]
 
 
@@ -144,7 +146,7 @@ DTseam[!(EE_wave==T | UE_wave==T | EU_wave ==T), g := 3]
 #DTseam[ g==3 & !last.stable_emp==T, g:=NA]
 DTseam[ g==3 & (!last.stable_emp==T | !last2.stable_emp | !last3.stable_emp), g:=NA]
 #DTseam[ g< 3 & (lastann.wavewage > 15.), g:=NA]
-DTseam[ lastann.wavewage<14 , g:=NA]
+DTseam[ lastann.wavewage<minLEarn , g:=NA]
 DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
 DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
 DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
@@ -203,8 +205,8 @@ ggsave(paste0(outdir,"/pctwtm1_wc_stable.png"),height=5,width=10)
 
 #do it among anyone with high-enough earnings
 DTseam[ , c("rank_w_tm1","pct_w_tm1") :=NULL]
-DTseam[truncweight>0 & lastann.wavewage>14 & is.finite(lastann.wavewage), rank_w_tm1 := frank(lastann.wavewage) ]
-DTseam[truncweight>0 & lastann.wavewage>14 & is.finite(lastann.wavewage) , rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
+DTseam[truncweight>0 & lastann.wavewage>minLEarn & is.finite(lastann.wavewage), rank_w_tm1 := frank(lastann.wavewage) ]
+DTseam[truncweight>0 & lastann.wavewage>minLEarn & is.finite(lastann.wavewage) , rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
 DTseam[truncweight>0 & is.finite(rank_w_tm1), pct_w_tm1 :=as.integer( round(100*rank_w_tm1))]
 pct_w_tm1 <- data.table(DTseam[ , wtd.mean( wagechange_anan,weights=truncweight,na.rm=T), by=pct_w_tm1])
 pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,prob=0.10,weights=truncweight,na.rm=T), by=pct_w_tm1]), by = "pct_w_tm1")

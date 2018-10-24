@@ -797,12 +797,68 @@ sipp_wave[is.finite(ustintid_wave), recIndic_EU := any(recIndic_EU,na.rm=T), by=
 sipp_wave[is.na(ustintid_wave)|ustintid_wave==0 , recIndic_EU := recIndic_wave]
 
 
+#wave-freq annual transitions:
+
+sipp_wave[                      , last2.stable_emp := shift(last.stable_emp), by=id]
+sipp_wave[ wave-2!=shift(wave,2), last2.stable_emp := NA, by =id]
+sipp_wave[                      , last3.stable_emp := shift(last.stable_emp,2), by=id]
+sipp_wave[ wave-3!=shift(wave,3), last3.stable_emp := NA, by =id]
+
+sipp_wave[ , last_anan.stable_emp := (last.stable_emp & last2.stable_emp & last3.stable_emp)]
+
+sipp_wave[                      , last.EE_wave := shift(EE_wave), by=id]
+sipp_wave[ wave-1!=shift(wave)  , last.EE_wave := NA, by =id]
+sipp_wave[                      , last2.EE_wave := shift(last.EE_wave), by=id]
+sipp_wave[ wave-2!=shift(wave,2), last2.EE_wave := NA, by =id]
+sipp_wave[                      , last3.EE_wave := shift(last.EE_wave,2), by=id]
+sipp_wave[ wave-3!=shift(wave,3), last3.EE_wave := NA, by =id]
+
+sipp_wave[                      , last.EU_wave := shift(EU_wave), by=id]
+sipp_wave[ wave-1!=shift(wave)  , last.EU_wave := NA, by =id]
+sipp_wave[                      , last2.EU_wave := shift(last.EU_wave), by=id]
+sipp_wave[ wave-2!=shift(wave,2), last2.EU_wave := NA, by =id]
+sipp_wave[                      , last3.EU_wave := shift(last.EU_wave,2), by=id]
+sipp_wave[ wave-3!=shift(wave,3), last3.EU_wave := NA, by =id]
+
+sipp_wave[                      , last.UE_wave := shift(UE_wave), by=id]
+sipp_wave[ wave-1!=shift(wave)  , last.UE_wave := NA, by =id]
+sipp_wave[                      , last2.UE_wave := shift(last.UE_wave), by=id]
+sipp_wave[ wave-2!=shift(wave,2), last2.UE_wave := NA, by =id]
+sipp_wave[                      , last3.UE_wave := shift(last.UE_wave,2), by=id]
+sipp_wave[ wave-3!=shift(wave,3), last3.UE_wave := NA, by =id]
+
+#these are to go along with the _anan earnings change stats
+sipp_wave[ , EE_anan :=  EE_wave]
+sipp_wave[ , EU_anan :=  EU_wave]
+sipp_wave[ , UE_anan :=  UE_wave]
+#now look back 1 periods for this 
+sipp_wave[ EE_anan == F, EE_anan := last.EE_wave]
+sipp_wave[ EU_anan == F, EU_anan := last.EU_wave]
+sipp_wave[ UE_anan == F, UE_anan := last.UE_wave]
+#now look back 2 periods for this 
+sipp_wave[ EE_anan == F, EE_anan := last2.EE_wave]
+sipp_wave[ EU_anan == F, EU_anan := last2.EU_wave]
+sipp_wave[ UE_anan == F, UE_anan := last2.UE_wave]
+#now look back 2 periods for this 
+sipp_wave[ EE_anan == F, EE_anan := last2.EE_wave]
+sipp_wave[ EU_anan == F, EU_anan := last2.EU_wave]
+sipp_wave[ UE_anan == F, UE_anan := last2.UE_wave]
+
+
+sipp_wave[ , EE_wvan :=  EE_wave]
+sipp_wave[ , EU_wvan :=  EU_wave]
+sipp_wave[ , UE_wvan :=  UE_wave]
+#now look back 1 periods for this 
+sipp_wave[ EE_wvan == F, EE_wvan := last.EE_wave]
+sipp_wave[ EU_wvan == F, EU_wvan := last.EU_wave]
+sipp_wave[ UE_wvan == F, UE_wvan := last.UE_wave]
 
 #save intermediate result:
 saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
 
 sipp_wave <- subset(sipp_wave, select=c("job_wave","occ_wave","occL","occD","ind_wave","next.stable_emp","last.stable_emp","next.lfstat_wave",
-										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","midEE","midEU","midUE","EEmon","UEmon","EUmon","ustintid_wave",
+										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","EEmon","UEmon","EUmon","ustintid_wave",
+										"last_anan.stable_emp","EE_anan","EU_anan","UE_anan",,"EE_wvan","EU_wvan","UE_wvan",
 										"recIndic_stint","recIndic2_stint","recIndic_EU","recIndic_UE","max.unempdur_wave","switched_wave","switchedOcc_wave","switchedInd_wave","wave","id"))
 
 sipp[ , c("EEmon","EUmon","UEmon","max.unempdur_wave","occ_wave","ind_wave"):=NULL]
