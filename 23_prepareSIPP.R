@@ -858,7 +858,7 @@ saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
 
 sipp_wave <- subset(sipp_wave, select=c("job_wave","occ_wave","occL","occD","ind_wave","next.stable_emp","last.stable_emp","next.lfstat_wave",
 										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","EEmon","UEmon","EUmon","ustintid_wave",
-										"last_anan.stable_emp","EE_anan","EU_anan","UE_anan",,"EE_wvan","EU_wvan","UE_wvan",
+										"last_anan.stable_emp","EE_anan","EU_anan","UE_anan","EE_wvan","EU_wvan","UE_wvan",
 										"recIndic_stint","recIndic2_stint","recIndic_EU","recIndic_UE","max.unempdur_wave","switched_wave","switchedOcc_wave","switchedInd_wave","wave","id"))
 
 sipp[ , c("EEmon","EUmon","UEmon","max.unempdur_wave","occ_wave","ind_wave"):=NULL]
