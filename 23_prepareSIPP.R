@@ -873,7 +873,7 @@ sipp[ EU ==T, EUmis:= mis ]
 sipp[ is.na(EUmis), EUmis:= 0 ]
 sipp[ ustintid>0, EUmis:= max(EUmis,na.rm = T), by=list(id,ustintid)]
 sipp[ , EUmis:= max(EUmis,na.rm=T), by=list(id,wave)]
-sipp[ (EU_wave==T|UE_wave==T)&!(midEU|midUE) & EUmis<=maxmis-12 & matched_EUUE_wave==T, validEUUE:=T]
+sipp[ (EU_wave==T|UE_wave==T)& EUmis<=maxmis-12 & matched_EUUE_wave==T, validEUUE:=T]
 sipp[ is.na(validEUUE), validEUUE:=F]
 sipp[ , EUmis:=NULL]
 
