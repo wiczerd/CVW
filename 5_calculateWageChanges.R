@@ -206,9 +206,6 @@ DTseam[ , c("wageAtEU","wageAfterUE","wage2AfterUE","wage3AfterUE","EU_wave_firs
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_notransbad := (rawwgchange_wave>2|rawwgchange_wave<(-2))  & abs(next.waverawwg - last.waverawwg)<.1 &
 	   	(last.lfstat_wave==1) & (next.lfstat_wave==1)] 
 
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_notransbad := (rawwgchange_wave>2|rawwgchange_wave<(-2))  & abs(next.waverawwg - last.waverawwg)<.1 &
-	   	(last.lfstat_wave==1) & (next.lfstat_wave==1)] 
-
 
 minwaverawwg <- DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1, min(waverawwg,na.rm=T)]
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1 & next.lfstat_wave==1 ,
