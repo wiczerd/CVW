@@ -113,33 +113,6 @@ DTseam <- subset(DTseam, changer==T|stayer==T)
 
 #DTseam[ , last.anwage := shift(levwage)+shift(levwage,2)+shift(levwage,3),by=id]
 
-DTseam[                      , last2.stable_emp := shift(last.stable_emp), by=id]
-DTseam[ wave-2!=shift(wave,2), last2.stable_emp := NA, by =id]
-DTseam[                      , last3.stable_emp := shift(last.stable_emp,2), by=id]
-DTseam[ wave-3!=shift(wave,3), last3.stable_emp := NA, by =id]
-
-DTseam[                      , last.EE_wave := shift(EE_wave), by=id]
-DTseam[ wave-1!=shift(wave)  , last.EE_wave := NA, by =id]
-DTseam[                      , last2.EE_wave := shift(last.EE_wave), by=id]
-DTseam[ wave-2!=shift(wave,2), last2.EE_wave := NA, by =id]
-DTseam[                      , last3.EE_wave := shift(last.EE_wave,2), by=id]
-DTseam[ wave-3!=shift(wave,3), last3.EE_wave := NA, by =id]
-
-DTseam[                      , last.EU_wave := shift(EU_wave), by=id]
-DTseam[ wave-1!=shift(wave)  , last.EU_wave := NA, by =id]
-DTseam[                      , last2.EU_wave := shift(last.EU_wave), by=id]
-DTseam[ wave-2!=shift(wave,2), last2.EU_wave := NA, by =id]
-DTseam[                      , last3.EU_wave := shift(last.EU_wave,2), by=id]
-DTseam[ wave-3!=shift(wave,3), last3.EU_wave := NA, by =id]
-
-DTseam[                      , last.UE_wave := shift(UE_wave), by=id]
-DTseam[ wave-1!=shift(wave)  , last.UE_wave := NA, by =id]
-DTseam[                      , last2.UE_wave := shift(last.UE_wave), by=id]
-DTseam[ wave-2!=shift(wave,2), last2.UE_wave := NA, by =id]
-DTseam[                      , last3.UE_wave := shift(last.UE_wave,2), by=id]
-DTseam[ wave-3!=shift(wave,3), last3.UE_wave := NA, by =id]
-
-
 DTseam[  EE_wave==T & UE_wave==F & EU_wave ==F , g := 2]
 DTseam[  EE_wave==F & UE_wave==T | EU_wave ==T , g := 1]
 DTseam[!(EE_wave==T | UE_wave==T | EU_wave ==T), g := 3]

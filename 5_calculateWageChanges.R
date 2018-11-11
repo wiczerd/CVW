@@ -203,8 +203,8 @@ DTseam[ , c("wageAtEU","wageAfterUE","wage2AfterUE","wage3AfterUE","EU_wave_firs
 #cleaning the stayers:-----------------------------------------------------------------
 # wagechange wave =NA for large gains or losses that revert
 
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T)  , wagechange_notransbad := (rawwgchange_wave>2|rawwgchange_wave<(-2))  & abs(next.waverawwg - last.waverawwg)<.1 &
-	   	(last.lfstat_wave==1) & (next.lfstat_wave==1)] 
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & (last.lfstat_wave==1) & (next.lfstat_wave==1) , 
+	   wagechange_notransbad := (rawwgchange_wave>2|rawwgchange_wave<(-2))  & abs(next.waverawwg - last.waverawwg)<.1 ] 
 
 
 minwaverawwg <- DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1, min(waverawwg,na.rm=T)]
@@ -245,7 +245,7 @@ DTseam[ is.na(wagechange_wave_imp)==T, wagechange_wave_imp := F]
 DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_jcbad","wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_imp","pctmaxmis"
 								  ,"wagechangeEUE_wave","next.wavewage","rawwgchangeEUE_wave","rawwgchange_wave","wagechange_wvan","wagechange_anan","lastann.wavewage",
 								  "id","wave")) #"wagechange2EUE_wave","wagechange3EUE_wave",
-DTall<- merge(DTall,DTseam,by=c("id","wave"),all.x=T)
+DTall<- merge(DTall,DTseam, by=c("id","wave"),all.x=T)
 
 
 #****************************************************
