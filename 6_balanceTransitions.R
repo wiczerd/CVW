@@ -151,7 +151,7 @@ if( recall_adj == T){
 	
 }
 
-#now subset everyone:
+#now subset everyone on wave-wave basis:
 DTall[wagechange_notransbad==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &  wagechange_wave_imp==F &
 	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & next.stable_emp==T &
 	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
@@ -161,6 +161,18 @@ DTall[wagechange_notransbad==F  & # wagechange_wave_jcbad==F &
 
 DTall[changer==T, stayer:= F]
 DTall[stayer ==T, changer:=F]
+
+#now subset everyone on annual-annual :
+DTall[ #wagechange_wave_low==F & wagechange_wave_high==F &  wagechange_wave_imp==F & wagechange_notransbad==F &
+	  	!(EU_anan==T|UE_anan==T|EE_anan==T) & 
+	  	lfstat_wave==1 , stayer_anan:= T]
+
+DTall[wagechange_notransbad==F  & 
+	  	(EU_anan==T|UE_anan==T|EE_anan==T)  , changer_anan:= T]
+
+DTall[changer_anan==T, stayer_anan := F]
+DTall[stayer_anan ==T, changer_anan:=F]
+
 
 #DTall[(changer ==T & !(midEE|midEU|midUE) ), changermo:=T]
 #DTall[stayer==T, changermo:=F]

@@ -839,10 +839,10 @@ sipp_wave[ UE_anan == F, UE_anan := last.UE_wave]
 sipp_wave[ EE_anan == F, EE_anan := last2.EE_wave]
 sipp_wave[ EU_anan == F, EU_anan := last2.EU_wave]
 sipp_wave[ UE_anan == F, UE_anan := last2.UE_wave]
-#now look back 2 periods for this 
-sipp_wave[ EE_anan == F, EE_anan := last2.EE_wave]
-sipp_wave[ EU_anan == F, EU_anan := last2.EU_wave]
-sipp_wave[ UE_anan == F, UE_anan := last2.UE_wave]
+#now look back 3 periods for this 
+sipp_wave[ EE_anan == F, EE_anan := last3.EE_wave]
+sipp_wave[ EU_anan == F, EU_anan := last3.EU_wave]
+sipp_wave[ UE_anan == F, UE_anan := last3.UE_wave]
 
 
 sipp_wave[ , EE_wvan :=  EE_wave]
