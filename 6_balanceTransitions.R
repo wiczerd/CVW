@@ -155,22 +155,22 @@ if( recall_adj == T){
 }
 
 #now subset everyone on wave-wave basis:
-DTall[wagechange_notransbad==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &  wagechange_wave_imp==F &
+DTall[wagechange_notransbad==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &  wagechange_wave_imp==F &wagechange_ENbad==F &
 	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & next.stable_emp==T &
 	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
 
-DTall[wagechange_notransbad==F  & wagechange_wave_jcbad==F & 
+DTall[wagechange_notransbad==F  & wagechange_wave_jcbad==F & wagechange_ENbad &
 	   	(EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
 
 DTall[changer==T, stayer:= F]
 DTall[stayer ==T, changer:=F]
 
 #now subset everyone on annual-annual :
-DTall[lastann.wavewage >= minLEarn & wagechange_wave_low==F & wagechange_wave_high==F &  wagechange_wave_imp==F & wagechange_notransbad==F &
+DTall[lastann.wavewage >= minLEarn & wagechange_ENananbad ==F & # wagechange_wave_low==F & wagechange_wave_high==F &  wagechange_wave_imp==F & 
 	  	!(EU_anan==T|UE_anan==T|EE_anan==T) & 
 	  	lfstat_wave==1 , stayer_anan:= T]
 
-DTall[wagechange_notransbad==F  & lastann.wavewage >= minLEarn &
+DTall[ lastann.wavewage >= minLEarn & wagechange_ENananbad ==F & 
 	  	(EU_anan==T|UE_anan==T|EE_anan==T)  , changer_anan:= T]
 
 DTall[changer_anan==T, stayer_anan := F]
@@ -193,7 +193,7 @@ DTseam[ , c("EE","EU","UE"):= NULL]
 
 #construct duration composition by month
 if(check_durcomp==T){
-	maxdurUE_wave_t <- DTseam[ UE_wave==T & midUE==F ,  c(mean(max.unempdur_wave<=1),
+	maxdurUE_wave_t <- DTseam[ UE_wave==T ,  c(mean(max.unempdur_wave<=1),
 													 mean(max.unempdur_wave >1 & max.unempdur_wave<=3 ),
 													 mean(max.unempdur_wave >3 & max.unempdur_wave<=6 ),
 													 mean(max.unempdur_wave >6 & max.unempdur_wave<=12 ),

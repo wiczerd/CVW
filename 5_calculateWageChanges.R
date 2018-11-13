@@ -209,11 +209,16 @@ DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & (last.lfstat_wave==1) & (next.lfsta
 
 minwaverawwg <- DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1, min(waverawwg,na.rm=T)]
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1 & next.lfstat_wave==1 ,
-	   wagechange_notransbad := (next.waverawwg<minwaverawwg)|(wagechange_notransbad==T)] 
+	   wagechange_ENbad := (next.waverawwg<minwaverawwg)] 
 
 DTseam[ is.na(wagechange_notransbad)  , wagechange_notransbad :=F] 
+DTseam[ is.na(wagechange_ENbad)       , wagechange_ENbad :=F] 
 
-#wagechange between 2 0's:
+DTseam[ !(EU_anan|UE_anan|EE_anan) & nextann.wavewage<log(minEarn+(1+minEarn^2)^.5), wagechange_ENananbad := T]
+DTseam[ !(EU_anan|UE_anan|EE_anan) & lastann.wavewage<log(minEarn+(1+minEarn^2)^.5), wagechange_ENananbad := T]
+
+DTseam[ is.na(wagechange_ENananbad), wagechange_ENananbad :=F] 
+
 DTseam[lfstat_wave>=2 & next.lfstat_wave>=2 & !(EU_wave==T|UE_wave==T|EE_wave==T) , wagechange_notransbad:= T] 
 
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave_jcbad := T]
@@ -242,7 +247,7 @@ DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T) & (earn_imp_wave>=1 | shift(earn_imp
 DTseam[ is.na(wagechange_wave_imp)==T, wagechange_wave_imp := F]
 
 
-DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_jcbad","wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_imp","pctmaxmis"
+DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_jcbad","wagechange_notransbad","wagechange_ENbad","wagechange_ENananbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_imp","pctmaxmis"
 								  ,"wagechangeEUE_wave","next.wavewage","rawwgchangeEUE_wave","rawwgchange_wave","wagechange_wvan","wagechange_anan","lastann.wavewage",
 								  "id","wave")) #"wagechange2EUE_wave","wagechange3EUE_wave",
 DTall<- merge(DTall,DTseam, by=c("id","wave"),all.x=T)
