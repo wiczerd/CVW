@@ -24,7 +24,7 @@ Mode <- function(x) {
 DTall <- readRDS(paste0(datadir,"/DTall_4.RData"))
 #drop some un-need variables
 DTall[ , nwhite := black==T|hispanic==T]
-DTall <- DTall[ , c("eyear","next.earnm","logearnm","black","hispanic"):=NULL]
+DTall <- DTall[ , c("eyear","logearnm","black","hispanic"):=NULL]
 #I don't want to drop these ->  DTall <- DTall[ lfstat_wave<3, ]
 
 setkey(DTall, id, date)
@@ -211,15 +211,26 @@ minwaverawwg <- DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1, min
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1 & next.lfstat_wave==1 ,
 	   wagechange_ENbad := (next.waverawwg<minwaverawwg)] 
 
+
+#what does this do?
+DTseam[lfstat_wave>=2 & next.lfstat_wave>=2 & !(EU_wave==T|UE_wave==T|EE_wave==T) , wagechange_notransbad:= T] 
+
 DTseam[ is.na(wagechange_notransbad)  , wagechange_notransbad :=F] 
 DTseam[ is.na(wagechange_ENbad)       , wagechange_ENbad :=F] 
 
-DTseam[ !(EU_anan|UE_anan|EE_anan) & nextann.wavewage<log(minEarn+(1+minEarn^2)^.5), wagechange_ENananbad := T]
-DTseam[ !(EU_anan|UE_anan|EE_anan) & lastann.wavewage<log(minEarn+(1+minEarn^2)^.5), wagechange_ENananbad := T]
 
-DTseam[ is.na(wagechange_ENananbad), wagechange_ENananbad :=F] 
+DTseam[ !(EU_anan|UE_anan|EE_anan) & nextann.wavewage<log(minEarn+(1+minEarn^2)^.5), wagechange_ENbad_anan := T]
+DTseam[ !(EU_anan|UE_anan|EE_anan) & lastann.wavewage<log(minEarn+(1+minEarn^2)^.5), wagechange_ENbad_anan := T]
 
-DTseam[lfstat_wave>=2 & next.lfstat_wave>=2 & !(EU_wave==T|UE_wave==T|EE_wave==T) , wagechange_notransbad:= T] 
+DTseam[ is.na(wagechange_ENbad_anan), wagechange_ENbad_anan :=F] 
+
+DTseam[ , lastann.notransbad := shift(wagechange_notransbad)|shift(wagechange_notransbad,2)|shift(wagechange_notransbad,3) ,by=id]
+DTseam[ is.na(lastann.notransbad) & !is.na(shift(wagechange_notransbad)), lastann.notransbad := shift(wagechange_notransbad)|shift(wagechange_notransbad,2) ,by=id]
+
+DTseam[ , nextann.notransbad := (wagechange_notransbad)|shift(wagechange_notransbad,type="lead")|shift(wagechange_notransbad,type="lead",2) ,by=id]
+DTseam[ is.na(nextann.notransbad) & !is.na(wagechange_notransbad), nextann.notransbad := (wagechange_notransbad)|shift(wagechange_notransbad,type="lead") ,by=id]
+DTseam[ , wagechange_notrbad_anan := nextann.notransbad | lastann.notransbad]
+DTseam[ is.na(wagechange_notrbad_anan), wagechange_notrbad_anan:= F]
 
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave_jcbad := T]
 DTseam[ , next.job_wave := shift(job_wave,type="lead"),by=id]
@@ -247,7 +258,8 @@ DTseam[ !(EU_wave==T|UE_wave==T|EE_wave==T) & (earn_imp_wave>=1 | shift(earn_imp
 DTseam[ is.na(wagechange_wave_imp)==T, wagechange_wave_imp := F]
 
 
-DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_jcbad","wagechange_notransbad","wagechange_ENbad","wagechange_ENananbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_imp","pctmaxmis"
+DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_jcbad","wagechange_notransbad","wagechange_ENbad","wagechange_ENbad_anan","wagechange_notrbad_anan"
+								  ,"wagechange_wave_low","wagechange_wave_high","wagechange_wave_imp","pctmaxmis"
 								  ,"wagechangeEUE_wave","next.wavewage","rawwgchangeEUE_wave","rawwgchange_wave","wagechange_wvan","wagechange_anan","lastann.wavewage",
 								  "id","wave")) #"wagechange2EUE_wave","wagechange3EUE_wave",
 DTall<- merge(DTall,DTseam, by=c("id","wave"),all.x=T)

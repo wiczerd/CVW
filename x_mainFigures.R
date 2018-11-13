@@ -113,12 +113,10 @@ DTseam <- subset(DTseam, changer==T|stayer==T)
 
 #DTseam[ , last.anwage := shift(levwage)+shift(levwage,2)+shift(levwage,3),by=id]
 
-DTseam[  EE_wave==T & UE_wave==F & EU_wave ==F , g := 2]
-DTseam[  EE_wave==F & UE_wave==T | EU_wave ==T , g := 1]
-DTseam[!(EE_wave==T | UE_wave==T | EU_wave ==T), g := 3]
-#DTseam[ g==3 & !last.stable_emp==T, g:=NA]
-DTseam[ g==3 & (!last.stable_emp==T | !last2.stable_emp | !last3.stable_emp), g:=NA]
-#DTseam[ g< 3 & (lastann.wavewage > 15.), g:=NA]
+DTseam[  EE_anan==T & UE_anan==F & EU_anan ==F , g := 2]
+DTseam[  EE_anan==F & UE_anan==T | EU_anan ==T , g := 1]
+DTseam[!(EE_anan==T | UE_anan==T | EU_anan ==T), g := 3]
+#DTseam[ g==3 & (!last.stable_emp==T | !last2.stable_emp | !last3.stable_emp), g:=NA]
 DTseam[ lastann.wavewage<minLEarn , g:=NA]
 DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
 DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
@@ -126,9 +124,9 @@ DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
 
 wcananDens <- stackedDens(DTseam,"g","wagechange_anan", wt="truncweight")
 wcananMelt <- melt(wcananDens, id.vars = "WageChange")
-wcananMelt[value>exp(-6) , logValue := log(value)]
+wcananMelt[value>exp(-8) , logValue := log(value)]
 wcananMelt[ , g:=4L-as.integer(variable)]
-ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=logValue,ymin=-6,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=logValue,ymin=-8,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
 	theme_bw()+xlab("Annual-Annual Log Earnings Change")+ylab("log density")+xlim(c(-3,3)) + 
 	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]), name="",label=c("stay","EE","EU,UE") ) +
 	geom_vline(xintercept = 0.) 

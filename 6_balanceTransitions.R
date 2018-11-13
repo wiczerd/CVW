@@ -166,11 +166,11 @@ DTall[changer==T, stayer:= F]
 DTall[stayer ==T, changer:=F]
 
 #now subset everyone on annual-annual :
-DTall[lastann.wavewage >= minLEarn & wagechange_ENananbad ==F & # wagechange_wave_low==F & wagechange_wave_high==F &  wagechange_wave_imp==F & 
+DTall[lastann.wavewage >= minLEarn & wagechange_ENananbad ==F & wagechange_notrbad_anan==F & 
 	  	!(EU_anan==T|UE_anan==T|EE_anan==T) & 
 	  	lfstat_wave==1 , stayer_anan:= T]
 
-DTall[ lastann.wavewage >= minLEarn & wagechange_ENananbad ==F & 
+DTall[ lastann.wavewage >= minLEarn & wagechange_ENananbad ==F & wagechange_notrbad_anan==F &  
 	  	(EU_anan==T|UE_anan==T|EE_anan==T)  , changer_anan:= T]
 
 DTall[changer_anan==T, stayer_anan := F]
@@ -263,20 +263,6 @@ DTseam[ matched_EUUE_max==F & UE_wave ==T, UE_wave := NA]
 DTseam[ , truncweight := perwt]
 
 DTseam[ wisRemaining < 3 , truncweight := 0.]
-#reweight entire u stint
-# wtsdisp <- array(0.,dim=(6))
-# for (wi in seq(2,4)){
-# 	EUtruncnomatchrt <- DTseam[((EU_wave==T&midEU==F))& (wisRemaining < wi ) & is.finite(ustintid_wave), 
-# 							  sum(EU_nomatch*perwt,na.rm=T)/sum(perwt)]
-# 	wtsdisp[wi-1] <- (1.-EUtruenomatchrt)/(1.-EUtruncnomatchrt)
-# 	DTseam[ (wisRemaining < wi ) & is.finite(ustintid_wave), truncweight := perwt*wtsdisp[wi-1]]
-# 	
-# 	UEtruncnomatchrt <- DTseam[(lfstat_wave==2&(UE_wave==T&midUE==F))& (wis < wi ) & is.finite(ustintid_wave), 
-# 							   sum(UE_nomatch*perwt,na.rm=T)/sum(perwt)]
-# 	wtsdisp[wi+2] <- (1.-UEtruenomatchrt)/(1.-UEtruncnomatchrt)
-# 	
-# 	DTseam[ (wis < wi ) & is.finite(ustintid_wave), truncweight := perwt*wtsdisp[wi+2]]
-# }
 
 
 DTseam[ , cycweight := perwt]
@@ -294,23 +280,6 @@ for(ri in c(T,F)){
 		DTseam[ recIndic_wave==ri & UE_wave==T & switched_wave==si & !is.na(wagechange_wave), cycweight := cycweight*wt0/wt1]
 	}
 }
-# need to update wages for the midEU, midUE to be 1/2 weight
-# DTseam[ , last.midEU:= shift(midEU, type="lag"), by=id]
-# DTseam[ , last.midEE:= shift(midEE, type="lag"), by=id]
-# DTseam[ , last.midUE:= shift(midUE, type="lag"), by=id]
-# chngwt1 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(truncweight,na.rm = T)]
-# DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , truncweight := 0.5*truncweight]
-# chngwt2 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(truncweight,na.rm = T)]
-# DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , truncweight := chngwt1/chngwt2*truncweight]
-# chngwt1 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(cycweight,na.rm = T)]
-# DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , cycweight   := 0.5*cycweight]
-# chngwt2 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(cycweight,na.rm = T)]
-# DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , cycweight := chngwt1/chngwt2*cycweight]
-# chngwt1 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(perwt,na.rm = T)]
-# DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , perwt   := 0.5*perwt]
-# chngwt2 <- DTseam[ EU_wave==T|UE_wave==T|EE_wave==T, sum(perwt,na.rm = T)]
-# DTseam[ (midEU|last.midEU|midEE|last.midEE|midUE|last.midUE) , perwt := chngwt1/chngwt2*perwt]
-
 
 # correct for cleaning and truncation
 DTseam[ is.na(cleaning_wts)==F, cleaningtruncweight:= truncweight*cleaning_wts]
