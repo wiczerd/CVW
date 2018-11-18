@@ -249,9 +249,9 @@ DTseam[, wisRemaining := wisRemaining-wis , by=id]
 
 DTseam[ , perwt:= mean(wpfinwgt), by=id]
 
-EUtruenomatchrt <- DTseam[((EU_wave==T&midEU==F)) & wisRemaining > 4  & is.finite(ustintid_wave), 
+EUtruenomatchrt <- DTseam[((EU_wave==T)) & wisRemaining > 4  & is.finite(ustintid_wave), 
 						  sum(EU_nomatch*perwt,na.rm=T)/sum(perwt)] #missing counts as not matched
-UEtruenomatchrt <- DTseam[ lfstat_wave==2 & (UE_wave==T&midUE==F) & wis > 4  & is.finite(ustintid_wave), 
+UEtruenomatchrt <- DTseam[ lfstat_wave==2 & (UE_wave==T) & wis > 4  & is.finite(ustintid_wave), 
 						  sum(UE_nomatch*perwt,na.rm=T)/sum(perwt)]
 Utruenomatchrt  <- DTseam[wis > 4 & wisRemaining > 4 & is.finite(ustintid_wave) , 
 						  sum(u_nomatch*perwt,na.rm=T)/sum(perwt)]
