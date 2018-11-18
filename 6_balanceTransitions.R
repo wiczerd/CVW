@@ -331,6 +331,8 @@ DTseam[ !(is.finite(EE_wave) & is.finite(EU_wave)&is.finite(UE_wave)), changer:=
 DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
 saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))
 
+DTseam <- subset(DTseam, select = c("id","wave","truncweight","changer","stayer","canger_anan", "stayer_anan"))
+
 DTall <-merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
 setkey(DTall,id,date)
