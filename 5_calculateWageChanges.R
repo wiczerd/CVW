@@ -132,8 +132,8 @@ DTseam[UE_wave_last == T, wagechange2EUE_wave := wage2AfterUE - wageAtEU]
 DTseam[UE_wave_last == T, wagechange3EUE_wave := wage3AfterUE - wageAtEU]
 
 DTseam[, wagechangeEUE_wave := Mode(wagechangeEUE_wave) , by=list(ustintid_wave, id)]
-DTseam[, wagechange2EUE_wave:= Mode(wagechange2EUE_wave), by=list(ustintid_wave, id)]
-DTseam[, wagechange3EUE_wave:= Mode(wagechange3EUE_wave), by=list(ustintid_wave, id)]
+#DTseam[, wagechange2EUE_wave:= Mode(wagechange2EUE_wave), by=list(ustintid_wave, id)]
+#DTseam[, wagechange3EUE_wave:= Mode(wagechange3EUE_wave), by=list(ustintid_wave, id)]
 DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, wagechangeEUE_wave  := next.wavewage  - last.wavewage]
 DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, wagechange2EUE_wave := next2.wavewage - last.wavewage]
 DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, wagechange3EUE_wave := next3.wavewage - last.wavewage]
@@ -164,11 +164,6 @@ DTseam[ next.lfstat_wave==1 & next2.waverawwg<log(minEarn+(1+minEarn^2)^.5) , ne
 DTseam[ last.lfstat_wave==1 & last.waverawwg< log(minEarn+(1+minEarn^2)^.5)  , last.waverawwg := NA_real_]
 
 DTseam[ , rawwgchange_wave := next.waverawwg - waverawwg]
-#for EE that spans waves:
-#DTseam[ EE_wave==T & EEmon<seammon , rawwgchange_wave:= NA]
-#DTseam[ EE_wave==T & shift(midEE)==T , rawwgchange_wave:= (next.waverawwg - last.waverawwg)]
-#DTseam[ , next.rawwgchange_wave := shift(rawwgchange_wave, type="lead"),by=id]
-#DTseam[EE_wave==T & midEE ==T , rawwgchange_wave := next.rawwgchange_wave]
 
 DTseam[ , next.rawwgchange_wave := shift(rawwgchange_wave, type="lead"),by=id]
 DTseam[ , last.rawwgchange_wave := shift(rawwgchange_wave, type="lag" ),by=id]
@@ -220,7 +215,7 @@ DTseam[ is.na(wagechange_ENbad)       , wagechange_ENbad :=F]
 
 
 DTseam[ !(EU_anan|UE_anan|EE_anan) & nextann.wavewage<log(minEarn+(1+minEarn^2)^.5), wagechange_ENbad_anan := T]
-DTseam[ !(EU_anan|UE_anan|EE_anan) & lastann.wavewage<log(minEarn+(1+minEarn^2)^.5), wagechange_ENbad_anan := T]
+DTseam[                              lastann.wavewage<log(minEarn+(1+minEarn^2)^.5), wagechange_ENbad_anan := T]
 
 DTseam[ is.na(wagechange_ENbad_anan), wagechange_ENbad_anan :=F] 
 

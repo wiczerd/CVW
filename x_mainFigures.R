@@ -109,24 +109,25 @@ stackedDens <- function( DT,gg,wc,wt=NULL ){
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 
 
-DTseam <- subset(DTseam, changer==T|stayer==T)
+#DTseam <- subset(DTseam, changer_anan==T|stayer_anan==T)
 
 #DTseam[ , last.anwage := shift(levwage)+shift(levwage,2)+shift(levwage,3),by=id]
 
 DTseam[  EE_anan==T & UE_anan==F & EU_anan ==F , g := 2]
 DTseam[  EE_anan==F & UE_anan==T | EU_anan ==T , g := 1]
 DTseam[!(EE_anan==T | UE_anan==T | EU_anan ==T), g := 3]
+DTseam[ !(changer_anan==T|stayer_anan==T), g:=NA]
 #DTseam[ g==3 & (!last.stable_emp==T | !last2.stable_emp | !last3.stable_emp), g:=NA]
 DTseam[ lastann.wavewage<minLEarn , g:=NA]
 DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
 DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
 DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
 
-wcananDens <- stackedDens(DTseam,"g","wagechange_anan", wt="truncweight")
+wcananDens <- stackedDens(DTseam,"g","wagechange_anan", wt="perwt")
 wcananMelt <- melt(wcananDens, id.vars = "WageChange")
-wcananMelt[value>exp(-8) , logValue := log(value)]
+wcananMelt[value>exp(-6) , logValue := log(value)]
 wcananMelt[ , g:=4L-as.integer(variable)]
-ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=logValue,ymin=-8,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=logValue,ymin=-6,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
 	theme_bw()+xlab("Annual-Annual Log Earnings Change")+ylab("log density")+xlim(c(-3,3)) + 
 	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]), name="",label=c("stay","EE","EU,UE") ) +
 	geom_vline(xintercept = 0.) 
@@ -155,8 +156,8 @@ ggsave(paste0(outdir,"/pctwtm1_wc.png"),height=5,width=10)
 
 #do it among stayers
 DTseam[ , c("rank_w_tm1","pct_w_tm1") :=NULL]
-DTseam[ truncweight>0 & (last.stable_emp&last2.stable_emp&last3.stable_emp) & is.finite(lastann.wavewage), rank_w_tm1 := frank(lastann.wavewage) ]
-DTseam[ truncweight>0 & (last.stable_emp&last2.stable_emp*last3.stable_emp) , rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
+DTseam[ truncweight>0 & (stayer_anan==T) & is.finite(lastann.wavewage), rank_w_tm1 := frank(lastann.wavewage) ]
+DTseam[ truncweight>0 & (stayer_anan==T) , rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
 DTseam[ truncweight>0 & is.finite(rank_w_tm1), pct_w_tm1 :=as.integer( round(100*rank_w_tm1))]
 pct_w_tm1 <- data.table(DTseam[ , wtd.mean( wagechange_anan,weights=truncweight,na.rm=T), by=pct_w_tm1])
 pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,prob=0.10,weights=truncweight,na.rm=T), by=pct_w_tm1]), by = "pct_w_tm1")
@@ -179,10 +180,10 @@ DTseam[ , c("rank_w_tm1","pct_w_tm1") :=NULL]
 DTseam[truncweight>0 & lastann.wavewage>minLEarn & is.finite(lastann.wavewage) &(changer_anan|stayer_anan), rank_w_tm1 := frank(lastann.wavewage) ]
 DTseam[truncweight>0 & lastann.wavewage>minLEarn & is.finite(lastann.wavewage) &(changer_anan|stayer_anan), rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
 DTseam[truncweight>0 & is.finite(rank_w_tm1), pct_w_tm1 :=as.integer( round(100*rank_w_tm1))]
-pct_w_tm1 <- data.table(DTseam[ , wtd.mean( wagechange_anan,weights=truncweight,na.rm=T), by=pct_w_tm1])
-pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,prob=0.10,weights=truncweight,na.rm=T), by=pct_w_tm1]), by = "pct_w_tm1")
-pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,prob=0.50,weights=truncweight,na.rm=T), by=pct_w_tm1]), by = "pct_w_tm1")
-pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,prob=0.90,weights=truncweight,na.rm=T), by=pct_w_tm1]), by = "pct_w_tm1")
+pct_w_tm1 <- data.table(DTseam[ , wtd.mean( wagechange_anan,weights=perwt,na.rm=T), by=pct_w_tm1])
+pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,prob=0.10,weights=perwt,na.rm=T), by=pct_w_tm1]), by = "pct_w_tm1")
+pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,prob=0.50,weights=perwt,na.rm=T), by=pct_w_tm1]), by = "pct_w_tm1")
+pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,prob=0.90,weights=perwt,na.rm=T), by=pct_w_tm1]), by = "pct_w_tm1")
 
 names(pct_w_tm1) <- c("pct","mn_w_chng","P10_w_chng","P50_w_chng","P90_w_chng")
 pct_w_tm1 <- melt(pct_w_tm1,id.vars="pct")
@@ -201,7 +202,7 @@ DTseam[ , c("pct_wcEUE_wave","rank_wcEUE_wave"):=NULL]
 DTseam[changermo ==T & is.finite(wagechangeEUE_wave) & (EE_wave), rank_wcEUE_wave := frank(wagechangeEUE_wave)/.N ]
 DTseam[, pct_wcEUE_wave :=as.integer( round(100*rank_wcEUE_wave),5)]
 
-wc_occwc <- data.table(DTseam[ switched_wave==T, wtd.mean(wagechangeEUE_wave,weights=truncweight,na.rm=T), by=pct_wcEUE_wave])
+wc_occwc <- data.table(DTseam[ , wtd.mean(wagechangeEUE_wave,weights=truncweight,na.rm=T), by=pct_wcEUE_wave])
 wc_occwc <- merge(wc_occwc,data.table(DTseam[ switched_wave==T, wtd.quantile(occwagechangeEUE_wave,prob=0.10,weights=truncweight,na.rm=T), by=pct_wcEUE_wave]), by = "pct_wcEUE_wave")
 wc_occwc <- merge(wc_occwc,data.table(DTseam[ switched_wave==T, wtd.quantile(occwagechangeEUE_wave,prob=0.5,weights=truncweight,na.rm=T), by=pct_wcEUE_wave]), by = "pct_wcEUE_wave")
 wc_occwc <- merge(wc_occwc,data.table(DTseam[ switched_wave==T, wtd.quantile(occwagechangeEUE_wave,prob=0.90,weights=truncweight,na.rm=T), by=pct_wcEUE_wave]), by = "pct_wcEUE_wave")

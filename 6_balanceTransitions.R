@@ -159,18 +159,18 @@ DTall[wagechange_notransbad==F & wagechange_wave_low==F & wagechange_wave_high==
 	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & next.stable_emp==T &
 	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
 
-DTall[wagechange_notransbad==F  & wagechange_wave_jcbad==F & wagechange_ENbad &
+DTall[wagechange_notransbad==F  & wagechange_wave_jcbad==F & wagechange_ENbad==F &
 	   	(EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
 
 DTall[changer==T, stayer:= F]
 DTall[stayer ==T, changer:=F]
 
 #now subset everyone on annual-annual :
-DTall[lastann.wavewage >= minLEarn & wagechange_ENananbad ==F & wagechange_notrbad_anan==F & 
+DTall[ wagechange_ENbad_anan ==F & wagechange_notrbad_anan==F & 
 	  	!(EU_anan==T|UE_anan==T|EE_anan==T) & 
 	  	lfstat_wave==1 , stayer_anan:= T]
 
-DTall[ lastann.wavewage >= minLEarn & wagechange_ENananbad ==F & wagechange_notrbad_anan==F &  
+DTall[ wagechange_ENbad_anan ==F & wagechange_notrbad_anan==F &  
 	  	(EU_anan==T|UE_anan==T|EE_anan==T)  , changer_anan:= T]
 
 DTall[changer_anan==T, stayer_anan := F]
