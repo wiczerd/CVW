@@ -113,9 +113,9 @@ DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 
 #DTseam[ , last.anwage := shift(levwage)+shift(levwage,2)+shift(levwage,3),by=id]
 
-DTseam[  EE_wave==T & UE_wave==F & EU_wave ==F , g := 2]
-DTseam[  EE_wave==F & UE_wave==T | EU_wave ==T , g := 1]
-DTseam[!(EE_wave==T | UE_wave==T | EU_wave ==T), g := 3]
+DTseam[  EE_anan==T & UE_anan==F & EU_anan ==F , g := 2]
+DTseam[  EE_anan==F & UE_anan==T | EU_anan ==T , g := 1]
+DTseam[!(EE_anan==T | UE_anan==T | EU_anan ==T), g := 3]
 DTseam[ !(changer_anan==T|stayer_anan==T), g:=NA]
 #DTseam[ g==3 & (!last.stable_emp==T | !last2.stable_emp | !last3.stable_emp), g:=NA]
 DTseam[ lastann.wavewage<minLEarn , g:=NA]
@@ -123,7 +123,7 @@ DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
 DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
 DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
 
-wcananDens <- stackedDens(DTseam,"g","wagechange_anan", wt="perwt")
+wcananDens <- stackedDens(DTseam,"g","wagechange_anan", wt="truncweight")
 wcananMelt <- melt(wcananDens, id.vars = "WageChange")
 wcananMelt[value>exp(-6) , logValue := log(value)]
 wcananMelt[ , g:=4L-as.integer(variable)]

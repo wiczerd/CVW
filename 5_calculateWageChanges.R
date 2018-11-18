@@ -198,7 +198,7 @@ DTseam[ , c("wageAtEU","wageAfterUE","wage2AfterUE","wage3AfterUE","EU_wave_firs
 #cleaning the stayers:-----------------------------------------------------------------
 # wagechange wave =NA for large gains or losses that revert
 
-DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & (last.lfstat_wave==1) & (next.lfstat_wave==1) , 
+DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & (last.lfstat_wave==1) & (next.lfstat_wave==1) & lfstat_wave==T, 
 	   wagechange_notransbad := (rawwgchange_wave>2|rawwgchange_wave<(-2))  & abs(next.waverawwg - last.waverawwg)<.1 ] 
 
 
