@@ -170,7 +170,7 @@ DTall[  wagechange_notrbad_anan==F & #wagechange_ENbad_anan ==F &
 	  	!(EU_anan==T|UE_anan==T|EE_anan==T) & 
 	  	lfstat_wave==1 & next.stable_emp==T, stayer_anan:= T]
 
-DTall[  wagechange_notrbad_anan==F &  #wagechange_ENbad_anan ==F &
+DTall[  #wagechange_ENbad_anan ==F &
 	  	(EU_anan==T|UE_anan==T|EE_anan==T)  , changer_anan:= T]
 
 DTall[changer_anan==T, stayer_anan := F]

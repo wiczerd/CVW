@@ -207,7 +207,6 @@ DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & lfstat_wave==1 & next.lfstat_wave==
 	   wagechange_ENbad := (next.waverawwg<minwaverawwg)] 
 
 
-#what does this do?
 DTseam[lfstat_wave>=2 & next.lfstat_wave>=2 & !(EU_wave==T|UE_wave==T|EE_wave==T) , wagechange_notransbad:= T] 
 
 DTseam[ is.na(wagechange_notransbad)  , wagechange_notransbad :=F] 
@@ -219,13 +218,17 @@ DTseam[                              lastann.wavewage<log(minEarn+(1+minEarn^2)^
 
 DTseam[ is.na(wagechange_ENbad_anan), wagechange_ENbad_anan :=F] 
 
-DTseam[ , lastann.notransbad := shift(wagechange_notransbad)|shift(wagechange_notransbad,2)|shift(wagechange_notransbad,3) ,by=id]
-DTseam[ is.na(lastann.notransbad) & !is.na(shift(wagechange_notransbad)), lastann.notransbad := shift(wagechange_notransbad)|shift(wagechange_notransbad,2) ,by=id]
+DTseam[ !(EU_anan|UE_anan|EE_anan), lastann.notransbad := shift(wagechange_notransbad)|shift(wagechange_notransbad,2)|shift(wagechange_notransbad,3) ,by=id]
+DTseam[ !(EU_anan|UE_anan|EE_anan) & is.na(lastann.notransbad) & !is.na(shift(wagechange_notransbad)), lastann.notransbad := shift(wagechange_notransbad)|shift(wagechange_notransbad,2) ,by=id]
 
-DTseam[ , nextann.notransbad := (wagechange_notransbad)|shift(wagechange_notransbad,type="lead")|shift(wagechange_notransbad,type="lead",2) ,by=id]
+DTseam[ lfstat_wave3 := shift(lfstat_wave)==1 & lfstat_wave==1 & shift(lfstat_wave,type="lead")==1 & shift(lfstat_wave,2,type="lead")==1 & shift(lfstat_wave,3,type="lead")==1,by=id]
+DTseam[ lfstat_wave3==T, nextann.notransbad := (wagechange_notransbad)|shift(wagechange_notransbad,type="lead")|shift(wagechange_notransbad,type="lead",2) ,by=id]
+DTseam[ lfstat_wave3 := NULL]
+DTseam[ lfstat_wave3 := shift(lfstat_wave)==1 & lfstat_wave==1 & shift(lfstat_wave,type="lead")==1 & shift(lfstat_wave,2,type="lead")==1 ,by=id]
 DTseam[ is.na(nextann.notransbad) & !is.na(wagechange_notransbad), nextann.notransbad := (wagechange_notransbad)|shift(wagechange_notransbad,type="lead") ,by=id]
 DTseam[ , wagechange_notrbad_anan := nextann.notransbad | lastann.notransbad]
 DTseam[ is.na(wagechange_notrbad_anan), wagechange_notrbad_anan:= F]
+DTseam[ lfstat_wave3 := NULL]
 
 DTseam[!(EU_wave==T|UE_wave==T|EE_wave==T) & jobchng_wave==T , wagechange_wave_jcbad := T]
 DTseam[ , next.job_wave := shift(job_wave,type="lead"),by=id]
