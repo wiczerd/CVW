@@ -331,22 +331,9 @@ DTseam[ !(is.finite(EE_wave) & is.finite(EU_wave)&is.finite(UE_wave)), changer:=
 DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
 saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))
 
-DTseam <- subset(DTseam, select = c("id","wave","truncweight","changer","stayer","canger_anan", "stayer_anan"))
+DTseam <- subset(DTseam, select = c("id","wave","truncweight","changer","stayer","changer_anan", "stayer_anan"))
 
 DTall <-merge(DTall,DTseam,by=c("id","wave"),all.x=T)
-
-setkey(DTall,id,date)
-DTall[is.finite(ustintid), balancedEU := any(UE,na.rm=T)==T & EU==T, by = list(id,ustintid)]
-DTall[is.finite(ustintid), balancedUE := any(EU,na.rm=T)==T & UE==T, by = list(id,ustintid)]
-
-# create weights & EUE specific stuff
-
-DTall[                 , allwt := wpfinwgt]
-DTall[EU==T|UE==T|EE==T, allwt := balanceweight]
-DTall[                 , allwtEUE := allwt]
-DTall[EU==T            , allwtEUE := allwtEUE*2.]
-DTall[UE==T            , allwtEUE := 0.]
-
 
 saveRDS(DTall,paste0(outputdir,"/DTall_6.RData"))
 
