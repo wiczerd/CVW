@@ -166,11 +166,11 @@ DTall[changer==T, stayer:= F]
 DTall[stayer ==T, changer:=F]
 
 #now subset everyone on annual-annual :
-DTall[ wagechange_ENbad_anan ==F & wagechange_notrbad_anan==F & 
+DTall[  wagechange_notrbad_anan==F & #wagechange_ENbad_anan ==F &
 	  	!(EU_anan==T|UE_anan==T|EE_anan==T) & 
-	  	lfstat_wave==1 , stayer_anan:= T]
+	  	lfstat_wave==1 & next.stable_emp==T, stayer_anan:= T]
 
-DTall[ wagechange_ENbad_anan ==F & wagechange_notrbad_anan==F &  
+DTall[  wagechange_notrbad_anan==F &  #wagechange_ENbad_anan ==F &
 	  	(EU_anan==T|UE_anan==T|EE_anan==T)  , changer_anan:= T]
 
 DTall[changer_anan==T, stayer_anan := F]
@@ -217,26 +217,6 @@ if(check_durcomp==T){
 
 ##balance seams EU and UE
 DTseam[ is.finite(ustintid_wave), u_matched := any(matched_EUUE_max,na.rm=F), by=list(id,ustintid_wave)]
-
-#DTseam[ is.na(matched_EUUE_wave), matched_EUUE_wave:=F]
-#DTseam[ ustintid_wave>0, EU_match:= any(UE_wave), by=list(id,ustintid_wave) ]
-#DTseam[ ustintid_wave>0, UE_match:= any(EU_wave), by=list(id,ustintid_wave) ]
-#DTseam[ ustintid_wave>0, matched_EUUE_wave:= UE_match & EU_match ]
-#DTseam[ matched_EUUE_wave!=T & EU_wave==T, EU_nomatch:= T]
-#DTseam[ is.na(EU_nomatch), EU_nomatch:= F]
-#DTseam[ matched_EUUE_wave!=T & UE_wave==T, UE_nomatch:= T]
-#DTseam[ is.na(UE_nomatch), UE_nomatch:= F]
-
-# these are equivalent to find non-matches:
-# DTseam[ (EU_wave ==T & midEU==F) | (UE_wave==T & midUE==F), EU_match := shift(UE_wave,1,type = "lead")==T & is.finite(shift(wagechange_wave,1,type = "lead")), by=id]
-# DTseam[ (EU_wave ==T & midEU==F) | (UE_wave==T & midUE==F), UE_match := shift(EU_wave,1,type = "lag" )==T & is.finite(shift(wagechange_wave,1,type = "lag" )), by=id]
-# 
-# DTseam[ , EU_nomatch := ((EU_match ==F | is.na(EU_match)) & EU_wave==T)]
-# DTseam[ , UE_nomatch := ((UE_match ==F | is.na(UE_match)) & UE_wave==T)]
-# DTseam[ EU_match==T, EU_nomatch:= F]
-# DTseam[ UE_match==T, UE_nomatch:= F]
-
-#DTseam[ is.finite(ustintid_wave), u_nomatch := any(EU_nomatch==T|UE_nomatch==T), by=list(id,ustintid_wave)]
 
 DTseam[ is.finite(ustintid_wave), u_nomatch := any((EU_wave==T & u_matched==F)|UE_wave==T & u_matched==F), by=list(id,ustintid_wave)]
 DTseam[ is.finite(ustintid_wave), EU_nomatch := any((EU_wave==T & matched_EUUE_wave==F)), by=list(id,ustintid_wave)]
@@ -328,6 +308,8 @@ if( dur_adj == T){
 
 DTseam[ !(is.finite(EE_wave) & is.finite(EU_wave)&is.finite(UE_wave)), changer:=NA]
 
+DTseam[ !(is.finite(EE_wave) & is.finite(EU_wave)&is.finite(UE_wave)), changer_anan:=NA]
+
 DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
 saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))
 
@@ -337,34 +319,3 @@ DTall <-merge(DTall,DTseam,by=c("id","wave"),all.x=T)
 
 saveRDS(DTall,paste0(outputdir,"/DTall_6.RData"))
 
-
-#- Diagnostics
-
-# check weights
-UEweight <- wagechanges[UE & !is.na(wagechange_month), sum(balanceweight, na.rm = TRUE)]
-EUweight <- wagechanges[EU & !is.na(wagechange_month), sum(balanceweight, na.rm = TRUE)]
-EEweight <- wagechanges[EE & !is.na(wagechange_month), sum(balanceweight, na.rm = TRUE)]
-
-
-# new weight ratio diff from Fallick Fleischmann UE/EE ratio
-# Fallick/Fleischman CPS numbers, just for comparison
-EEpop <- 1.3630541872/100
-# halfway between EU and UE prob
-UEpop <- 0.5*(0.9201970443 + 0.8162561576)/100
-# includes transtions to and from N
-SNpop <- (31.5270935961 + 0.8527093596 + 1.5384236453 + 0.8620689655 + 1.6463054187)/100
-# probability conditional on being in the labor force both periods
-EEprob <-EEpop/(1.-SNpop)
-UEprob <-UEpop/(1.-SNpop)
-round(UEweight/EEweight, 10) - round(UEprob/EEprob, 10)
-
-# new weights sum to original weights
-wagechanges[, sum(wpfinwgt, na.rm = TRUE)] == wagechanges[, sum(balanceweight, na.rm = TRUE)]
-
-# EU and UE balance
-wagechanges[UE & switchedOcc, sum(balanceweight, na.rm = TRUE)] == 
- 	wagechanges[EU & switchedOcc, sum(balanceweight, na.rm = TRUE)]
-
-# store balanced data
-saveRDS(wagechanges, paste0(outputdir,"/balancedwagechanges.RData"))
-#rm(list=ls())
