@@ -239,6 +239,9 @@ Utruenomatchrt  <- DTseam[wis > 4 & wisRemaining > 4 & is.finite(ustintid_wave) 
 DTseam[ matched_EUUE_max==F & EU_wave ==T, EU_wave := NA]
 DTseam[ matched_EUUE_max==F & UE_wave ==T, UE_wave := NA]
 
+DTseam[ matched_EUUE_anan==F & EU_anan ==T, EU_anan := NA]
+DTseam[ matched_EUUE_anan==F & UE_anan ==T, UE_anan := NA]
+
 #do some reweighting for left- and right-truncation
 DTseam[ , truncweight := perwt]
 
@@ -308,7 +311,7 @@ if( dur_adj == T){
 
 DTseam[ !(is.finite(EE_wave) & is.finite(EU_wave)&is.finite(UE_wave)), changer:=NA]
 
-DTseam[ !(is.finite(EE_wave) & is.finite(EU_wave)&is.finite(UE_wave)), changer_anan:=NA]
+DTseam[ !(is.finite(EE_anan) & is.finite(EU_anan)&is.finite(UE_anan)), changer_anan:=NA]
 
 DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
 saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))

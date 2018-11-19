@@ -113,11 +113,22 @@ DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 
 #DTseam[ , last.anwage := shift(levwage)+shift(levwage,2)+shift(levwage,3),by=id]
 
+DTseam[ , last2.stable_emp:= shift(last.stable_emp), by=id]
+DTseam[ , last3.stable_emp:= shift(last2.stable_emp), by=id]
+DTseam[ wave-2 != shift(wave,2), last2.stable_emp := NA]
+DTseam[ wave-3 != shift(wave,3), last3.stable_emp := NA]
+
+DTseam[ EU_anan& changer_anan & is.na(matched_EUUE_anan),changer_anan:= NA]
+DTseam[ UE_anan& changer_anan & is.na(matched_EUUE_anan),changer_anan:= NA]
+DTseam[ EU_anan& changer_anan & is.na(matched_EUUE_anan),EU_anan:= NA]
+DTseam[ UE_anan& changer_anan & is.na(matched_EUUE_anan),UE_anan:= NA]
+
+
 DTseam[  EE_anan==T & UE_anan==F & EU_anan ==F , g := 2]
 DTseam[  EE_anan==F & UE_anan==T | EU_anan ==T , g := 1]
 DTseam[!(EE_anan==T | UE_anan==T | EU_anan ==T), g := 3]
-DTseam[ !(changer_anan==T|stayer_anan==T), g:=NA]
-#DTseam[ g==3 & (!last.stable_emp==T | !last2.stable_emp | !last3.stable_emp), g:=NA]
+DTseam[ !(changer_anan==T|stayer_anan==T|nextann.wavewage<=0), g:=NA]
+DTseam[ g==3 & (!last.stable_emp==T | !last2.stable_emp | !last3.stable_emp), g:=NA]
 DTseam[ lastann.wavewage<minLEarn , g:=NA]
 DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
 DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
@@ -133,6 +144,29 @@ ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=logValue,ymin=-6,x=WageChan
 	geom_vline(xintercept = 0.) 
 ggsave(paste0(outdir,"/stacked_wagechange_anan.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/stacked_wagechange_anan.png"),height=5,width=10)
+
+DTseam[ , g:=NULL]
+DTseam[  EE_wave==T & UE_wave==F & EU_wave ==F , g := 2]
+DTseam[  EE_wave==F & UE_wave==T | EU_wave ==T , g := 1]
+DTseam[!(EE_wave==T | UE_wave==T | EU_wave ==T), g := 3]
+DTseam[ !(changer_anan==T|stayer_anan==T|nextann.wavewage<=0), g:=NA]
+DTseam[ g==3 & (!last.stable_emp==T | !last2.stable_emp | !last3.stable_emp), g:=NA]
+DTseam[ lastann.wavewage<minLEarn , g:=NA]
+DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
+DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
+DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
+
+wcananDens <- stackedDens(DTseam,"g","wagechange_anan", wt="truncweight")
+wcananMelt <- melt(wcananDens, id.vars = "WageChange")
+wcananMelt[value>exp(-6) , logValue := log(value)]
+wcananMelt[ , g:=4L-as.integer(variable)]
+ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=logValue,ymin=-6,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+	theme_bw()+xlab("Annual-Annual Log Earnings Change (wave-categorization)")+ylab("log density")+xlim(c(-3,3)) + 
+	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]), name="",label=c("stay","EE","EU,UE") ) +
+	geom_vline(xintercept = 0.) 
+ggsave(paste0(outdir,"/stacked_wagechange_anan_wv.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_wagechange_anan_wv.png"),height=5,width=10)
+
 
 DTseam[ truncweight>0 & (last.stable_emp|last2.stable_emp|last3.stable_emp) & is.finite(lastann.wavewage), rank_w_tm1 := frank(lastann.wavewage) ]
 DTseam[ truncweight>0 & (last.stable_emp|last2.stable_emp|last3.stable_emp) , rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
@@ -171,14 +205,14 @@ ggplot(pct_w_tm1, aes( x=pct,y=value, color=variable ))+theme_bw()+geom_smooth(s
 					   values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]))+ggtitle("Only 3-wave stable")+
 	theme(legend.title = element_blank(),
 		  legend.position = c(0.8,0.8),
-		  legend.background = element_rect(linetype = "solid",color = "white"))
+		  legend.background = element_rect(linetype = "solid",color = "white"))+xlim(c(2,98))+ylim(c(-.6,2.1))
 ggsave(paste0(outdir,"/pctwtm1_wc_stable.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/pctwtm1_wc_stable.png"),height=5,width=10)
 
 #do it among anyone with high-enough earnings
 DTseam[ , c("rank_w_tm1","pct_w_tm1") :=NULL]
-DTseam[truncweight>0 & lastann.wavewage>minLEarn & is.finite(lastann.wavewage) &(changer_anan|stayer_anan), rank_w_tm1 := frank(lastann.wavewage) ]
-DTseam[truncweight>0 & lastann.wavewage>minLEarn & is.finite(lastann.wavewage) &(changer_anan|stayer_anan), rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
+DTseam[truncweight>0 & lastann.wavewage>minLEarn & is.finite(lastann.wavewage) &(changer_anan|(stayer_anan)  ) & nextann.wavewage>0, rank_w_tm1 := frank(lastann.wavewage) ]
+DTseam[truncweight>0 & lastann.wavewage>minLEarn & is.finite(lastann.wavewage) &(changer_anan|(stayer_anan)  ) & nextann.wavewage>0, rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
 DTseam[truncweight>0 & is.finite(rank_w_tm1), pct_w_tm1 :=as.integer( round(100*rank_w_tm1))]
 pct_w_tm1 <- data.table(DTseam[ , wtd.mean( wagechange_anan,weights=perwt,na.rm=T), by=pct_w_tm1])
 pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,prob=0.10,weights=perwt,na.rm=T), by=pct_w_tm1]), by = "pct_w_tm1")
@@ -192,7 +226,7 @@ ggplot(pct_w_tm1, aes( x=pct,y=value, color=variable ))+theme_bw()+geom_smooth(s
 					   values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]))+ggtitle("With earnings high enough")+
 theme(legend.title = element_blank(),
 	  legend.position = c(0.8,0.8),
-	  legend.background = element_rect(linetype = "solid",color = "white"))
+	  legend.background = element_rect(linetype = "solid",color = "white")) + xlim(c(2,98))
 ggsave(paste0(outdir,"/pctwtm1_wc_earntr.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/pctwtm1_wc_earntr.png"),height=5,width=10)
 
