@@ -133,7 +133,7 @@ DTseam[ , nextann.wavewage := log(nextann.wavewage + (1+nextann.wavewage^2)^.5) 
 DTseam[  EE_anan==T & UE_anan==F & EU_anan ==F , g := 2]
 DTseam[  EE_anan==F & UE_anan==T | EU_anan ==T , g := 1]
 DTseam[!(EE_anan==T | UE_anan==T | EU_anan ==T), g := 3]
-DTseam[ !(changer_anan==T|stayer_anan==T|nextann.wavewage<=0), g:=NA]
+DTseam[ !(changer_anan==T|stayer_anan==T| (EU_wave==F & nextann.wavewage<= 0) ), g:=NA]
 #DTseam[ g==3 & (!last.stable_emp==T | !last2.stable_emp | !last3.stable_emp), g:=NA]
 DTseam[ lastann.wavewage<minLEarn , g:=NA]
 DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
@@ -170,7 +170,7 @@ DTseam[ , g:=NULL]
 DTseam[  EE_wave==T & UE_wave==F & EU_wave ==F , g := 2]
 DTseam[  EE_wave==F & UE_wave==T | EU_wave ==T , g := 1]
 DTseam[!(EE_anan==T | UE_anan==T | EU_anan ==T), g := 3]
-DTseam[ !(changer_anan==T|stayer_anan==T|nextann.wavewage<=0), g:=NA]
+DTseam[ !(changer_anan==T|stayer_anan==T|(EU_wave==F & nextann.wavewage<= 0)), g:=NA]
 DTseam[ g==3 & (EU_anan | UE_anan | EE_anan), g:=NA]
 DTseam[ lastann.wavewage<minLEarn , g:=NA]
 DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
@@ -213,8 +213,8 @@ ggsave(paste0(outdir,"/pctwtm1_wc_stable.png"),height=5,width=10)
 
 #do it among anyone with high-enough earnings
 DTseam[ , c("rank_w_tm1","pct_w_tm1") :=NULL]
-DTseam[truncweight>0 & lastann.wavewage>minLEarn & is.finite(lastann.wavewage) &(changer_anan|(stayer_anan)  ) & nextann.wavewage>0, rank_w_tm1 := frank(lastann.wavewage) ]
-DTseam[truncweight>0 & lastann.wavewage>minLEarn & is.finite(lastann.wavewage) &(changer_anan|(stayer_anan)  ) & nextann.wavewage>0, rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
+DTseam[truncweight>0 & lastann.wavewage>minLEarn & is.finite(lastann.wavewage) &(changer_anan|(stayer_anan)  ) & (EU_wave==T|nextann.wavewage>0), rank_w_tm1 := frank(lastann.wavewage) ]
+DTseam[truncweight>0 & lastann.wavewage>minLEarn & is.finite(lastann.wavewage) &(changer_anan|(stayer_anan)  ) & (EU_wave==T|nextann.wavewage>0), rank_w_tm1 := rank_w_tm1/max(rank_w_tm1,na.rm=T)]
 DTseam[truncweight>0 & is.finite(rank_w_tm1), pct_w_tm1 :=as.integer( round(100*rank_w_tm1))]
 pct_w_tm1 <- data.table(DTseam[ , wtd.mean( wagechange_anan,weights=perwt,na.rm=T), by=pct_w_tm1])
 pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,prob=0.10,weights=perwt,na.rm=T), by=pct_w_tm1]), by = "pct_w_tm1")

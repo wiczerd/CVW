@@ -812,7 +812,6 @@ sipp_wave[                      , last2.EE_wave := shift(last.EE_wave), by=id]
 sipp_wave[ wave-2!=shift(wave,2), last2.EE_wave := NA, by =id]
 sipp_wave[                      , last3.EE_wave := shift(last.EE_wave,2), by=id]
 sipp_wave[ wave-3!=shift(wave,3), last3.EE_wave := NA, by =id]
-
 sipp_wave[                                  , next.EE_wave  := shift(EE_wave,type="lead"), by=id]
 sipp_wave[ wave+1!=shift(wave,type="lead")  , next.EE_wave  := NA, by =id]
 sipp_wave[                                  , next2.EE_wave := shift(next.EE_wave,type="lead"), by=id]
@@ -840,6 +839,17 @@ sipp_wave[ wave+1!=shift(wave,type="lead")  , next.UE_wave  := NA, by =id]
 sipp_wave[                                  , next2.UE_wave := shift(next.UE_wave,type="lead"), by=id]
 sipp_wave[ wave+2!=shift(wave,2,type="lead"), next2.UE_wave := NA, by =id]
 
+sipp_wave[                      , last.switched_wave := shift(switched_wave), by=id]
+sipp_wave[ wave-1!=shift(wave)  , last.switched_wave := NA, by =id]
+sipp_wave[                      , last2.switched_wave := shift(last.switched_wave), by=id]
+sipp_wave[ wave-2!=shift(wave,2), last2.switched_wave := NA, by =id]
+sipp_wave[                      , last3.switched_wave := shift(last.switched_wave,2), by=id]
+sipp_wave[ wave-3!=shift(wave,3), last3.switched_wave := NA, by =id]
+sipp_wave[                                  , next.switched_wave  := shift(switched_wave,type="lead"), by=id]
+sipp_wave[ wave+1!=shift(wave,type="lead")  , next.switched_wave  := NA, by =id]
+sipp_wave[                                  , next2.switched_wave := shift(next.switched_wave,type="lead"), by=id]
+sipp_wave[ wave+2!=shift(wave,2,type="lead"), next2.switched_wave := NA, by =id]
+
 sipp_wave[                      , last.matched_EUUE_max  := shift(matched_EUUE_max), by=id]
 sipp_wave[ wave-1!=shift(wave)  , last.matched_EUUE_max  := NA, by =id]
 sipp_wave[                      , last2.matched_EUUE_max := shift(last.matched_EUUE_max), by=id]
@@ -855,27 +865,33 @@ sipp_wave[ wave+2!=shift(wave,2,type="lead"), next2.matched_EUUE_max := NA, by =
 sipp_wave[ , EE_anan :=  EE_wave]
 sipp_wave[ , EU_anan :=  EU_wave]
 sipp_wave[ , UE_anan :=  UE_wave]
+sipp_wave[ , switched_anan := switched_wave]
 #now look back 1 periods for this 
 sipp_wave[ EE_anan == F, EE_anan := last.EE_wave]
 sipp_wave[ EU_anan == F, EU_anan := last.EU_wave]
 sipp_wave[ UE_anan == F, UE_anan := last.UE_wave]
+sipp_wave[ switched_anan==F, switched_anan := last.switched_wave]
 #now look forward 1 periods for this 
 sipp_wave[ EE_anan == F, EE_anan := next.EE_wave]
 sipp_wave[ EU_anan == F, EU_anan := next.EU_wave]
 sipp_wave[ UE_anan == F, UE_anan := next.UE_wave]
+sipp_wave[ switched_anan==F, switched_anan := next.switched_wave]
 #now look back 2 periods for this 
 sipp_wave[ EE_anan == F, EE_anan := last2.EE_wave]
 sipp_wave[ EU_anan == F, EU_anan := last2.EU_wave]
 sipp_wave[ UE_anan == F, UE_anan := last2.UE_wave]
+sipp_wave[ switched_anan==F, switched_anan := last2.switched_wave]
 #now look back 2 periods for this 
 sipp_wave[ EE_anan == F, EE_anan := next2.EE_wave]
 sipp_wave[ EU_anan == F, EU_anan := next2.EU_wave]
 sipp_wave[ UE_anan == F, UE_anan := next2.UE_wave]
-
+sipp_wave[ switched_anan==F, switched_anan := next2.switched_wave]
 #now look back 3 periods for this 
 sipp_wave[ EE_anan == F, EE_anan := last3.EE_wave]
 sipp_wave[ EU_anan == F, EU_anan := last3.EU_wave]
 sipp_wave[ UE_anan == F, UE_anan := last3.UE_wave]
+sipp_wave[ switched_anan==F, switched_anan := last3.switched_wave]
+
 #any UE or EU not matched?
 sipp_wave[ (EU_wave|UE_wave) & (EU_anan|UE_anan), matched_EUUE_anan := matched_EUUE_max]
 sipp_wave[ (last.EU_wave|last.UE_wave) & !(EU_wave|UE_wave) & (EU_anan|UE_anan), matched_EUUE_anan := last.matched_EUUE_max]
@@ -898,7 +914,7 @@ saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
 
 sipp_wave <- subset(sipp_wave, select=c("job_wave","occ_wave","occL","occD","ind_wave","next.stable_emp","last.stable_emp","next.lfstat_wave",
 										"jobchng_wave","EE_wave","EU_wave","UE_wave","matched_EUUE_wave","EEmon","UEmon","EUmon","ustintid_wave",
-										"last_anan.stable_emp","EE_anan","EU_anan","UE_anan","EE_wvan","EU_wvan","UE_wvan","matched_EUUE_anan",
+										"last_anan.stable_emp","EE_anan","EU_anan","UE_anan","EE_wvan","EU_wvan","UE_wvan","matched_EUUE_anan","switched_anan",
 										"recIndic_stint","recIndic2_stint","recIndic_EU","recIndic_UE","max.unempdur_wave","switched_wave","switchedOcc_wave","switchedInd_wave","wave","id"))
 
 sipp[ , c("EEmon","EUmon","UEmon","max.unempdur_wave","occ_wave","ind_wave"):=NULL]
