@@ -26,6 +26,9 @@ demotxt <- c("Young", "Prime","Old","HS","Col","Male","Female")
 bootse <- F #compute bootstrapped standard errors or no?
 seedint = 941987
 
+minEarn = 1040 
+minLEarn = log(2*minEarn)
+
 wtd.mad <- function(xt,wt,md=-Inf){
 	wt  <- wt[is.na(xt)==F]
 	xt  <- xt[is.na(xt)==F]
@@ -95,9 +98,9 @@ wtd.4qtlmoments <- function(xt,wt){
 toKeep_wave <- c("switchedOcc_wave","switched_wave","esr_max",
             "ageGrp","HSCol","next.stable_emp","last.stable_emp",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint",
-            "wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave","wagechange_wvan","wagechange_anan",
+            "wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave","wagechange_anan",
             "wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad","pctmaxmis",
-            "EE_wave","EU_wave","UE_wave","changer","changermo","stayer","midEU","midUE","midEE",
+            "EE_wave","EU_wave","UE_wave","changer","stayer","EE_anan","EU_anan","UE_anan","changer_anan","stayer_anan",
             "unrt","wpfinwgt","perwt","truncweight","cleaningtruncweight",
 			"lfstat_wave","next.lfstat_wave","wave","id","date","panel")
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
@@ -111,11 +114,20 @@ DTseam[ wave-2!=shift(wave,2), last2.stable_emp := NA, by =id]
 DTseam[ , last3.stable_emp := shift(last.stable_emp,2), by=id]
 DTseam[ wave-3!=shift(wave,3), last3.stable_emp := NA, by =id]
 
-DTseam[ !(last.stable_emp & last2.stable_emp & last3.stable_emp), stayer:=F]
+#DTseam[ !(last.stable_emp & last2.stable_emp & last3.stable_emp), stayer:=F]
 #DTseam[ !(last.stable_emp)& changer == T & (EU_wave==T|EE_wave==T), changer:=F]
 
+DTseam[ EU_anan& changer_anan & is.na(matched_EUUE_anan),changer_anan:= NA]
+DTseam[ UE_anan& changer_anan & is.na(matched_EUUE_anan),changer_anan:= NA]
+DTseam[ EU_anan& changer_anan & is.na(matched_EUUE_anan),EU_anan:= NA]
+DTseam[ UE_anan& changer_anan & is.na(matched_EUUE_anan),UE_anan:= NA]
 
-DTseam <- subset(DTseam, (stayer|changer))
+DTseam[ , nextann.wavewage := levwage + shift(levwage,type="lead") + shift(levwage,2,type="lead")  , by=id]
+DTseam[ wave+1!=shift(wave,type = "lead") | wave+2!=shift(wave,2,type = "lead") , nextann.wavewage := NA]
+DTseam[ , nextann.wavewage := log(nextann.wavewage + (1+nextann.wavewage^2)^.5) ]
+
+
+#DTseam <- subset(DTseam, (stayer|changer))
 DTseam[ , last.esr_max := shift(esr_max)]
 #DTseam <- subset(DTseam, pctmaxmis>.9)
 DTseam[ , panelmaxwave := max(wave), by=panel]
@@ -177,19 +189,19 @@ for( wc in c("wagechangeEUE_wave","rawwgchangeEUE_wave","wagechange_wave","rawwg
 	tabqtls <- c(.05,.10,.25,.5,.75,.90,.95)
 	tN <- (length(tabqtls)+1)
 	ann_wavedist <- array(0., dim=c(2,length(tabqtls)+1))
-	ann_wavedist[1,1]   <- DTseam[!(eval(as.name(recDef)) )#| shift(eval(as.name(recDef)),2,type="lead") | shift(eval(as.name(recDef)),1,type="lead") ) 
-								  &(last.stable_emp|last2.stable_emp|last3.stable_emp),    wtd.mean(wagechange_anan,na.rm=T,weights=truncweight)]
-	ann_wavedist[1,2:tN]<- DTseam[!(eval(as.name(recDef)) )#| shift(eval(as.name(recDef)),2,type="lead") | shift(eval(as.name(recDef)),1,type="lead") ) 
-								  &(last.stable_emp|last2.stable_emp|last3.stable_emp), wtd.quantile(wagechange_anan,na.rm=T,weights=truncweight, probs=tabqtls)]
-	ann_wavedist[2,1]   <- DTseam[ (eval(as.name(recDef))  )#& shift(eval(as.name(recDef)),2,type="lead") & shift(eval(as.name(recDef)),1,type="lead") )
-								  &(last.stable_emp|last2.stable_emp|last3.stable_emp),     wtd.mean(wagechange_anan,na.rm=T,weights=truncweight)]
-	ann_wavedist[2,2:tN]<- DTseam[ (eval(as.name(recDef))  )#& shift(eval(as.name(recDef)),2,type="lead") & shift(eval(as.name(recDef)),1,type="lead") )
-								   &(last.stable_emp|last2.stable_emp|last3.stable_emp), wtd.quantile(wagechange_anan,na.rm=T,weights=truncweight, probs=tabqtls)]
+	ann_wavedist[1,1]   <- DTseam[!(eval(as.name(recDef)) )
+								  &(stayer_anan|changer_anan)&nextann.wavewage>0&lastann.wavewage>=minLEarn,  wtd.mean(wagechange_anan,na.rm=T,weights=truncweight)]
+	ann_wavedist[1,2:tN]<- DTseam[!(eval(as.name(recDef)) )
+								  &(stayer_anan|changer_anan)&nextann.wavewage>0&lastann.wavewage>=minLEarn,  wtd.quantile(wagechange_anan,na.rm=T,weights=truncweight, probs=tabqtls)]
+	ann_wavedist[2,1]   <- DTseam[ (eval(as.name(recDef))  )
+								   &(stayer_anan|changer_anan)&nextann.wavewage>0&lastann.wavewage>=minLEarn, wtd.mean(wagechange_anan,na.rm=T,weights=truncweight)]
+	ann_wavedist[2,2:tN]<- DTseam[ (eval(as.name(recDef))  )
+								   &(stayer_anan|changer_anan)&nextann.wavewage>0&lastann.wavewage>=minLEarn, wtd.quantile(wagechange_anan,na.rm=T,weights=truncweight, probs=tabqtls)]
 	
-	nexp <- DTseam[!(eval(as.name(recDef)) )#| shift(eval(as.name(recDef)),2,type="lead") | shift(eval(as.name(recDef)),1,type="lead") )  
-				   &(last.stable_emp|last2.stable_emp|last3.stable_emp),    sum(is.finite(wagechange_anan)*truncweight)]
-	nrec <- DTseam[ (eval(as.name(recDef)) )#& shift(eval(as.name(recDef)),2,type="lead") & shift(eval(as.name(recDef)),1,type="lead") )
-					&(last.stable_emp|last2.stable_emp|last3.stable_emp),    sum(is.finite(wagechange_anan)*truncweight)]
+	nexp <- DTseam[!(eval(as.name(recDef)) )
+				   &(stayer_anan|changer_anan)&nextann.wavewage>0&lastann.wavewage>=minLEarn,    sum(is.finite(wagechange_anan)*truncweight)]
+	nrec <- DTseam[ (eval(as.name(recDef)) )
+				   &(stayer_anan|changer_anan)&nextann.wavewage>0&lastann.wavewage>=minLEarn,    sum(is.finite(wagechange_anan)*truncweight)]
 	nrec/(nexp+nrec)
 	plt_wavedist <- data.table(ann_wavedist)
 	names(plt_wavedist) <- c("Mean","P5","P10","P25","P50","P75","P90","P95")
@@ -201,7 +213,8 @@ for( wc in c("wagechangeEUE_wave","rawwgchangeEUE_wave","wagechange_wave","rawwg
 		scale_x_discrete(labels=c("Expansion","Recession"))+
 		scale_color_manual(values=c("blue","red")) 
 	nametab = "box_ann"
-	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10)
+	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,".eps"),height=5,width=10)
+	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,".png"),height=5,width=10)
 	
 	
 	#plot wage-change time series:
