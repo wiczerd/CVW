@@ -96,7 +96,7 @@ wtd.4qtlmoments <- function(xt,wt){
 
 #*********************************************************************
 
-toKeep_wave <- c("switchedOcc_wave","switched_wave","esr_max",
+toKeep_wave <- c("switchedOcc_wave","switched_wave","switched_anan","esr_max",
             "ageGrp","HSCol","next.stable_emp","last.stable_emp",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint","levwage",
             "wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave","wagechange_anan",
@@ -195,16 +195,27 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 		freq = "wave"	
 	}
 	
-	DTseam[ , c("ch","st"):=NULL]
+	DTseam[ , c("ch","st","sw"):=NULL]
+	DTseam[ , c("EUfrq","EEfrq","UEfrq"):=NULL]
+	
 	if(freq == "wave"){
 		DTseam[, ch := changer]
 		DTseam[, st := stayer]
+		DTseam[, sw := switched_wave]
+		DTseam[, EUfrq := EU_wave]
+		DTseam[, EEfrq := EE_wave]
+		DTseam[, UEfrq := UE_wave]
+		
 		EUlab = "EU_wave"
 		UElab = "UE_wave"
 		EElab = "EE_wave"
 	}else{
 		DTseam[,ch := changer_anan]
 		DTseam[,st := stayer_anan]
+		DTseam[,sw := switched_wave]
+		DTseam[, EUfrq := EU_anan]
+		DTseam[, EEfrq := EE_anan]
+		DTseam[, UEfrq := UE_anan]
 		EUlab = "EU_wave"
 		UElab = "UE_wave"
 		EElab = "EE_wave"
@@ -536,12 +547,12 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	totmean <- DTseam[(st|ch)&demo==T, wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt))) ]
 	totvar  <- DTseam[(st|ch)&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc))- totmean)^2,na.rm=T) ]
 	tab_wavevardec[1,1] <- DTseam[st == T                                            &demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
-	tab_wavevardec[1,2] <- DTseam[ch == T & eval(as.name(EElab)) ==T                 &demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
-	tab_wavevardec[1,3] <- DTseam[ch ==T &(eval(as.name(EUlab))|eval(as.name(UElab)))&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
+	tab_wavevardec[1,2] <- DTseam[ch == T & EEfrq ==T                 &demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
+	tab_wavevardec[1,3] <- DTseam[ch ==T &(EUfrq|UEfrq)&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
 	totwt <- DTseam[(st|ch)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]
 	tab_wavevardec[2,1] <- DTseam[st == T                                            &demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
-	tab_wavevardec[2,2] <- DTseam[ch ==T & eval(as.name(EElab))                      &demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
-	tab_wavevardec[2,3] <- DTseam[ch ==T &(eval(as.name(EUlab))|eval(as.name(UElab)))&demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+	tab_wavevardec[2,2] <- DTseam[ch ==T & EEfrq                      &demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+	tab_wavevardec[2,3] <- DTseam[ch ==T &(EUfrq|UEfrq)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
 	
 	
 	# Full sample quantile-diff decomposition --------------------------
@@ -556,12 +567,12 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	
 	for(rri in seq(1,Ndifs)){
 	  tab_waveqtldec[rri,1] <- DTseam[st ==T                                             &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
-	  tab_waveqtldec[rri,2] <- DTseam[eval(as.name(EElab))==T & ch==T                    &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
-	  tab_waveqtldec[rri,3] <- DTseam[(eval(as.name(EUlab))|eval(as.name(UElab)))& ch==T &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+	  tab_waveqtldec[rri,2] <- DTseam[EEfrq==T & ch==T                    &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+	  tab_waveqtldec[rri,3] <- DTseam[(EUfrq|UEfrq)& ch==T &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
 	}
 	tab_waveqtldec[Ndifs+1,1] <- DTseam[st == T                                             &demo==T, sum(eval(as.name(wt)),na.rm=T) ]
-	tab_waveqtldec[Ndifs+1,2] <- DTseam[eval(as.name(EElab)) & ch==T                        &demo==T, sum(eval(as.name(wt)),na.rm=T) ]
-	tab_waveqtldec[Ndifs+1,3] <- DTseam[(eval(as.name(EUlab))|eval(as.name(UElab)))& ch==T  &demo==T, sum(eval(as.name(wt)),na.rm=T) ]
+	tab_waveqtldec[Ndifs+1,2] <- DTseam[EEfrq & ch==T                        &demo==T, sum(eval(as.name(wt)),na.rm=T) ]
+	tab_waveqtldec[Ndifs+1,3] <- DTseam[(EUfrq|UEfrq)& ch==T  &demo==T, sum(eval(as.name(wt)),na.rm=T) ]
 	
 	
 	rsum <- rowSums(tab_waveqtldec, na.rm=T)
@@ -571,10 +582,10 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	
 	#output it to tables
 	tab_chngvarqtldec <- data.table(rbind(tab_wavevardec[1,],tab_waveqtldec[1:Ndifs,],tab_wavevardec[2,]) )
-	if(wc=="wagechange_wave"|wc=="rawwgchange_wave"){
-		names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EU,UE")	
-	}else{
+	if(wc=="wagechangeEUE_wave"|wc=="rawwgchangeEUE_wave"){
 		names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EUE")	
+	}else{
+		names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EU,UE")	
 	}
 	
 	
@@ -596,13 +607,13 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	for (rI in c(F,T)){
 	  totmean <- DTseam[recIndic_wave==rI, wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) ) ]
 	  totvar  <- DTseam[recIndic_wave==rI, sum(eval(as.name(wt))*(eval(as.name(wc))- totmean)^2,na.rm=T) ]
-	  tab_wavevardec[1,1] <- DTseam[(EE_wave==F&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
-	  tab_wavevardec[1,2] <- DTseam[(EE_wave==T&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
-	  tab_wavevardec[1,3] <- DTseam[(EE_wave==F&(EU_wave==T|UE_wave==T))&recIndic_wave==rI, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
+	  tab_wavevardec[1,1] <- DTseam[(EEfrq==F&EUfrq==F &UEfrq==F) & recIndic_wave==rI, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
+	  tab_wavevardec[1,2] <- DTseam[(EEfrq==T&EUfrq==F &UEfrq==F) & recIndic_wave==rI, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
+	  tab_wavevardec[1,3] <- DTseam[(EEfrq==F&(EUfrq==T|UEfrq==T))& recIndic_wave==rI, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
 	  totwt <- DTseam[recIndic_wave==rI, sum(eval(as.name(wt)),na.rm=T) ]
-	  tab_wavevardec[2,1] <- DTseam[(EE_wave==F&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(eval(as.name(wt)),na.rm=T) ]/totwt
-	  tab_wavevardec[2,2] <- DTseam[(EE_wave==T&EU_wave==F&UE_wave==F) & recIndic_wave==rI, sum(eval(as.name(wt)),na.rm=T) ]/totwt
-	  tab_wavevardec[2,3] <- DTseam[(EE_wave==F&(EU_wave==T|UE_wave==T))&recIndic_wave==rI, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+	  tab_wavevardec[2,1] <- DTseam[(EEfrq==F&EUfrq==F &UEfrq==F) & recIndic_wave==rI, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+	  tab_wavevardec[2,2] <- DTseam[(EEfrq==T&EUfrq==F &UEfrq==F) & recIndic_wave==rI, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+	  tab_wavevardec[2,3] <- DTseam[(EEfrq==F&(EUfrq==T|UEfrq==T))& recIndic_wave==rI, sum(eval(as.name(wt)),na.rm=T) ]/totwt
 	
 	  # Seam sample quantile-diff decomposition --------------------------
 	  tot51025qtl <- DTseam[ recIndic_wave==rI, wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=c(0.05,0.1,.25,.75,.9,.95)) ]
@@ -614,13 +625,13 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	  
 	  qtlshere <- tot51025qtl
 	  for(rri in seq(1,Ndifs)){
-	    tab_waveqtldec[rri,1] <- DTseam[recIndic_wave==rI & (EE_wave==F&EU_wave==F&UE_wave==F)   &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
-	    tab_waveqtldec[rri,2] <- DTseam[recIndic_wave==rI & (EE_wave==T&EU_wave==F&UE_wave==F)   &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
-	    tab_waveqtldec[rri,3] <- DTseam[recIndic_wave==rI & (EE_wave==F&(EU_wave==T|UE_wave==T)) &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+	    tab_waveqtldec[rri,1] <- DTseam[recIndic_wave==rI & (EEfrq==F&EUfrq==F &UEfrq==F)  &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+	    tab_waveqtldec[rri,2] <- DTseam[recIndic_wave==rI & (EEfrq==T&EUfrq==F &UEfrq==F)  &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+	    tab_waveqtldec[rri,3] <- DTseam[recIndic_wave==rI & (EEfrq==F&(EUfrq==T|UEfrq==T)) &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
 	  }
-	  tab_waveqtldec[Ndifs+1,1] <- DTseam[recIndic_wave==rI &  (stayer==T)                        &demo==T, sum(eval(as.name(wt)),na.rm=T) ]
-	  tab_waveqtldec[Ndifs+1,2] <- DTseam[recIndic_wave==rI &  (EE_wave==T&changer==T)            &demo==T, sum(eval(as.name(wt)),na.rm=T) ]
-	  tab_waveqtldec[Ndifs+1,3] <- DTseam[recIndic_wave==rI & ((EU_wave==T|UE_wave==T)&changer==T)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]
+	  tab_waveqtldec[Ndifs+1,1] <- DTseam[recIndic_wave==rI &  (st==T)                                        &demo==T, sum(eval(as.name(wt)),na.rm=T) ]
+	  tab_waveqtldec[Ndifs+1,2] <- DTseam[recIndic_wave==rI &  (EEfrq&ch)                      &demo==T, sum(eval(as.name(wt)),na.rm=T) ]
+	  tab_waveqtldec[Ndifs+1,3] <- DTseam[recIndic_wave==rI & ((EUfrq|UEfrq)&ch)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]
 	
 	  
 	  rsum <- rowSums(tab_waveqtldec, na.rm=T)
@@ -678,26 +689,26 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 		}
 		tab_wavechngdist[1,1]    <- DThr[ch  ==T&demo==T ,                    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 		tab_wavechngdist[1,2:tN] <- DThr[ch  ==T&demo==T ,                wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-		tab_wavechngdist[2,1]    <- DThr[ch  ==T&demo==T & switched_wave==F,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavechngdist[2,2:tN] <- DThr[ch  ==T&demo==T & switched_wave==F,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-		tab_wavechngdist[3,1]    <- DThr[ch  ==T&demo==T & switched_wave==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavechngdist[3,2:tN] <- DThr[ch  ==T&demo==T & switched_wave==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_wavechngdist[2,1]    <- DThr[ch  ==T&demo==T & sw==F,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavechngdist[2,2:tN] <- DThr[ch  ==T&demo==T & sw==F,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_wavechngdist[3,1]    <- DThr[ch  ==T&demo==T & sw==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavechngdist[3,2:tN] <- DThr[ch  ==T&demo==T & sw==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 		for(EUhere in c(F,T)){ #loop over EE or EU,UE
 			EEhere = (EUhere==F)
 			eidx = as.integer(EUhere)*3
-			tab_wavechngdist[4+eidx,1]    <- DThr[ch  ==T&demo==T & (EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere)),                      wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavechngdist[4+eidx,2:tN] <- DThr[ch  ==T&demo==T & (EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere)),                  wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-			tab_wavechngdist[5+eidx,1]    <- DThr[ch  ==T&demo==T & (EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere))& switched_wave==F,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavechngdist[5+eidx,2:tN] <- DThr[ch  ==T&demo==T & (EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere))& switched_wave==F,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-			tab_wavechngdist[6+eidx,1]    <- DThr[ch  ==T&demo==T & (EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere))& switched_wave==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavechngdist[6+eidx,2:tN] <- DThr[changer  ==T&demo==T & (EE_wave==EEhere&(EU_wave==EUhere|UE_wave==EUhere))& switched_wave==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+			tab_wavechngdist[4+eidx,1]    <- DThr[ch  ==T&demo==T & (EEfrq==EEhere&(EUfrq==EUhere|UEfrq==EUhere)),                      wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavechngdist[4+eidx,2:tN] <- DThr[ch  ==T&demo==T & (EEfrq==EEhere&(EUfrq==EUhere|UEfrq==EUhere)),                  wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+			tab_wavechngdist[5+eidx,1]    <- DThr[ch  ==T&demo==T & (EEfrq==EEhere&(EUfrq==EUhere|UEfrq==EUhere))& sw==F,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavechngdist[5+eidx,2:tN] <- DThr[ch  ==T&demo==T & (EEfrq==EEhere&(EUfrq==EUhere|UEfrq==EUhere))& sw==F,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+			tab_wavechngdist[6+eidx,1]    <- DThr[ch  ==T&demo==T & (EEfrq==EEhere&(EUfrq==EUhere|UEfrq==EUhere))& sw==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavechngdist[6+eidx,2:tN] <- DThr[ch  ==T&demo==T & (EEfrq==EEhere&(EUfrq==EUhere|UEfrq==EUhere))& sw==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 		}
-		tab_wavestaydist[1,1]    <- DThr[stayer==T&demo==T ,                        wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavestaydist[1,2:tN] <- DThr[stayer==T&demo==T ,                    wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-		tab_wavestaydist[2,1]    <- DThr[stayer==T&demo==T & switchedOcc_wave==F,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavestaydist[2,2:tN] <- DThr[stayer==T&demo==T & switchedOcc_wave==F,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-		tab_wavestaydist[3,1]    <- DThr[stayer==T&demo==T & switchedOcc_wave==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavestaydist[3,2:tN] <- DThr[stayer==T&demo==T & switchedOcc_wave==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_wavestaydist[1,1]    <- DThr[st==T&demo==T ,                        wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavestaydist[1,2:tN] <- DThr[st==T&demo==T ,                    wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+		tab_wavestaydist[2,1]    <- DThr[st==T&demo==T & sw==F,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavestaydist[2,2:tN] <- DThr[st==T&demo==T & sw==F,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_wavestaydist[3,1]    <- DThr[st==T&demo==T & sw==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavestaydist[3,2:tN] <- DThr[st==T&demo==T & sw==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 		
 		if(si>1){
 			se_wavechngdist[,,si-1] = tab_wavechngdist
@@ -819,29 +830,29 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 				DThr[demo==T, trX_indic := T]
 			}else if(AllEEEU==2){
 				DThr[ , trX_indic := NULL]
-				DThr[                     , trX_indic := F]
-				DThr[ EE_wave==T & demo==T, trX_indic := T]
+				DThr[                   , trX_indic := F]
+				DThr[ EEfrq==T & demo==T, trX_indic := T]
 			}else if(AllEEEU==3){
 				DThr[ , trX_indic := NULL]
-				DThr[                                , trX_indic := F]
-				DThr[ (EU_wave==T|UE_wave==T)&demo==T, trX_indic := T]
+				DThr[                            , trX_indic := F]
+				DThr[ (EUfrq==T|UEfrq==T)&demo==T, trX_indic := T]
 			}
 			eidx = 9*(AllEEEU-1)
 	
-			tab_wavechngdist_rec[1+eidx,1   ] <- DThr[changer  ==T &trX_indic==T                      ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavechngdist_rec[1+eidx,2:tN] <- DThr[changer  ==T &trX_indic==T                      ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-			tab_wavechngdist_rec[2+eidx,1   ] <- DThr[changer  ==T &trX_indic==T &switched_wave==F ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavechngdist_rec[2+eidx,2:tN] <- DThr[changer  ==T &trX_indic==T &switched_wave==F ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-			tab_wavechngdist_rec[3+eidx,1   ] <- DThr[changer  ==T &trX_indic==T &switched_wave==T ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavechngdist_rec[3+eidx,2:tN] <- DThr[changer  ==T &trX_indic==T &switched_wave==T ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+			tab_wavechngdist_rec[1+eidx,1   ] <- DThr[ch ==T &trX_indic==T        ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavechngdist_rec[1+eidx,2:tN] <- DThr[ch ==T &trX_indic==T        ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+			tab_wavechngdist_rec[2+eidx,1   ] <- DThr[ch ==T &trX_indic==T &sw==F ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavechngdist_rec[2+eidx,2:tN] <- DThr[ch ==T &trX_indic==T &sw==F ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+			tab_wavechngdist_rec[3+eidx,1   ] <- DThr[ch ==T &trX_indic==T &sw==T ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavechngdist_rec[3+eidx,2:tN] <- DThr[ch ==T &trX_indic==T &sw==T ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 			for(rI in c(F,T)){
 				ridx = as.integer(rI)*3+3
-				tab_wavechngdist_rec[1+ridx+eidx,1   ] <- DThr[changer  ==T &trX_indic==T                      &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-				tab_wavechngdist_rec[1+ridx+eidx,2:tN] <- DThr[changer  ==T &trX_indic==T                      &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-				tab_wavechngdist_rec[2+ridx+eidx,1   ] <- DThr[changer  ==T &trX_indic==T &switched_wave==F &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-				tab_wavechngdist_rec[2+ridx+eidx,2:tN] <- DThr[changer  ==T &trX_indic==T &switched_wave==F &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-				tab_wavechngdist_rec[3+ridx+eidx,1   ] <- DThr[changer  ==T &trX_indic==T &switched_wave==T &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-				tab_wavechngdist_rec[3+ridx+eidx,2:tN] <- DThr[changer  ==T &trX_indic==T &switched_wave==T &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+				tab_wavechngdist_rec[1+ridx+eidx,1   ] <- DThr[ch ==T &trX_indic==T        &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+				tab_wavechngdist_rec[1+ridx+eidx,2:tN] <- DThr[ch ==T &trX_indic==T        &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+				tab_wavechngdist_rec[2+ridx+eidx,1   ] <- DThr[ch ==T &trX_indic==T &sw==F &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+				tab_wavechngdist_rec[2+ridx+eidx,2:tN] <- DThr[ch ==T &trX_indic==T &sw==F &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+				tab_wavechngdist_rec[3+ridx+eidx,1   ] <- DThr[ch ==T &trX_indic==T &sw==T &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+				tab_wavechngdist_rec[3+ridx+eidx,2:tN] <- DThr[ch ==T &trX_indic==T &sw==T &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 				if(AllEEEU >1& si==1 ){
 					plt_wavechngdist_rec[1+2*as.integer(rI)+(AllEEEU-2)*4,1   ] <- tab_wavechngdist_rec[2+ridx+eidx,1   ] 
 					plt_wavechngdist_rec[1+2*as.integer(rI)+(AllEEEU-2)*4,2:tN] <- tab_wavechngdist_rec[2+ridx+eidx,2:tN] 
@@ -850,39 +861,39 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 				}
 			}
 			#wage moments:
-			tab_wavechngmoments_rec[1+eidx,1]    <- DThr[changer==T &trX_indic==T &!is.na(switchedOcc_wave),       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
-			tab_wavechngmoments_rec[1+eidx,2:5]  <- DThr[changer==T &trX_indic==T &!is.na(switchedOcc_wave),wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
-			tab_wavechngmoments_rec[2+eidx,1]    <- DThr[changer==T &trX_indic==T &switchedOcc_wave==F ,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavechngmoments_rec[2+eidx,2:5]  <- DThr[changer==T &trX_indic==T &switchedOcc_wave==F ,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
-			tab_wavechngmoments_rec[3+eidx,1]    <- DThr[changer==T &trX_indic==T &switchedOcc_wave==T ,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavechngmoments_rec[3+eidx,2:5]  <- DThr[changer==T &trX_indic==T &switchedOcc_wave==T ,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
+			tab_wavechngmoments_rec[1+eidx,1]    <- DThr[ch==T &trX_indic==T &!is.na(sw),       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
+			tab_wavechngmoments_rec[1+eidx,2:5]  <- DThr[ch==T &trX_indic==T &!is.na(sw),wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
+			tab_wavechngmoments_rec[2+eidx,1]    <- DThr[ch==T &trX_indic==T &sw==F     ,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavechngmoments_rec[2+eidx,2:5]  <- DThr[ch==T &trX_indic==T &sw==F     ,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
+			tab_wavechngmoments_rec[3+eidx,1]    <- DThr[ch==T &trX_indic==T &sw==T     ,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavechngmoments_rec[3+eidx,2:5]  <- DThr[ch==T &trX_indic==T &sw==T     ,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
 		
 			#expansion/recession
 			for(rI in c(F,T)){
 				ridx = rI*3+3
-				tab_wavechngmoments_rec[1+eidx+ridx,1]    <- DThr[changer==T &trX_indic==T &!is.na(switchedOcc_wave) &eval(as.name(recDef))  == rI,        wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
-				tab_wavechngmoments_rec[1+eidx+ridx,2:5]  <- DThr[changer==T &trX_indic==T &!is.na(switchedOcc_wave) &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
-				tab_wavechngmoments_rec[2+eidx+ridx,1]    <- DThr[changer==T &trX_indic==T &switchedOcc_wave==F &eval(as.name(recDef))  == rI,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-				tab_wavechngmoments_rec[2+eidx+ridx,2:5]  <- DThr[changer==T &trX_indic==T &switchedOcc_wave==F &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
-				tab_wavechngmoments_rec[3+eidx+ridx,1]    <- DThr[changer==T &trX_indic==T &switchedOcc_wave==T &eval(as.name(recDef))  == rI,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-				tab_wavechngmoments_rec[3+eidx+ridx,2:5]  <- DThr[changer==T &trX_indic==T &switchedOcc_wave==T &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
+				tab_wavechngmoments_rec[1+eidx+ridx,1]    <- DThr[ch==T &trX_indic==T &!is.na(sw) &eval(as.name(recDef))  == rI,        wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)) )]
+				tab_wavechngmoments_rec[1+eidx+ridx,2:5]  <- DThr[ch==T &trX_indic==T &!is.na(sw) &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
+				tab_wavechngmoments_rec[2+eidx+ridx,1]    <- DThr[ch==T &trX_indic==T &sw==F      &eval(as.name(recDef))  == rI,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+				tab_wavechngmoments_rec[2+eidx+ridx,2:5]  <- DThr[ch==T &trX_indic==T &sw==F      &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
+				tab_wavechngmoments_rec[3+eidx+ridx,1]    <- DThr[ch==T &trX_indic==T &sw==T      &eval(as.name(recDef))  == rI,       wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+				tab_wavechngmoments_rec[3+eidx+ridx,2:5]  <- DThr[ch==T &trX_indic==T &sw==T      &eval(as.name(recDef))  == rI,wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
 			}
 		} #All, EE,EU
 		# split stayers
-		tab_wavestaydist_rec[1,1   ] <- DThr[stayer==T &demo==T                      ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavestaydist_rec[1,2:tN] <- DThr[stayer==T &demo==T                      ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-		tab_wavestaydist_rec[2,1   ] <- DThr[stayer==T &demo==T &switchedOcc_wave==F ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavestaydist_rec[2,2:tN] <- DThr[stayer==T &demo==T &switchedOcc_wave==F ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-		tab_wavestaydist_rec[3,1   ] <- DThr[stayer==T &demo==T &switchedOcc_wave==T ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavestaydist_rec[3,2:tN] <- DThr[stayer==T &demo==T &switchedOcc_wave==T ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_wavestaydist_rec[1,1   ] <- DThr[st==T &demo==T        ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavestaydist_rec[1,2:tN] <- DThr[st==T &demo==T        ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+		tab_wavestaydist_rec[2,1   ] <- DThr[st==T &demo==T &sw==F ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavestaydist_rec[2,2:tN] <- DThr[st==T &demo==T &sw==F ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_wavestaydist_rec[3,1   ] <- DThr[st==T &demo==T &sw==T ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavestaydist_rec[3,2:tN] <- DThr[st==T &demo==T &sw==T ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 		for(rI in c(F,T)){
 			ridx = as.integer(rI)*3+3
-			tab_wavestaydist_rec[1+ridx,1   ] <- DThr[stayer==T &demo==T                      &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavestaydist_rec[1+ridx,2:tN] <- DThr[stayer==T &demo==T                      &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-			tab_wavestaydist_rec[2+ridx,1   ] <- DThr[stayer==T &demo==T &switchedOcc_wave==F &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavestaydist_rec[2+ridx,2:tN] <- DThr[stayer==T &demo==T &switchedOcc_wave==F &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-			tab_wavestaydist_rec[3+ridx,1   ] <- DThr[stayer==T &demo==T &switchedOcc_wave==T &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavestaydist_rec[3+ridx,2:tN] <- DThr[stayer==T &demo==T &switchedOcc_wave==T &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+			tab_wavestaydist_rec[1+ridx,1   ] <- DThr[st==T &demo==T        &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavestaydist_rec[1+ridx,2:tN] <- DThr[st==T &demo==T        &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+			tab_wavestaydist_rec[2+ridx,1   ] <- DThr[st==T &demo==T &sw==F &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavestaydist_rec[2+ridx,2:tN] <- DThr[st==T &demo==T &sw==F &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+			tab_wavestaydist_rec[3+ridx,1   ] <- DThr[st==T &demo==T &sw==T &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavestaydist_rec[3+ridx,2:tN] <- DThr[st==T &demo==T &sw==T &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 			plt_wavestaydist_rec[1+as.integer(rI)*2,1]    <- tab_wavestaydist_rec[2+ridx,1   ]
 			plt_wavestaydist_rec[1+as.integer(rI)*2,2:tN] <- tab_wavestaydist_rec[2+ridx,2:tN]
 			plt_wavestaydist_rec[2+as.integer(rI)*2,1]    <- tab_wavestaydist_rec[3+ridx,1   ]

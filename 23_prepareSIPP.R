@@ -667,9 +667,9 @@ if(max_wavefreq==2){
 	sipp_wave[ EU_wave==T , switchedInd_wave := switchedInd_max]
 	sipp_wave[ EU_wave==T , switched_wave    := switched_max]
 }
-sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T), switchedOcc_wave := occ_wave != next.occ_wave]
-sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T), switchedInd_wave := ind_wave != next.ind_wave]
-sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T), switched_wave    := switchedInd_wave & switchedOcc_wave]
+sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T) & next.stable_emp, switchedOcc_wave := occ_wave != next.occ_wave]
+sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T) & next.stable_emp, switchedInd_wave := ind_wave != next.ind_wave]
+sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T) & next.stable_emp, switched_wave    := switchedOcc_wave]
 
 #sipp_wave[ switched_wave ==F & (switchedOcc_wave ==T | switchedInd_wave==T), switched_wave:=NA]
 
@@ -908,6 +908,7 @@ sipp_wave[ , UE_wvan :=  UE_wave]
 sipp_wave[ EE_wvan == F, EE_wvan := last.EE_wave]
 sipp_wave[ EU_wvan == F, EU_wvan := last.EU_wave]
 sipp_wave[ UE_wvan == F, UE_wvan := last.UE_wave]
+
 
 #save intermediate result:
 saveRDS(sipp_wave, file=paste0(outputdir,"/sipp_wave.RData"))
