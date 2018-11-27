@@ -180,6 +180,8 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 		wclab = "rawwgEUE"
 	}else if( wc == "rawwgchange_wave"){
 		wclab = "rawwg"
+	}else if( wc == "wagechange_anan" ){
+		wclab = "reswgANAN"
 	}
 	
 	if(recDef == "recIndic_wave"){
@@ -205,20 +207,13 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 		DTseam[, EUfrq := EU_wave]
 		DTseam[, EEfrq := EE_wave]
 		DTseam[, UEfrq := UE_wave]
-		
-		EUlab = "EU_wave"
-		UElab = "UE_wave"
-		EElab = "EE_wave"
 	}else{
-		DTseam[,ch := changer_anan]
-		DTseam[,st := stayer_anan]
-		DTseam[,sw := switched_wave]
-		DTseam[, EUfrq := EU_anan]
-		DTseam[, EEfrq := EE_anan]
-		DTseam[, UEfrq := UE_anan]
-		EUlab = "EU_wave"
-		UElab = "UE_wave"
-		EElab = "EE_wave"
+		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),ch := changer_anan]
+		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),st := stayer_anan]
+		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),sw := switched_anan]
+		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EUfrq := EU_anan]
+		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EEfrq := EE_anan]
+		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), UEfrq := UE_anan]
 	}
 	
 		
