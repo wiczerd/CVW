@@ -204,10 +204,10 @@ names(pct_w_tm1) <- c("pct","mn_w_chng","P10_w_chng","P50_w_chng","P90_w_chng")
 pct_w_tm1 <- melt(pct_w_tm1,id.vars="pct")
 ggplot(pct_w_tm1, aes( x=pct,y=value, color=variable ))+theme_bw()+geom_smooth(span=.1,se=F)+
 	scale_color_manual(labels=c("Mean Wage Change","10pct Wage Change","50pct Wage Change","90pct Wage Change"),
-					   values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]))+ggtitle("Only 6-wave stable")+
+					   values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]))+ #ggtitle("Only 6-wave stable")+
 	theme(legend.title = element_blank(),
 		  legend.position = c(0.8,0.8),
-		  legend.background = element_rect(linetype = "solid",color = "white"))+xlim(c(2,98))+ylim(c(-.6,2.1))
+		  legend.background = element_rect(linetype = "solid",color = "white"))+xlim(c(2,98))+ylim(c(-.7,2.1))
 ggsave(paste0(outdir,"/pctwtm1_wc_stable.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/pctwtm1_wc_stable.png"),height=5,width=10)
 
@@ -228,7 +228,7 @@ ggplot(pct_w_tm1, aes( x=pct,y=value, color=variable ))+theme_bw()+geom_smooth(s
 					   values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]))+#ggtitle("With earnings high enough")+
 theme(legend.title = element_blank(),
 	  legend.position = c(0.8,0.8),
-	  legend.background = element_rect(linetype = "solid",color = "white")) + xlim(c(2,98))
+	  legend.background = element_rect(linetype = "solid",color = "white")) + xlim(c(2,98))+ylim(c(-.7,2.1))
 ggsave(paste0(outdir,"/pctwtm1_wc_earntr.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/pctwtm1_wc_earntr.png"),height=5,width=10)
 
