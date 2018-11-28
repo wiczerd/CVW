@@ -211,9 +211,9 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),ch := changer_anan]
 		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),st := stayer_anan]
 		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),sw := switched_anan]
-		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EUfrq := EU_anan]
-		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EEfrq := EE_anan]
-		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), UEfrq := UE_anan]
+		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EUfrq := EU_wave]
+		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EEfrq := EE_wave]
+		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), UEfrq := UE_wave]
 	}
 	
 		
@@ -247,27 +247,6 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	nametab = "box_ann"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,".eps"),height=5,width=10)
 	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,".png"),height=5,width=10)
-	
-	
-	#plot wage-change time series:
-	# wc_wave <- DTseam[ recIndic_wave==T& stayer==T, .(wc_wave = weighted.mean(wagechange_wave, wpfinwgt, na.rm = TRUE)), by = date]
-	# ggplot(wc_wave, aes(date, wc_wave)) +
-	# 	geom_point() +
-	# 	geom_line() +xlab("") + ylab("mean wage change, stayers wave-frequency")
-	
-	# wc_wave <- DTseam[ stayer==T, .(wc_wave = wtd.mad(rawwgchange_wave, wpfinwgt)), by = list(date,panel)]
-	# ggplot(wc_wave, aes(date, wc_wave,color=panel,group=panel)) +
-	# 	geom_point() + geom_line() +
-	# 	ggtitle("Wage Growth Disperison, stayers w/ cleaning")+xlab("") + ylab("median abs dev(wage change), stayers wave-frequency")
-	# # #ggsave("mad_wagegrowth_clean.png",height=5,width=10)
-	# # #ggsave("mad_wagegrowth_clean.eps",height=5,width=10)
-	# # 
-	# wc_wave <- DTseam[ EE_wave==F & lfstat_wave==1 & next.lfstat_wave==1, .(wc_wave = wtd.mad(rawwgchange_wave, wpfinwgt)), by = list(date,panel)]
-	# ggplot(wc_wave, aes(date, wc_wave,color=panel,group=panel)) +
-	# 	geom_point() + ggtitle("Wage Growth Disperison, stayers no cleaning")+ ylim(c(0,.2))+
-	# 	geom_line() +xlab("") + ylab("median abs dev(wage change), stayers wave-frequency")
-	# #ggsave("mad_wagegrowth_noclean.png",height=5,width=10)
-	# #ggsave("mad_wagegrowth_noclean.eps",height=5,width=10)
 	
 	
 	# wage quantiles ---------------------------------------------------------------
@@ -538,16 +517,27 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	#Variance decomp -----------------------------------------------
 	
 	tab_wavevardec <- array(NA_real_,dim=c(2,3))
+	tab_stswvardec <- array(NA_real_,dim=c(2,3))
+	
 	
 	totmean <- DTseam[(st|ch)&demo==T, wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt))) ]
 	totvar  <- DTseam[(st|ch)&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc))- totmean)^2,na.rm=T) ]
-	tab_wavevardec[1,1] <- DTseam[st == T                                            &demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
-	tab_wavevardec[1,2] <- DTseam[ch == T & EEfrq ==T                 &demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
+	tab_wavevardec[1,1] <- DTseam[st == T              &demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
+	tab_wavevardec[1,2] <- DTseam[ch == T & EEfrq ==T  &demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
 	tab_wavevardec[1,3] <- DTseam[ch ==T &(EUfrq|UEfrq)&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
 	totwt <- DTseam[(st|ch)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]
-	tab_wavevardec[2,1] <- DTseam[st == T                                            &demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
-	tab_wavevardec[2,2] <- DTseam[ch ==T & EEfrq                      &demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+	tab_wavevardec[2,1] <- DTseam[st ==T               &demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+	tab_wavevardec[2,2] <- DTseam[ch ==T & EEfrq       &demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
 	tab_wavevardec[2,3] <- DTseam[ch ==T &(EUfrq|UEfrq)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+	for(swi in c(T,F)){
+		tab_stswvardec[1,1] <- DTseam[st == T              &sw==swi&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
+		tab_stswvardec[1,2] <- DTseam[ch == T & EEfrq ==T  &sw==swi&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
+		tab_stswvardec[1,3] <- DTseam[ch ==T &(EUfrq|UEfrq)&sw==swi&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
+		#totwt <- DTseam[(st|ch)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]
+		tab_stswvardec[2,1] <- DTseam[st ==T               &sw==swi&demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+		tab_stswvardec[2,2] <- DTseam[ch ==T & EEfrq       &sw==swi&demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+		tab_stswvardec[2,3] <- DTseam[ch ==T &(EUfrq|UEfrq)&sw==swi&demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+	}
 	
 	
 	# Full sample quantile-diff decomposition --------------------------
@@ -557,26 +547,45 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	Ndifs <- Nqtls/2
 	
 	tab_waveqtldec <- array(NA_real_,dim=c(Ndifs+1,3))
+	tab_stswqtldec <- array(NA_real_,dim=c((Ndifs+1)*2,3))
 	
 	qtlshere <- tot51025qtl
 	
 	for(rri in seq(1,Ndifs)){
-	  tab_waveqtldec[rri,1] <- DTseam[st ==T                                             &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
-	  tab_waveqtldec[rri,2] <- DTseam[EEfrq==T & ch==T                    &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+	  tab_waveqtldec[rri,1] <- DTseam[st ==T               &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+	  tab_waveqtldec[rri,2] <- DTseam[EEfrq==T & ch==T     &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
 	  tab_waveqtldec[rri,3] <- DTseam[(EUfrq|UEfrq)& ch==T &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
-	}
-	tab_waveqtldec[Ndifs+1,1] <- DTseam[st == T                                             &demo==T, sum(eval(as.name(wt)),na.rm=T) ]
-	tab_waveqtldec[Ndifs+1,2] <- DTseam[EEfrq & ch==T                        &demo==T, sum(eval(as.name(wt)),na.rm=T) ]
+	  for( swi in c(T,F)){
+		  tab_stswqtldec[(rri-1*2)+swi+1,1] <- DTseam[st ==T              & sw==swi &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+		  tab_stswqtldec[(rri-1*2)+swi+1,2] <- DTseam[EEfrq==T & ch==T    & sw==swi &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+		  tab_stswqtldec[(rri-1*2)+swi+1,3] <- DTseam[(EUfrq|UEfrq)& ch==T& sw==swi &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+	  }
+	 }
+	tab_waveqtldec[Ndifs+1,1] <- DTseam[st == T               &demo==T, sum(eval(as.name(wt)),na.rm=T) ]
+	tab_waveqtldec[Ndifs+1,2] <- DTseam[EEfrq & ch==T         &demo==T, sum(eval(as.name(wt)),na.rm=T) ]
 	tab_waveqtldec[Ndifs+1,3] <- DTseam[(EUfrq|UEfrq)& ch==T  &demo==T, sum(eval(as.name(wt)),na.rm=T) ]
+	for( swi in c(T,F)){
+		tab_stswqtldec[(Ndifs*2)+swi+1,1] <- DTseam[st ==T              & sw==swi &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+		tab_stswqtldec[(rri-1*2)+swi+1,2] <- DTseam[EEfrq==T & ch==T    & sw==swi &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+		tab_stswqtldec[(rri-1*2)+swi+1,3] <- DTseam[(EUfrq|UEfrq)& ch==T& sw==swi &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)) ,na.rm=T)]
+	}
 	
 	
 	rsum <- rowSums(tab_waveqtldec, na.rm=T)
 	for(ri in seq(1,nrow(tab_waveqtldec))){
 		tab_waveqtldec[ri,] <-tab_waveqtldec[ri,]/rsum[ri]
 	}
+	rsum <- rowSums(tab_stswqtldec, na.rm=T)
+	for(ri in seq(1,nrow(tab_stswqtldec))){
+		tab_waveqtldec[ri,] <-tab_stswqtldec[ri,]/rsum[ri]
+	}
 	
 	#output it to tables
-	tab_chngvarqtldec <- data.table(rbind(tab_wavevardec[1,],tab_waveqtldec[1:Ndifs,],tab_wavevardec[2,]) )
+	tab_chngvarqtldec <- rbind(tab_wavevardec[1,],tab_waveqtldec[1:Ndifs,],tab_wavevardec[2,]) 
+	for(ri in seq(1,nrow(tab_chngvarqtldec))){
+		tab_chngvarqtldec[ri,2:3] <- tab_chngvarqtldec[ri,2:3]*(1-tab_chngvarqtldec[ri,1])/sum(tab_chngvarqtldec[ri,2:3])
+	}
+	tab_chngvarqtldec<- data.table(tab_chngvarqtldec)
 	if(wc=="wagechangeEUE_wave"|wc=="rawwgchangeEUE_wave"){
 		names(tab_chngvarqtldec) <- c("Job\ Stayers","EE","EUE")	
 	}else{
@@ -597,6 +606,9 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	}else{
 		print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex") ) 
 	}
+	
+	# occupation stayers and switchers
+	
 	
 	# recession and expansion
 	for (rI in c(F,T)){
@@ -657,8 +669,8 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	#*******************************************************************
 	#*******************************************************************
 	# Quantiles among job changers or stayers  -----------------------
-	#tabqtls <- c(.1,.25,.5,.75,.9)
-	#tN <- (length(tabqtls)+1)
+	tabqtls <- c(.1,.25,.5,.75,.9)
+	tN <- (length(tabqtls)+1)
 	
 	tab_wavechngdist    <- array(0.,dim=c(9,tN))
 	tab_wavestaydist    <- array(0.,dim=c(3,tN))
@@ -682,12 +694,12 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 		}else{
 			DThr <- DTseam
 		}
-		tab_wavechngdist[1,1]    <- DThr[ch  ==T&demo==T ,                    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavechngdist[1,2:tN] <- DThr[ch  ==T&demo==T ,                wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-		tab_wavechngdist[2,1]    <- DThr[ch  ==T&demo==T & sw==F,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavechngdist[2,2:tN] <- DThr[ch  ==T&demo==T & sw==F,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-		tab_wavechngdist[3,1]    <- DThr[ch  ==T&demo==T & sw==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavechngdist[3,2:tN] <- DThr[ch  ==T&demo==T & sw==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_wavechngdist[1,1]    <- DThr[st  ==T&demo==T ,                    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavechngdist[1,2:tN] <- DThr[st  ==T&demo==T ,                wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+		tab_wavechngdist[2,1]    <- DThr[st  ==T&demo==T & sw==F,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavechngdist[2,2:tN] <- DThr[st  ==T&demo==T & sw==F,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_wavechngdist[3,1]    <- DThr[st  ==T&demo==T & sw==T,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavechngdist[3,2:tN] <- DThr[st  ==T&demo==T & sw==T,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 		for(EUhere in c(F,T)){ #loop over EE or EU,UE
 			EEhere = (EUhere==F)
 			eidx = as.integer(EUhere)*3
@@ -717,11 +729,11 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	names(tab_wavechngdist) <- c("Mean",tabqtls)
 	#rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
 	if(wc =="wagechange_wave" | wc=="rawwgchange_wave"){
-	rownames(tab_wavechngdist) <- c("Chng\ Job, All", "Chng\ Job, Same\ Occ", "Chng\ Job, Switch\ Occ",
+	rownames(tab_wavechngdist) <- c("Stay\ Job, All", "Stay\ Job, Same\ Occ", "Stay\ Job, Switch\ Occ",
 										"EE,\ All", "EE,\ Same\ Occ", "EE,\ Switch\ Occ",
 										"EU,UE,\ All", "EU,UE,\ Same\ Occ", "EU,UE,\ Switch\ Occ")
 	}else if(wc == "wagechangeEUE_wave"| wc=="rawwgchangeEUE_wave"){
-	rownames(tab_wavechngdist) <- c("Chng\ Job, All", "Chng\ Job, Same\ Occ", "Chng\ Job, Switch\ Occ",
+	rownames(tab_wavechngdist) <- c("Stay\ Job, All", "Stay\ Job, Same\ Occ", "Stay\ Job, Switch\ Occ",
 										"EE,\ All", "EE,\ Same\ Occ", "EE,\ Switch\ Occ",
 										"EUE,\ All", "EUE,\ Same\ Occ", "EUE,\ Switch\ Occ")
 	}
@@ -735,6 +747,29 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	}else{
 		print(tab_wavechngdist,include.rownames=T, hline.after= c(0,3,6,nrow(tab_wavechngdist)), file=paste0(outputdir,"/",labtxt,"_",wclab,"_",reclab,".tex"))
 	}
+	#________________________________________
+	# Output to a box plot
+	#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+	dat_wavedist <- data.table(dat_wavechngdist[seq(3,9,3),])
+	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
+	dat_wavedist[ , cat := as.factor(c("Stayer","EE","EUE"))]
+	ggplot( dat_wavedist , aes(cat)) + theme_bw()+
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ),stat="identity", color= "maroon")+
+		scale_x_discrete(labels=c("EE","EUE","Stayer"))+xlab("")+ylab("Log Earnings Change")+ylim(c(-1.9,1.6))
+	nametab = "box_staychng_sw"
+	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,".eps"),height=5,width=10)
+	
+	dat_wavedist <- data.table(dat_wavechngdist[seq(2,8,3),])
+	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
+	dat_wavedist[ , cat := as.factor(c("Stayer","EE","EUE"))]
+	ggplot( dat_wavedist , aes(cat)) + theme_bw()+
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90),stat="identity",color="darkgreen")+
+		scale_x_discrete(labels=c("EE","EUE","Stayer"))+ylab("Log Earnings Change")+xlab("")+ylim(c(-1.9,1.6))
+	nametab = "box_staychng_nosw"
+	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,".eps"),height=5,width=10)
+	
+
+	
 	# standard errors
 	tab_wavechngdistci <- array(0.,dim=c(2*nrow(tab_wavechngdist),2*ncol(tab_wavechngdist)))
 	tab_wavechngdistse <- array(0.,dim=c(2*nrow(tab_wavechngdist),ncol(tab_wavechngdist)))
