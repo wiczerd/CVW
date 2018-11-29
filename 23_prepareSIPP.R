@@ -249,6 +249,10 @@ sipp[ !(EN|EE) , switchedInd := ind !=next.ind]
 
 sipp[ !(EN|EE) , switched    := switchedInd==T & switchedOcc==T]
 
+sipp[ !(lfstat==1 & next.lfstat==1), switchedOcc:=F]
+sipp[ !(lfstat==1 & next.lfstat==1), switchedInd:=F]
+sipp[ !(lfstat==1 & next.lfstat==1), switched   :=F]
+
 sipp[ , l1.job := shift(job,1)            , by=id]
 sipp[ , l2.job := shift(job,2)            , by=id]
 sipp[ , l3.job := shift(job,3)            , by=id]
@@ -431,16 +435,14 @@ sipp[ , maxmis:= max(mis), by=id]
 
 
 # save intermediate
-setwd(outputdir)
-saveRDS(sipp, "./sipp_2.RData")
+saveRDS(sipp, paste0(outputdir,"/sipp_2.RData"))
 
 
 ########## compute seam-to-seam status change variable ----------------------------
 
 # load intermediate result if starting from here
 if(!exists("sipp")) {
-	setwd(outputdir)
-	sipp <- readRDS("./sipp_2.RData")
+	sipp <- readRDS(paste0(outputdir,"/sipp_2.RData"))
 }
 
 
@@ -480,7 +482,7 @@ sipp[ , EU_max := any(EN,na.rm=T), by=list(id,wave)]
 sipp[ , EE_max := any(EE,na.rm=T), by=list(id,wave)]
 sipp[ , switchedOcc_max  := any(switchedOcc,na.rm=F), by=list(id,wave)]
 sipp[ , switchedInd_max  := any(switchedInd,na.rm=F), by=list(id,wave)]
-sipp[ , switched_max     := any(switched,na.rm=F), by=list(id,wave)]
+sipp[ , switched_max     := any(switched   ,na.rm=F), by=list(id,wave)]
 sipp[ , matched_EUUE_max := any(matched_EUUE,na.rm = F), by=list(id,wave)]
 
 sipp[ , esr_max := max(esr,na.rm=F), by=list(id,wave)]
@@ -662,10 +664,10 @@ if(max_wavefreq==2){
 }else{
 	sipp_wave[ EE_wave==T , switchedOcc_wave := switchedOcc_max]
 	sipp_wave[ EE_wave==T , switchedInd_wave := switchedInd_max]
-	sipp_wave[ EE_wave==T , switched_wave    := switched_max]
+	sipp_wave[ EE_wave==T , switched_wave    := switched_maxEE]
 	sipp_wave[ EU_wave==T , switchedOcc_wave := switchedOcc_max]
 	sipp_wave[ EU_wave==T , switchedInd_wave := switchedInd_max]
-	sipp_wave[ EU_wave==T , switched_wave    := switched_max]
+	sipp_wave[ EU_wave==T , switched_wave    := switched_maxEU]
 }
 sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T) & next.stable_emp, switchedOcc_wave := occ_wave != next.occ_wave]
 sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T) & next.stable_emp, switchedInd_wave := ind_wave != next.ind_wave]
