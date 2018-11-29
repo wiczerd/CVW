@@ -480,9 +480,15 @@ sipp[ , UEmon := max(UEmon), by=list(id,wave)]
 sipp[ , UE_max := any(NE,na.rm=T), by=list(id,wave)]
 sipp[ , EU_max := any(EN,na.rm=T), by=list(id,wave)]
 sipp[ , EE_max := any(EE,na.rm=T), by=list(id,wave)]
-sipp[ , switchedOcc_max  := any(switchedOcc,na.rm=F), by=list(id,wave)]
+sipp[ , switchedOcc_maxEU:= any(switchedOcc&EN,na.rm=F), by=list(id,wave)]
+sipp[ , switchedOcc_maxUE:= any(switchedOcc&NE,na.rm=F), by=list(id,wave)]
+sipp[ , switchedOcc_maxEE:= any(switchedOcc&EE,na.rm=F), by=list(id,wave)]
+sipp[ , switchedOcc_maxst:= any(switchedOcc   ,na.rm=F), by=list(id,wave)]
 sipp[ , switchedInd_max  := any(switchedInd,na.rm=F), by=list(id,wave)]
-sipp[ , switched_max     := any(switched   ,na.rm=F), by=list(id,wave)]
+sipp[ , switched_maxEU   := any(switched&EN,na.rm=F), by=list(id,wave)]
+sipp[ , switched_maxUE   := any(switched&NE,na.rm=F), by=list(id,wave)]
+sipp[ , switched_maxEE   := any(switched&EE,na.rm=F), by=list(id,wave)]
+sipp[ , switched_maxst   := any(switched,na.rm=F), by=list(id,wave)]
 sipp[ , matched_EUUE_max := any(matched_EUUE,na.rm = F), by=list(id,wave)]
 
 sipp[ , esr_max := max(esr,na.rm=F), by=list(id,wave)]
@@ -662,16 +668,16 @@ if(max_wavefreq==2){
 	sipp_wave[ EE_wave==T & EEmon<seammon  & last.stable_emp==T, switchedInd_wave := last.ind_wave != next.ind_wave]
 	sipp_wave[ EE_wave==T & EEmon==seammon & last.stable_emp==T, switchedInd_wave := last.ind_wave != next.ind_wave]
 }else{
-	sipp_wave[ EE_wave==T , switchedOcc_wave := switchedOcc_max]
+	sipp_wave[ EE_wave==T , switchedOcc_wave := switchedOcc_maxEE]
 	sipp_wave[ EE_wave==T , switchedInd_wave := switchedInd_max]
 	sipp_wave[ EE_wave==T , switched_wave    := switched_maxEE]
-	sipp_wave[ EU_wave==T , switchedOcc_wave := switchedOcc_max]
+	sipp_wave[ EU_wave==T , switchedOcc_wave := switchedOcc_maxEU]
 	sipp_wave[ EU_wave==T , switchedInd_wave := switchedInd_max]
 	sipp_wave[ EU_wave==T , switched_wave    := switched_maxEU]
 }
-sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T) & next.stable_emp, switchedOcc_wave := occ_wave != next.occ_wave]
-sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T) & next.stable_emp, switchedInd_wave := ind_wave != next.ind_wave]
-sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T) & next.stable_emp, switched_wave    := switchedOcc_wave]
+sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T) & next.stable_emp, switchedOcc_wave := switchedOcc_maxst]
+sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T) & next.stable_emp, switchedInd_wave := switchedInd_max]
+sipp_wave[ lfstat_wave==1 & next.lfstat_wave==1 & !(EE_wave==T|EU_wave==T|UE_wave==T) & next.stable_emp, switched_wave    := switchedOcc_maxst]
 
 #sipp_wave[ switched_wave ==F & (switchedOcc_wave ==T | switchedInd_wave==T), switched_wave:=NA]
 
@@ -925,7 +931,8 @@ sipp[ , c("EEmon","EUmon","UEmon","max.unempdur_wave","occ_wave","ind_wave"):=NU
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
-sipp[ , c("esr","estlemp","Estart","Estart_wave","Eend","Eend_wave","emonth","EE_max","EU_max","UE_max","switchedOcc_max","next.earnm",
+sipp[ , c("esr","estlemp","Estart","Estart_wave","Eend","Eend_wave","emonth","EE_max","EU_max","UE_max","switchedOcc_maxEE","switchedOcc_maxEU","switchedOcc_maxUE","switchedOcc_maxst",
+		  "switched_maxEE","switched_maxEU","switched_maxUE","switched_maxst","next.earnm",
 		  "coc","last.EE","last.lfstat","last.occ","next.occ","next.Estart","next.job","next.ind","JCstart","JCstart_any","JCend","JCend_any"):=NULL]
 
 sipp[ EU ==T, EUmis:= mis ]
