@@ -255,8 +255,10 @@ ggsave(paste0(outdir,"/pctwtm1_wc_st_fullpct.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/pctwtm1_wc_st_fullpct.png"),height=5,width=10)
 
 
-DTseam[ , c("pct_wcEUE_wave","rank_wcEUE_wave"):=NULL]
-DTseam[changermo ==T & is.finite(wagechangeEUE_wave) & (EE_wave), rank_wcEUE_wave := frank(wagechangeEUE_wave)/.N ]
+# Hamburger plots for occupational-wage ladder (lack-thereof)
+
+# EE *********************
+DTseam[changer ==T & is.finite(wagechangeEUE_wave) & (EE_wave) & switched_wave==T, rank_wcEUE_wave := frank(wagechangeEUE_wave)/.N ]
 DTseam[, pct_wcEUE_wave :=as.integer( round(100*rank_wcEUE_wave),5)]
 
 wc_occwc <- data.table(DTseam[ , wtd.mean(wagechangeEUE_wave,weights=truncweight,na.rm=T), by=pct_wcEUE_wave])
@@ -265,15 +267,65 @@ wc_occwc <- merge(wc_occwc,data.table(DTseam[ switched_wave==T, wtd.quantile(occ
 wc_occwc <- merge(wc_occwc,data.table(DTseam[ switched_wave==T, wtd.quantile(occwagechangeEUE_wave,prob=0.90,weights=truncweight,na.rm=T), by=pct_wcEUE_wave]), by = "pct_wcEUE_wave")
 
 names(wc_occwc) <- c("pct","wchng","P10occhcng","P50occchng","P90occchng")
-wc_occwc <- melt(wc_occwc,id.vars="pct")
-ggplot(wc_occwc, aes( x=pct,y=value, color=variable ))+geom_smooth(span=.1,se=F)+theme_bw()+
-	scale_color_manual(labels=c("Wage Change","10pct Occ Wage Change","50pct Occ Wage Change","90pct Occ Wage Change"),
-					   values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]))+
+wc_occwc_meltEE <- melt(wc_occwc,id.vars="pct")
+ggplot(wc_occwc_meltEE, aes( x=pct,y=value, color=variable ))+geom_smooth(span=.1,se=F)+theme_bw()+
+	scale_color_manual(labels=c("Earnings Change","10pct Occ Earnings Change","50pct Occ Earnings Change","90pct Occ Earnings Change"),
+					   values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]))+ylab("")+xlab("Earnings Growth Percentile")+
 	theme(legend.title = element_blank(),
-		  legend.position = c(0.2,0.8),
+		  legend.position = c(0.8,0.2),
 		  legend.background = element_rect(linetype = "solid",color = "white"))
 ggsave(paste0(outdir,"/occwgEE.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/occwgEE.png"),height=5,width=10)
+DTseam[ , c("pct_wcEUE_wave","rank_wcEUE_wave"):=NULL]
+rm(wc_occwc)
+rm(wc_occwc_meltEE)
+#EUE *********************
+
+DTseam[is.finite(wagechangeEUE_wave) & EU_wave & changer & switched_wave==T &EUmon==4, rank_wcEUE_wave := frank(wagechangeEUE_wave)/.N ]
+DTseam[, pct_wcEUE_wave :=as.integer( round(100*rank_wcEUE_wave),5)]
+
+wc_occwcEUE <- data.table(DTseam[EU_wave==T , wtd.mean(wagechangeEUE_wave,weights=truncweight,na.rm=T), by=pct_wcEUE_wave])
+wc_occwcEUE <- merge(wc_occwcEUE,data.table(DTseam[ EU_wave==T &switched_wave==T, wtd.quantile(occwagechangeEUE_wave,prob=0.10,weights=truncweight,na.rm=T), by=pct_wcEUE_wave]), by = "pct_wcEUE_wave")
+wc_occwcEUE <- merge(wc_occwcEUE,data.table(DTseam[ EU_wave==T &switched_wave==T, wtd.quantile(occwagechangeEUE_wave,prob=0.5,weights=truncweight,na.rm=T), by=pct_wcEUE_wave]), by = "pct_wcEUE_wave")
+wc_occwcEUE <- merge(wc_occwcEUE,data.table(DTseam[ EU_wave==T &switched_wave==T, wtd.quantile(occwagechangeEUE_wave,prob=0.90,weights=truncweight,na.rm=T), by=pct_wcEUE_wave]), by = "pct_wcEUE_wave")
+
+names(wc_occwcEUE) <- c("pct","wchng","P10occhcng","P50occchng","P90occchng")
+wc_occwc_meltEUE <- melt(wc_occwcEUE,id.vars="pct")
+ggplot(wc_occwc_meltEUE, aes( x=pct,y=value, color=variable ))+geom_smooth(span=.1,se=F)+theme_bw()+
+	scale_color_manual(labels=c("Earnings Change","10pct Occ Earnings Change","50pct Occ Earnings Change","90pct Occ Earnings Change"),
+					   values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]))+ylab("")+xlab("Earnings Growth Percentile")+
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.8,0.2),
+		  legend.background = element_rect(linetype = "solid",color = "white"))
+ggsave(paste0(outdir,"/occwgEU.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/occwgEU.png"),height=5,width=10)
+DTseam[ , c("pct_wcEUE_wave","rank_wcEUE_wave"):=NULL]
+rm(wc_occwcEUE)
+rm(wc_occwc_meltEUE)
+
+#stayers *********************
+DTseam[stayer_anan ==T & stayer==T & switched_wave==T& is.finite(wagechangeEUE_wave) , rank_wcEUE_wave := frank(wagechangeEUE_wave)/.N ]
+DTseam[, pct_wcEUE_wave :=as.integer( round(100*rank_wcEUE_wave),5)]
+
+wc_occwcst <- data.table(DTseam[ , wtd.mean(wagechangeEUE_wave,weights=truncweight,na.rm=T), by=pct_wcEUE_wave])
+wc_occwcst <- merge(wc_occwcst,data.table(DTseam[ switched_wave==T, wtd.quantile(occwagechange_wave,prob=0.10,weights=truncweight,na.rm=T), by=pct_wcEUE_wave]), by = "pct_wcEUE_wave")
+wc_occwcst <- merge(wc_occwcst,data.table(DTseam[ switched_wave==T, wtd.quantile(occwagechange_wave,prob=0.5,weights=truncweight,na.rm=T), by=pct_wcEUE_wave]), by = "pct_wcEUE_wave")
+wc_occwcst <- merge(wc_occwcst,data.table(DTseam[ switched_wave==T, wtd.quantile(occwagechange_wave,prob=0.90,weights=truncweight,na.rm=T), by=pct_wcEUE_wave]), by = "pct_wcEUE_wave")
+
+names(wc_occwcst) <- c("pct","wchng","P10occhcng","P50occchng","P90occchng")
+wc_occwc_meltst <- melt(wc_occwcst,id.vars="pct")
+ggplot(wc_occwc_meltst, aes( x=pct,y=value, color=variable ))+geom_smooth(span=.1,se=F)+theme_bw()+
+	scale_color_manual(labels=c("Earnings Change","10pct Occ Earnings Change","50pct Occ Earnings Change","90pct Occ Earnings Change"),
+					   values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]))+ylab("")+xlab("Earnings Growth Percentile")+
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.8,0.2),
+		  legend.background = element_rect(linetype = "solid",color = "white"))
+ggsave(paste0(outdir,"/occwgst.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/occwgst.png"),height=5,width=10)
+DTseam[ , c("pct_wcEUE_wave","rank_wcEUE_wave"):=NULL]
+rm(wc_occwcst)
+rm(wc_occwc_meltst)
+
 
 
 toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","wagechange_wave","wagechangeEUE_wave", "wagechange_wvan","recIndic2_wave","date")
