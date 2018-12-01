@@ -931,7 +931,7 @@ sipp[ , c("EEmon","EUmon","UEmon","max.unempdur_wave","occ_wave","ind_wave"):=NU
 
 sipp <- merge(sipp,sipp_wave, by=c("id","wave"), all=T)
 
-sipp[ , c("esr","estlemp","Estart","Estart_wave","Eend","Eend_wave","emonth","EE_max","EU_max","UE_max","switchedOcc_maxEE","switchedOcc_maxEU","switchedOcc_maxUE","switchedOcc_maxst",
+sipp[ , c("estlemp","Estart","Estart_wave","Eend","Eend_wave","emonth","EE_max","EU_max","UE_max","switchedOcc_maxEE","switchedOcc_maxEU","switchedOcc_maxUE","switchedOcc_maxst",
 		  "switched_maxEE","switched_maxEU","switched_maxUE","switched_maxst","next.earnm",
 		  "coc","last.EE","last.lfstat","last.occ","next.occ","next.Estart","next.job","next.ind","JCstart","JCstart_any","JCend","JCend_any"):=NULL]
 

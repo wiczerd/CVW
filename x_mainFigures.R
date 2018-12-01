@@ -156,10 +156,10 @@ DTseam[ !(changer_anan==T|stayer_anan==T|nextann.wavewage<=0), K:=NA]
 DTseam[ lastann.wavewage<minLEarn , K:=NA]
 wcananDens <- stackedDens(DTseam,"K","wagechange_anan", wt="truncweight")
 wcananMelt <- melt(wcananDens, id.vars = "WageChange")
-wcananMelt[value>exp(-6) , logValue := log(value)]
+wcananMelt[value>exp(-6) , logValue := value]
 #wcananMelt[ , g:=4L-as.integer(variable)]
-ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=logValue,ymin=-6,x=WageChange))+geom_ribbon(color="darkred",fill="darkred")+
-	theme_bw()+xlab("Annual-Annual Log Earnings Change")+ylab("log density")+xlim(c(-3,3)) + 
+ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=logValue,ymin=0,x=WageChange))+geom_ribbon(color="darkred",fill="darkred")+
+	theme_bw()+xlab("Annual-Annual Log Earnings Change")+ylab("density")+xlim(c(-3,3)) + 
 	#scale_fill_manual(values= "darkred") +
 	geom_vline(xintercept = 0.) 
 ggsave(paste0(outdir,"/all_wagechange_anan.eps"),height=5,width=10)
@@ -182,12 +182,55 @@ wcananMelt <- melt(wcananDens, id.vars = "WageChange")
 wcananMelt[value>exp(-6) , logValue := log(value)]
 wcananMelt[ , g:=4L-as.integer(variable)]
 ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=logValue,ymin=-6,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
-	theme_bw()+xlab("Annual-Annual Log Earnings Change (wave-view)")+ylab("log density")+xlim(c(-3,3)) + 
+	theme_bw()+xlab("Annual-Annual Log Earnings Change ")+ylab("log density")+xlim(c(-3,3)) + 
 	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]), name="",label=c("stay","EE","EU,UE") ) +
 	geom_vline(xintercept = 0.) 
 ggsave(paste0(outdir,"/stacked_wagechange_anan_wv.eps"),height=5,width=10)
 ggsave(paste0(outdir,"/stacked_wagechange_anan_wv.png"),height=5,width=10)
 
+wcananMelt <- melt(wcananDens, id.vars = "WageChange")
+wcananMelt[value>exp(-6) , Value := value]
+wcananMelt[ , g:=4L-as.integer(variable)]
+ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=Value,ymin=0,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+	theme_bw()+xlab("Annual-Annual Log Earnings Change ")+ylab("Density")+xlim(c(-2.75,2.75)) + coord_cartesian(ylim=c(0,.3))+
+	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:3)]), name="",label=c("stay","EE","EU,UE") ) +
+	geom_vline(xintercept = 0.) 
+ggsave(paste0(outdir,"/stacked_LevWagechange_anan_wv.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_LevWagechange_anan_wv.png"),height=5,width=10)
+
+
+
+DTseam[ , g:=NULL]
+DTseam[  EE_wave==T & UE_wave==F & EU_wave ==F , g := 2]
+DTseam[  EE_wave==F & UE_wave==T | EU_wave ==T , g := 1]
+DTseam[!(EU_anan==T | UE_anan==T | EE_anan ==T), g := 3]
+DTseam[ !(changer==T|stayer==T|(EU_wave==F & nextann.wavewage<= 0)), g:=NA]
+DTseam[ g==3 & (EU_anan | UE_anan | EE_anan), g:=NA]
+DTseam[ lastann.wavewage<minLEarn , g:=NA]
+DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
+DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
+DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
+
+wcananDens <- stackedDens(DTseam,"g","wagechangeEUE_wave", wt="truncweight")
+wcananMelt <- melt(wcananDens, id.vars = "WageChange")
+wcananMelt[value>exp(-6) , logValue := log(value)]
+wcananMelt[ , g:=4L-as.integer(variable)]
+ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=logValue,ymin=-6,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+	theme_bw()+xlab("Wave-Wave Log Earnings Change")+ylab("Log Density")+xlim(c(-3,3)) + 
+	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]), name="",label=c("stay","EE","EU,UE") ) +
+	geom_vline(xintercept = 0.) 
+ggsave(paste0(outdir,"/stacked_wagechangeEUE_wave.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_wagechangeEUE_wave.png"),height=5,width=10)
+
+wcananMelt <- melt(wcananDens, id.vars = "WageChange")
+wcananMelt[ , logValue := value]
+wcananMelt[ , g:=4L-as.integer(variable)]
+ggplot(subset(wcananMelt,is.finite(value)) ,aes(ymax=logValue,ymin=0,x=WageChange,fill=as.factor(g)))+geom_ribbon()+
+	theme_bw()+xlab("Wave-Wave Log Earnings Change")+ylab("Density")+xlim(c(-3,3)) + coord_cartesian(ylim=c(0,.3))+
+	scale_fill_manual(values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]), name="",label=c("stay","EE","EU,UE") ) +
+	geom_vline(xintercept = 0.) 
+ggsave(paste0(outdir,"/stacked_LevWagechangeEUE_wave.eps"),height=5,width=10)
+ggsave(paste0(outdir,"/stacked_LevWagechangeEUE_wave.png"),height=5,width=10)
 
 
 #do it among stayers

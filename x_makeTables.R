@@ -339,7 +339,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 		scale_x_discrete(labels=c("Changers, Expansion","Changers, Recession","Stayers, Expansion","Stayers, Recession"))+
 		scale_color_manual(values=c("blue","red"))+ylab("Log earnings change")+xlab("")+ylim(c(-1.1,1.1))
 	nametab = "box_staychngemp"
-	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10)
+	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps",device = cairo_eps),height=5,width=10)
 	
 	
 	tab_wavedistci <- array(0.,dim=c(2*nrow(tab_wavedist),2*ncol(tab_wavedist)))
@@ -618,21 +618,21 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	rownames(tab_stswchngvarqtldec) <- c("Variance","","0.95-0.05","\ ","0.9-0.1","\ \ ","0.75-0.25","\ \ \ ","Pop","\ \ \ \ ")# "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
 	
 	
-	tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=2, 
+	tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=3, 
 	                            align="l|l|ll", caption="Decomposition of earnings change dispersion \\label{tab:wavechngvarqtldec}")
 
-	tab_stswchngvarqtldec <- xtable(tab_stswchngvarqtldec, digits=2, 
+	tab_stswchngvarqtldec <- xtable(tab_stswchngvarqtldec, digits=3, 
 								align="l|l|ll", caption="Decomposition of earnings change dispersion, occupation stayers and switchers \\label{tab:stswchngvarqtldec}")
 	
 	nametab <- "chngvarqtldec"
 	if(demolbl>=1 & demolbl<=7){
 		print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file=paste0(outputdir,"/",nametab, demotxt[demolbl],"_",wclab,".tex")) 
 		nametab <- "stswchngvarqtldec"
-		print(tab_stswchngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_stswchngvarqtldec)-1, nrow(tab_stswchngvarqtldec)), file=paste0(outputdir,"/",nametab, demotxt[demolbl],"_",wclab,".tex")) 
+		print(tab_stswchngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_stswchngvarqtldec)-2, nrow(tab_stswchngvarqtldec)), file=paste0(outputdir,"/",nametab, demotxt[demolbl],"_",wclab,".tex")) 
 	}else{
 		print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file=paste0(outputdir,"/",nametab,"_",wclab,".tex") ) 
 		nametab <- "stswchngvarqtldec"
-		print(tab_stswchngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_stswchngvarqtldec)-1, nrow(tab_stswchngvarqtldec)), file=paste0(outputdir,"/",nametab,"_",wclab,".tex") ) 
+		print(tab_stswchngvarqtldec,include.rownames=T, hline.after= c(0,nrow(tab_stswchngvarqtldec)-2, nrow(tab_stswchngvarqtldec)), file=paste0(outputdir,"/",nametab,"_",wclab,".tex") ) 
 	}
 	
 
@@ -866,7 +866,11 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	plt_wavechngdist_rec    <- array(NA,dim=c(2^3,tN))
 	tab_wavestaydist_rec    <- array(NA,dim=c(3*3,tN))
 	plt_wavestaydist_rec    <- array(NA,dim=c(2^2,tN))
-	tab_wavechngmoments_rec     <- array(NA, dim=c(9*3,5))
+	tab_wavechngmoments_rec <- array(NA, dim=c(9*3,5))
+	
+	plt_stsw_staychng_rec   <- array(NA, dim=c(8,tN))
+	plt_stsw_EEEU_rec   <- array(NA, dim=c(8,tN))
+	
 	if(bootse == T){
 		set.seed(seedint)
 		#draw the sample
@@ -901,25 +905,35 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 			}
 			eidx = 9*(AllEEEU-1)
 	
-			tab_wavechngdist_rec[1+eidx,1   ] <- DThr[ch ==T &trX_indic==T        ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavechngdist_rec[1+eidx,2:tN] <- DThr[ch ==T &trX_indic==T        ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-			tab_wavechngdist_rec[2+eidx,1   ] <- DThr[ch ==T &trX_indic==T &sw==F ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavechngdist_rec[2+eidx,2:tN] <- DThr[ch ==T &trX_indic==T &sw==F ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-			tab_wavechngdist_rec[3+eidx,1   ] <- DThr[ch ==T &trX_indic==T &sw==T ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavechngdist_rec[3+eidx,2:tN] <- DThr[ch ==T &trX_indic==T &sw==T ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+			tab_wavechngdist_rec[1+eidx,1   ] <- DThr[ch ==T &trX_indic==T&(sw|!sw),    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavechngdist_rec[1+eidx,2:tN] <- DThr[ch ==T &trX_indic==T&(sw|!sw),wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+			tab_wavechngdist_rec[2+eidx,1   ] <- DThr[ch ==T &trX_indic==T &sw==F  ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavechngdist_rec[2+eidx,2:tN] <- DThr[ch ==T &trX_indic==T &sw==F  ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+			tab_wavechngdist_rec[3+eidx,1   ] <- DThr[ch ==T &trX_indic==T &sw==T  ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavechngdist_rec[3+eidx,2:tN] <- DThr[ch ==T &trX_indic==T &sw==T  ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 			for(rI in c(F,T)){
 				ridx = as.integer(rI)*3+3
-				tab_wavechngdist_rec[1+ridx+eidx,1   ] <- DThr[ch ==T &trX_indic==T        &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-				tab_wavechngdist_rec[1+ridx+eidx,2:tN] <- DThr[ch ==T &trX_indic==T        &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-				tab_wavechngdist_rec[2+ridx+eidx,1   ] <- DThr[ch ==T &trX_indic==T &sw==F &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-				tab_wavechngdist_rec[2+ridx+eidx,2:tN] <- DThr[ch ==T &trX_indic==T &sw==F &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-				tab_wavechngdist_rec[3+ridx+eidx,1   ] <- DThr[ch ==T &trX_indic==T &sw==T &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-				tab_wavechngdist_rec[3+ridx+eidx,2:tN] <- DThr[ch ==T &trX_indic==T &sw==T &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+				tab_wavechngdist_rec[1+ridx+eidx,1   ] <- DThr[ch ==T &trX_indic==T&(sw|!sw)&eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+				tab_wavechngdist_rec[1+ridx+eidx,2:tN] <- DThr[ch ==T &trX_indic==T&(sw|!sw)&eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+				tab_wavechngdist_rec[2+ridx+eidx,1   ] <- DThr[ch ==T &trX_indic==T &sw==F  &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+				tab_wavechngdist_rec[2+ridx+eidx,2:tN] <- DThr[ch ==T &trX_indic==T &sw==F  &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+				tab_wavechngdist_rec[3+ridx+eidx,1   ] <- DThr[ch ==T &trX_indic==T &sw==T  &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+				tab_wavechngdist_rec[3+ridx+eidx,2:tN] <- DThr[ch ==T &trX_indic==T &sw==T  &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+				if(AllEEEU == 1 & si==1){
+					plt_stsw_staychng_rec[3+rI,1]    <- tab_wavechngdist_rec[2+ridx+eidx,1]
+					plt_stsw_staychng_rec[3+rI,2:tN] <- tab_wavechngdist_rec[2+ridx+eidx,2:tN]
+					plt_stsw_staychng_rec[7+rI,1]    <- tab_wavechngdist_rec[3+ridx+eidx,1]
+					plt_stsw_staychng_rec[7+rI,2:tN] <- tab_wavechngdist_rec[3+ridx+eidx,2:tN]
+				}
 				if(AllEEEU >1& si==1 ){
 					plt_wavechngdist_rec[1+2*as.integer(rI)+(AllEEEU-2)*4,1   ] <- tab_wavechngdist_rec[2+ridx+eidx,1   ] 
 					plt_wavechngdist_rec[1+2*as.integer(rI)+(AllEEEU-2)*4,2:tN] <- tab_wavechngdist_rec[2+ridx+eidx,2:tN] 
 					plt_wavechngdist_rec[2+2*as.integer(rI)+(AllEEEU-2)*4,1   ] <- tab_wavechngdist_rec[3+ridx+eidx,1   ] 
 					plt_wavechngdist_rec[2+2*as.integer(rI)+(AllEEEU-2)*4,2:tN] <- tab_wavechngdist_rec[3+ridx+eidx,2:tN]
+					plt_stsw_EEEU_rec[1+(AllEEEU-2)*2+rI,1   ] <- tab_wavechngdist_rec[2+ridx+eidx,1   ] 
+					plt_stsw_EEEU_rec[1+(AllEEEU-2)*2+rI,2:tN] <- tab_wavechngdist_rec[2+ridx+eidx,2:tN]
+					plt_stsw_EEEU_rec[5+(AllEEEU-2)*2+rI,1   ] <- tab_wavechngdist_rec[3+ridx+eidx,1   ] 
+					plt_stsw_EEEU_rec[5+(AllEEEU-2)*2+rI,2:tN] <- tab_wavechngdist_rec[3+ridx+eidx,2:tN]
 				}
 			}
 			#wage moments:
@@ -942,24 +956,30 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 			}
 		} #All, EE,EU
 		# split stayers
-		tab_wavestaydist_rec[1,1   ] <- DThr[st==T &demo==T        ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavestaydist_rec[1,2:tN] <- DThr[st==T &demo==T        ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-		tab_wavestaydist_rec[2,1   ] <- DThr[st==T &demo==T &sw==F ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavestaydist_rec[2,2:tN] <- DThr[st==T &demo==T &sw==F ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-		tab_wavestaydist_rec[3,1   ] <- DThr[st==T &demo==T &sw==T ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-		tab_wavestaydist_rec[3,2:tN] <- DThr[st==T &demo==T &sw==T ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_wavestaydist_rec[1,1   ] <- DThr[st==T &demo==T&(sw|!sw),    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavestaydist_rec[1,2:tN] <- DThr[st==T &demo==T&(sw|!sw),wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+		tab_wavestaydist_rec[2,1   ] <- DThr[st==T &demo==T &sw==F  ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavestaydist_rec[2,2:tN] <- DThr[st==T &demo==T &sw==F  ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+		tab_wavestaydist_rec[3,1   ] <- DThr[st==T &demo==T &sw==T  ,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+		tab_wavestaydist_rec[3,2:tN] <- DThr[st==T &demo==T &sw==T  ,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 		for(rI in c(F,T)){
 			ridx = as.integer(rI)*3+3
-			tab_wavestaydist_rec[1+ridx,1   ] <- DThr[st==T &demo==T        &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavestaydist_rec[1+ridx,2:tN] <- DThr[st==T &demo==T        &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
-			tab_wavestaydist_rec[2+ridx,1   ] <- DThr[st==T &demo==T &sw==F &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavestaydist_rec[2+ridx,2:tN] <- DThr[st==T &demo==T &sw==F &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-			tab_wavestaydist_rec[3+ridx,1   ] <- DThr[st==T &demo==T &sw==T &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-			tab_wavestaydist_rec[3+ridx,2:tN] <- DThr[st==T &demo==T &sw==T &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+			tab_wavestaydist_rec[1+ridx,1   ] <- DThr[st==T &demo==T&(sw|!sw)&eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavestaydist_rec[1+ridx,2:tN] <- DThr[st==T &demo==T&(sw|!sw)&eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs= tabqtls)]
+			tab_wavestaydist_rec[2+ridx,1   ] <- DThr[st==T &demo==T &sw==F  &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavestaydist_rec[2+ridx,2:tN] <- DThr[st==T &demo==T &sw==F  &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+			tab_wavestaydist_rec[3+ridx,1   ] <- DThr[st==T &demo==T &sw==T  &eval(as.name(recDef))  == rI,    wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+			tab_wavestaydist_rec[3+ridx,2:tN] <- DThr[st==T &demo==T &sw==T  &eval(as.name(recDef))  == rI,wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 			plt_wavestaydist_rec[1+as.integer(rI)*2,1]    <- tab_wavestaydist_rec[2+ridx,1   ]
 			plt_wavestaydist_rec[1+as.integer(rI)*2,2:tN] <- tab_wavestaydist_rec[2+ridx,2:tN]
 			plt_wavestaydist_rec[2+as.integer(rI)*2,1]    <- tab_wavestaydist_rec[3+ridx,1   ]
 			plt_wavestaydist_rec[2+as.integer(rI)*2,2:tN] <- tab_wavestaydist_rec[3+ridx,2:tN]
+			
+			plt_stsw_staychng_rec[1+rI,1]    <- tab_wavestaydist_rec[2+ridx,1]
+			plt_stsw_staychng_rec[1+rI,2:tN] <- tab_wavestaydist_rec[2+ridx,2:tN]
+			plt_stsw_staychng_rec[5+rI,1]    <- tab_wavestaydist_rec[3+ridx,1]
+			plt_stsw_staychng_rec[5+rI,2:tN] <- tab_wavestaydist_rec[3+ridx,2:tN]
+			
 		}
 		if(si>1){
 			se_wavechngdist_rec[,,si-1] = tab_wavechngdist_rec
@@ -972,10 +992,60 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 		}
 	}#si, sim
 	
+
 	#________________________________________
 	#________________________________________
 	# Output to a box plot
 	#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+	#panels (d),(e)
+	dat_wavedist <- data.table(plt_stsw_EEEU_rec[1:4,])
+	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
+	dat_wavedist[ , cat := as.factor(c("EE","EE","EU,UE","EU,UE"))]
+	dat_wavedist[ , Cycle := as.factor(c("Expansion","Recession","Expansion","Recession"))]
+	ggplot( dat_wavedist , aes(cat)) + theme_bw()+ylim(c(min(plt_stsw_EEEU_rec[,2])*1.05,max(plt_stsw_EEEU_rec[,6])*1.05))+
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ,color=Cycle),stat="identity",fill="darkgreen",alpha=0.4)+ #
+		scale_color_manual(values=c("blue","red"))+
+		xlab("")+ylab("Log Earnings Change")#scale_x_discrete(labels=c(" ","No Switch, Rec","Switchers, Exp","Switchers, Rec"))+
+	nametab = "plt_nosw_EEEU_rec"
+	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10, device = cairo_ps)
+	
+	dat_wavedist <- data.table(plt_stsw_EEEU_rec[5:8,])
+	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
+	dat_wavedist[ , cat := as.factor(c("EE","EE","EU,UE","EU,UE"))]
+	dat_wavedist[ , Cycle := as.factor(c("Expansion","Recession","Expansion","Recession"))]
+	ggplot( dat_wavedist , aes(cat)) + theme_bw()+ylim(c(min(plt_stsw_EEEU_rec[,2])*1.05,max(plt_stsw_EEEU_rec[,6])*1.05))+
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ,color=Cycle),stat="identity", fill= "maroon",alpha=0.4)+ #
+		scale_color_manual(values=c("blue","red"))+
+		xlab("")+ylab("Log Earnings Change")#scale_x_discrete(labels=c(" ","No Switch, Rec","Switchers, Exp","Switchers, Rec"))+
+	nametab = "plt_sw_EEEU_rec"
+	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10,device = cairo_ps)
+	
+	#panels (b),(c)
+	dat_wavedist <- data.table(plt_stsw_staychng_rec[1:4,])
+	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
+	dat_wavedist[ , cat := as.factor(c("Employer Stayers","Employer Stayers","Employer Movers","Employer Movers"))]
+	dat_wavedist[ , Cycle := as.factor(c("Expansion","Recession","Expansion","Recession"))]
+	ggplot( dat_wavedist , aes(cat)) + theme_bw()+ylim(c(min(plt_stsw_EEEU_rec[,2])*1.05,max(plt_stsw_EEEU_rec[,6])*1.05))+
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ,color=Cycle),stat="identity",fill="darkgreen",alpha=0.4)+ #
+		scale_color_manual(values=c("blue","red"))+
+		xlab("")+ylab("Log Earnings Change")#scale_x_discrete(labels=c(" ","No Switch, Rec","Switchers, Exp","Switchers, Rec"))+
+	nametab = "plt_nosw_staychng_rec"
+	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10,device = cairo_ps)
+	
+	
+	dat_wavedist <- data.table(plt_stsw_staychng_rec[5:8,])
+	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
+	dat_wavedist[ , cat := as.factor(c("Employer Stayers","Employer Stayers","Employer Movers","Employer Movers"))]
+	dat_wavedist[ , Cycle := as.factor(c("Expansion","Recession","Expansion","Recession"))]
+	ggplot( dat_wavedist , aes(cat)) + theme_bw()+ylim(c(min(plt_stsw_EEEU_rec[,2])*1.05,max(plt_stsw_EEEU_rec[,6])*1.05))+
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ,color=Cycle),stat="identity", fill= "maroon",alpha=0.4)+ #
+		scale_color_manual(values=c("blue","red"))+
+		xlab("")+ylab("Log Earnings Change")#scale_x_discrete(labels=c(" ","No Switch, Rec","Switchers, Exp","Switchers, Rec"))+
+	nametab = "plt_sw_staychng_rec"
+	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10,device = cairo_ps)
+	
+	
+	# Other tables we're not using
 	dat_wavedist <- data.table(plt_wavestaydist_rec)
 	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
 	dat_wavedist[ , cat := as.factor(c("NoSw-Exp","Sw-Exp","NoSw-Rec","Sw-Rec"))]
@@ -983,7 +1053,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	ggplot( dat_wavedist , aes(cat)) + theme_bw()+
 		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ,color=Cycle),stat="identity")+
 		scale_color_manual(values=c("blue","red"))+
-		scale_x_discrete(labels=c("No Switch, Exp","No Switch, Rec","Switchers, Exp","Switchers, Rec"))
+		scale_x_discrete(labels=c("No Switch, Exp","No Switch, Rec","Switchers, Exp","Switchers, Rec"))+xlab("")+ylab("Log Earnings Change")
 	nametab = "box_stayrec"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10)
 	
@@ -1240,6 +1310,36 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 			}
 		}
 	}# all, EU,UE  & EE
+	
+	#age-specific stuff for WSJ:
+	ageGrp_moments <- array(0.,dim=c(3,5))
+	for(ai in seq(1,3)){
+		ageGrp_moments[ai,1]   <- DTseam[ ageGrp==ai & EUfrq==T & ch==T , wtd.mean(eval(as.name(wc)),weights=eval(as.name(wt)),na.rm=T)]
+		ageGrp_moments[ai,2:5] <- DTseam[ ageGrp==ai & EUfrq==T & ch==T , wtd.4qtlmoments(eval(as.name(wc)),eval(as.name(wt)))]
+	}
+	ageGrp_moments <- data.table(ageGrp_moments)
+	names(ageGrp_moments) <- c("Mean","Median","Median Abs Deviaion","Goeneveld Meeden","Moors")
+	rownames(ageGrp_moments) <- c("30 and under","31-55","56+")
+	tab_wavemoments <- xtable(ageGrp_moments, digits=2, 
+								align="l|l|llll", caption="Distribution of quarter-quarter log earnings changes, absent unemployment")
+	nametab <- "ageGrp_moments"
+	print(tab_wavemoments,include.rownames=T, hline.after= c(nrow(tab_wavemoments)), 
+		  file=paste0(outputdir,"/",nametab,"_",wclab,".tex"))
+	
+	ageGrpDur_moments <- array(0.,dim=c(3,5))
+	for(ai in seq(1,3)){
+		ageGrpDur_moments[ai,1]   <- DTseam[ ageGrp==ai & EUfrq==T & ch==T , wtd.mean(max.unempdur_wave,weights=eval(as.name(wt)),na.rm=T)]
+		ageGrpDur_moments[ai,2:5] <- DTseam[ ageGrp==ai & EUfrq==T & ch==T , wtd.4qtlmoments(max.unempdur_wave,eval(as.name(wt)))]
+	}
+	ageGrpDur_moments <- data.table(ageGrpDur_moments)
+	names(ageGrpDur_moments) <- c("Mean","Median","Median Abs Deviaion","Goeneveld Meeden","Moors")
+	rownames(ageGrpDur_moments) <- c("30 and under","31-55","56+")
+	tab_wavemoments <- xtable(ageGrpDur_moments, digits=2, 
+							  align="l|l|llll", caption="Distribution of quarter-quarter log earnings changes, absent unemployment")
+	nametab <- "ageGrpDur_moments"
+	print(tab_wavemoments,include.rownames=T, hline.after= c(nrow(tab_wavemoments)), 
+		  file=paste0(outputdir,"/",nametab,"_",wclab,".tex"))
+	
 	
 	if(wc == "wagechangeEUE_wave"|wc == "reswgchangeEUE_wave"){
 		wt = origwt

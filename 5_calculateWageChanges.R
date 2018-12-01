@@ -41,6 +41,8 @@ DTall[!is.na(usewage) , levwage := 1/2*(exp(usewage)-exp(-usewage))]
 
 DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
 DTall[ , levwage := mean(levwage,na.rm=T)*nmo_lf1, by= list(id,wave)] #if one month is missing, give it the average of the other 3
+DTall[ esr_max, levwage := mean(levwage,na.rm=T)*nmo_lf1, by= list(id,wave)] #if one month is missing, give it the average of the other 3
+
 DTall[ , wavewage := log(levwage + (1+levwage^2)^.5) ]
 DTall[ , nawavewage:= all(is.na(usewage) ),by= list(id,wave)]
 DTall[ nawavewage==T, wavewage:=NA_real_]
