@@ -37,17 +37,20 @@ setkey(DTall, id, date)
 #***********************************************************************
 
 # residual wages
-DTall[!is.na(usewage) , levwage := 1/2*(exp(usewage)-exp(-usewage))]
+DTall[!is.na(usewage) & esr==1, levwage := 1/2*(exp(usewage)-exp(-usewage))]
 
 DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
 DTall[ , levwage := mean(levwage,na.rm=T)*nmo_lf1, by= list(id,wave)] #if one month is missing, give it the average of the other 3
-DTall[ esr_max, levwage := mean(levwage,na.rm=T)*nmo_lf1, by= list(id,wave)] #if one month is missing, give it the average of the other 3
-
 DTall[ , wavewage := log(levwage + (1+levwage^2)^.5) ]
-DTall[ , nawavewage:= all(is.na(usewage) ),by= list(id,wave)]
+DTall[ , nawavewage:= nmo_lf1 == 0 ,by= list(id,wave)]
 DTall[ nawavewage==T, wavewage:=NA_real_]
 #drop the lowest resid wages, implies working less than $80 /month:
 DTall[ lfstat_wave==1 & wavewage<log(minEarn+(1+minEarn^2)^.5), wavewage:=NA]
+
+#put back levwage for esr ~=1
+DTall[!is.na(usewage) , levwage := 1/2*(exp(usewage)-exp(-usewage))]
+DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
+DTall[ , levwage := mean(levwage,na.rm=T)*nmo_lf1, by= list(id,wave)] #if one month is missing, give it the average of the other 3
 
 DTall[ , c("nawavewage"):=NULL]
 
@@ -82,7 +85,7 @@ DTseam[                                    , next3.wavewage    := shift(wavewage
 DTseam[ wave+3!=shift(wave,3,type = "lead"), next3.wavewage    := NA]
 
 DTseam[ , nextann.wavewage := levwage + shift(levwage,type="lead") + shift(levwage,2,type="lead")  , by=id]
-DTseam[ wave+1!=shift(wave,type = "lead") | wave+2!=shift(wave,2,type = "lead") , nextann.wavewage := NA]
+DTseam[ wave+1!=shift(wave,type = "lead") | wave+2!=shift(wave,2,type = "lead") , nextann.wavewage := NA, by=id]
 DTseam[ , nextann.wavewage := log(nextann.wavewage + (1+nextann.wavewage^2)^.5) ]
 
 DTseam[                                  , last.wavewage    := shift(wavewage,1,type="lag") , by=id]
@@ -102,7 +105,7 @@ DTseam[ , wagechange3_wave := next3.wavewage  - wavewage]
 DTseam[ , last.wavewage_ann:= shift(levwage)*3, by=id]
 DTseam[ , last.wavewage_ann:= log(last.wavewage_ann + (1+last.wavewage_ann^2)^.5 )]
 DTseam[ , lastann.wavewage:= shift(levwage) + shift(levwage,2) + shift(levwage,3), by=id]
-DTseam[ wave-1!=shift(wave)|wave-2!=shift(wave,2)|wave-3!=shift(wave,3), lastann.wavewage := NA]
+DTseam[ wave-1!=shift(wave)|wave-2!=shift(wave,2)|wave-3!=shift(wave,3), lastann.wavewage := NA , by=id]
 DTseam[ , lastann.wavewage:= log(lastann.wavewage + (1+lastann.wavewage^2)^.5 )]
 
 DTseam[ , wagechange_wvan := nextann.wavewage - last.wavewage_ann]
