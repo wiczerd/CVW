@@ -156,7 +156,7 @@ if( recall_adj == T){
 
 #now subset everyone on wave-wave basis:
 DTall[wagechange_notransbad==F & wagechange_wave_low==F & wagechange_wave_high==F & wagechange_wave_jcbad==F &  wagechange_wave_imp==F &wagechange_ENbad==F &
-	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & next.stable_emp==T &
+	   	!(EU_wave==T|UE_wave==T|EE_wave==T) & next.stable_emp==T & esr_max==1 & next.esr_max==1 &
 	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
 
 DTall[wagechange_notransbad==F  & wagechange_wave_jcbad==F & wagechange_ENbad==F &

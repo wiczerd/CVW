@@ -201,9 +201,9 @@ ggsave(paste0(outdir,"/stacked_LevWagechange_anan_wv.png"),height=5,width=10)
 
 
 DTseam[ , g:=NULL]
-DTseam[  EE_wave==T & UE_wave==F & EU_wave ==F , g := 2]
-DTseam[  EE_wave==F & UE_wave==T | EU_wave ==T , g := 1]
-DTseam[!(EU_anan==T | UE_anan==T | EE_anan ==T), g := 3]
+DTseam[ (EE_wave==T & UE_wave==F & EU_wave ==F)&changer , g := 2]
+DTseam[ (EE_wave==F & UE_wave==T | EU_wave ==T)&changer , g := 1]
+DTseam[!(EU_wave==T | UE_wave==T | EE_wave ==T)&stayer  , g := 3]
 DTseam[ !(changer==T|stayer==T|(EU_wave==F & nextann.wavewage<= 0)), g:=NA]
 DTseam[ g==3 & (EU_anan | UE_anan | EE_anan), g:=NA]
 DTseam[ lastann.wavewage<minLEarn , g:=NA]
@@ -266,7 +266,7 @@ pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,p
 
 names(pct_w_tm1) <- c("pct","mn_w_chng","P10_w_chng","P50_w_chng","P90_w_chng")
 pct_w_tm1 <- melt(pct_w_tm1,id.vars="pct")
-ggplot(pct_w_tm1, aes( x=pct,y=value, color=variable ))+theme_bw()+geom_smooth(span=.1,se=F)+
+ggplot(pct_w_tm1, aes( x=pct,y=value, color=variable ))+theme_bw()+geom_smooth(span=.1,se=F)+ylab("Log Earnings Change") + xlab("Percentile")+
 	scale_color_manual(labels=c("Mean Wage Change","10pct Wage Change","50pct Wage Change","90pct Wage Change"),
 					   values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]))+#ggtitle("With earnings high enough")+
 theme(legend.title = element_blank(),

@@ -37,22 +37,23 @@ setkey(DTall, id, date)
 #***********************************************************************
 
 # residual wages
-DTall[!is.na(usewage) & esr==1, levwage := 1/2*(exp(usewage)-exp(-usewage))]
+DTall[!is.na(usewage) , levwage := 1/2*(exp(usewage)-exp(-usewage))]
 
 DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
 DTall[ , levwage := mean(levwage,na.rm=T)*nmo_lf1, by= list(id,wave)] #if one month is missing, give it the average of the other 3
 DTall[ , wavewage := log(levwage + (1+levwage^2)^.5) ]
-DTall[ , nawavewage:= nmo_lf1 == 0 ,by= list(id,wave)]
+DTall[ , nawavewage:= all(is.na(usewage)) ,by= list(id,wave)]
 DTall[ nawavewage==T, wavewage:=NA_real_]
 #drop the lowest resid wages, implies working less than $80 /month:
 DTall[ lfstat_wave==1 & wavewage<log(minEarn+(1+minEarn^2)^.5), wavewage:=NA]
 
 #put back levwage for esr ~=1
-DTall[!is.na(usewage) , levwage := 1/2*(exp(usewage)-exp(-usewage))]
+DTall[!is.na(usewage) & esr==1, esr1wg := 1/2*(exp(usewage)-exp(-usewage))]
 DTall[ , nmo_lf1 := sum(lfstat==1), by=list(id,wave)]
-DTall[ , levwage := mean(levwage,na.rm=T)*nmo_lf1, by= list(id,wave)] #if one month is missing, give it the average of the other 3
+DTall[ , esr1wg := mean(esr1wg,na.rm=T)*nmo_lf1, by= list(id,wave)] #if one month is missing, give it the average of the other 3
+DTall[ , empwg := log(esr1wg + (1+esr1wg^2)^.5) ]
 
-DTall[ , c("nawavewage"):=NULL]
+DTall[ , c("nawavewage","esr1wg"):=NULL]
 
 
 # raw wages
@@ -77,6 +78,9 @@ DTseam[ , next3.lfstat_wave := shift(lfstat_wave,3,type="lead"), by=id]
 
 	
 #need to add change across waves (use wavewage)
+
+DTseam[                                    , next.empwg     := shift(empwg,1,type="lead"), by=id]
+DTseam[ wave+1!=shift(wave,type = "lead")  , next.empwg     := NA]
 DTseam[                                    , next.wavewage     := shift(wavewage,1,type="lead"), by=id]
 DTseam[ wave+1!=shift(wave,type = "lead")  , next.wavewage     := NA]
 DTseam[                                    , next2.wavewage    := shift(wavewage,2,type="lead"), by=id]
@@ -85,9 +89,11 @@ DTseam[                                    , next3.wavewage    := shift(wavewage
 DTseam[ wave+3!=shift(wave,3,type = "lead"), next3.wavewage    := NA]
 
 DTseam[ , nextann.wavewage := levwage + shift(levwage,type="lead") + shift(levwage,2,type="lead")  , by=id]
-DTseam[ wave+1!=shift(wave,type = "lead") | wave+2!=shift(wave,2,type = "lead") , nextann.wavewage := NA, by=id]
+DTseam[ wave+1!=shift(wave,type = "lead") | wave+2!=shift(wave,2,type = "lead") , nextann.wavewage := NA_real_ ]
 DTseam[ , nextann.wavewage := log(nextann.wavewage + (1+nextann.wavewage^2)^.5) ]
 
+DTseam[                                  , last.empwg    := shift(empwg,1,type="lag") , by=id]
+DTseam[ wave-1!=shift(wave,type = "lag" ), last.empwg    := NA]
 DTseam[                                  , last.wavewage    := shift(wavewage,1,type="lag") , by=id]
 DTseam[ wave-1!=shift(wave,type = "lag" ), last.wavewage    := NA]
 DTseam[                                  , last.lfstat_wave := shift(lfstat_wave,1,type="lag") , by=id]
@@ -105,7 +111,7 @@ DTseam[ , wagechange3_wave := next3.wavewage  - wavewage]
 DTseam[ , last.wavewage_ann:= shift(levwage)*3, by=id]
 DTseam[ , last.wavewage_ann:= log(last.wavewage_ann + (1+last.wavewage_ann^2)^.5 )]
 DTseam[ , lastann.wavewage:= shift(levwage) + shift(levwage,2) + shift(levwage,3), by=id]
-DTseam[ wave-1!=shift(wave)|wave-2!=shift(wave,2)|wave-3!=shift(wave,3), lastann.wavewage := NA , by=id]
+DTseam[ wave-1!=shift(wave)|wave-2!=shift(wave,2)|wave-3!=shift(wave,3), lastann.wavewage := NA_real_ ]
 DTseam[ , lastann.wavewage:= log(lastann.wavewage + (1+lastann.wavewage^2)^.5 )]
 
 DTseam[ , wagechange_wvan := nextann.wavewage - last.wavewage_ann]
@@ -125,8 +131,8 @@ DTseam[ , EU_wave_first := EU_wave==T , by=id]
 DTseam[ , UE_wave_last  := UE_wave==T , by=id]
 
 DTseam[ , last.lfstat_wave:= shift(lfstat_wave), by=id]
-DTseam[last.lfstat_wave==1 & EU_wave_first == T & last.stable_emp==T, wageAtEU     := last.wavewage]
-DTseam[next.lfstat_wave==1 & UE_wave_last  == T & next.stable_emp==T, wageAfterUE  := next.wavewage]
+DTseam[last.lfstat_wave==1 & EU_wave_first == T & last.stable_emp==T, wageAtEU     := last.empwg]
+DTseam[next.lfstat_wave==1 & UE_wave_last  == T & next.stable_emp==T, wageAfterUE  := next.empwg]
 DTseam[next.lfstat_wave==1 & UE_wave_last  == T & next.stable_emp==T, wage2AfterUE := next2.wavewage]
 DTseam[next.lfstat_wave==1 & UE_wave_last  == T & next.stable_emp==T, wage3AfterUE := next3.wavewage]
 
@@ -137,12 +143,13 @@ DTseam[UE_wave_last == T, wagechange2EUE_wave := wage2AfterUE - wageAtEU]
 DTseam[UE_wave_last == T, wagechange3EUE_wave := wage3AfterUE - wageAtEU]
 
 DTseam[, wagechangeEUE_wave := Mode(wagechangeEUE_wave) , by=list(ustintid_wave, id)]
-#DTseam[, wagechange2EUE_wave:= Mode(wagechange2EUE_wave), by=list(ustintid_wave, id)]
-#DTseam[, wagechange3EUE_wave:= Mode(wagechange3EUE_wave), by=list(ustintid_wave, id)]
-DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, wagechangeEUE_wave  := next.wavewage  - last.wavewage]
+DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, wagechangeEUE_wave  := next.empwg  - last.empwg]
+#DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, wagechangeEUE_wave  := next.wavewage  - last.wavewage]
 DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, wagechange2EUE_wave := next2.wavewage - last.wavewage]
 DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, wagechange3EUE_wave := next3.wavewage - last.wavewage]
-DTseam[ !(EU_wave|UE_wave|EE_wave), wagechangeEUE_wave := wagechange_wave]
+#DTseam[ !(EU_wave|UE_wave|EE_wave), wagechangeEUE_wave := wagechange_wave]
+DTseam[ !(EU_wave|UE_wave|EE_wave), wagechangeEUE_wave := next.empwg - empwg]
+
 
 DTseam[next.lfstat_wave==1 & UE_wave_last  == T & next.stable_emp==T, esrAfterUE := next.esr_max]
 DTseam[ustintid_wave>0 , esrAfterUE := Mode(esrAfterUE),by = list(ustintid_wave,id)]
@@ -262,7 +269,7 @@ DTseam[ is.na(wagechange_wave_imp)==T, wagechange_wave_imp := F]
 
 
 DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_jcbad","wagechange_notransbad","wagechange_ENbad","wagechange_ENbad_anan","wagechange_notrbad_anan"
-								  ,"wagechange_wave_low","wagechange_wave_high","wagechange_wave_imp","pctmaxmis"
+								  ,"wagechange_wave_low","wagechange_wave_high","wagechange_wave_imp","pctmaxmis","next.esr_max"
 								  ,"wagechangeEUE_wave","next.wavewage","rawwgchangeEUE_wave","rawwgchange_wave","wagechange_wvan","wagechange_anan","lastann.wavewage",
 								  "id","wave")) #"wagechange2EUE_wave","wagechange3EUE_wave",
 DTall<- merge(DTall,DTseam, by=c("id","wave"),all.x=T)
