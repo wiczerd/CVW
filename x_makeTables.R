@@ -534,7 +534,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	
 	tab_wavevardec[1,1] <- DTseam[st == T              &(sw|!sw)&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
 	tab_wavevardec[1,2] <- DTseam[ch == T & EEfrq ==T  &(sw|!sw)&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
-	tab_wavevardec[1,3] <- DTseam[ch ==T &(EUfrq|UEfrq)&(sw|!sw)&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
+	tab_wavevardec[1,3] <- DTseam[ch == T&(EUfrq|UEfrq)&(sw|!sw)&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^2,na.rm=T) ]/totvar
 	
 	tab_wavevardec[2,1] <- DTseam[st ==T               &(sw|!sw)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
 	tab_wavevardec[2,2] <- DTseam[ch ==T & EEfrq       &(sw|!sw)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
@@ -554,25 +554,37 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	tot51025qtl <- DTseam[(stayer==T|changer==T)&demo==T&(sw|!sw), wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=c(0.05,0.1,.25,.75,.9,.95)) ]
 	
 	Nqtls <-length(tot51025qtl)
-	Ndifs <- Nqtls/2
+	Ndifs <- Nqtls/2+1
 	
 	tab_waveqtldec <- array(NA_real_,dim=c(Ndifs+1,3))
 	tab_stswqtldec <- array(NA_real_,dim=c((Ndifs+1)*2,3))
 	
 	qtlshere <- tot51025qtl
 	
-	for(rri in seq(1,Ndifs)){
-		condmean <- DTseam[(st|ch)&demo==T&(sw|!sw)&(eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt))) ]
-		condvar  <- DTseam[(st|ch)&demo==T&(sw|!sw)&(eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc))- totmean)^2,na.rm=T) ]
-		condwt   <- DTseam[(st|ch)&demo==T&(sw|!sw)&(eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt)),na.rm=T) ]
+	rri=1
+	condmean <- DTseam[(st|ch)&(sw|!sw)&demo==T&(sw|!sw)&(eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt))) ]
+	condvar  <- DTseam[(st|ch)&(sw|!sw)&demo==T&(sw|!sw)&(eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc))- totmean)^2,na.rm=T) ]
+	condwt   <- DTseam[(st|ch)&(sw|!sw)&demo==T&(sw|!sw)&(eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt)),na.rm=T) ]
+	tab_waveqtldec[rri,1] <- DTseam[st ==T               &(sw|!sw)&demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
+	tab_waveqtldec[rri,2] <- DTseam[EEfrq==T & ch==T     &(sw|!sw)&demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
+	tab_waveqtldec[rri,3] <- DTseam[(EUfrq|UEfrq)& ch==T &(sw|!sw)&demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
+	for( swi in c(T,F)){
+		tab_stswqtldec[(rri-1)*2+swi+1,1] <- DTseam[st ==T              & sw==swi &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
+		tab_stswqtldec[(rri-1)*2+swi+1,2] <- DTseam[EEfrq==T & ch==T    & sw==swi &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
+		tab_stswqtldec[(rri-1)*2+swi+1,3] <- DTseam[(EUfrq|UEfrq)& ch==T& sw==swi &demo==T& (eval(as.name(wc)) > qtlshere[Nqtls-rri+1] | eval(as.name(wc)) < qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
+	}
+	for(rri in seq(1,Ndifs-1)){
+		condmean <- DTseam[(st|ch)&(sw|!sw)&demo==T&(sw|!sw)&(eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt))) ]
+		condvar  <- DTseam[(st|ch)&(sw|!sw)&demo==T&(sw|!sw)&(eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc))- totmean)^2,na.rm=T) ]
+		condwt   <- DTseam[(st|ch)&(sw|!sw)&demo==T&(sw|!sw)&(eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt)),na.rm=T) ]
 		
-		tab_waveqtldec[rri,1] <- DTseam[st ==T               &(sw|!sw)&demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
-		tab_waveqtldec[rri,2] <- DTseam[EEfrq==T & ch==T     &(sw|!sw)&demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
-		tab_waveqtldec[rri,3] <- DTseam[(EUfrq|UEfrq)& ch==T &(sw|!sw)&demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
+		tab_waveqtldec[rri+1,1] <- DTseam[st ==T               &(sw|!sw)&demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
+		tab_waveqtldec[rri+1,2] <- DTseam[EEfrq==T & ch==T     &(sw|!sw)&demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
+		tab_waveqtldec[rri+1,3] <- DTseam[(EUfrq|UEfrq)& ch==T &(sw|!sw)&demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
 		for( swi in c(T,F)){
-			tab_stswqtldec[(rri-1)*2+swi+1,1] <- DTseam[st ==T              & sw==swi &demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
-			tab_stswqtldec[(rri-1)*2+swi+1,2] <- DTseam[EEfrq==T & ch==T    & sw==swi &demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
-			tab_stswqtldec[(rri-1)*2+swi+1,3] <- DTseam[(EUfrq|UEfrq)& ch==T& sw==swi &demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
+			tab_stswqtldec[(rri)*2+swi+1,1] <- DTseam[st ==T              & sw==swi &demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
+			tab_stswqtldec[(rri)*2+swi+1,2] <- DTseam[EEfrq==T & ch==T    & sw==swi &demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
+			tab_stswqtldec[(rri)*2+swi+1,3] <- DTseam[(EUfrq|UEfrq)& ch==T& sw==swi &demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^2,na.rm=T)]/condvar
 		}
 	}
 	tab_waveqtldec[Ndifs+1,1] <- DTseam[st == T               &(sw|!sw)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]
@@ -590,7 +602,6 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 		tab_waveqtldec[ri,] <-tab_waveqtldec[ri,]/rsum[ri]
 	}
 	rsum <- rowSums(tab_stswqtldec, na.rm=T)
-	
 	for(ri in seq(1,nrow(tab_stswqtldec),2)){
 		tab_stswqtldec[ri,] <-tab_stswqtldec[ri,]/(rsum[ri]+rsum[ri+1])
 		tab_stswqtldec[ri+1,] <-tab_stswqtldec[ri+1,]/(rsum[ri]+rsum[ri+1])
@@ -620,8 +631,8 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	
 	
 	#rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
-	rownames(tab_chngvarqtldec) <- c("Variance","0.95-0.05","0.9-0.1","0.75-0.25","Pop")# "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
-	rownames(tab_stswchngvarqtldec) <- c("Variance","","0.95-0.05","\ ","0.9-0.1","\ \ ","0.75-0.25","\ \ \ ","Pop","\ \ \ \ ")# "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
+	rownames(tab_chngvarqtldec) <- c("Variance","0.0-0.05,0.95-1.0","0.95-0.05","0.9-0.1","0.75-0.25","Pop")# "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
+	rownames(tab_stswchngvarqtldec) <- c("Variance","","0.0-0.05,0.95-1.0","\ \ \ \ \ ","0.95-0.05","\ ","0.9-0.1","\ \ ","0.75-0.25","\ \ \ ","Pop","\ \ \ \ ")# "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
 	
 	
 	tab_chngvarqtldec <- xtable(tab_chngvarqtldec, digits=3, 
@@ -697,6 +708,132 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	  	print(tab_chngvarqtldec,include.rownames=T, hline.after= c(0,Ndifs+1, nrow(tab_chngvarqtldec)-1, nrow(tab_chngvarqtldec)), file=paste0(outputdir,"/wavechngvarqtldec_rec",rI,"_",wclab,"_",reclab,".tex"))
 	  }
 	}
+	#######################################################################
+	#Skewness decomp -----------------------------------------------
+	#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+	#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+	
+	Ndifs <- Nqtls/2
+	tab_waveskewdec <- array(NA_real_,dim=c(2,3))
+	tab_stswskewdec <- array(NA_real_,dim=c(4,3))
+	
+	
+	totmean <- DTseam[(st|ch)&demo==T&(sw|!sw), wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt))) ]
+	totskew <- DTseam[(st|ch)&demo==T&(sw|!sw), sum(eval(as.name(wt))*(eval(as.name(wc))- totmean)^3,na.rm=T) ]
+	totwt   <- DTseam[(st|ch)&demo==T&(sw|!sw), sum(eval(as.name(wt)),na.rm=T) ]
+	
+	#totmean_sw <- DTseam[(st|ch)&demo==T&is.finite(sw), wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt))) ]
+	#totvar_sw  <- DTseam[(st|ch)&demo==T&is.finite(sw), sum(eval(as.name(wt))*(eval(as.name(wc))- totmean_sw)^2,na.rm=T) ]
+	#totwt_sw   <- DTseam[(st|ch)&demo==T&is.finite(sw)  , sum(eval(as.name(wt)),na.rm=T) ]
+	
+	tab_waveskewdec[1,1] <- DTseam[st == T              &(sw|!sw)&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^3,na.rm=T) ]/totskew
+	tab_waveskewdec[1,2] <- DTseam[ch == T & EEfrq ==T  &(sw|!sw)&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^3,na.rm=T) ]/totskew
+	tab_waveskewdec[1,3] <- DTseam[ch == T&(EUfrq|UEfrq)&(sw|!sw)&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^3,na.rm=T) ]/totskew
+	
+	tab_waveskewdec[2,1] <- DTseam[st ==T               &(sw|!sw)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+	tab_waveskewdec[2,2] <- DTseam[ch ==T & EEfrq       &(sw|!sw)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+	tab_waveskewdec[2,3] <- DTseam[ch ==T &(EUfrq|UEfrq)&(sw|!sw)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+	for(swi in c(T,F)){
+		tab_stswskewdec[swi+1,1] <- DTseam[st ==T               &sw==swi&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^3,na.rm=T) ]/totskew
+		tab_stswskewdec[swi+1,2] <- DTseam[ch ==T & EEfrq ==T   &sw==swi&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^3,na.rm=T) ]/totskew
+		tab_stswskewdec[swi+1,3] <- DTseam[ch ==T &(EUfrq|UEfrq)&sw==swi&demo==T, sum(eval(as.name(wt))*(eval(as.name(wc)) - totmean)^3,na.rm=T) ]/totskew
+		
+		tab_stswskewdec[swi+3,1] <- DTseam[st ==T               &sw==swi&demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+		tab_stswskewdec[swi+3,2] <- DTseam[ch ==T & EEfrq       &sw==swi&demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+		tab_stswskewdec[swi+3,3] <- DTseam[ch ==T &(EUfrq|UEfrq)&sw==swi&demo==T, sum(eval(as.name(wt)),na.rm=T) ]/totwt
+	}
+	
+	
+	# Full sample quantile-diff decomposition --------------------------
+	tot51025qtl <- DTseam[(stayer==T|changer==T)&demo==T&(sw|!sw), wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=c(0.05,0.1,.25,.75,.9,.95)) ]
+	
+	Nqtls <-length(tot51025qtl)
+	Ndifs <- Nqtls/2
+	
+	tab_skewqtldec <- array(NA_real_,dim=c(Ndifs+1,3))
+	tab_stswskewqtldec <- array(NA_real_,dim=c((Ndifs+1)*2,3))
+	
+	qtlshere <- tot51025qtl
+	
+	for(rri in seq(1,Ndifs)){
+		condmean <- DTseam[(st|ch)&(sw|!sw)&demo==T&(sw|!sw)&(eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt))) ]
+		condskew  <- DTseam[(st|ch)&(sw|!sw)&demo==T&(sw|!sw)&(eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc))- totmean)^3,na.rm=T) ]
+		condwt   <- DTseam[(st|ch)&(sw|!sw)&demo==T&(sw|!sw)&(eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt)),na.rm=T) ]
+		
+		tab_skewqtldec[rri,1] <- DTseam[st ==T               &(sw|!sw)&demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^3,na.rm=T)]/condskew
+		tab_skewqtldec[rri,2] <- DTseam[EEfrq==T & ch==T     &(sw|!sw)&demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^3,na.rm=T)]/condskew
+		tab_skewqtldec[rri,3] <- DTseam[(EUfrq|UEfrq)& ch==T &(sw|!sw)&demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^3,na.rm=T)]/condskew
+		for( swi in c(T,F)){
+			tab_stswskewqtldec[(rri-1)*2+swi+1,1] <- DTseam[st ==T              & sw==swi &demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^3,na.rm=T)]/condskew
+			tab_stswskewqtldec[(rri-1)*2+swi+1,2] <- DTseam[EEfrq==T & ch==T    & sw==swi &demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^3,na.rm=T)]/condskew
+			tab_stswskewqtldec[(rri-1)*2+swi+1,3] <- DTseam[(EUfrq|UEfrq)& ch==T& sw==swi &demo==T& (eval(as.name(wc)) < qtlshere[Nqtls-rri+1] & eval(as.name(wc)) > qtlshere[rri]), sum(eval(as.name(wt))*(eval(as.name(wc)) - condmean)^3,na.rm=T)]/condskew
+		}
+	}
+	tab_skewqtldec[Ndifs+1,1] <- DTseam[st == T               &(sw|!sw)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]
+	tab_skewqtldec[Ndifs+1,2] <- DTseam[EEfrq & ch==T         &(sw|!sw)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]
+	tab_skewqtldec[Ndifs+1,3] <- DTseam[(EUfrq|UEfrq)& ch==T  &(sw|!sw)&demo==T, sum(eval(as.name(wt)),na.rm=T) ]
+	for( swi in c(T,F)){
+		tab_stswskewqtldec[(Ndifs*2)+swi+1,1] <- DTseam[st ==T              & sw==swi &demo==T, sum(eval(as.name(wt)) ,na.rm=T)]
+		tab_stswskewqtldec[(Ndifs*2)+swi+1,2] <- DTseam[EEfrq==T & ch==T    & sw==swi &demo==T, sum(eval(as.name(wt)) ,na.rm=T)]
+		tab_stswskewqtldec[(Ndifs*2)+swi+1,3] <- DTseam[(EUfrq|UEfrq)& ch==T& sw==swi &demo==T, sum(eval(as.name(wt)) ,na.rm=T)]
+	}
+	
+	
+	rsum <- rowSums(tab_skewqtldec, na.rm=T)
+	for(ri in seq(1,nrow(tab_skewqtldec))){
+		tab_skewqtldec[ri,] <-tab_skewqtldec[ri,]/rsum[ri]
+	}
+	rsum <- rowSums(tab_stswskewqtldec, na.rm=T)
+	for(ri in seq(1,nrow(tab_stswskewqtldec),2)){
+		tab_stswskewqtldec[ri,] <-tab_stswskewqtldec[ri,]/(rsum[ri]+rsum[ri+1])
+		tab_stswskewqtldec[ri+1,] <-tab_stswskewqtldec[ri+1,]/(rsum[ri]+rsum[ri+1])
+	}
+	
+	#output it to tables
+	tab_chngskewqtldec <- rbind(tab_waveskewdec[1,],tab_skewqtldec[1:Ndifs,],tab_waveskewdec[2,]) 
+	tab_stswchngskewqtldec <- rbind(tab_stswskewdec[1:2,],tab_stswskewqtldec[1:(Ndifs*2),],tab_stswskewdec[3:4,]) 
+	
+	for(ri in seq(1,nrow(tab_chngskewqtldec))){
+		tab_chngskewqtldec[ri,2:3] <- tab_chngskewqtldec[ri,2:3]*(1-tab_chngskewqtldec[ri,1])/sum(tab_chngskewqtldec[ri,2:3])
+	}
+	for(ri in seq(1,nrow(tab_stswchngskewqtldec),2)){
+		rescale <- (1-sum(tab_stswchngskewqtldec[ri:(ri+1),1]))/sum(tab_stswchngskewqtldec[ri:(ri+1),2:3])
+		tab_stswchngskewqtldec[ri:(ri+1),2:3] <- tab_stswchngskewqtldec[ri:(ri+1),2:3]*rescale
+	}
+	
+	tab_chngskewqtldec<- data.table(tab_chngskewqtldec)
+	tab_stswchngskewqtldec<- data.table(tab_stswchngskewqtldec)
+	if(wc=="wagechangeEUE_wave"|wc=="rawwgchangeEUE_wave"){
+		names(tab_chngskewqtldec) <- c("Job\ Stayers","EE","EUE")	
+		names(tab_stswchngskewqtldec) <- c("Job\ Stayers","EE","EUE")
+	}else{
+		names(tab_chngskewqtldec) <- c("Job\ Stayers","EE","EU,UE")	
+		names(tab_stswchngskewqtldec) <- c("Job\ Stayers","EE","EU,UE")	
+	}
+	
+	
+	#rownames(tab_fulldist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
+	rownames(tab_chngskewqtldec) <- c("Skewness","0.95-0.05","0.9-0.1","0.75-0.25","Pop")# "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
+	rownames(tab_stswchngskewqtldec) <- c("Skewness","","0.95-0.05","\ ","0.9-0.1","\ \ ","0.75-0.25","\ \ \ ","Pop","\ \ \ \ ")# "Variance\ ","0.95-0.05\ ","0.9-0.1\ ","0.75-0.25\ ","Pct Sample")
+	
+	
+	tab_chngskewqtldec <- xtable(tab_chngskewqtldec, digits=3, 
+								align="l|l|ll", caption="Decomposition of earnings change dispersion \\label{tab:wavechngskewqtldec}")
+	
+	tab_stswchngskewqtldec <- xtable(tab_stswchngskewqtldec, digits=3, 
+									align="l|l|ll", caption="Decomposition of earnings change dispersion, occupation stayers and switchers \\label{tab:stswchngskewqtldec}")
+	
+	nametab <- "chngskewqtldec"
+	if(demolbl>=1 & demolbl<=7){
+		print(tab_chngskewqtldec,include.rownames=T, hline.after= c(0,nrow(tab_chngskewqtldec)-1, nrow(tab_chngskewqtldec)), file=paste0(outputdir,"/",nametab, demotxt[demolbl],"_",wclab,".tex")) 
+		nametab <- "stswchngskewqtldec"
+		print(tab_stswchngskewqtldec,include.rownames=T, hline.after= c(0,nrow(tab_stswchngskewqtldec)-2, nrow(tab_stswchngskewqtldec)), file=paste0(outputdir,"/",nametab, demotxt[demolbl],"_",wclab,".tex")) 
+	}else{
+		print(tab_chngskewqtldec,include.rownames=T, hline.after= c(0,nrow(tab_chngskewqtldec)-1, nrow(tab_chngskewqtldec)), file=paste0(outputdir,"/",nametab,"_",wclab,".tex") ) 
+		nametab <- "stswchngskewqtldec"
+		print(tab_stswchngskewqtldec,include.rownames=T, hline.after= c(0,nrow(tab_stswchngskewqtldec)-2, nrow(tab_stswchngskewqtldec)), file=paste0(outputdir,"/",nametab,"_",wclab,".tex") ) 
+	}
+	
 	
 	#*******************************************************************
 	#*******************************************************************
@@ -1137,7 +1274,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	
 		names(tab_wavedist) <- cnames
 		rownames(tab_wavedist) <- rnames
-		tab_wavedist <- xtable(tab_wavedist, digits=2, 
+		tab_wavedist <- xtable(tab_wavedist, digits=3, 
 			                       align="l|l|lllll", caption=paste0("Distribution of earnings changes among ", rtxt ," job changers in recession and expansion \\label{tab:",labtxt,"_",wclab,"_",reclab,"}"))
 		print(tab_wavedist,include.rownames=T, hline.after= c(nrow(tab_wavedist)), 
 			  add.to.row=rowtitles, file=paste0(outputdir,"/",labtxt,"_",wclab,"_",reclab,".tex"))
@@ -1157,8 +1294,8 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 			#output it to tables
 		
 			#pre-round it:
-			tab_wavedistse <- round(100*tab_wavedistse,digits=2)
-			tab_wavedistci <- round(100*tab_wavedistci,digits=2)
+			tab_wavedistse <- round(1000*tab_wavedistse,digits=3)
+			tab_wavedistci <- round(1000*tab_wavedistci,digits=3)
 		
 			parens <- function(x, i, j){
 				x[i,j] <- sprintf("(%s)", x[i,j])
