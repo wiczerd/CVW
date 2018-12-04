@@ -1023,13 +1023,15 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 		nsamp  = nsampR+nsampE
 		se_wavechngdist_rec <- array(0.,dim = c(9*3,length(tabqtls)+1,Nsim))
 		se_wavestaydist_rec <- array(0.,dim = c(3*3,length(tabqtls)+1,Nsim))
-		se_wavechngmoments_rec  <- array(0.,dim = c(9,5,Nsim))
+		se_wavechngmoments_rec  <- array(0.,dim = c(9*3,5,Nsim))
 	}else{
 		Nsim = 0
 	}
 	
 	for( si in seq(1,bootse*Nsim+1) ){
 		if(si>1){
+			seedint = seedint+1
+			set.seed(seedint)
 			DThr <- DTseam[ sample(nsamp,nsamp,replace=T)] #,prob=eval(as.name(wt))
 		}else{
 			DThr <- DTseam
@@ -1125,15 +1127,15 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 			
 		}
 		if(si>1){
-			se_wavechngdist_rec[,,si-1] = tab_wavechngdist_rec
-			se_wavestaydist_rec[,,si-1] = tab_wavestaydist_rec
-			se_wavechngmoments_rec[,,si-1] = tab_wavechngmoments_rec
+			se_wavechngdist_rec[,,(si-1)] <- tab_wavechngdist_rec
+			se_wavestaydist_rec[,,(si-1)] <- tab_wavestaydist_rec
+			se_wavechngmoments_rec[,,(si-1)] <- tab_wavechngmoments_rec
 		}else{
 			dat_wavechngdist_rec <- tab_wavechngdist_rec
 			dat_wavestaydist_rec <- tab_wavestaydist_rec
 			dat_wavechngmoments_rec <- tab_wavechngmoments_rec
 		}
-	}#si, sim
+	} #si, sim
 	
 
 	#________________________________________
@@ -1335,7 +1337,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 					labtxt <- paste0(labtxt,"_EUUE")
 				}
 			}
-			tab_wavedistse <- xtable(tab_wavedistse, digits=2, 
+			tab_wavedistse <- xtable(tab_wavedistse, digits=3, 
 								   align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",labtxt,"_",wclab,"_",reclab,"}"))
 		
 			if(demolbl>=1 & demolbl<=7){
@@ -1349,7 +1351,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 		
 		# print the moments tables
 		tab_wavemoments <- data.table(tab_wavechngmoments_rec[seq(1+eidx,9+eidx),])
-		
+		se_wavechngmoments <- se_wavechngmoments_rec[seq(1+eidx,9+eidx),,]
 		#names(tab_wavemoments) <- c("Mean","Median","Std Dev", "Skew", "Kurtosis")
 		names(tab_wavemoments) <- c("Mean","Median","Med Abs Dev", "Groenv-Meeden", "Moors")
 		#rownames(tab_wavedist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
@@ -1373,7 +1375,11 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 		}else if(AllEEEU==3){
 			if(wc=="wagechangeEUE_wave"| wc=="rawwgchangeEUE_wave"){
 				rtxt <- "EUE"
-				nametab <- paste0(nametab,"_EUE")
+				nametab <- paste0(nametab,"_EUEwave")
+			else if(wc=="wagechange_anan"){
+				rtxt <- "EUUE"
+				nametab <- paste0(nametab,"_EUUEanan")
+			}
 			}else{	
 				rtxt <- "EU,UE"
 				nametab <- paste0(nametab,"_EUUE")
@@ -1393,9 +1399,9 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 		if(bootse == T){
 			for( ri in seq(0,nrow(tab_wavemoments)-1) ){
 				for(ci in seq( 0,ncol(tab_wavemoments)-1 )){
-					tab_wavemomentsci[ ri*2+1,ci*2+1 ] <- tab_wavechngmoments[ri+1,ci+1]
+					tab_wavemomentsci[ ri*2+1,ci*2+1 ] <- tab_wavemoments[ri+1,ci+1]
 					tab_wavemomentsci[ ri*2+2,(ci*2+1):(ci*2+2) ] <- quantile(se_wavechngmoments[ri+1,ci+1, ], probs=c(0.05,0.95))
-					tab_wavemomentsse[ ri*2+1,ci+1 ] <- tab_wavechngmoments[ri+1,ci+1]
+					tab_wavemomentsse[ ri*2+1,ci+1 ] <- tab_wavemoments[ri+1,ci+1]
 					tab_wavemomentsse[ ri*2+2,ci+1 ] <- var(se_wavechngmoments[ri+1,ci+1, ])^0.5
 				}
 			}
