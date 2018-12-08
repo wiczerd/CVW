@@ -1282,13 +1282,15 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 			  add.to.row=rowtitles, file=paste0(outputdir,"/",labtxt,"_",wclab,"_",reclab,".tex"))
 	
 		#standard errors
-		tab_wavedistci <- array(0.,dim=c(2*nrow(tab_wavedist),2*ncol(tab_wavedist)))
+		tab_wavedist <- tab_wavechngdist_rec[seq(1+eidx,9+eidx),]
+		
+		tab_wavedistci_in <- array(0.,dim=c(2*nrow(tab_wavedist),2*ncol(tab_wavedist)))
 		tab_wavedistse <- array(0.,dim=c(2*nrow(tab_wavedist),ncol(tab_wavedist)))
 		if(bootse == T){
 			for( ri in seq(0,nrow(tab_wavedist)-1) ){
 				for(ci in seq( 0,ncol(tab_wavedist)-1 )){
-					tab_wavedistci[ ri*2+1,ci*2+1 ] <- tab_wavedist[ri+1,ci+1]
-					tab_wavedistci[ ri*2+2,(ci*2+1):(ci*2+2) ] <- quantile(se_wavechngdist_rec[eidx+ri+1,ci+1, ], probs=c(0.05,0.95))
+					tab_wavedistci_in[ ri*2+1,ci*2+1 ] <- tab_wavedist[ri+1,ci+1]
+					tab_wavedistci_in[ ri*2+2,(ci*2+1):(ci*2+2) ] <- quantile(se_wavechngdist_rec[eidx+ri+1,ci+1, ], probs=c(0.05,0.95))
 					tab_wavedistse[ ri*2+1,ci+1 ] <- tab_wavedist[ri+1,ci+1]
 					tab_wavedistse[ ri*2+2,ci+1 ] <- var(se_wavechngdist_rec[eidx+ri+1,ci+1, ])^0.5
 				}
@@ -1296,26 +1298,38 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 			#output it to tables
 		
 			#pre-round it:
-			tab_wavedistse <- round(1000*tab_wavedistse,digits=3)
-			tab_wavedistci <- round(1000*tab_wavedistci,digits=3)
-		
+			tab_wavedistse <- round(1000*tab_wavedistse)/1000
+			tab_wavedistci_in <- round(tab_wavedistci_in,digits=3)
+			tab_wavedistci <-tab_wavedistse
 			parens <- function(x, i, j){
 				x[i,j] <- sprintf("(%s)", x[i,j])
 				x
 			}
+			parensLR <- function(xin,xout, i, j){
+				xout[i,j] <- sprintf("(%s,%s)", xin[i,j],xin[i,j+1])
+				xout
+			}
+			
 			for (ri in seq(2,nrow(tab_wavedistse),2)){
 				for(ci in seq(1,ncol(tab_wavedistse))){
 					tab_wavedistse <-parens(tab_wavedistse,ri,ci)
 				}
 			}
+			
+			for (ri in seq(2,nrow(tab_wavedistse),2)){
+				for(ci in seq(1,ncol(tab_wavedistse)-1,2)){
+					tab_wavedistci <-parensLR(tab_wavedistci_in,tab_wavedistci,ri,ci)
+				}
+			}
 			tab_wavedistse <-data.table(tab_wavedistse)
-		
+			tab_wavedistci <-data.table(tab_wavedistci)
 			names(tab_wavedistse) <- c("Mean",as.character( tabqtls))
 			#rownames(tab_wavedist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
 			rnames <- c(paste0(rtxt,"    ")," "     , "Occ stayers    ",","      ,"Occ movers    ",
 				        paste0(rtxt,"\   "),",,,"   , "Occ stayers\   ",",,,,"   ,"Occ movers\   ",
 				        paste0(rtxt,"\ \ "),",,,,,,", "Occ stayers\ \ ",",,,,,,,","Occ movers\ \ ")
 		
+			rownames(tab_wavedistse) <- rnames
 			rownames(tab_wavedistse) <- rnames
 		
 			rowtitles <- list( pos=list(0,6,12), command=c("\\hline  \\color{Maroon}{1996-2012} &  & & & & & \\\\ \n",
@@ -1347,6 +1361,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 				print(tab_wavedistse,include.rownames=T, hline.after= c(nrow(tab_wavedistse)), 
 					  add.to.row=rowtitles, file=paste0(outputdir,"/",labtxt,"_",wclab,"_",reclab,".tex"))
 			}
+			
 		}# se on dist stats?
 		
 		# print the moments tables
@@ -1376,11 +1391,11 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 			if(wc=="wagechangeEUE_wave"| wc=="rawwgchangeEUE_wave"){
 				rtxt <- "EUE"
 				nametab <- paste0(nametab,"_EUEwave")
-			else if(wc=="wagechange_anan"){
+			}else if(wc=="wagechange_anan"){
 				rtxt <- "EUUE"
 				nametab <- paste0(nametab,"_EUUEanan")
 			}
-			}else{	
+			else{	
 				rtxt <- "EU,UE"
 				nametab <- paste0(nametab,"_EUUE")
 			}
@@ -1407,8 +1422,8 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 			}
 			
 			#output it to tables
-			tab_wavemomentsse[,1:3]<-tab_wavemomentsse[,1:3]*100
-			tab_wavemomentsci[,1:3]<-tab_wavemomentsci[,1:3]*100
+			tab_wavemomentsse[,1:5]<-round(tab_wavemomentsse[,1:5]*1000,digits=3)/1000
+			tab_wavemomentsci[,1:10]<-round(tab_wavemomentsci[,1:10]*1000,digits=3)/1000
 			
 			parens <- function(x, i, j){
 				x[i,j] <- sprintf("(%s)", x[i,j])
@@ -1421,7 +1436,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 			}
 			tab_wavemomentsse <-data.table(tab_wavemomentsse)
 			
-			names(tab_wavemomentsse) <- c("Mean",as.character( tabqtls))
+			names(tab_wavemomentsse) <- c("Mean","Median","Med Abs Dev", "Groenv-Meeden", "Moors")
 			#rownames(tab_wavedist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
 			rnames <- c("All\ Workers"    ," "     , "Occ\ Stayers"    ,","      ,"Occ\ Movers"    ,",,",
 						"All\ Workers\ "  ,",,,"   , "Occ\ Stayers\ "  ,",,,,"   ,"Occ\ Movers\ "  ,",,,,,",
@@ -1448,7 +1463,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 				}
 			}
 			tab_wavemomentsse <- xtable(tab_wavemomentsse, digits=2, 
-										align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+										align="l|l|llll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 			
 			if(demolbl>=1 & demolbl<=7){
 				print(tab_wavemomentsse,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
