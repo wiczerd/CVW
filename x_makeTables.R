@@ -140,7 +140,7 @@ DTseam <- subset(DTseam, wave>1 & wave<panelmaxwave)
 
 # loop over wage measures here:
 
-for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagechange_wave","rawwgchange_wave","rawwgchange_anan") ){
+for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwgchange_anan") ){
 
 	if(demolbl==1){
 		DTseam[(stayer==T|changer==T), demo:= (ageGrp==1)]
@@ -341,6 +341,9 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	nametab = "box_staychngemp"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps",device = cairo_eps),height=5,width=10)
 	
+	
+	#______________________________________________________
+	#tables for the distribution of stayers and changers
 	
 	tab_wavedistci <- array(0.,dim=c(2*nrow(tab_wavedist),2*ncol(tab_wavedist)))
 	tab_wavedistse <- array(0.,dim=c(2*nrow(tab_wavedist),ncol(tab_wavedist)))
@@ -861,6 +864,8 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 	
 	for(si in seq(1,bootse*Nsim+1)){
 		if(si>1){
+			seedint = seedint+1
+			set.seed(seedint)
 			DThr <- DTseam[ sample(nsamp,nsamp,replace=T)]#,prob=eval(as.name(wt))
 		}else{
 			DThr <- DTseam
@@ -1423,8 +1428,8 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","wagec
 			}
 			
 			#output it to tables
-			tab_wavemomentsse[,1:5]<-round(tab_wavemomentsse[,1:5]*1000,digits=3)/1000
-			tab_wavemomentsci[,1:10]<-round(tab_wavemomentsci[,1:10]*1000,digits=3)/1000
+			tab_wavemomentsse    <-round(tab_wavemomentsse,digits=3)
+			tab_wavemomentsci_in <-round(tab_wavemomentsci_in,digits=3)
 			
 			parens <- function(x, i, j){
 				x[i,j] <- sprintf("(%s)", x[i,j])
