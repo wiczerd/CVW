@@ -99,7 +99,7 @@ wtd.4qtlmoments <- function(xt,wt){
 
 toKeep_wave <- c("switchedOcc_wave","switched_wave","switched_anan","esr_max",
             "ageGrp","HSCol","next.stable_emp","last.stable_emp",
-            "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint","levwage",
+            "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint","levwage","max.unempdur_wave",
             "wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave","wagechange_anan",
             "wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad","pctmaxmis",
             "EE_wave","EU_wave","UE_wave","changer","stayer","EE_anan","EU_anan","UE_anan","changer_anan","stayer_anan",
