@@ -339,7 +339,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		scale_x_discrete(labels=c("Changers, Expansion","Changers, Recession","Stayers, Expansion","Stayers, Recession"))+
 		scale_color_manual(values=c("blue","red"))+ylab("Log earnings change")+xlab("")+ylim(c(-1.1,1.1))
 	nametab = "box_staychngemp"
-	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps",device = cairo_ps),height=5,width=10)
+	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),device = cairo_ps,height=5,width=10)
 	
 	
 	#______________________________________________________
