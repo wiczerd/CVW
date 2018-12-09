@@ -25,6 +25,7 @@ demotxt <- c("Young", "Prime","Old","HS","Col","Male","Female")
 
 bootse <- T #compute bootstrapped standard errors or no?
 seedint = 941987
+Nsim = 61
 
 minEarn = 1040 
 minLEarn = log(2*minEarn)
@@ -259,13 +260,10 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 	if(bootse == T){
 		set.seed(seedint)
 		#draw the sample
-		Nsim = 50
 		nsampE = nrow(DTseam[eval(as.name(recDef)) == F ])
 		nsampR = nrow(DTseam[eval(as.name(recDef)) == T ])
 		nsamp  = nsampR+nsampE
 		se_wavedist <- array(0.,dim = c(9,length(tabqtls)+1,Nsim))
-	}else{
-		Nsim = 0
 	}
 	
 	for( si in seq(1,bootse*Nsim+1) ){
@@ -412,6 +410,8 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 	tab_wavemoments <- array(0., dim=c(9,5))
 	for( si in seq(1,bootse*Nsim+1) ){
 		if(si>1){
+			seedint = seedint+1
+			set.seed(seedint)
 			DThr <- DTseam[ sample(nsamp,nsamp,replace=T)] #,prob=eval(as.name(wt))
 		}else{
 			DThr <- DTseam
@@ -507,7 +507,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		nametab <- "wavemomentsse"
 		
 		tab_wavemomentsse <- xtable(tab_wavemomentsse, digits=2, 
-								 align="l|l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+								 align="l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 		
 		if(demolbl>=1 & demolbl<=7){
 			print(tab_wavemomentsse,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
@@ -853,13 +853,10 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 	if(bootse==T){
 		set.seed(seedint)
 		#draw the sample
-		Nsim = 50
 		nsampE = nrow(DTseam[eval(as.name(recDef)) == F ])
 		nsampR = nrow(DTseam[eval(as.name(recDef)) == T ])
 		nsamp  = nsampR+nsampE
 		se_wavechngdist <- array(0.,dim = c(9,length(tabqtls)+1,Nsim))
-	}else{
-		Nsim = 0
 	}
 	
 	for(si in seq(1,bootse*Nsim+1)){
@@ -1022,15 +1019,12 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 	if(bootse == T){
 		set.seed(seedint)
 		#draw the sample
-		Nsim = 50
 		nsampE = nrow(DTseam[eval(as.name(recDef)) == F ])
 		nsampR = nrow(DTseam[eval(as.name(recDef)) == T ])
 		nsamp  = nsampR+nsampE
 		se_wavechngdist_rec <- array(0.,dim = c(9*3,length(tabqtls)+1,Nsim))
 		se_wavestaydist_rec <- array(0.,dim = c(3*3,length(tabqtls)+1,Nsim))
 		se_wavechngmoments_rec  <- array(0.,dim = c(9*3,5,Nsim))
-	}else{
-		Nsim = 0
 	}
 	
 	for( si in seq(1,bootse*Nsim+1) ){
@@ -1481,7 +1475,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 				}
 			}
 			tab_wavemomentsse <- xtable(tab_wavemomentsse, digits=2, 
-										align="l|l|llll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+										align="l|lllll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 			if(demolbl>=1 & demolbl<=7){
 				print(tab_wavemomentsse,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
 					  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
@@ -1506,7 +1500,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 				}
 			}
 			tab_wavemomentsci <- xtable(tab_wavemomentsci, digits=2, 
-										align="l|l|llll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+										align="l|lllll", caption=paste0("Moments of earnings change distribution \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 			if(demolbl>=1 & demolbl<=7){
 				print(tab_wavemomentsci,include.rownames=T, hline.after= c(nrow(tab_wavemomentsci)), 
 					  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
