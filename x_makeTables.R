@@ -23,7 +23,7 @@ wc <- "wagechangeEUE_wave"
 demolbl <- 0 #or choose number from categories in demotxt
 demotxt <- c("Young", "Prime","Old","HS","Col","Male","Female")
 
-bootse <- F #compute bootstrapped standard errors or no?
+bootse <- T #compute bootstrapped standard errors or no?
 seedint = 941987
 
 minEarn = 1040 
@@ -493,7 +493,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		}
 		tab_wavemomentsse <-data.table(tab_wavemomentsse)
 		
-		names(tab_wavemomentsse) <- c("Mean",as.character( tabqtls))
+		names(tab_wavemomentsse) <- c("Mean","Median","Med Abs Dev", "Groenv-Meeden", "Moors" )
 		#rownames(tab_wavedist) <- c("Same~Job","Chng~Job","Same~Job,~Exp","Chng~Job,~Exp","Same~Job,~Rec","Chng~Job,~Rec")
 		rnames <- c("All\ Workers"    ," "     , "Same\ Job"    ,","      ,"Chng\ Job"    ,",,",
 					"All\ Workers\ "  ,",,,"   , "Same\ Job\ "  ,",,,,"   ,"Chng\ Job\ "  ,",,,,,",
