@@ -93,7 +93,14 @@ wtd.4qtlmoments <- function(xt,wt){
 	Moors  <- wtd.Moors(xt,wt)
 	return(c(median,mad,GrnMd,Moors))
 }
-
+parensLR <- function(xin,xout){
+	for (i in seq(2,nrow(xout),2)){
+		for(j in seq(1,ncol(xout))){
+			xout[i,j] <- sprintf("(%s,%s)", xin[i,(j-1)*2+1],xin[i,j*2])
+		}
+	}	
+	xout
+}
 
 #*********************************************************************
 
@@ -489,21 +496,22 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 			x[i,j] <- sprintf("(%s)", x[i,j])
 			x
 		}
-		parensLR <- function(xin,xout, i, j){
-			xout[i,j] <- sprintf("(%s,%s)", xin[i,(j-1)*2+1],xin[i,j*2])
-			xout
-		}
+		# parensLR <- function(xin,xout){
+		# 	for (i in seq(2,nrow(xout),2)){
+		# 		for(j in seq(1,ncol(xout))){
+		# 			xout[i,j] <- sprintf("(%s,%s)", xin[i,(j-1)*2+1],xin[i,j*2])
+		# 		}
+		# 	}	
+		# 	xout
+		# }
 		for (ri in seq(2,nrow(tab_wavemomentsse),2)){
 			for(ci in seq(1,ncol(tab_wavemomentsse))){
 				tab_wavemomentsse <-parens(tab_wavemomentsse,ri,ci)
 			}
 		}
-		for (ri in seq(2,nrow(tab_wavemomentsci),2)){
-			for(ci in seq(1,ncol(tab_wavemomentsci))){
-				tab_wavemomentsci <-parensLR(tab_wavemomentsci_in,tab_wavedistci,ri,ci)
-			}
-		}
-		
+
+		tab_wavemomentsci <-parensLR(tab_wavemomentsci_in,tab_wavemomentsci)
+
 		tab_wavemomentsse <-data.table(tab_wavemomentsse)
 		tab_wavemomentsci <-data.table(tab_wavemomentsci)
 		
@@ -523,10 +531,10 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		nametab <- "wgmomentsse"
 		
 		tab_wavemomentsse <- xtable(tab_wavemomentsse, digits=2, 
-								 align="l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+								 align="l|ccccc", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 		nametab <- "wgmomentsci"
 		tab_wavemomentsci <- xtable(tab_wavemomentsci, digits=2, 
-									align="l|lllll", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+									align="l|ccccc", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 		
 		if(demolbl>=1 & demolbl<=7){
 			print(tab_wavemomentsse,include.rownames=T, hline.after= c(nrow(tab_wavemomentsse)), 
@@ -1333,16 +1341,17 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 					tab_wavedistse <-parens(tab_wavedistse,ri,ci)
 				}
 			}
-			parensLR <- function(xin,xout, i, j){
-				xout[i,j] <- sprintf("(%s,%s)", xin[i,(j-1)*2+1],xin[i,j*2])
-				xout
-			}
+			# parensLR <- function(xin,xout){
+			# 	for (i in seq(2,nrow(xout),2)){
+			# 		for(j in seq(1,ncol(xout))){
+			# 			xout[i,j] <- sprintf("(%s,%s)", xin[i,(j-1)*2+1],xin[i,j*2])
+			# 		}
+			# 	}	
+			# 	xout
+			# }
 			
-			for (ri in seq(2,nrow(tab_wavedistci),2)){
-				for(ci in seq(1,ncol(tab_wavedistci))){
-					tab_wavedistci <-parensLR(tab_wavedistci_in,tab_wavedistci,ri,ci)
-				}
-			}
+			tab_wavedistci <-parensLR(tab_wavedistci_in,tab_wavedistci)
+	
 			tab_wavedistse <-data.table(tab_wavedistse)
 			tab_wavedistci <-data.table(tab_wavedistci)
 			names(tab_wavedistse) <- c("Mean",as.character( tabqtls))
@@ -1455,10 +1464,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 				x[i,j] <- sprintf("(%s)", x[i,j])
 				x
 			}
-			parensLR <- function(xin,xout, i, j){
-				xout[i,j] <- sprintf("(%s,%s)", xin[i,(j-1)*2+1],xin[i,j*2])
-				xout
-			}
+
 			for (ri in seq(2,nrow(tab_wavemomentsse),2)){
 				for(ci in seq(1,ncol(tab_wavemomentsse))){
 					tab_wavemomentsse <-parens(tab_wavemomentsse,ri,ci)
@@ -1466,12 +1472,9 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 			}
 			tab_wavemomentsse <-data.table(tab_wavemomentsse)
 			
-			
-			for (ri in seq(2,nrow(tab_wavemomentsci),2)){
-				for(ci in seq(1,ncol(tab_wavemomentsci))){
-					tab_wavemomentsci <-parensLR(tab_wavemomentsci_in,tab_wavemomentsci,ri,ci)
-				}
-			}
+
+			tab_wavemomentsci <-parensLR(tab_wavemomentsci_in,tab_wavemomentsci)
+	
 			tab_wavemomentsci <-data.table(tab_wavemomentsci)
 			names(tab_wavemomentsse) <- c("Mean","Median","Med Abs Dev", "Groenv-Meeden", "Moors")
 			names(tab_wavemomentsci) <- c("Mean","Median","Med Abs Dev", "Groenv-Meeden", "Moors")
