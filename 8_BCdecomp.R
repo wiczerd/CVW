@@ -17,7 +17,7 @@ setwd(wd0)
 
 
 wt <- "truncweight"
-wc <- "wagechange_anan"
+wc <- "wagechangeEUE_wave"
 recDef <- "recIndic2_wave"
 
 
@@ -681,20 +681,13 @@ DTseam <- DTseam[ (sw|!sw) & (ch|st), ]
 
 if( freq == "wave"){
 	MM_betaE_betaR_IR <- MMdecomp(DTseam,6,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
-	saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
+	saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
 	MM_betaE_betaR_IR <- MMdecomp(DTseam,6,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
-	saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE_nodur.RData"))
+	saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE_nodur.RData"))
 }else{
 	MM_betaE_betaR_IR <- MMdecomp(DTseam,8,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
-	saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN.RData"))
+	saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN.RData"))
 }
-
-MM_wavenooc_betaE_betaR_IR <- MMdecomp(DTseam,4,"recIndic_wave","wagechange_wave","truncweight",std_errs = MMstd_errs, no_occ = T)
-MM_wavenoocEUE_betaE_betaR_IR <- MMdecomp(DTseam,3,"recIndic_wave","wagechangeEUE_wave","truncweight",std_errs = MMstd_errs, no_occ = T)
-
-saveRDS(MM_wavenooc_betaE_betaR_IR,paste0(outputdir,"/MM_wavenooc.RData"))
-saveRDS(MM_wavenoocEUE_betaE_betaR_IR,paste0(outputdir,"/MM_wavenoocEUE.RData"))
-
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #EU,UE all observations (7 categories) -----------------------------------
