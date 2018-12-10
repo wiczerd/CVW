@@ -18,6 +18,11 @@ setwd(wd0)
 
 wt <- "truncweight"
 wc <- "wagechange_anan"
+recDef <- "recIndic2_wave"
+
+
+minEarn = 1040 
+minLEarn = log(2*minEarn)
 
 qtlgridEst  <- c(seq(.02,.1,.02),seq(0.15,0.85,0.05),seq(.9,.98,.02))
 qtlgridOut <- seq(.02,0.98,0.01)
@@ -115,13 +120,13 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 	# setup subgroup indices
 	if(NS==7){
 		# 7 subgroups, Sw X (EE UE EU) + stay, sets up conditional distributions.
-		wcDF[wcDF$switch==T & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F , s := 1]
-		wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F , s := 2]
-		wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T , s := 3]
-		wcDF[wcDF$switch==F & wcDF$EE==T & wcDF$UE==F & wcDF$EU ==F , s := 4]
-		wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$UE==T & wcDF$EU ==F , s := 5]
-		wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$UE==F & wcDF$EU ==T , s := 6]
-		wcDF[                    !(wcDF$EE==T | wcDF$UE==T | wcDF$EU ==T), s := 7]
+		wcDF[wcDF$sw==T & wcDF$EEfrq==T & wcDF$UEfrq==F & wcDF$EUfrq ==F , s := 1]
+		wcDF[wcDF$sw==T & wcDF$EEfrq==F & wcDF$UEfrq==T & wcDF$EUfrq ==F , s := 2]
+		wcDF[wcDF$sw==T & wcDF$EEfrq==F & wcDF$UEfrq==F & wcDF$EUfrq ==T , s := 3]
+		wcDF[wcDF$sw==F & wcDF$EEfrq==T & wcDF$UEfrq==F & wcDF$EUfrq ==F , s := 4]
+		wcDF[wcDF$sw==F & wcDF$EEfrq==F & wcDF$UEfrq==T & wcDF$EUfrq ==F , s := 5]
+		wcDF[wcDF$sw==F & wcDF$EEfrq==F & wcDF$UEfrq==F & wcDF$EUfrq ==T , s := 6]
+		wcDF[wcDF$st==T                                                  , s := 7]
 		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
 		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
 		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
@@ -129,23 +134,42 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]
 		wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]		
 		wcDF[!is.na(wcDF$s), s7 := ifelse(s==7,1,0)]
+	}
+	if(NS==8){
+		# 7 subgroups, Sw X (EE UE EU stay), sets up conditional distributions.
+		wcDF[wcDF$sw==T & wcDF$EEfrq==T & wcDF$UEfrq==F & wcDF$EUfrq ==F , s := 1]
+		wcDF[wcDF$sw==T & wcDF$EEfrq==F & wcDF$UEfrq==T & wcDF$EUfrq ==F , s := 2]
+		wcDF[wcDF$sw==T & wcDF$EEfrq==F & wcDF$UEfrq==F & wcDF$EUfrq ==T , s := 3]
+		wcDF[wcDF$sw==F & wcDF$EEfrq==T & wcDF$UEfrq==F & wcDF$EUfrq ==F , s := 4]
+		wcDF[wcDF$sw==F & wcDF$EEfrq==F & wcDF$UEfrq==T & wcDF$EUfrq ==F , s := 5]
+		wcDF[wcDF$sw==F & wcDF$EEfrq==F & wcDF$UEfrq==F & wcDF$EUfrq ==T , s := 6]
+		wcDF[wcDF$sw==T & wcDF$st==T                                     , s := 7]
+		wcDF[wcDF$sw==F & wcDF$st==T                                     , s := 8]
+		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
+		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
+		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
+		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
+		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]
+		wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]		
+		wcDF[!is.na(wcDF$s), s7 := ifelse(s==7,1,0)]
+		wcDF[!is.na(wcDF$s), s8 := ifelse(s==8,1,0)]
 	}else if(NS==4){
 		# 4 subgroups, Sw X (EE EU), sets up conditional distributions.
-		wcDF[  wcDF$EE==T & wcDF$EU ==F & wcDF$UE ==F , s := 1]
-		wcDF[  wcDF$EE==F & wcDF$EU ==T & wcDF$UE ==F , s := 2]
-		wcDF[  wcDF$EE==F & wcDF$EU ==F & wcDF$UE ==T , s := 3]
-		wcDF[!(wcDF$EE==T | wcDF$EU ==T | wcDF$UE ==T), s := 4]
+		wcDF[  wcDF$EEfrq==T & wcDF$EUfrq ==F & wcDF$UEfrq ==F , s := 1]
+		wcDF[  wcDF$EEfrq==F & wcDF$EUfrq ==T & wcDF$UEfrq ==F , s := 2]
+		wcDF[  wcDF$EEfrq==F & wcDF$EUfrq ==F & wcDF$UEfrq ==T , s := 3]
+		wcDF[!(wcDF$EEfrq==T | wcDF$EUfrq ==T | wcDF$UEfrq ==T), s := 4]
 		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
 		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
 		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
 		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
 	}else if(NS==5){
 		# 4 subgroups, Sw X (EE EU) + stay, sets up conditional distributions.
-		wcDF[wcDF$switch==T & wcDF$EE==T & wcDF$EU ==F , s := 1]
-		wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$EU ==T , s := 2]
-		wcDF[wcDF$switch==F & wcDF$EE==T & wcDF$EU ==F , s := 3]
-		wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$EU ==T , s := 4]
-		wcDF[               !(wcDF$EE==T | wcDF$EU ==T), s := 5]
+		wcDF[wcDF$sw==T & wcDF$EEfrq==T & wcDF$EUfrq ==F , s := 1]
+		wcDF[wcDF$sw==T & wcDF$EEfrq==F & wcDF$EUfrq ==T , s := 2]
+		wcDF[wcDF$sw==F & wcDF$EEfrq==T & wcDF$EUfrq ==F , s := 3]
+		wcDF[wcDF$sw==F & wcDF$EEfrq==F & wcDF$EUfrq ==T , s := 4]
+		wcDF[wcDF$st==T                                  , s := 5]
 		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
 		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
 		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
@@ -153,13 +177,13 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]		
 	}else if(NS==6){
 		# 6 subgroups, Sw X (EE EU Stay) , sets up conditional distributions.
-		wcDF[wcDF$switch==T & wcDF$EE==T & wcDF$EU ==F & wcDF$UE==F, s := 1]
-		wcDF[wcDF$switch==T & wcDF$EE==F & wcDF$EU ==T & wcDF$UE==F , s := 2]
-		wcDF[wcDF$switch==F & wcDF$EE==T & wcDF$EU ==F & wcDF$UE==F , s := 3]
-		wcDF[wcDF$switch==F & wcDF$EE==F & wcDF$EU ==T & wcDF$UE==F , s := 4]
-		wcDF[wcDF$switch==F & !(wcDF$EE==T | wcDF$EU ==T | wcDF$UE==T), s := 5]
-		wcDF[wcDF$switch==T & !(wcDF$EE==T | wcDF$EU ==T | wcDF$UE==T), s := 6]
-		wcDF[ !last.stable_emp==T, s:= NA]
+		wcDF[wcDF$sw==T & wcDF$EEfrq==T & wcDF$EUfrq ==F & wcDF$UEfrq==F, s := 1]
+		wcDF[wcDF$sw==T & wcDF$EEfrq==F & wcDF$EUfrq ==T & wcDF$UEfrq==F , s := 2]
+		wcDF[wcDF$sw==F & wcDF$EEfrq==T & wcDF$EUfrq ==F & wcDF$UEfrq==F , s := 3]
+		wcDF[wcDF$sw==F & wcDF$EEfrq==F & wcDF$EUfrq ==T & wcDF$UEfrq==F , s := 4]
+		wcDF[wcDF$sw==F & wcDF$st   ==T                               , s := 5]
+		wcDF[wcDF$sw==T & wcDF$st   ==T                               , s := 6]
+		
 		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
 		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
 		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
@@ -168,25 +192,25 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		wcDF[!is.na(wcDF$s), s6 := ifelse(s==6,1,0)]
 	}else if(NS==4){
 		# 4 subgroups, (EE EU UE) + stay, sets up conditional distributions.
-		wcDF[  wcDF$EE==T & wcDF$EU ==F & wcDF$UE ==F , s := 1]
-		wcDF[  wcDF$EE==F & wcDF$EU ==T & wcDF$UE ==F , s := 2]
-		wcDF[  wcDF$EE==F & wcDF$EU ==F & wcDF$UE ==T , s := 3]
-		wcDF[!(wcDF$EE==T | wcDF$EU ==T | wcDF$UE ==T), s := 4]
+		wcDF[  wcDF$EEfrq==T & wcDF$EUfrq ==F & wcDF$UEfrq ==F , s := 1]
+		wcDF[  wcDF$EEfrq==F & wcDF$EUfrq ==T & wcDF$UEfrq ==F , s := 2]
+		wcDF[  wcDF$EEfrq==F & wcDF$EUfrq ==F & wcDF$UEfrq ==T , s := 3]
+		wcDF[!(wcDF$EEfrq==T | wcDF$EUfrq ==T | wcDF$UEfrq ==T), s := 4]
 		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
 		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
 		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
 		wcDF[!is.na(wcDF$s), s4 := ifelse(s==4,1,0)]
 	}else if(NS==3){
 		# 4 subgroups, (EE EU) + stay, sets up conditional distributions.
-		wcDF[  wcDF$EE==T & wcDF$EU ==F & wcDF$UE ==F , s := 1]
-		wcDF[  wcDF$EE==F & wcDF$EU ==T , s := 2]
-		wcDF[!(wcDF$EE==T | wcDF$EU ==T), s := 3]
+		wcDF[  wcDF$EEfrq==T & wcDF$EUfrq ==F & wcDF$UEfrq ==F , s := 1]
+		wcDF[  wcDF$EEfrq==F & wcDF$EUfrq ==T , s := 2]
+		wcDF[!(wcDF$EEfrq==T | wcDF$EUfrq ==T), s := 3]
 		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
 		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
 		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
 	}
 	if(durEU==T){
-		wcDF[ !(wcDF$EU==T), dur := 0]
+		wcDF[ !(wcDF$EUfrq==T), dur := 0]
 		wcDF[ is.na(wcDF$dur)==T, dur := 0]
 	}
 	wcDF<- subset(wcDF,is.finite(wcDF$s))
@@ -290,7 +314,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		  betaE <- array(0.,dim=c(NS,length(qtlgridSamp)) )
 		  betaR <- array(0.,dim=c(NS,length(qtlgridSamp)) )
 		}
-		for(si in seq(1,NS+1)){
+		for(si in seq(1,ncol(betaptsE))){
 			if(si<=NS){
 				gpE <- c(T,betaptsE[2:length(qtlgridEst),si]>=betaptsE[1:length(qtlgridEst)-1,si]) #ensure monotonicity
 				gpR <- c(T,betaptsR[2:length(qtlgridEst),si]>=betaptsR[1:length(qtlgridEst)-1,si]) #ensure monotonicity
@@ -332,6 +356,9 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			if( durEU == T){
 				sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(NS+1),",qi]*dur" ))
 				sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
+			}else{
+				sumBetaE <- paste(sumBetaE,"0" )
+				sumBetaR <- paste(sumBetaR,"0" )
 			}
 			
 			wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[ sampR[,qi] , eval(parse(text=sumBetaE))]
@@ -359,6 +386,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			}
 			if( durEU == T){
 				sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
+			}else{
+				sumBetaR <- paste(sumBetaR,"0")
 			}
 
 			wc_rec[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi], eval(parse(text=sumBetaR)) ] 
@@ -380,6 +409,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			}
 			if( durEU == T){
 				sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(NS+1),",qi]*dur" ))
+			}else{
+				sumBetaE <- paste(sumBetaE,"0")
 			}
 			wc_exp[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaE))]
 			qi = qi+1
@@ -407,6 +438,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			}
 			if( durEU == T){
 				sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
+			}else{
+				sumBetaR <- paste(sumBetaR,"0")
 			}
 			wc_BR_exstay[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaR))]
 			qi = qi+1
@@ -432,6 +465,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 				}
 				if( durEU == T){
 					sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
+				}else{
+					sumBetaR <- paste(sumBetaR,"0")
 				}
 				wc_BR_exi[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaR))]
 				qi = qi+1
@@ -456,6 +491,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 				}
 				if( durEU == T){
 					sumBetaE <- paste(sumBetaE,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
+				}else{
+					sumBetaE <- paste(sumBetaE,"0")
 				}
 				wc_BR_onlyi[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaE))]
 				qi = qi+1
@@ -483,6 +520,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 				}
 				if( durEU == T){
 					sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(NS+1),",qi]*dur" ))
+				}else{
+					sumBetaE <- paste(sumBetaE,"0")
 				}
 				
 				wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],eval(parse(text=sumBetaE))] 
@@ -510,6 +549,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			}
 			if( durEU == T){
 				sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(NS+1),",qi]*dur" ))
+			}else{
+				sumBetaE <- paste(sumBetaE,"0")
 			}
 			wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],eval(parse(text=sumBetaE))] 
 			qi = qi+1
@@ -556,26 +597,97 @@ DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 
 DTseam <- subset(DTseam, changer==T|stayer==T)
 
-toKeep <- c("truncweight","cycweight","wpfinwgt","EU_wave","UE_wave","EE_wave","switchedOcc_wave","switched_wave","wagechange_wave","wagechangeEUE_wave",
-			"max.unempdur_wave","wagechange_wvan","wagechange_anan","recIndic_wave","recIndic2_wave","changer","changermo","stayer","date")
-
-
+toKeep <- c("switchedOcc_wave","switched_wave","switched_anan","esr_max",
+				 "ageGrp","HSCol","next.stable_emp","last.stable_emp",
+				 "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint","levwage","max.unempdur_wave",
+				 "wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave","wagechange_anan",
+				 "wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad","pctmaxmis",
+				 "EE_wave","EU_wave","UE_wave","changer","stayer","EE_anan","EU_anan","UE_anan","changer_anan","stayer_anan",
+				 "unrt","wpfinwgt","perwt","truncweight","cleaningtruncweight","lastann.wavewage","matched_EUUE_anan",
+				 "lfstat_wave","next.lfstat_wave","wave","id","date","panel")
 # select toKeep columns only
-#DTseam <- DTseam[, toKeep, with = FALSE]
-DTseam <- subset(DTseam, is.finite(wagechange_wave) & is.finite(EU_wave) & is.finite(UE_wave)& is.finite(EE_wave))
-DTseam[ , EE := EE_wave==T & midEE==F]
-DTseam[ , EU := EU_wave==T & midEU==F]
-DTseam[ , UE := UE_wave==T & midUE==F]
-DTseam[ stayer ==T, switch := switchedOcc_wave]
-DTseam[ changer==T, switch := switched_wave]
-DTseam[ EU==T, dur := max.unempdur_wave]
-DTseam[ !EU==T | !is.finite(dur), dur := 0.]
+DTseam <- DTseam[, toKeep, with = FALSE]
+
+DTseam[ , last2.stable_emp:= shift(last.stable_emp), by=id]
+DTseam[ , last3.stable_emp:= shift(last2.stable_emp), by=id]
+DTseam[ wave-2 != shift(wave,2), last2.stable_emp := NA]
+DTseam[ wave-3 != shift(wave,3), last3.stable_emp := NA]
+
+DTseam[ EU_anan& changer_anan & is.na(matched_EUUE_anan),changer_anan:= NA]
+DTseam[ UE_anan& changer_anan & is.na(matched_EUUE_anan),changer_anan:= NA]
+DTseam[ EU_anan& changer_anan & is.na(matched_EUUE_anan),EU_anan:= NA]
+DTseam[ UE_anan& changer_anan & is.na(matched_EUUE_anan),UE_anan:= NA]
+
+DTseam[ , nextann.wavewage := levwage + shift(levwage,type="lead") + shift(levwage,2,type="lead")  , by=id]
+DTseam[ wave+1!=shift(wave,type = "lead") | wave+2!=shift(wave,2,type = "lead") , nextann.wavewage := NA]
+DTseam[ , nextann.wavewage := log(nextann.wavewage + (1+nextann.wavewage^2)^.5) ]
 
 
-MM_betaE_betaR_IR <- MMdecomp(DTseam,6,"recIndic2_wave",wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
+if(wc == "wagechangeEUE_wave"|wc == "reswgchangeEUE_wave"){
+	DTseam[ ,wtEUE:= eval(as.name(wt))]
+	DTseam[ UE_wave==T,wtEUE:= 0.]
+	DTseam[ EU_wave==T,wtEUE:= 2.*eval(as.name(wt))]
+	origwt = wt
+	wt = "wtEUE"
+}else{
+	wt = "truncweight"
+}
 
-saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_wvan.RData"))
-saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
+# setup labels
+if(wc == "wagechangeEUE_wave"){
+	wclab = "reswgEUE"
+}else if( wc == "wagechange_wave"){
+	wclab = "reswg"
+}else if(wc == "rawwgchangeEUE_wave"){
+	wclab = "rawwgEUE"
+}else if( wc == "rawwgchange_wave"){
+	wclab = "rawwg"
+}else if( wc == "wagechange_anan" ){
+	wclab = "reswgANAN"
+}
+
+if(recDef == "recIndic_wave"){
+	reclab = "NBER"
+}else if( recDef == "recIndic2_wave"){
+	reclab = "urt"
+}else if(recDef == "recIndic_stint"){
+	reclab = "recstint"
+}
+if( wc == "wagechange_anan"|wc == "rawwgchange_anan"){
+	freq = "annual"
+}else{
+	freq = "wave"	
+}
+
+
+if(freq == "wave"){
+	DTseam[, ch := changer]
+	DTseam[, st := stayer]
+	DTseam[, sw := switched_wave]
+	DTseam[, EUfrq := EU_wave]
+	DTseam[, EEfrq := EE_wave]
+	DTseam[, UEfrq := UE_wave]
+}else{
+	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),ch := changer_anan]
+	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),st := stayer_anan]
+	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),sw := switched_wave]
+	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EUfrq := EU_wave]
+	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EEfrq := EE_wave]
+	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), UEfrq := UE_wave]
+}
+DTseam[ EUfrq==T, dur := max.unempdur_wave]
+DTseam[ !EUfrq==T | !is.finite(dur), dur := 0.]
+DTseam <- DTseam[ (sw|!sw) & (ch|st), ]
+
+if( freq == "wave"){
+	MM_betaE_betaR_IR <- MMdecomp(DTseam,6,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
+	saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
+	MM_betaE_betaR_IR <- MMdecomp(DTseam,6,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
+	saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE_nodur.RData"))
+}else{
+	MM_betaE_betaR_IR <- MMdecomp(DTseam,8,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
+	saveRDS(MM_waveallEUE_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN.RData"))
+}
 
 MM_wavenooc_betaE_betaR_IR <- MMdecomp(DTseam,4,"recIndic_wave","wagechange_wave","truncweight",std_errs = MMstd_errs, no_occ = T)
 MM_wavenoocEUE_betaE_betaR_IR <- MMdecomp(DTseam,3,"recIndic_wave","wagechangeEUE_wave","truncweight",std_errs = MMstd_errs, no_occ = T)
