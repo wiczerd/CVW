@@ -230,18 +230,18 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 	tN <- (length(tabqtls)+1)
 	ann_wavedist <- array(0., dim=c(2,length(tabqtls)+1))
 	ann_wavedist[1,1]   <- DTseam[!(eval(as.name(recDef)) ) & (sw|!sw) 
-								  &(stayer_anan|changer_anan),  wtd.mean(wagechange_anan,na.rm=T,weights=truncweight)]
+								  &(st|ch),  wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 	ann_wavedist[1,2:tN]<- DTseam[!(eval(as.name(recDef)) ) & (sw|!sw) 
-								  &(stayer_anan|changer_anan),  wtd.quantile(wagechange_anan,na.rm=T,weights=truncweight, probs=tabqtls)]
+								  &(st|ch),  wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 	ann_wavedist[2,1]   <- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw) 
-								   &(stayer_anan|changer_anan), wtd.mean(wagechange_anan,na.rm=T,weights=truncweight)]
+								   &(st|ch), wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 	ann_wavedist[2,2:tN]<- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw) 
-								   &(stayer_anan|changer_anan), wtd.quantile(wagechange_anan,na.rm=T,weights=truncweight, probs=tabqtls)]
+								   &(st|ch), wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 	
 	nexp <- DTseam[!(eval(as.name(recDef)) )  & (sw|!sw) 
-				   &(stayer_anan|changer_anan)&nextann.wavewage>0&lastann.wavewage>=minLEarn,    sum(is.finite(wagechange_anan)*truncweight)]
+				   &(stayer_anan|changer_anan)&nextann.wavewage>0&lastann.wavewage>=minLEarn,    sum(is.finite(eval(as.name(wc)))*eval(as.name(wt)))]
 	nrec <- DTseam[ (eval(as.name(recDef)) ) & (sw|!sw) 
-				   &(stayer_anan|changer_anan)&nextann.wavewage>0&lastann.wavewage>=minLEarn,    sum(is.finite(wagechange_anan)*truncweight)]
+				   &(stayer_anan|changer_anan)&nextann.wavewage>0&lastann.wavewage>=minLEarn,    sum(is.finite(eval(as.name(wc)))*eval(as.name(wt)))]
 	nrec/(nexp+nrec)
 	plt_wavedist <- data.table(ann_wavedist)
 	names(plt_wavedist) <- c("Mean","P5","P10","P25","P50","P75","P90","P95")
@@ -251,10 +251,11 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 	ggplot( plt_wavedist , aes(Cycle)) + theme_bw()+
 		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 , color=Cycle),stat="identity")+
 		scale_x_discrete(labels=c("Expansion","Recession"))+ xlab("")+ylab("Log earnings change")+
-		scale_color_manual(values=c("blue","red")) +ylim(c(-1.1,1.1))
+		scale_color_manual(values=c("blue","red")) +ylim(c(-0.51,0.51))+
+		theme(legend.position = "none")
 	nametab = "box_ann"
-	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,".eps"),height=5,width=10)
-	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,".png"),height=5,width=10)
+	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".eps",device=cairo_ps),height=5,width=10)
+	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".png"),height=5,width=10)
 	
 	
 	# wage quantiles ---------------------------------------------------------------
