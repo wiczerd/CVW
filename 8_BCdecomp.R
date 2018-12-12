@@ -17,7 +17,7 @@ setwd(wd0)
 
 
 wt <- "truncweight"
-wc <- "wagechange_anan"
+wc <- "wagechangeEUE_wave"
 recDef <- "recIndic2_wave"
 
 
@@ -711,8 +711,8 @@ ann_wavedist[3,1]   <- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw)
 							   &(st|ch), wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 ann_wavedist[3,2:tN]<- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw) 
 							   &(st|ch), wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
-ann_wavedist[2,1]   <- MM_betaE_betaR_IR$wc_IR_mmts[1]
-dist_fun <- splinefun(qtlgridOut, MM_betaE_betaR_IR$wc_IR)
+ann_wavedist[2,1]   <- MM_betaE_betaR_IR$wc_BR_mmts[1]
+dist_fun <- splinefun(qtlgridOut, MM_betaE_betaR_IR$wc_BR)
 ann_wavedist[2,2:tN]<-  dist_fun( tabqtls)
 
 plt_wavedist <- data.table(ann_wavedist)
