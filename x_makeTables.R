@@ -225,7 +225,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 	}
 	
 		
-	#annual earnings
+	#overall earnings change
 	tabqtls <- c(.05,.10,.25,.5,.75,.90,.95)
 	tN <- (length(tabqtls)+1)
 	ann_wavedist <- array(0., dim=c(2,length(tabqtls)+1))

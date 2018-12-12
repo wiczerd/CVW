@@ -17,7 +17,7 @@ setwd(wd0)
 
 
 wt <- "truncweight"
-wc <- "wagechangeEUE_wave"
+wc <- "wagechange_anan"
 recDef <- "recIndic2_wave"
 
 
@@ -177,7 +177,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		wcDF[!is.na(wcDF$s), s5 := ifelse(s==5,1,0)]		
 	}else if(NS==6){
 		# 6 subgroups, Sw X (EE EU Stay) , sets up conditional distributions.
-		wcDF[wcDF$sw==T & wcDF$EEfrq==T & wcDF$EUfrq ==F & wcDF$UEfrq==F, s := 1]
+		wcDF[wcDF$sw==T & wcDF$EEfrq==T & wcDF$EUfrq ==F & wcDF$UEfrq==F,  s := 1]
 		wcDF[wcDF$sw==T & wcDF$EEfrq==F & wcDF$EUfrq ==T & wcDF$UEfrq==F , s := 2]
 		wcDF[wcDF$sw==F & wcDF$EEfrq==T & wcDF$EUfrq ==F & wcDF$UEfrq==F , s := 3]
 		wcDF[wcDF$sw==F & wcDF$EEfrq==F & wcDF$EUfrq ==T & wcDF$UEfrq==F , s := 4]
@@ -595,8 +595,6 @@ moments_compute_qtls <- function(qtlpts, distpts){
 
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 
-DTseam <- subset(DTseam, changer==T|stayer==T)
-
 toKeep <- c("switchedOcc_wave","switched_wave","switched_anan","esr_max",
 				 "ageGrp","HSCol","next.stable_emp","last.stable_emp",
 				 "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint","levwage","max.unempdur_wave",
@@ -690,12 +688,48 @@ if( freq == "wave"){
 }
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#EU,UE all observations (7 categories) -----------------------------------
-wcExp <- subset(DTseam,recIndic_wave==F)
-wcRec <- subset(DTseam,recIndic_wave==T)
-dist_exp      <- wcExp[ , wtd.quantile(wagechange_wave,probs=qtlgridOut,weights=truncweight, na.rm=T)]
-dist_rec      <- wcRec[ , wtd.quantile(wagechange_wave,probs=qtlgridOut,weights=truncweight, na.rm=T)]
-dist_IR       <- rowMeans(MM_waveall_betaE_betaR_IR$wc_IR   )
+#Extracting the dist and moments -----------------------------------
+wcExp <- subset(DTseam,eval(as.name(recDef))==F)
+wcRec <- subset(DTseam,eval(as.name(recDef))==T)
+dist_exp      <- wcExp[ , wtd.quantile(eval(as.name(wc)),probs=qtlgridOut,weights=eval(as.name(wt)), na.rm=T)]
+dist_rec      <- wcRec[ , wtd.quantile(eval(as.name(wc)),probs=qtlgridOut,weights=eval(as.name(wt)), na.rm=T)]
+wc_Exp_mmts   <- wcExp[  , c(wtd.mean(eval(as.name(wc)),weights=eval(as.name(wt)),na.rm=T), 
+							 wtd.4qtlmoments( xt= eval(as.name(wc)) ,wt= eval(as.name(wt))))]
+wc_Rec_mmts   <- wcRec[  , c(wtd.mean(eval(as.name(wc)),weights=eval(as.name(wt)),na.rm=T), 
+							 wtd.4qtlmoments( xt= eval(as.name(wc)) ,wt= eval(as.name(wt))))]
+
+#!!!!!!!!!!!
+# Compare distributions ---------------------------------------------------
+tabqtls <- c(.05,.10,.25,.5,.75,.90,.95)
+tN <- (length(tabqtls)+1)
+ann_wavedist <- array(0., dim=c(3,length(tabqtls)+1))
+ann_wavedist[1,1]   <- DTseam[!(eval(as.name(recDef)) ) & (sw|!sw) 
+							  &(st|ch),  wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+ann_wavedist[1,2:tN]<- DTseam[!(eval(as.name(recDef)) ) & (sw|!sw) 
+							  &(st|ch),  wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+ann_wavedist[3,1]   <- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw) 
+							   &(st|ch), wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+ann_wavedist[3,2:tN]<- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw) 
+							   &(st|ch), wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+ann_wavedist[2,1]   <- MM_betaE_betaR_IR$wc_IR_mmts[1]
+dist_fun <- splinefun(qtlgridOut, MM_betaE_betaR_IR$wc_IR)
+ann_wavedist[2,2:tN]<-  dist_fun( tabqtls)
+
+plt_wavedist <- data.table(ann_wavedist)
+names(plt_wavedist) <- c("Mean","P5","P10","P25","P50","P75","P90","P95")
+plt_wavedist[ , Cycle := as.factor(c("Exp","CF","Rec"))]
+plt_melt <- melt(plt_wavedist, id.vars = "Cycle")
+
+ggplot( plt_wavedist , aes(Cycle)) + theme_bw()+
+	geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 , color=Cycle),stat="identity")+
+	scale_x_discrete(labels=c("Counter-Factual","Expansion","Recession"))+ xlab("")+ylab("Log earnings change")+
+	scale_color_manual(values=c("purple","blue","red")) +ylim(c(-0.51,0.51))
+nametab = "cf_box"
+ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".eps",device=cairo_ps),height=5,width=10)
+ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".png"),height=5,width=10)
+
+
+
 if(MMstd_errs ==T){
 	CI_IR         <- apply(MM_waveall_betaE_betaR_IR$wc_IR,1,quantile,0.95) - apply(MM_waveall_betaE_betaR_IR$wc_IR,1,quantile,0.05)
 }
