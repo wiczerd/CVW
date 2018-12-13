@@ -230,16 +230,17 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 	qtlgridSamp <- seq(min(qtlgridOut),max(qtlgridOut),0.001)
 	seedint = 941987
 	set.seed(seedint)
+	
 	#draw the sample
 	nsampE = floor(nrow(wcExp)/length(qtlgridSamp))
 	nsampR = floor(nrow(wcRec)/length(qtlgridSamp))
 	sampE <-matrix(0.,nrow=nsampE,ncol=length(qtlgridSamp))
 	sampR <-matrix(0.,nrow=nsampR,ncol=length(qtlgridSamp))
 	for(qi in seq(1,length(qtlgridSamp))){
+		set.seed(seedint+ qi*nsampE)
 		sampE[,qi] <- sample(nrow(wcExp),nsampE,prob=wcExp$wt,replace=T) # weight the sampling. I will also weight the regression 
 		sampR[,qi] <- sample(nrow(wcRec),nsampR,prob=wcRec$wt,replace=T) #,prob=wcRec$wt
 	}
-	
 	# initialize output distributions:
 	wc_IR_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
 	wc_IR_moments <- array(0.,dim=c(Nmoments,Nsims))
@@ -378,7 +379,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		rm(wc_BR)
 
 		qi=1
-		wc_rec <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
+		wc_rec <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the recession distribution 
 		for(q in qtlgridSamp){
 			sumBetaR <- ""
 			for(si in seq(1,NS) ){
@@ -401,7 +402,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		rm(wc_rec)
 		
 		qi=1
-		wc_exp <- matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
+		wc_exp <- matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1) #storing the expansion distribution 
 		for(q in qtlgridSamp){
 			sumBetaE <- ""
 			for(si in seq(1,NS) ){
@@ -624,7 +625,7 @@ DTseam[ , nextann.wavewage := log(nextann.wavewage + (1+nextann.wavewage^2)^.5) 
 if(wc == "wagechangeEUE_wave"|wc == "reswgchangeEUE_wave"){
 	DTseam[ ,wtEUE:= eval(as.name(wt))]
 	DTseam[ UE_wave==T,wtEUE:= 0.]
-	DTseam[ EU_wave==T,wtEUE:= 2.*eval(as.name(wt))]
+	DTseam[ EU_wave==T,wtEUE:= eval(as.name(wt))]
 	origwt = wt
 	wt = "wtEUE"
 }else{
@@ -712,8 +713,9 @@ ann_wavedist[3,1]   <- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw)
 ann_wavedist[3,2:tN]<- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw) 
 							   &(st|ch), wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 ann_wavedist[2,1]   <- MM_betaE_betaR_IR$wc_BR_mmts[1]
-dist_fun <- splinefun(qtlgridOut, MM_betaE_betaR_IR$wc_BR)
-ann_wavedist[2,2:tN]<-  dist_fun( tabqtls)
+ann_wavedist[2,2:tN]<-  approx(qtlgridOut, MM_betaE_betaR_IR$wc_BR, xout=tabqtls)$y
+approx(qtlgridOut, MM_betaE_betaR_IR$wc_rec,tabqtls)
+
 
 plt_wavedist <- data.table(ann_wavedist)
 names(plt_wavedist) <- c("Mean","P5","P10","P25","P50","P75","P90","P95")

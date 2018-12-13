@@ -273,7 +273,7 @@ DTseam[ is.na(wagechange_wave_imp)==T, wagechange_wave_imp := F]
 
 DTseam<-subset(DTseam, select = c("wagechange_wave","wagechange_wave_jcbad","wagechange_notransbad","wagechange_ENbad","wagechange_ENbad_anan","wagechange_notrbad_anan"
 								  ,"wagechange_wave_low","wagechange_wave_high","wagechange_wave_imp","pctmaxmis","next.esr_max"
-								  ,"wagechangeEUE_wave","next.wavewage","rawwgchangeEUE_wave","rawwgchange_wave","wagechange_wvan","wagechange_anan","lastann.wavewage",
+								  ,"wagechangeEUE_wave","next.wavewage","rawwgchangeEUE_wave","rawwgchange_wave","wagechange_anan","lastann.wavewage",
 								  "rawwgchange_anan","lastann.rawwg","id","wave"))
 DTall<- merge(DTall,DTseam, by=c("id","wave"),all.x=T)
 
