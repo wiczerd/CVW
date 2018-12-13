@@ -24,8 +24,9 @@ recDef <- "recIndic2_wave"
 minEarn = 1040 
 minLEarn = log(2*minEarn)
 
-qtlgridEst  <- c(seq(.02,.1,.02),seq(0.15,0.85,0.05),seq(.9,.98,.02))
-qtlgridOut <- seq(.02,0.98,0.01)
+qtlgridEst  <- c(seq(.01,.11,.02),seq(0.15,0.85,0.05),seq(.89,.99,.02))
+qtlgridOut <- seq(.01,0.99,0.01)
+qtlgridOutTruncCor <- (seq(.01,0.99,0.01)-.01)/0.98
 MMstd_errs = F
 Nmoments = 5
 moment_names <- c("Mean","Median","Med Abs Dev","Groenv-Meeden","Moors")
@@ -264,11 +265,10 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 	
 	for( simiter in seq(1,Nsims)){	
 		
-		set.seed(seedint+simiter*Nsims)		
-		
-		wcRec <- subset(wcDF, rec==T)
-		wcExp <- subset(wcDF, rec==F)
 		if(std_errs == T){
+			set.seed(seedint+simiter*Nsims)		
+			wcRec <- subset(wcDF, rec==T)
+			wcExp <- subset(wcDF, rec==F)
 			datsampR <- sample(nrow(wcRec),nrow(wcRec),replace=T) # <-,prob=wcRec$wt do not weight the sample. I will weight the regression and stuff
 			datsampE <- sample(nrow(wcExp),nrow(wcExp),replace=T) #   ,prob=wcExp$wt
 			wcRec <- wcRec[datsampR,]
@@ -368,8 +368,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_IR_pctile[,simiter] <- quantile(wc_IR,probs=qtlgridOut,na.rm=T)
-		wc_BR_pctile[,simiter] <- quantile(wc_BR,probs=qtlgridOut,na.rm=T)
+		wc_IR_pctile[,simiter] <- quantile(wc_IR,probs=qtlgridOutTruncCor,na.rm=T)
+		wc_BR_pctile[,simiter] <- quantile(wc_BR,probs=qtlgridOutTruncCor,na.rm=T)
 		wc_IR_moments[1,simiter] <- mean(wc_IR,na.rm = T)
 		wc_IR_moments[2:5,simiter] <- wtd.4qtlmoments(xt=wc_IR,wt=array(1.,dim = dim(wc_IR)))
 		wc_BR_moments[1,simiter] <- mean(wc_BR)
@@ -396,7 +396,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_rec_pctile[,simiter] <- quantile(wc_rec,probs=qtlgridOut,na.rm=T)
+		wc_rec_pctile[,simiter] <- quantile(wc_rec,probs=qtlgridOutTruncCor,na.rm=T)
 		wc_rec_moments[1,simiter] <- mean( wc_rec,na.rm = T )
 		wc_rec_moments[2:5,simiter] <- wtd.4qtlmoments( xt=wc_rec,wt=array(1,dim=dim(wc_rec)) )
 		rm(wc_rec)
@@ -417,7 +417,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_exp_pctile[,simiter] <- quantile(wc_exp,probs=qtlgridOut,na.rm=T)
+		wc_exp_pctile[,simiter] <- quantile(wc_exp,probs=qtlgridOutTruncCor,na.rm=T)
 		wc_exp_moments[1,simiter] <- mean( wc_exp,na.rm = T )
 		wc_exp_moments[2:5,simiter] <- wtd.4qtlmoments( xt=wc_exp,wt=array(1,dim=dim(wc_exp)) )
 		rm(wc_exp)
@@ -445,7 +445,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			wc_BR_exstay[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaR))]
 			qi = qi+1
 		}
-		wc_BR_exstay_pctile[,simiter] <- quantile(wc_BR_exstay,probs=qtlgridOut,na.rm=T)
+		wc_BR_exstay_pctile[,simiter] <- quantile(wc_BR_exstay,probs=qtlgridOutTruncCor,na.rm=T)
 		wc_BR_exstay_moments[1,simiter] <- mean( wc_BR_exstay,na.rm = T )
 		wc_BR_exstay_moments[2:5,simiter] <- wtd.4qtlmoments( xt=wc_BR_exstay,wt=array(1,dim=dim(wc_BR_exstay)) )
 	
@@ -472,7 +472,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 				wc_BR_exi[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaR))]
 				qi = qi+1
 			}
-			wc_BR_exi_pctile[,ni,simiter] <- quantile(wc_BR_exi,probs=qtlgridOut,na.rm=T)
+			wc_BR_exi_pctile[,ni,simiter] <- quantile(wc_BR_exi,probs=qtlgridOutTruncCor,na.rm=T)
 			wc_BR_exi_moments[1,ni,simiter] <- mean( wc_BR_exi,na.rm = T )
 			wc_BR_exi_moments[2:5,ni,simiter] <- wtd.4qtlmoments( xt=wc_BR_exi,wt=array(1,dim=dim(wc_BR_exi)) )
 		}
@@ -498,7 +498,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 				wc_BR_onlyi[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaE))]
 				qi = qi+1
 			}
-			wc_BR_onlyi_pctile[,ni,simiter] <- quantile(wc_BR_onlyi,probs=qtlgridOut,na.rm=T)
+			wc_BR_onlyi_pctile[,ni,simiter] <- quantile(wc_BR_onlyi,probs=qtlgridOutTruncCor,na.rm=T)
 			wc_BR_onlyi_moments[1,ni,simiter] <- mean( wc_BR_onlyi,na.rm = T )
 			wc_BR_onlyi_moments[2:5,ni,simiter] <- wtd.4qtlmoments( xt=wc_BR_onlyi,wt=array(1,dim=dim(wc_BR_onlyi)) )
 		}
@@ -529,7 +529,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 				qi = qi+1
 			}
 			#clean up the space:
-			wc_IR_sw_pctile[,simiter] <- quantile(wc_IR_sw,probs=qtlgridOut,na.rm=T)
+			wc_IR_sw_pctile[,simiter] <- quantile(wc_IR_sw,probs=qtlgridOutTruncCor,na.rm=T)
 			wc_IR_sw_moments[1,simiter] <- mean( wc_IR_sw,na.rm = T )
 			wc_IR_sw_moments[2:5,simiter] <- wtd.4qtlmoments( xt=wc_IR_sw,wt=array(1,dim=dim(wc_IR_sw)) )
 			rm(wc_IR_sw)
@@ -557,7 +557,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_IR_un_pctile[,simiter] <- quantile(wc_IR_un,probs=qtlgridOut,na.rm=T)
+		wc_IR_un_pctile[,simiter] <- quantile(wc_IR_un,probs=qtlgridOutTruncCor,na.rm=T)
 		rm(wc_IR_un)
 
 	}#simiter	
