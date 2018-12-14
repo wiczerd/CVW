@@ -17,7 +17,7 @@ setwd(wd0)
 
 
 wt <- "truncweight"
-wc <- "wagechangeEUE_wave"
+wc <- "wagechange_anan"
 recDef <- "recIndic2_wave"
 
 

@@ -172,7 +172,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 	if(wc == "wagechangeEUE_wave"|wc == "reswgchangeEUE_wave"){
 		DTseam[ ,wtEUE:= eval(as.name(wt))]
 		DTseam[ UE_wave==T,wtEUE:= 0.]
-		DTseam[ EU_wave==T,wtEUE:= 2.*eval(as.name(wt))]
+		DTseam[ EU_wave==T,wtEUE:= eval(as.name(wt))]
 		origwt = wt
 		wt = "wtEUE"
 	}else{
@@ -256,6 +256,16 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 	nametab = "box_ann"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".eps",device=cairo_ps),height=5,width=10)
 	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".png"),height=5,width=10)
+
+	out_wavedist <- xtable(plt_wavedist, digits=3, 
+						   caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+	if(demolbl>=1 & demolbl<=7){
+		print(out_wavedist,include.rownames=T, 
+			  file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
+	}else{
+		print(out_wavedist,include.rownames=T, 
+			  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
+	}
 	
 	
 	# wage quantiles ---------------------------------------------------------------
@@ -346,6 +356,15 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		scale_color_manual(values=c("blue","red"))+ylab("Log earnings change")+xlab("")+ylim(c(-1.1,1.1))
 	nametab = "box_staychngemp"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),device = cairo_ps,height=5,width=10)
+	out_wavedist <- xtable(dat_wavedist, digits=3, 
+						   caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+	if(demolbl>=1 & demolbl<=7){
+		print(out_wavedist,include.rownames=T,  include.colnames=T,
+			  file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
+	}else{
+		print(out_wavedist,include.rownames=T, include.colnames=T,
+			  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
+	}
 	
 	
 	#______________________________________________________
@@ -921,6 +940,16 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		scale_x_discrete(labels=c("EE","EUE","Stayer"))+xlab("")+ylab("Log Earnings Change")+ylim(c(tab_wavechngdist[9,2]*1.1,tab_wavechngdist[9,6]*1.1))
 	nametab = "box_staychng_sw"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,".eps"),height=5,width=10)
+	out_wavedist <- xtable(dat_wavedist, digits=3, 
+						   caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+	if(demolbl>=1 & demolbl<=7){
+		print(out_wavedist,include.rownames=T,  include.colnames=T,
+			  file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
+	}else{
+		print(out_wavedist,include.rownames=T, include.colnames=T,
+			  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
+	}
+	
 	
 	dat_wavedist <- data.table(dat_wavechngdist[seq(2,8,3),])
 	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
@@ -930,6 +959,15 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		scale_x_discrete(labels=c("EE","EUE","Stayer"))+ylab("Log Earnings Change")+xlab("")+ylim(c(tab_wavechngdist[9,2]*1.1,tab_wavechngdist[9,6]*1.1))
 	nametab = "box_staychng_nosw"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,".eps"),height=5,width=10)
+	out_wavedist <- xtable(dat_wavedist, digits=3, 
+						   caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+	if(demolbl>=1 & demolbl<=7){
+		print(out_wavedist,include.rownames=T,  include.colnames=T,
+			  file=paste0(outputdir,"/",nametab,demotxt[demolbl],"_",wclab,"_",reclab,".tex"))
+	}else{
+		print(out_wavedist,include.rownames=T, include.colnames=T,
+			  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
+	}
 	
 
 	
@@ -1138,6 +1176,12 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		xlab("")+ylab("Log Earnings Change")#scale_x_discrete(labels=c(" ","No Switch, Rec","Switchers, Exp","Switchers, Rec"))+
 	nametab = "plt_nosw_EEEU_rec"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10, device = cairo_ps)
+	out_wavedist <- xtable(dat_wavedist, digits=3, 
+						   caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+	print(out_wavedist,include.rownames=T, include.colnames=T,
+		  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
+	
+	
 	
 	dat_wavedist <- data.table(plt_stsw_EEEU_rec[5:8,])
 	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
@@ -1149,6 +1193,11 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		xlab("")+ylab("Log Earnings Change")#scale_x_discrete(labels=c(" ","No Switch, Rec","Switchers, Exp","Switchers, Rec"))+
 	nametab = "plt_sw_EEEU_rec"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10,device = cairo_ps)
+	out_wavedist <- xtable(dat_wavedist, digits=3, 
+						   caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+	print(out_wavedist,include.rownames=T, include.colnames=T,
+		  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
+	
 	
 	#panels (b),(c)
 	dat_wavedist <- data.table(plt_stsw_staychng_rec[1:4,])
@@ -1161,6 +1210,11 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		xlab("")+ylab("Log Earnings Change")#scale_x_discrete(labels=c(" ","No Switch, Rec","Switchers, Exp","Switchers, Rec"))+
 	nametab = "plt_nosw_staychng_rec"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10,device = cairo_ps)
+	out_wavedist <- xtable(dat_wavedist, digits=3, 
+						   caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+	print(out_wavedist,include.rownames=T, include.colnames=T,
+		  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
+	
 	
 	
 	dat_wavedist <- data.table(plt_stsw_staychng_rec[5:8,])
@@ -1173,6 +1227,11 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		xlab("")+ylab("Log Earnings Change")#scale_x_discrete(labels=c(" ","No Switch, Rec","Switchers, Exp","Switchers, Rec"))+
 	nametab = "plt_sw_staychng_rec"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10,device = cairo_ps)
+	out_wavedist <- xtable(dat_wavedist, digits=3, 
+						   caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+	print(out_wavedist,include.rownames=T, include.colnames=T,
+		  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
+	
 	
 	
 	# Other tables we're not using
