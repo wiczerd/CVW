@@ -17,7 +17,7 @@ setwd(wd0)
 
 
 wt <- "truncweight"
-wc <- "wagechange_anan"
+wc <- "wagechangeEUE_wave"
 recDef <- "recIndic2_wave"
 
 
@@ -137,15 +137,17 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		wcDF[!is.na(wcDF$s), s7 := ifelse(s==7,1,0)]
 	}
 	if(NS==8){
-		# 7 subgroups, Sw X (EE UE EU stay), sets up conditional distributions.
+		# 8 subgroups, Sw X (EE UE EU stay), sets up conditional distributions.
 		wcDF[wcDF$sw==T & wcDF$EEfrq==T & wcDF$UEfrq==F & wcDF$EUfrq ==F , s := 1]
 		wcDF[wcDF$sw==T & wcDF$EEfrq==F & wcDF$UEfrq==T & wcDF$EUfrq ==F , s := 2]
 		wcDF[wcDF$sw==T & wcDF$EEfrq==F & wcDF$UEfrq==F & wcDF$EUfrq ==T , s := 3]
+		
 		wcDF[wcDF$sw==F & wcDF$EEfrq==T & wcDF$UEfrq==F & wcDF$EUfrq ==F , s := 4]
 		wcDF[wcDF$sw==F & wcDF$EEfrq==F & wcDF$UEfrq==T & wcDF$EUfrq ==F , s := 5]
 		wcDF[wcDF$sw==F & wcDF$EEfrq==F & wcDF$UEfrq==F & wcDF$EUfrq ==T , s := 6]
-		wcDF[wcDF$sw==T & wcDF$st==T                                     , s := 7]
-		wcDF[wcDF$sw==F & wcDF$st==T                                     , s := 8]
+		
+		wcDF[wcDF$sw==T &!wcDF$EEfrq==T &!wcDF$UEfrq==T &!wcDF$EUfrq ==T , s := 7]
+		wcDF[wcDF$sw==F &!wcDF$EEfrq==T &!wcDF$UEfrq==T &!wcDF$EUfrq ==T , s := 8]
 		wcDF[!is.na(wcDF$s), s1 := ifelse(s==1,1,0)]
 		wcDF[!is.na(wcDF$s), s2 := ifelse(s==2,1,0)]
 		wcDF[!is.na(wcDF$s), s3 := ifelse(s==3,1,0)]
@@ -398,7 +400,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_rec_pctile[,simiter] <- quantile(wc_rec,probs=qtlgridOutTruncCor,na.rm=T)
+		wc_rec_pctile[,simiter] <- quantile(wc_rec,probs=qtlgridOut,na.rm=T)
 		wc_rec_moments[ ,simiter] <- moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_rec_pctile[,simiter])
 		wc_rec_moments[1,simiter] <- mean( wc_rec,na.rm = T )
 		rm(wc_rec)
@@ -705,27 +707,31 @@ wc_Rec_mmts   <- wcRec[  , c(wtd.mean(eval(as.name(wc)),weights=eval(as.name(wt)
 # Compare distributions ---------------------------------------------------
 tabqtls <- c(.05,.10,.25,.5,.75,.90,.95)
 tN <- (length(tabqtls)+1)
-ann_wavedist <- array(0., dim=c(3,length(tabqtls)+1))
+ann_wavedist <- array(0., dim=c(3,length(tabqtls)+2))
 ann_wavedist[1,1]   <- DTseam[!(eval(as.name(recDef)) ) & (sw|!sw) 
 							  &(st|ch),  wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 ann_wavedist[1,2:tN]<- DTseam[!(eval(as.name(recDef)) ) & (sw|!sw) 
 							  &(st|ch),  wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+ann_wavedist[1,1+tN]<- DTseam[                             (sw|!sw) 
+							   &(st|ch), wtd.mean(!eval(as.name(recDef)),na.rm=T,weights=eval(as.name(wt)))]
 ann_wavedist[3,1]   <- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw) 
 							   &(st|ch), wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
 ann_wavedist[3,2:tN]<- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw) 
 							   &(st|ch), wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+ann_wavedist[3,1+tN]<- DTseam[                             (sw|!sw) 
+							   &(st|ch), wtd.mean(eval(as.name(recDef)),na.rm=T,weights=eval(as.name(wt)))]
 ann_wavedist[2,1]   <- MM_betaE_betaR_IR$wc_BR_mmts[1]
-ann_wavedist[2,2:tN]<-  approx(qtlgridOut, MM_betaE_betaR_IR$wc_BR, xout=tabqtls)$y
-approx(qtlgridOut, MM_betaE_betaR_IR$wc_rec,tabqtls)
+ann_wavedist[2,2:tN]<- approx(qtlgridOut, MM_betaE_betaR_IR$wc_BR, xout=tabqtls)$y
+ann_wavedist[2,1+tN]<- ann_wavedist[3,1+tN]
 
 
 plt_wavedist <- data.table(ann_wavedist)
-names(plt_wavedist) <- c("Mean","P5","P10","P25","P50","P75","P90","P95")
+names(plt_wavedist) <- c("Mean","P5","P10","P25","P50","P75","P90","P95","Frac")
 plt_wavedist[ , Cycle := as.factor(c("Exp","CF","Rec"))]
 plt_melt <- melt(plt_wavedist, id.vars = "Cycle")
 
 ggplot( plt_wavedist , aes(Cycle)) + theme_bw()+
-	geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 , color=Cycle),stat="identity")+
+	geom_boxplot( aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 , color=Cycle, weight=Frac),stat="identity",varwidth = T )+
 	scale_x_discrete(labels=c("Counter-Factual","Expansion","Recession"))+ xlab("")+ylab("Log earnings change")+
 	scale_color_manual(values=c("purple","blue","red")) +ylim(c(-0.51,0.51))
 nametab = "cf_box"

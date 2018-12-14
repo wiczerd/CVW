@@ -254,7 +254,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		scale_color_manual(values=c("blue","red")) +ylim(c(-0.51,0.51))+
 		theme(legend.position = "none")
 	nametab = "box_ann"
-	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".eps",device=cairo_ps),height=5,width=10)
+	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".eps"),device = cairo_ps,height=5,width=10)
 	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".png"),height=5,width=10)
 
 	out_wavedist <- xtable(plt_wavedist, digits=3, 
