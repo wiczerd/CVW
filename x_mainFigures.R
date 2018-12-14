@@ -111,9 +111,9 @@ stackedDens <- function( DT,gg,wc,wt=NULL ){
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
 
 
-#DTseam <- subset(DTseam, changer_anan==T|stayer_anan==T)
-
-#DTseam[ , last.anwage := shift(levwage)+shift(levwage,2)+shift(levwage,3),by=id]
+DTseam[ ,wtEUE:= truncweight]
+DTseam[ UE_wave==T,wtEUE:= 0.]
+DTseam[ EU_wave==T,wtEUE:= truncweight]
 
 DTseam[ , last2.stable_emp:= shift(last.stable_emp), by=id]
 DTseam[ , last3.stable_emp:= shift(last2.stable_emp), by=id]
@@ -211,7 +211,7 @@ DTseam[!is.na(DTseam$g), g1 := ifelse(g==1,1,0)]
 DTseam[!is.na(DTseam$g), g2 := ifelse(g==2,1,0)]
 DTseam[!is.na(DTseam$g), g3 := ifelse(g==3,1,0)]
 
-wcananDens <- stackedDens(DTseam,"g","wagechangeEUE_wave", wt="truncweight")
+wcananDens <- stackedDens(DTseam,"g","wagechangeEUE_wave", wt="wtEUE")
 wcananMelt <- melt(wcananDens, id.vars = "WageChange")
 wcananMelt[value>exp(-6) , logValue := log(value)]
 wcananMelt[ , g:=4L-as.integer(variable)]
