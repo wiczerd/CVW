@@ -399,7 +399,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		}
 		#clean up the space:
 		wc_rec_pctile[,simiter] <- quantile(wc_rec,probs=qtlgridOutTruncCor,na.rm=T)
-		wc_rec_moments[,simiter] <- moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_rec_pctile[,simiter])
+		wc_rec_moments[ ,simiter] <- moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_rec_pctile[,simiter])
 		wc_rec_moments[1,simiter] <- mean( wc_rec,na.rm = T )
 		rm(wc_rec)
 		
@@ -420,7 +420,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		}
 		#clean up the space:
 		wc_exp_pctile[,simiter] <- quantile(wc_exp,probs=qtlgridOutTruncCor,na.rm=T)
-		wc_exp_moments[1,simiter] <-moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_exp_pctile[,simiter])
+		wc_exp_moments[,simiter] <-moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_exp_pctile[,simiter])
 		wc_exp_moments[1,simiter] <- mean( wc_exp,na.rm = T )
 		rm(wc_exp)
 				
@@ -448,7 +448,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			qi = qi+1
 		}
 		wc_BR_exstay_pctile[,simiter] <- quantile(wc_BR_exstay,probs=qtlgridOutTruncCor,na.rm=T)
-		wc_BR_exstay_moments[1,simiter] <-moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_BR_exstay_pctile[,simiter])
+		wc_BR_exstay_moments[ ,simiter] <-moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_BR_exstay_pctile[,simiter])
 		wc_BR_exstay_moments[1,simiter] <- mean( wc_BR_exstay,na.rm = T )
 		
 		#turn off each individually
@@ -474,7 +474,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 				qi = qi+1
 			}
 			wc_BR_exi_pctile[,ni,simiter] <- quantile(wc_BR_exi,probs=qtlgridOutTruncCor,na.rm=T)
-			wc_BR_exi_moments[,ni,simiter] <-moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_BR_exi_pctile[,ni,simiter])
+			wc_BR_exi_moments[ ,ni,simiter] <- moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_BR_exi_pctile[,ni,simiter])
 			wc_BR_exi_moments[1,ni,simiter] <- mean( wc_BR_exi,na.rm = T )
 		}
 		#turn on each individually
@@ -500,7 +500,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 				qi = qi+1
 			}
 			wc_BR_onlyi_pctile[,ni,simiter] <- quantile(wc_BR_onlyi,probs=qtlgridOutTruncCor,na.rm=T)
-			wc_BR_onlyi_moments[,ni,simiter] <-moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_BR_onlyi_pctile[,ni,simiter])
+			wc_BR_onlyi_moments[ ,ni,simiter] <- moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_BR_onlyi_pctile[,ni,simiter])
 			wc_BR_onlyi_moments[1,ni,simiter] <- mean( wc_BR_onlyi,na.rm = T )
 			
 		}
