@@ -159,7 +159,7 @@ DTall[wagechange_notransbad==F & wagechange_wave_low==F & wagechange_wave_high==
 	   	!(EU_wave==T|UE_wave==T|EE_wave==T) &last.stable_emp==T & next.stable_emp==T & esr_max==1 & next.esr_max==1 &
 	   	lfstat_wave==1 & next.lfstat_wave==1, stayer:= T]
 
-DTall[wagechange_notransbad==F  & wagechange_wave_jcbad==F & wagechange_ENbad==F &
+DTall[wagechange_notransbad==F  & wagechange_wave_jcbad==F & wagechange_ENbad==F & last.stable_emp==T &
 	   	(EU_wave==T|UE_wave==T|EE_wave==T)  , changer:= T]
 
 DTall[changer==T, stayer:= F]

@@ -140,7 +140,7 @@ DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, wagechangeEUE_wave
 DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, wagechange2EUE_wave := next2.wavewage - last.wavewage]
 DTseam[ EE_wave==T & last.stable_emp==T & next.stable_emp==T, wagechange3EUE_wave := next3.wavewage - last.wavewage]
 #DTseam[ !(EU_wave|UE_wave|EE_wave), wagechangeEUE_wave := wagechange_wave]
-DTseam[ !(EU_wave|UE_wave|EE_wave), wagechangeEUE_wave := next.empwg - empwg]
+DTseam[ !(EU_wave|UE_wave|EE_wave) , wagechangeEUE_wave := next.empwg - empwg]
 
 
 DTseam[next.lfstat_wave==1 & UE_wave_last  == T & next.stable_emp==T, esrAfterUE := next.esr_max]

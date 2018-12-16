@@ -540,7 +540,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			
 		}			
 		wc_IR_un <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
-		idxun <- grepl("EU_", colnames(betaptsR))
+		wc_BR_un <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
+		idxun <- grepl("EU_ | UE_", colnames(betaptsR))
 		qi=1
 		for(q in qtlgridSamp){
 			sumBetaE <- ""
@@ -578,7 +579,18 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 					wc_BR_exi_mmts = wc_BR_exi_moments, wc_BR_onlyi_mmts = wc_BR_onlyi_moments))
 	}
 }
-
+ptail <- function(qtlpts,distpts,Mqtl,Tqtl,LR = "R"){
+	if(missing(LR)){
+		LR = "R"
+	}
+	dist_fun <- approxfun(qtlpts,distpts)
+	if(LR=="R"){
+		alphahat = (Tqtl - Mqtl)/( (1-Tqtl)*log(abs(dist_fun(Tqtl))) + sum( 0.01*log(abs(dist_fun(seq(Mqtl+0.01,Tqtl,0.01)))) )- (1-Mqtl)*log(abs(dist_fun(Mqtl))) )
+	}else{
+		alphahat = (Mqtl - Tqtl)/( Tqtl*log(abs(dist_fun(Tqtl)))     + sum( 0.01*log(abs(dist_fun(seq(Tqtl,Mqtl-0.01,0.01)))) ) -    Mqtl*log(abs(dist_fun(Mqtl))) )
+	}
+	return(alphahat)
+}
 
 moments_compute_qtls <- function(qtlpts, distpts){
 	# take the distributions points evaluated at the quantile points and crank out some moments
@@ -731,9 +743,9 @@ plt_wavedist[ , Cycle := as.factor(c("Exp","CF","Rec"))]
 plt_melt <- melt(plt_wavedist, id.vars = "Cycle")
 
 ggplot( plt_wavedist , aes(Cycle)) + theme_bw()+
-	geom_boxplot( aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 , color=Cycle, weight=Frac),stat="identity",varwidth = T )+
+	geom_boxplot( aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 , color=Cycle, width=Frac),stat="identity",varwidth = T )+
 	scale_x_discrete(labels=c("Counter-Factual","Expansion","Recession"))+ xlab("")+ylab("Log earnings change")+
-	scale_color_manual(values=c("purple","blue","red")) +ylim(c(-0.51,0.51))
+	scale_color_manual(values=c("purple","blue","red")) #+ylim(c(-0.51,0.51))
 nametab = "cf_box"
 ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".eps"),device=cairo_ps,height=5,width=10)
 ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".png"),height=5,width=10)
