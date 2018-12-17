@@ -236,11 +236,11 @@ UEtruenomatchrt <- DTseam[ lfstat_wave==2 & (UE_wave==T) & wis > 4  & is.finite(
 Utruenomatchrt  <- DTseam[wis > 4 & wisRemaining > 4 & is.finite(ustintid_wave) , 
 						  sum(u_nomatch*perwt,na.rm=T)/sum(perwt)]
 
-DTseam[ matched_EUUE_max==F & EU_wave ==T, EU_wave := NA]
-DTseam[ matched_EUUE_max==F & UE_wave ==T, UE_wave := NA]
+DTseam[ (matched_EUUE_max==F |is.na(matched_EUUE_max)) & EU_wave ==T, EU_wave := NA]
+DTseam[ (matched_EUUE_max==F |is.na(matched_EUUE_max)) & UE_wave ==T, UE_wave := NA]
 
-DTseam[ matched_EUUE_anan==F & EU_anan ==T, EU_anan := NA]
-DTseam[ matched_EUUE_anan==F & UE_anan ==T, UE_anan := NA]
+DTseam[ (matched_EUUE_anan==F|is.na(matched_EUUE_anan)) & EU_anan ==T, EU_anan := NA]
+DTseam[ (matched_EUUE_anan==F|is.na(matched_EUUE_anan)) & UE_anan ==T, UE_anan := NA]
 
 #do some reweighting for left- and right-truncation
 DTseam[ , truncweight := perwt]

@@ -17,16 +17,16 @@ setwd(wd0)
 
 
 wt <- "truncweight"
-wc <- "wagechange_anan"
+wc <- "wagechangeEUE_wave"
 recDef <- "recIndic2_wave"
 
 
 minEarn = 1040 
 minLEarn = log(2*minEarn)
 
-qtlgridEst  <- c(seq(0.01,0.06,0.01),seq(.07,.13,.02),seq(0.15,0.85,0.05),seq(.87,.93,.02),seq(0.94,0.99,.01))
-qtlgridOut <- seq(.01,0.99,0.01)
-qtlgridOutTruncCor <- (seq(.01,0.99,0.01)-.01)/0.98
+qtlgridEst  <- c(seq(0.005,0.03,0.005),seq(0.04,0.06,0.01),seq(.07,.13,.02),seq(0.15,0.85,0.05),seq(.87,.93,.02),seq(0.94,0.96,0.01),seq(0.97,0.995,.005))
+qtlgridOut <- c(seq(.005,0.995,0.01))
+qtlgridOutTruncCor <- (seq(.005,0.995,0.01)-.005)/0.99
 MMstd_errs = F
 Nmoments = 5
 moment_names <- c("Mean","Median","Med Abs Dev","Groenv-Meeden","Moors")
@@ -250,7 +250,9 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 	wc_BR_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
 	wc_BR_moments <- array(0.,dim=c(Nmoments,Nsims))
 	wc_IR_sw_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
+	wc_BR_sw_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
 	wc_IR_un_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
+	wc_BR_un_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
 	wc_rec_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
 	wc_rec_moments <- array(0.,dim=c(Nmoments,Nsims))
 	wc_exp_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
@@ -372,13 +374,15 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		#clean up the space:
 		wc_IR_pctile[,simiter] <- quantile(wc_IR,probs=qtlgridOutTruncCor,na.rm=T)
 		wc_BR_pctile[,simiter] <- quantile(wc_BR,probs=qtlgridOutTruncCor,na.rm=T)
+		#est Pareto tails
+		#wc_IR_pctile[1,simiter]                  <- ptail(qtlgridOut[2:(length(qtlgridOut)-1)] ,wc_IR_pctile[2:(length(qtlgridOut)-1),simiter],0.04,0.01,"L")
+		#wc_IR_pctile[length(qtlgridOut),simiter] <- ptail(qtlgridOut[2:(length(qtlgridOut)-1)] ,wc_IR_pctile[2:(length(qtlgridOut)-1),simiter],0.96,0.99,"R")
+		
 		wc_IR_moments[,simiter]<- moments_compute_qtls(qtlpts=qtlgridOut , distpts=wc_IR_pctile[,simiter])
 		wc_IR_moments[1,simiter] <- mean(wc_IR,na.rm = T)
 		wc_BR_moments[,simiter]<- moments_compute_qtls(qtlpts=qtlgridOut , distpts=wc_BR_pctile[,simiter])
 		wc_BR_moments[1,simiter] <- mean(wc_BR)
-		#wc_IR_moments[2:5,simiter] <- wtd.4qtlmoments(xt=wc_IR,wt=array(1.,dim = dim(wc_IR)))
-		#wc_BR_moments[2:5,simiter] <- wtd.4qtlmoments(xt=wc_BR,wt=array(1.,dim = dim(wc_BR)))
-		
+
 		rm(wc_IR)
 		rm(wc_BR)
 
@@ -511,29 +515,37 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			#contribution of occupation switchers
 			idxsw <- grepl("_sw", colnames(betaptsR))
 			wc_IR_sw <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only switch
+			wc_BR_sw <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only switch
 			wc_IR_sw_moments <- matrix(NA,Nmoments,Nsims)
 			qi=1
 			for(q in qtlgridSamp){
 				sumBetaE <- ""
+				sumBetaR <- ""
 				for(si in seq(1,NS) ){
-					if(idxsw[si] ==F){
+					if(idxsw[si] ==F){ #compare to the rest of the counter-factuals
 						sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
+						sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
 					}
-					else{# use the expansions coefficients
+					else{# holding the switching terms as their base
 						sumBetaE <- paste(sumBetaE,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
+						sumBetaR <- paste(sumBetaR,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
 					}
 				}
 				if( durEU == T){
 					sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(NS+1),",qi]*dur" ))
+					sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
 				}else{
 					sumBetaE <- paste(sumBetaE,"0")
+					sumBetaR <- paste(sumBetaR,"0")
 				}
 				
 				wc_IR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],eval(parse(text=sumBetaE))] 
+				wc_BR_sw[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcExp[sampR[,qi],eval(parse(text=sumBetaR))] 
 				qi = qi+1
 			}
 			#clean up the space:
 			wc_IR_sw_pctile[,simiter] <- quantile(wc_IR_sw,probs=qtlgridOutTruncCor,na.rm=T)
+			wc_BR_sw_pctile[,simiter] <- quantile(wc_BR_sw,probs=qtlgridOutTruncCor,na.rm=T)
 			wc_IR_sw_moments[,simiter] <-moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_IR_sw_pctile[,simiter])
 			wc_IR_sw_moments[1,simiter] <- mean( wc_IR_sw,na.rm = T )
 			rm(wc_IR_sw)
@@ -541,39 +553,46 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		}			
 		wc_IR_un <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
 		wc_BR_un <- matrix(NA, nrow=nsampR*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution - only unemployment
-		idxun <- grepl("EU_ | UE_", colnames(betaptsR))
+		idxun <- grepl("EU_|UE_", colnames(betaptsR))
 		qi=1
 		for(q in qtlgridSamp){
 			sumBetaE <- ""
+			sumBetaR <- ""
 			for(si in seq(1,NS) ){
 				if(idxun[si] ==F){
 					sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
+					sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
 				}
 				else{# use the expansions coefficients
 					sumBetaE <- paste(sumBetaE,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
+					sumBetaR <- paste(sumBetaR,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
 				}
 			}
 			if( durEU == T){
 				sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(NS+1),",qi]*dur" ))
+				sumBetaR <- paste(sumBetaR,paste0("betaE[",as.character(NS+1),",qi]*dur" ))
 			}else{
 				sumBetaE <- paste(sumBetaE,"0")
+				sumBetaR <- paste(sumBetaR,"0")
 			}
 			wc_IR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[sampR[,qi],eval(parse(text=sumBetaE))] 
+			wc_BR_un[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcExp[sampR[,qi],eval(parse(text=sumBetaR))] 
 			qi = qi+1
 		}
 		#clean up the space:
 		wc_IR_un_pctile[,simiter] <- quantile(wc_IR_un,probs=qtlgridOutTruncCor,na.rm=T)
+		wc_BR_un_pctile[,simiter] <- quantile(wc_BR_un,probs=qtlgridOutTruncCor,na.rm=T)
 		rm(wc_IR_un)
 
 	}#simiter	
 	
 	if(no_occ==F){	
-		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_sw= wc_IR_sw_pctile, wc_IR_un= wc_IR_un_pctile,
+		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_sw= wc_IR_sw_pctile, wc_IR_un= wc_IR_un_pctile,wc_BR_un= wc_BR_un_pctile,
 				wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile,wc_BR_mmts = wc_BR_moments,wc_IR_mmts = wc_IR_moments, 
-				wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments, wc_IR_sw_mmts = wc_IR_sw_moments,
+				wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments, wc_IR_sw_mmts = wc_IR_sw_moments,wc_BR_sw = wc_BR_pctile,
 				wc_BR_exi_mmts = wc_BR_exi_moments))
 	}else{
-		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_un= wc_IR_un_pctile,
+		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_un= wc_IR_un_pctile,wc_BR_un= wc_BR_un_pctile,
 					wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile,
 					wc_BR_mmts = wc_BR_moments,wc_IR_mmts = wc_IR_moments,wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments,
 					wc_BR_exi_mmts = wc_BR_exi_moments, wc_BR_onlyi_mmts = wc_BR_onlyi_moments))
@@ -706,35 +725,46 @@ if( freq == "wave"){
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #Extracting the dist and moments -----------------------------------
-wcExp <- subset(DTseam,eval(as.name(recDef))==F)
-wcRec <- subset(DTseam,eval(as.name(recDef))==T)
-dist_exp      <- wcExp[ , wtd.quantile(eval(as.name(wc)),probs=qtlgridOut,weights=eval(as.name(wt)), na.rm=T)]
-dist_rec      <- wcRec[ , wtd.quantile(eval(as.name(wc)),probs=qtlgridOut,weights=eval(as.name(wt)), na.rm=T)]
-wc_Exp_mmts   <- wcExp[  , c(wtd.mean(eval(as.name(wc)),weights=eval(as.name(wt)),na.rm=T), 
-							 wtd.4qtlmoments( xt= eval(as.name(wc)) ,wt= eval(as.name(wt))))]
-wc_Rec_mmts   <- wcRec[  , c(wtd.mean(eval(as.name(wc)),weights=eval(as.name(wt)),na.rm=T), 
-							 wtd.4qtlmoments( xt= eval(as.name(wc)) ,wt= eval(as.name(wt))))]
+# wcExp <- subset(DTseam,eval(as.name(recDef))==F)
+# wcRec <- subset(DTseam,eval(as.name(recDef))==T)
+# dist_exp      <- wcExp[ , wtd.quantile(eval(as.name(wc)),probs=qtlgridOut,weights=eval(as.name(wt)), na.rm=T)]
+# dist_rec      <- wcRec[ , wtd.quantile(eval(as.name(wc)),probs=qtlgridOut,weights=eval(as.name(wt)), na.rm=T)]
+# wc_Exp_mmts   <- wcExp[  , c(wtd.mean(eval(as.name(wc)),weights=eval(as.name(wt)),na.rm=T), 
+# 							 wtd.4qtlmoments( xt= eval(as.name(wc)) ,wt= eval(as.name(wt))))]
+# wc_Rec_mmts   <- wcRec[  , c(wtd.mean(eval(as.name(wc)),weights=eval(as.name(wt)),na.rm=T), 
+# 							 wtd.4qtlmoments( xt= eval(as.name(wc)) ,wt= eval(as.name(wt))))]
+
+Dist_dif = data.table(cbind(qtlgridOut,MM_betaE_betaR_IR$wc_exp - MM_betaE_betaR_IR$wc_rec,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR,
+							MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_un,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_sw))
+names(Dist_dif) <- c("Qtls", "Dif", "CF Dif","CF Dif, ex un","CF Dif, ex sw")
+Dist_melt <- melt(Dist_dif,id.vars = "Qtls")
+ggplot(Dist_melt, aes(x=Qtls,y=value,color=variable))+geom_smooth(se=F,span=0.1)+ylim(c(0,.1))
 
 #!!!!!!!!!!!
 # Compare distributions ---------------------------------------------------
 tabqtls <- c(.05,.10,.25,.5,.75,.90,.95)
 tN <- (length(tabqtls)+1)
 ann_wavedist <- array(0., dim=c(3,length(tabqtls)+2))
-ann_wavedist[1,1]   <- DTseam[!(eval(as.name(recDef)) ) & (sw|!sw) 
-							  &(st|ch),  wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-ann_wavedist[1,2:tN]<- DTseam[!(eval(as.name(recDef)) ) & (sw|!sw) 
-							  &(st|ch),  wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+# ann_wavedist[1,1]   <- DTseam[!(eval(as.name(recDef)) ) & (sw|!sw) 
+# 							  &(st|ch),  wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+# ann_wavedist[1,2:tN]<- DTseam[!(eval(as.name(recDef)) ) & (sw|!sw) 
+# 							  &(st|ch),  wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 ann_wavedist[1,1+tN]<- DTseam[                             (sw|!sw) 
 							   &(st|ch), wtd.mean(!eval(as.name(recDef)),na.rm=T,weights=eval(as.name(wt)))]
-ann_wavedist[3,1]   <- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw) 
-							   &(st|ch), wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
-ann_wavedist[3,2:tN]<- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw) 
-							   &(st|ch), wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
+# ann_wavedist[3,1]   <- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw) 
+# 							   &(st|ch), wtd.mean(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)))]
+# ann_wavedist[3,2:tN]<- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw) 
+# 							   &(st|ch), wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 ann_wavedist[3,1+tN]<- DTseam[                             (sw|!sw) 
 							   &(st|ch), wtd.mean(eval(as.name(recDef)),na.rm=T,weights=eval(as.name(wt)))]
 ann_wavedist[2,1]   <- MM_betaE_betaR_IR$wc_BR_mmts[1]
 ann_wavedist[2,2:tN]<- approx(qtlgridOut, MM_betaE_betaR_IR$wc_BR, xout=tabqtls)$y
 ann_wavedist[2,1+tN]<- ann_wavedist[3,1+tN]
+
+ann_wavedist[3,2:tN]<- approx(qtlgridOut, MM_betaE_betaR_IR$wc_rec, xout=tabqtls)$y
+ann_wavedist[1,2:tN]<- approx(qtlgridOut, MM_betaE_betaR_IR$wc_exp, xout=tabqtls)$y
+ann_wavedist[1,1]<- MM_betaE_betaR_IR$wc_exp_mmts[1]
+ann_wavedist[3,1]<- MM_betaE_betaR_IR$wc_rec_mmts[1]
 
 
 plt_wavedist <- data.table(ann_wavedist)
@@ -745,10 +775,14 @@ plt_melt <- melt(plt_wavedist, id.vars = "Cycle")
 ggplot( plt_wavedist , aes(Cycle)) + theme_bw()+
 	geom_boxplot( aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 , color=Cycle, width=Frac),stat="identity",varwidth = T )+
 	scale_x_discrete(labels=c("Counter-Factual","Expansion","Recession"))+ xlab("")+ylab("Log earnings change")+
-	scale_color_manual(values=c("purple","blue","red")) #+ylim(c(-0.51,0.51))
+	scale_color_manual(values=c("purple","blue","red"))  #+ylim(c(-0.51,0.51))
 nametab = "cf_box"
 ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".eps"),device=cairo_ps,height=5,width=10)
 ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".png"),height=5,width=10)
+out_wavedist <- xtable(plt_wavedist, digits=3, 
+					   caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+print(out_wavedist,include.rownames=T, include.colnames=T,
+	  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 
 
 
