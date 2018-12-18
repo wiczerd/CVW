@@ -17,7 +17,7 @@ setwd(wd0)
 
 
 wt <- "truncweight"
-wc <- "wagechangeEUE_wave"
+wc <- "wagechange_anan"
 recDef <- "recIndic2_wave"
 
 
@@ -25,6 +25,7 @@ minEarn = 1040
 minLEarn = log(2*minEarn)
 
 qtlgridEst  <- c(seq(0.005,0.03,0.005),seq(0.04,0.06,0.01),seq(.07,.13,.02),seq(0.15,0.85,0.05),seq(.87,.93,.02),seq(0.94,0.96,0.01),seq(0.97,0.995,.005))
+Nestpt = length(qtlgridEst)
 qtlgridOut <- c(seq(.005,0.995,0.01))
 qtlgridOutTruncCor <- (seq(.005,0.995,0.01)-.005)/0.99
 MMstd_errs = F
@@ -284,11 +285,18 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		}else{
 			regform <- formula(paste(c("wc~factor(s)","0"),collapse=" + ") )
 		}
-		rhere <- rq( regform ,tau= qtlgridEst, data=wcRec, weights = wt, method="sfn")
+		rhere <- rq( regform ,tau= qtlgridEst, data=wcRec, weights = wt, method="br")
 		betaptsR = t(rhere$coefficients)
+		#rhere <- rq( regform ,tau= qtlgridEst[c(1:3,(Nestpt-3):Nestpt)], data=wcRec, weights = wt, method="br")
+		#betaptsR[1:3] = t(rhere$coefficients[1:3])
+		#betaptsR[(Nestpt-3):Nestpt] = t(rhere$coefficients[(Nestpt-3):Nestpt])
+		
 	
-		rhere <- rq( regform ,tau= qtlgridEst, data=wcExp, weights = wt, method="sfn") #
+		rhere <- rq( regform ,tau= qtlgridEst, data=wcExp, weights = wt, method="br") #sfn
 		betaptsE = t(rhere$coefficients)
+		#rhere <- rq( regform ,tau= qtlgridEst[c(1:3,(Nestpt-3):Nestpt)], data=wcRec, weights = wt, method="br")
+		#betaptsE[1:3] = t(rhere$coefficients[1:3])
+		#betaptsE[(Nestpt-3):Nestpt] = t(rhere$coefficients[(Nestpt-3):Nestpt])
 		rm(rhere)
 	
 		if(NS==7){
@@ -589,7 +597,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 	if(no_occ==F){	
 		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_sw= wc_IR_sw_pctile, wc_IR_un= wc_IR_un_pctile,wc_BR_un= wc_BR_un_pctile,
 				wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile,wc_BR_mmts = wc_BR_moments,wc_IR_mmts = wc_IR_moments, 
-				wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments, wc_IR_sw_mmts = wc_IR_sw_moments,wc_BR_sw = wc_BR_pctile,
+				wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments, wc_IR_sw_mmts = wc_IR_sw_moments,wc_BR_sw = wc_BR_sw_pctile,
 				wc_BR_exi_mmts = wc_BR_exi_moments))
 	}else{
 		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_un= wc_IR_un_pctile,wc_BR_un= wc_BR_un_pctile,
@@ -725,20 +733,20 @@ if( freq == "wave"){
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #Extracting the dist and moments -----------------------------------
-# wcExp <- subset(DTseam,eval(as.name(recDef))==F)
-# wcRec <- subset(DTseam,eval(as.name(recDef))==T)
-# dist_exp      <- wcExp[ , wtd.quantile(eval(as.name(wc)),probs=qtlgridOut,weights=eval(as.name(wt)), na.rm=T)]
-# dist_rec      <- wcRec[ , wtd.quantile(eval(as.name(wc)),probs=qtlgridOut,weights=eval(as.name(wt)), na.rm=T)]
+ wcExp <- subset(DTseam,eval(as.name(recDef))==F)
+ wcRec <- subset(DTseam,eval(as.name(recDef))==T)
+ dist_exp      <- wcExp[ , wtd.quantile(eval(as.name(wc)),probs=qtlgridOut,weights=eval(as.name(wt)), na.rm=T)]
+ dist_rec      <- wcRec[ , wtd.quantile(eval(as.name(wc)),probs=qtlgridOut,weights=eval(as.name(wt)), na.rm=T)]
 # wc_Exp_mmts   <- wcExp[  , c(wtd.mean(eval(as.name(wc)),weights=eval(as.name(wt)),na.rm=T), 
 # 							 wtd.4qtlmoments( xt= eval(as.name(wc)) ,wt= eval(as.name(wt))))]
 # wc_Rec_mmts   <- wcRec[  , c(wtd.mean(eval(as.name(wc)),weights=eval(as.name(wt)),na.rm=T), 
 # 							 wtd.4qtlmoments( xt= eval(as.name(wc)) ,wt= eval(as.name(wt))))]
 
-Dist_dif = data.table(cbind(qtlgridOut,MM_betaE_betaR_IR$wc_exp - MM_betaE_betaR_IR$wc_rec,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR,
+Dist_dif = data.table(cbind(qtlgridOut,dist_exp - dist_rec,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR,
 							MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_un,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_sw))
 names(Dist_dif) <- c("Qtls", "Dif", "CF Dif","CF Dif, ex un","CF Dif, ex sw")
 Dist_melt <- melt(Dist_dif,id.vars = "Qtls")
-ggplot(Dist_melt, aes(x=Qtls,y=value,color=variable))+geom_smooth(se=F,span=0.1)+ylim(c(0,.1))
+ggplot(Dist_melt, aes(x=Qtls,y=value,color=variable))+geom_smooth(se=F,span=0.1)
 
 #!!!!!!!!!!!
 # Compare distributions ---------------------------------------------------
