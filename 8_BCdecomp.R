@@ -11,7 +11,7 @@ library(ggplot2)
 wd0 = "~/workspace/CVW/R"
 xwalkdir = "~/workspace/CVW/R/Crosswalks"
 datadir = "~/workspace/CVW/R/Results"
-outputdir = "~/workspace/CVW/R/Results"
+outputdir = "~/workspace/CVW/R/Figures"
 
 setwd(wd0)
 
@@ -26,8 +26,8 @@ minLEarn = log(2*minEarn)
 
 qtlgridEst  <- c(seq(0.005,0.03,0.005),seq(0.04,0.06,0.01),seq(.07,.13,.02),seq(0.15,0.85,0.05),seq(.87,.93,.02),seq(0.94,0.96,0.01),seq(0.97,0.995,.005))
 Nestpt = length(qtlgridEst)
-qtlgridOut <- c(seq(.005,0.995,0.01))
-qtlgridOutTruncCor <- (seq(.005,0.995,0.01)-.005)/0.99
+qtlgridOut <- c(seq(.02,0.98,0.01))
+qtlgridOutTruncCor <- (qtlgridOut-.005)/0.99
 MMstd_errs = F
 Nmoments = 5
 moment_names <- c("Mean","Median","Med Abs Dev","Groenv-Meeden","Moors")
@@ -285,18 +285,12 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		}else{
 			regform <- formula(paste(c("wc~factor(s)","0"),collapse=" + ") )
 		}
-		rhere <- rq( regform ,tau= qtlgridEst, data=wcRec, weights = wt, method="br")
+		rhere <- rq( regform ,tau= qtlgridEst, data=wcRec, weights = wt, method="sfn")
 		betaptsR = t(rhere$coefficients)
-		#rhere <- rq( regform ,tau= qtlgridEst[c(1:3,(Nestpt-3):Nestpt)], data=wcRec, weights = wt, method="br")
-		#betaptsR[1:3] = t(rhere$coefficients[1:3])
-		#betaptsR[(Nestpt-3):Nestpt] = t(rhere$coefficients[(Nestpt-3):Nestpt])
 		
 	
-		rhere <- rq( regform ,tau= qtlgridEst, data=wcExp, weights = wt, method="br") #sfn
+		rhere <- rq( regform ,tau= qtlgridEst, data=wcExp, weights = wt, method="sfn") #sfn
 		betaptsE = t(rhere$coefficients)
-		#rhere <- rq( regform ,tau= qtlgridEst[c(1:3,(Nestpt-3):Nestpt)], data=wcRec, weights = wt, method="br")
-		#betaptsE[1:3] = t(rhere$coefficients[1:3])
-		#betaptsE[(Nestpt-3):Nestpt] = t(rhere$coefficients[(Nestpt-3):Nestpt])
 		rm(rhere)
 	
 		if(NS==7){
@@ -412,7 +406,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			qi = qi+1
 		}
 		#clean up the space:
-		wc_rec_pctile[,simiter] <- quantile(wc_rec,probs=qtlgridOut,na.rm=T)
+		wc_rec_pctile[,simiter] <- quantile(wc_rec,probs=qtlgridOutTruncCor,na.rm=T)
 		wc_rec_moments[ ,simiter] <- moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_rec_pctile[,simiter])
 		wc_rec_moments[1,simiter] <- mean( wc_rec,na.rm = T )
 		rm(wc_rec)
@@ -437,7 +431,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		wc_exp_moments[,simiter] <-moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_exp_pctile[,simiter])
 		wc_exp_moments[1,simiter] <- mean( wc_exp,na.rm = T )
 		rm(wc_exp)
-				
+		
 		#some additional counter-factuals
 		# try replacing stayers:
 		qi=1
@@ -746,7 +740,23 @@ Dist_dif = data.table(cbind(qtlgridOut,dist_exp - dist_rec,MM_betaE_betaR_IR$wc_
 							MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_un,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_sw))
 names(Dist_dif) <- c("Qtls", "Dif", "CF Dif","CF Dif, ex un","CF Dif, ex sw")
 Dist_melt <- melt(Dist_dif,id.vars = "Qtls")
-ggplot(Dist_melt, aes(x=Qtls,y=value,color=variable))+geom_smooth(se=F,span=0.1)
+ggplot(Dist_melt, aes(x=Qtls,y=value,color=variable))+geom_smooth(se=F,span=0.1)+theme_bw()+
+	xlab("Annual-Annual Log Earnings Change Quantile")+ylab("Difference Expansion - Recession Log Earnings Change")+
+	scale_color_manual(labels=c("Data","Recession Returns","Recession Returns, Expansion Unemployment Returns","Recession Returns, Expansion Switching Returns"),
+					   values=c("black",hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:3)]))+ 
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.5,0.8),
+		  legend.background = element_rect(linetype = "solid",color = "white"))	
+nametab = "cf_qtls"
+ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".eps"),device=cairo_ps,height=5,width=10)
+ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".png"),height=5,width=10)
+out_wavedist <- xtable(Dist_dif, digits=3, 
+					   caption=paste0("Decomposition of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+print(out_wavedist,include.rownames=T, include.colnames=T,
+	  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
+
+
+
 
 #!!!!!!!!!!!
 # Compare distributions ---------------------------------------------------
