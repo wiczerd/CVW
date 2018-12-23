@@ -26,8 +26,8 @@ minLEarn = log(2*minEarn)
 
 qtlgridEst  <- c(seq(0.005,0.03,0.005),seq(0.04,0.06,0.01),seq(.07,.13,.02),seq(0.15,0.85,0.05),seq(.87,.93,.02),seq(0.94,0.96,0.01),seq(0.97,0.995,.005))
 Nestpt = length(qtlgridEst)
-qtlgridOut <- c(seq(.02,0.98,0.01))
-qtlgridOutTruncCor <- (qtlgridOut-.005)/0.99
+qtlgridOut <- c(seq(.015,0.985,0.01))
+qtlgridOutTruncCor <- (qtlgridOut-min(qtlgridEst))/(max(qtlgridEst)-min(qtlgridEst)) 
 MMstd_errs = F
 Nmoments = 5
 moment_names <- c("Mean","Median","Med Abs Dev","Groenv-Meeden","Moors")
@@ -706,10 +706,10 @@ if(freq == "wave"){
 }else{
 	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),ch := changer_anan]
 	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),st := stayer_anan]
-	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),sw := switched_anan]
-	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EUfrq := EU_anan]
-	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EEfrq := EE_anan]
-	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), UEfrq := UE_anan]
+	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),sw := switched_wave]
+	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EUfrq := EU_wave]
+	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EEfrq := EE_wave]
+	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), UEfrq := UE_wave]
 }
 DTseam[ EUfrq==T, dur := max.unempdur_wave]
 DTseam[ !EUfrq==T | !is.finite(dur), dur := 0.]
@@ -723,20 +723,21 @@ if( freq == "wave"){
 }else{
 	MM_betaE_betaR_IR <- MMdecomp(DTseam,8,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
 	saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN.RData"))
+	# MM_betaE_betaR_IR <-readRDS(paste0(outputdir,"/MM_ANAN.RData"))
 }
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #Extracting the dist and moments -----------------------------------
- wcExp <- subset(DTseam,eval(as.name(recDef))==F)
- wcRec <- subset(DTseam,eval(as.name(recDef))==T)
- dist_exp      <- wcExp[ , wtd.quantile(eval(as.name(wc)),probs=qtlgridOut,weights=eval(as.name(wt)), na.rm=T)]
- dist_rec      <- wcRec[ , wtd.quantile(eval(as.name(wc)),probs=qtlgridOut,weights=eval(as.name(wt)), na.rm=T)]
+ # wcExp <- subset(DTseam,eval(as.name(recDef))==F)
+ # wcRec <- subset(DTseam,eval(as.name(recDef))==T)
+ # dist_exp      <- wcExp[ , wtd.quantile(eval(as.name(wc)),probs=qtlgridOut,weights=eval(as.name(wt)), na.rm=T)]
+ # dist_rec      <- wcRec[ , wtd.quantile(eval(as.name(wc)),probs=qtlgridOut,weights=eval(as.name(wt)), na.rm=T)]
 # wc_Exp_mmts   <- wcExp[  , c(wtd.mean(eval(as.name(wc)),weights=eval(as.name(wt)),na.rm=T), 
 # 							 wtd.4qtlmoments( xt= eval(as.name(wc)) ,wt= eval(as.name(wt))))]
 # wc_Rec_mmts   <- wcRec[  , c(wtd.mean(eval(as.name(wc)),weights=eval(as.name(wt)),na.rm=T), 
 # 							 wtd.4qtlmoments( xt= eval(as.name(wc)) ,wt= eval(as.name(wt))))]
 
-Dist_dif = data.table(cbind(qtlgridOut,dist_exp - dist_rec,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR,
+Dist_dif = data.table(cbind(qtlgridOut,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_rec,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR,
 							MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_un,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_sw))
 names(Dist_dif) <- c("Qtls", "Dif", "CF Dif","CF Dif, ex un","CF Dif, ex sw")
 Dist_melt <- melt(Dist_dif,id.vars = "Qtls")
@@ -744,6 +745,7 @@ ggplot(Dist_melt, aes(x=Qtls,y=value,color=variable))+geom_smooth(se=F,span=0.1)
 	xlab("Annual-Annual Log Earnings Change Quantile")+ylab("Difference Expansion - Recession Log Earnings Change")+
 	scale_color_manual(labels=c("Data","Recession Returns","Recession Returns, Expansion Unemployment Returns","Recession Returns, Expansion Switching Returns"),
 					   values=c("black",hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:3)]))+ 
+	scale_x_continuous(breaks=seq(0,1,1/4),minor_breaks = seq(0,1,1/8) )+
 	theme(legend.title = element_blank(),
 		  legend.position = c(0.5,0.8),
 		  legend.background = element_rect(linetype = "solid",color = "white"))	
@@ -754,8 +756,27 @@ out_wavedist <- xtable(Dist_dif, digits=3,
 					   caption=paste0("Decomposition of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 print(out_wavedist,include.rownames=T, include.colnames=T,
 	  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
-
-
+ 
+#with levels on the x-axis
+Dist_dif = data.table(cbind(MM_betaE_betaR_IR$wc_exp*.75+MM_betaE_betaR_IR$wc_rec*.25,
+							MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_rec,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR,
+							MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_un,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_sw))
+names(Dist_dif) <- c("WChng", "Dif", "CF Dif","CF Dif, ex un","CF Dif, ex sw")
+Dist_melt <- melt(Dist_dif,id.vars = "WChng")
+ggplot(Dist_melt, aes(x=WChng,y=value,color=variable))+geom_smooth(se=F,span=0.1)+theme_bw()+
+	xlab("Annual-Annual Log Earnings Change")+ylab("Difference Expansion - Recession Log Earnings Change")+
+	scale_color_manual(labels=c("Data","Recession Returns","Recession Returns, Expansion Unemployment Returns","Recession Returns, Expansion Switching Returns"),
+					   values=c("black",hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:3)]))+ 
+	theme(legend.title = element_blank(),
+		  legend.position = c(0.65,0.8),
+		  legend.background = element_rect(linetype = "solid",color = "white"))	
+nametab = "cf_wchng"
+ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".eps"),device=cairo_ps,height=5,width=10)
+ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".png"),height=5,width=10)
+out_wavedist <- xtable(Dist_dif, digits=3, 
+					   caption=paste0("Decomposition of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+print(out_wavedist,include.rownames=T, include.colnames=T,
+	  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 
 
 #!!!!!!!!!!!
