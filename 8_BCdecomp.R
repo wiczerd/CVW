@@ -26,7 +26,7 @@ minLEarn = log(2*minEarn)
 
 qtlgridEst  <- c(seq(0.005,0.03,0.005),seq(0.04,0.06,0.01),seq(.07,.13,.02),seq(0.15,0.85,0.05),seq(.87,.93,.02),seq(0.94,0.96,0.01),seq(0.97,0.995,.005))
 Nestpt = length(qtlgridEst)
-qtlgridOut <- c(seq(.015,0.985,0.01))
+qtlgridOut <- c(seq(.01,0.99,0.005))
 qtlgridOutTruncCor <- (qtlgridOut-min(qtlgridEst))/(max(qtlgridEst)-min(qtlgridEst)) 
 MMstd_errs = F
 Nmoments = 5
@@ -591,11 +591,11 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 	if(no_occ==F){	
 		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_sw= wc_IR_sw_pctile, wc_IR_un= wc_IR_un_pctile,wc_BR_un= wc_BR_un_pctile,
 				wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile,wc_BR_mmts = wc_BR_moments,wc_IR_mmts = wc_IR_moments, 
-				wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments, wc_IR_sw_mmts = wc_IR_sw_moments,wc_BR_sw = wc_BR_sw_pctile,
+				wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments, wc_IR_sw_mmts = wc_IR_sw_moments,wc_BR_sw = wc_BR_sw_pctile, wc_BR_exi = wc_BR_exi_pctile,
 				wc_BR_exi_mmts = wc_BR_exi_moments))
 	}else{
 		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_un= wc_IR_un_pctile,wc_BR_un= wc_BR_un_pctile,
-					wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile,
+					wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile, wc_BR_exi = wc_BR_exi_pctile,
 					wc_BR_mmts = wc_BR_moments,wc_IR_mmts = wc_IR_moments,wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments,
 					wc_BR_exi_mmts = wc_BR_exi_moments, wc_BR_onlyi_mmts = wc_BR_onlyi_moments))
 	}
@@ -778,6 +778,14 @@ out_wavedist <- xtable(Dist_dif, digits=3,
 print(out_wavedist,include.rownames=T, include.colnames=T,
 	  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 
+#figure out what does what:
+Dist_dif_exi = cbind(MM_betaE_betaR_IR$wc_exp*.75+MM_betaE_betaR_IR$wc_rec*.25,
+								MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_rec)
+for( i in seq(1,dim(MM_betaE_betaR_IR$wc_BR_exi)[2] )){
+	Dist_dif_exi = cbind(Dist_dif_exi, MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_exi[,i,1])
+}
+Dist_dif_exi<- data.table(Dist_dif_exi)
+names(Dist_dif_exi)<-c("WChng","Data","EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay_nosw","stay_sw")
 
 #!!!!!!!!!!!
 # Compare distributions ---------------------------------------------------
