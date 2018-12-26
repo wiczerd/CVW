@@ -592,10 +592,10 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_sw= wc_IR_sw_pctile, wc_IR_un= wc_IR_un_pctile,wc_BR_un= wc_BR_un_pctile,
 				wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile,wc_BR_mmts = wc_BR_moments,wc_IR_mmts = wc_IR_moments, 
 				wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments, wc_IR_sw_mmts = wc_IR_sw_moments,wc_BR_sw = wc_BR_sw_pctile, wc_BR_exi = wc_BR_exi_pctile,
-				wc_BR_exi_mmts = wc_BR_exi_moments))
+				wc_BR_exi_mmts = wc_BR_exi_moments,wc_BR_onlyi = wc_BR_onlyi_pctile))
 	}else{
 		return(list(betaptsE = betaptsE,betaptsR=betaptsR,wc_IR = wc_IR_pctile, wc_IR_un= wc_IR_un_pctile,wc_BR_un= wc_BR_un_pctile,
-					wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile, wc_BR_exi = wc_BR_exi_pctile,
+					wc_rec = wc_rec_pctile,wc_exp = wc_exp_pctile, wc_BR = wc_BR_pctile, wc_BR_exi = wc_BR_exi_pctile,wc_BR_onlyi = wc_BR_onlyi_pctile,
 					wc_BR_mmts = wc_BR_moments,wc_IR_mmts = wc_IR_moments,wc_exp_mmts = wc_exp_moments, wc_rec_mmts = wc_rec_moments,
 					wc_BR_exi_mmts = wc_BR_exi_moments, wc_BR_onlyi_mmts = wc_BR_onlyi_moments))
 	}
@@ -690,8 +690,10 @@ if(recDef == "recIndic_wave"){
 	reclab = "recstint"
 }
 if( wc == "wagechange_anan"|wc == "rawwgchange_anan"){
+	NS=8
 	freq = "annual"
 }else{
+	NS=6
 	freq = "wave"	
 }
 
@@ -716,12 +718,12 @@ DTseam[ !EUfrq==T | !is.finite(dur), dur := 0.]
 DTseam <- DTseam[ (sw|!sw) & (ch|st), ]
 
 if( freq == "wave"){
-	MM_betaE_betaR_IR <- MMdecomp(DTseam,6,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
+	MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
 	saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
-	MM_betaE_betaR_IR <- MMdecomp(DTseam,6,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
+	MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
 	saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE_nodur.RData"))
 }else{
-	MM_betaE_betaR_IR <- MMdecomp(DTseam,8,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
+	MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
 	saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN.RData"))
 	# MM_betaE_betaR_IR <-readRDS(paste0(outputdir,"/MM_ANAN.RData"))
 }
@@ -742,11 +744,11 @@ Dist_dif = data.table(cbind(qtlgridOut,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_I
 names(Dist_dif) <- c("Qtls", "Dif", "CF Dif","CF Dif, ex un","CF Dif, ex sw")
 Dist_melt <- melt(Dist_dif,id.vars = "Qtls")
 ggplot(Dist_melt, aes(x=Qtls,y=value,color=variable))+geom_smooth(se=F,span=0.1)+theme_bw()+
-	xlab("Annual-Annual Log Earnings Change Quantile")+ylab("Difference Expansion - Recession Log Earnings Change")+
+	xlab("Annual-Annual Log Earnings Change Quantile")+ylab("Difference Expansion - Recession")+
 	scale_color_manual(labels=c("Data","Recession Returns","Recession Returns, Expansion Unemployment Returns","Recession Returns, Expansion Switching Returns"),
 					   values=c("black",hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:3)]))+ 
 	scale_x_continuous(breaks=seq(0,1,1/4),minor_breaks = seq(0,1,1/8) )+
-	theme(legend.title = element_blank(),
+	theme(legend.title = element_blank(),text = element_text(size=20),
 		  legend.position = c(0.5,0.8),
 		  legend.background = element_rect(linetype = "solid",color = "white"))	
 nametab = "cf_qtls"
@@ -756,18 +758,19 @@ out_wavedist <- xtable(Dist_dif, digits=3,
 					   caption=paste0("Decomposition of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 print(out_wavedist,include.rownames=T, include.colnames=T,
 	  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
- 
+Dist_dif_qtl <- Dist_dif 
+
 #with levels on the x-axis
 Dist_dif = data.table(cbind(MM_betaE_betaR_IR$wc_exp*.75+MM_betaE_betaR_IR$wc_rec*.25,
 							MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_rec,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR,
 							MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_un,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_sw))
 names(Dist_dif) <- c("WChng", "Dif", "CF Dif","CF Dif, ex un","CF Dif, ex sw")
 Dist_melt <- melt(Dist_dif,id.vars = "WChng")
-ggplot(Dist_melt, aes(x=WChng,y=value,color=variable))+geom_smooth(se=F,span=0.1)+theme_bw()+
-	xlab("Annual-Annual Log Earnings Change")+ylab("Difference Expansion - Recession Log Earnings Change")+
+ggplot(Dist_melt, aes(x=WChng,y=value,color=variable))+geom_smooth(se=F,span=0.1,method="loess",n=20)+theme_bw()+
+	xlab("Annual-Annual Log Earnings Change")+ylab("Difference Expansion - Recession")+
 	scale_color_manual(labels=c("Data","Recession Returns","Recession Returns, Expansion Unemployment Returns","Recession Returns, Expansion Switching Returns"),
 					   values=c("black",hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:3)]))+ 
-	theme(legend.title = element_blank(),
+	theme(legend.title = element_blank(),text = element_text(size=20),
 		  legend.position = c(0.65,0.8),
 		  legend.background = element_rect(linetype = "solid",color = "white"))	
 nametab = "cf_wchng"
@@ -779,13 +782,44 @@ print(out_wavedist,include.rownames=T, include.colnames=T,
 	  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 
 #figure out what does what:
-Dist_dif_exi = cbind(MM_betaE_betaR_IR$wc_exp*.75+MM_betaE_betaR_IR$wc_rec*.25,
-								MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_rec)
+Dist_dif_exi = cbind(qtlgridOut,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_rec)
 for( i in seq(1,dim(MM_betaE_betaR_IR$wc_BR_exi)[2] )){
 	Dist_dif_exi = cbind(Dist_dif_exi, MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_exi[,i,1])
 }
+
+#figure out what does what:
+Dist_dif_onlyi = cbind(qtlgridOut,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_rec)
+for( i in seq(1,dim(MM_betaE_betaR_IR$wc_BR_onlyi)[2] )){
+	Dist_dif_onlyi = cbind(Dist_dif_onlyi, MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_onlyi[,i,1])
+}
+
+
+#decomp top/bottom 5%, 10%:
+Decomp_tails = array(0.,dim=c(4,NS))
+Nqtl_5 = sum(qtlgridOut<=0.05)
+Nqtl_10 = sum(qtlgridOut<=0.025)
+for(si in seq(1,NS)){
+	Decomp_tails[1, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut<=0.05] - Dist_dif_exi[qtlgridOut<=0.05,si+2]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=0.05] - Dist_dif_onlyi[qtlgridOut<=0.05,si+2]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=0.05] -MM_betaE_betaR_IR$wc_rec[qtlgridOut<=0.05] )/Nqtl_5
+	Decomp_tails[2, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut<=.025] - Dist_dif_exi[qtlgridOut<=.025,si+2]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=.025] - Dist_dif_onlyi[qtlgridOut<=.025,si+2]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=.025] -MM_betaE_betaR_IR$wc_rec[qtlgridOut<=.025] )/Nqtl_10
+	Decomp_tails[3, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut>=.025] - Dist_dif_exi[qtlgridOut>=.025,si+2]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=.025] - Dist_dif_onlyi[qtlgridOut>=.025,si+2]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=.025] -MM_betaE_betaR_IR$wc_rec[qtlgridOut>=.025] )/Nqtl_10
+	Decomp_tails[4, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut>=0.05] - Dist_dif_exi[qtlgridOut>=0.05,si+2]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=0.05] - Dist_dif_onlyi[qtlgridOut<=0.05,si+2]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=0.05] -MM_betaE_betaR_IR$wc_rec[qtlgridOut>=0.05] )/Nqtl_5
+
+		
+}
+
 Dist_dif_exi<- data.table(Dist_dif_exi)
-names(Dist_dif_exi)<-c("WChng","Data","EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay_nosw","stay_sw")
+if(NS==8){
+	names(Dist_dif_exi)<-c("Qtl","Data","EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay_nosw","stay_sw")
+}else{
+	names(Dist_dif_exi)<-c("Qtl","Data","EE_sw","EU_sw","EE_nosw","EU_nosw","stay_nosw","stay_sw")
+}
+Dist_dif_onlyi<- data.table(Dist_dif_onlyi)
+if(NS==8){
+	names(Dist_dif_exi)<-c("Qtl","Data","EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay_nosw","stay_sw")
+}else{
+	names(Dist_dif_exi)<-c("Qtl","Data","EE_sw","EU_sw","EE_nosw","EU_nosw","stay_nosw","stay_sw")
+}
+
 
 #!!!!!!!!!!!
 # Compare distributions ---------------------------------------------------

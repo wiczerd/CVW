@@ -176,7 +176,15 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		origwt = wt
 		wt = "wtEUE"
 	}else{
-		wt = "truncweight"
+		#upweight the EE_wave to EE_anan and EU_wave and UE_wave to EU_anan and UE_anan
+		DTseam[ , wtanan:= eval(as.name(wt))]
+		scaleEE   = DTseam[ EE_anan==T & !(EU_anan|UE_anan)& is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ EE_wave==T        & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
+		scaleEUUE = DTseam[ (EU_anan|UE_anan)              & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ (EU_wave|UE_wave) & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
+		
+		DTseam[ EE_wave==T, wtanan:= eval(as.name(wt))*scaleEE]
+		DTseam[ (EU_wave|UE_wave), wtanan:= eval(as.name(wt))*scaleEUUE]
+		origwt = wt
+		wt = "wtanan"
 	}
 	
 	# setup labels
