@@ -150,24 +150,6 @@ DTseam <- subset(DTseam, wave>1 & wave<panelmaxwave)
 
 for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwgchange_anan") ){
 
-	if(demolbl==1){
-		DTseam[(stayer==T|changer==T), demo:= (ageGrp==1)]
-	}else if(demolbl==2){
-		DTseam[(stayer==T|changer==T), demo:= (ageGrp==2)]
-	}else if(demolbl==3){
-		DTseam[(stayer==T|changer==T), demo:= (ageGrp==3)]
-	}else if(demolbl==4){
-		DTseam[(stayer==T|changer==T), demo:= (HSCol==1)]
-	}else if(demolbl==5){
-		DTseam[(stayer==T|changer==T), demo:= (HSCol==2)]
-	}else if(demolbl==6){
-		DTseam[(stayer==T|changer==T), demo:= (female==F)]
-	}else if(demolbl==7){
-		DTseam[(stayer==T|changer==T), demo:= (female==T)]
-	}else{
-		DTseam[(stayer==T|changer==T), demo := T]
-	}
-	
 	# how to weights EUE's? 2x for an EUUE?
 	if(wc == "wagechangeEUE_wave"|wc == "reswgchangeEUE_wave"){
 		DTseam[ ,wtEUE:= eval(as.name(wt))]
@@ -238,7 +220,23 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), UEfrq := UE_anan]
 		DTseam[!(EUfrq|EEfrq|UEfrq) & ch==T, ch := NA]
 	}
-	
+	if(demolbl==1){
+		DTseam[(st==T|ch==T), demo:= (ageGrp==1)]
+	}else if(demolbl==2){
+		DTseam[(st==T|ch==T), demo:= (ageGrp==2)]
+	}else if(demolbl==3){
+		DTseam[(st==T|ch==T), demo:= (ageGrp==3)]
+	}else if(demolbl==4){
+		DTseam[(st==T|ch==T), demo:= (HSCol==1)]
+	}else if(demolbl==5){
+		DTseam[(st==T|ch==T), demo:= (HSCol==2)]
+	}else if(demolbl==6){
+		DTseam[(st==T|ch==T), demo:= (female==F)]
+	}else if(demolbl==7){
+		DTseam[(st==T|ch==T), demo:= (female==T)]
+	}else{
+		DTseam[(st==T|ch==T), demo := T]
+	}	
 		
 	#overall earnings change
 	tabqtls <- c(.05,.10,.25,.5,.75,.90,.95)
