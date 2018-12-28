@@ -667,6 +667,15 @@ if(wc == "wagechangeEUE_wave"|wc == "reswgchangeEUE_wave"){
 	wt = "wtEUE"
 }else{
 	wt = "truncweight"
+	#upweight the EE_wave to EE_anan and EU_wave and UE_wave to EU_anan and UE_anan
+	DTseam[ , wtanan:= eval(as.name(wt))]
+	scaleEE   = DTseam[ EE_anan==T & !(EU_anan|UE_anan)& is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ EE_wave==T        & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
+	scaleEUUE = DTseam[ (EU_anan|UE_anan)              & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ (EU_wave|UE_wave) & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
+	
+	DTseam[ EE_wave==T, wtanan:= eval(as.name(wt))*scaleEE]
+	DTseam[ (EU_wave|UE_wave), wtanan:= eval(as.name(wt))*scaleEUUE]
+	origwt = wt
+#	wt = "wtanan"
 }
 
 # setup labels
@@ -799,12 +808,10 @@ Decomp_tails = array(0.,dim=c(4,NS))
 Nqtl_5 = sum(qtlgridOut<=0.05)
 Nqtl_10 = sum(qtlgridOut<=0.025)
 for(si in seq(1,NS)){
-	Decomp_tails[1, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut<=0.05] - Dist_dif_exi[qtlgridOut<=0.05,si+2]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=0.05] - Dist_dif_onlyi[qtlgridOut<=0.05,si+2]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=0.05] -MM_betaE_betaR_IR$wc_rec[qtlgridOut<=0.05] )/Nqtl_5
-	Decomp_tails[2, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut<=.025] - Dist_dif_exi[qtlgridOut<=.025,si+2]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=.025] - Dist_dif_onlyi[qtlgridOut<=.025,si+2]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=.025] -MM_betaE_betaR_IR$wc_rec[qtlgridOut<=.025] )/Nqtl_10
-	Decomp_tails[3, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut>=.025] - Dist_dif_exi[qtlgridOut>=.025,si+2]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=.025] - Dist_dif_onlyi[qtlgridOut>=.025,si+2]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=.025] -MM_betaE_betaR_IR$wc_rec[qtlgridOut>=.025] )/Nqtl_10
-	Decomp_tails[4, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut>=0.05] - Dist_dif_exi[qtlgridOut>=0.05,si+2]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=0.05] - Dist_dif_onlyi[qtlgridOut<=0.05,si+2]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=0.05] -MM_betaE_betaR_IR$wc_rec[qtlgridOut>=0.05] )/Nqtl_5
-
-		
+	Decomp_tails[1, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut<=0.05] - Dist_dif_exi[qtlgridOut<=0.05,si+2]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=0.05] - Dist_dif_onlyi[qtlgridOut<=0.05,si+2]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=0.05] - MM_betaE_betaR_IR$wc_rec[qtlgridOut<=0.05])
+	Decomp_tails[2, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut<=.025] - Dist_dif_exi[qtlgridOut<=.025,si+2]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=.025] - Dist_dif_onlyi[qtlgridOut<=.025,si+2]))/Nqtl_10
+	Decomp_tails[3, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut>=.975] - Dist_dif_exi[qtlgridOut>=.975,si+2]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=.975] - Dist_dif_onlyi[qtlgridOut>=.975,si+2]))/Nqtl_10
+	Decomp_tails[4, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut>=0.95] - Dist_dif_exi[qtlgridOut>=0.95,si+2]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=0.95] - Dist_dif_onlyi[qtlgridOut>=0.95,si+2]))/Nqtl_5
 }
 
 Dist_dif_exi<- data.table(Dist_dif_exi)
