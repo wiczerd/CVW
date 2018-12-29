@@ -105,7 +105,7 @@ parensLR <- function(xin,xout){
 #*********************************************************************
 
 toKeep_wave <- c("switchedOcc_wave","switched_wave","switched_anan","esr_max",
-            "ageGrp","HSCol","next.stable_emp","last.stable_emp",
+            "ageGrp","HSCol","next.stable_emp","last.stable_emp","matched_EUUE_max","matched_EUUE_wave",
             "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint","levwage","max.unempdur_wave",
             "wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave","wagechange_anan","rawwgchange_anan",
             "wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad","pctmaxmis",
@@ -148,7 +148,7 @@ DTseam <- subset(DTseam, wave>1 & wave<panelmaxwave)
 
 # loop over wage measures here:
 
-for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwgchange_anan") ){
+for( wc in c("wagechange_anan","wagechangeEUE_wave","rawwgchangeEUE_wave","rawwgchange_anan") ){
 
 	# how to weights EUE's? 2x for an EUUE?
 	if(wc == "wagechangeEUE_wave"|wc == "reswgchangeEUE_wave"){
@@ -168,8 +168,8 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 		DTseam[ EE_wave==T, wtanan:= eval(as.name(wt))*scaleEE]
 		DTseam[ EU_wave==T, wtanan:= eval(as.name(wt))*scaleEU]
 		DTseam[ UE_wave==T, wtanan:= eval(as.name(wt))*scaleUE]
-		scale_chng <- DTseam[ (changer_anan==T) & (EU_wave|UE_wave|EE_wave)  & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ (changer_anan==T) & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
-		DTseam[ (EE_wave|EU_wave|UE_wave), wtanan:= eval(as.name(wt))/scale_chng]
+		scale_chng <- DTseam[ (changer_anan==T) & changer==T& (EU_wave|UE_wave|EE_wave)  & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ (changer_anan==T) & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
+		DTseam[ changer==T & (EE_wave|EU_wave|UE_wave), wtanan:= eval(as.name(wt))/scale_chng]
 		
 		origwt = wt
 		wt = "truncweight"
@@ -203,6 +203,7 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 	
 	DTseam[ , c("ch","st","sw"):=NULL]
 	DTseam[ , c("EUfrq","EEfrq","UEfrq"):=NULL]
+	DTseam[ , demo:=NULL]
 	
 	if(freq == "wave"){
 		DTseam[, ch := changer]
@@ -529,14 +530,6 @@ for( wc in c("wagechangeEUE_wave","wagechange_anan","rawwgchangeEUE_wave","rawwg
 			x[i,j] <- sprintf("(%s)", x[i,j])
 			x
 		}
-		# parensLR <- function(xin,xout){
-		# 	for (i in seq(2,nrow(xout),2)){
-		# 		for(j in seq(1,ncol(xout))){
-		# 			xout[i,j] <- sprintf("(%s,%s)", xin[i,(j-1)*2+1],xin[i,j*2])
-		# 		}
-		# 	}	
-		# 	xout
-		# }
 		for (ri in seq(2,nrow(tab_wavemomentsse),2)){
 			for(ci in seq(1,ncol(tab_wavemomentsse))){
 				tab_wavemomentsse <-parens(tab_wavemomentsse,ri,ci)
