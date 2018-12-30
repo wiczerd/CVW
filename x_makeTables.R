@@ -375,7 +375,7 @@ for( wc in c("wagechange_anan","wagechangeEUE_wave","rawwgchangeEUE_wave","rawwg
 	ggplot( dat_wavedist , aes(cat)) + theme_bw()+
 		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 , color=Cycle),stat="identity")+
 		scale_x_discrete(labels=c("Changers, Expansion","Changers, Recession","Stayers, Expansion","Stayers, Recession"))+
-		scale_color_manual(values=c("blue","red"))+ylab("Log earnings change")+xlab("")+ylim(c(-1.1,1.1))
+		scale_color_manual(values=c("blue","red"))+ylab("Log earnings change")+xlab("")+ylim(c(-1.4,1.4))
 	nametab = "box_staychngemp"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),device = cairo_ps,height=5,width=10)
 	out_wavedist <- xtable(dat_wavedist, digits=3, 
