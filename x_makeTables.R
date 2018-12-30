@@ -161,18 +161,26 @@ for( wc in c("wagechange_anan","wagechangeEUE_wave","rawwgchangeEUE_wave","rawwg
 		DTseam[ , wtanan:= eval(as.name(wt))]
 		
 		#could upweight the EE_wave to EE_anan and EU_wave and UE_wave to EU_anan and UE_anan
-		scaleEE = DTseam[ EE_anan==T & !(EU_anan|UE_anan)& is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ EE_wave==T & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
-		scaleEU = DTseam[ EU_anan==T &                     is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ EU_wave==T & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
-		scaleUE = DTseam[ UE_anan==T &                     is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ UE_wave==T & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
-
+		fracEE = DTseam[ changer_anan & !(EU_wave|UE_wave|EE_wave) , mean(EE_anan)]  #DTseam[ EE_anan==T & !(EU_anan|UE_anan)& is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ EE_wave==T & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
+		fracEU = DTseam[ changer_anan & !(EU_wave|UE_wave|EE_wave) , mean(EU_anan)]  #DTseam[ EU_anan==T &                     is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ EU_wave==T & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
+		fracUE = DTseam[ changer_anan & !(EU_wave|UE_wave|EE_wave) , mean(UE_anan)]  #DTseam[ UE_anan==T &                     is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ UE_wave==T & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
+		fracEUUE = DTseam[ changer_anan & !(EU_wave|UE_wave|EE_wave) , mean(UE_anan|EU_anan)] 
+		fracEE = fracEE/(fracEE+fracEUUE)
+		fracEUUE = fracEUUE/(fracEE+fracEUUE)
+		
+		scaleEE = fracEE*DTseam[ changer_anan==T ,sum(eval(as.name(wt))) ]/DTseam[ changer_anan==T & EE_wave==T ,sum(eval(as.name(wt))) ]
+		scaleEU = fracEU*DTseam[ changer_anan==T ,sum(eval(as.name(wt))) ]/DTseam[ changer_anan==T & EU_wave==T ,sum(eval(as.name(wt))) ]
+		scaleUE = fracUE*DTseam[ changer_anan==T ,sum(eval(as.name(wt))) ]/DTseam[ changer_anan==T & UE_wave==T ,sum(eval(as.name(wt))) ]
+		scaleEUUE = fracEUUE*DTseam[ changer_anan==T ,sum(eval(as.name(wt))) ]/DTseam[ changer_anan==T & (EU_wave|UE_wave) ,sum(eval(as.name(wt))) ]
+		
 		DTseam[ EE_wave==T, wtanan:= eval(as.name(wt))*scaleEE]
-		DTseam[ EU_wave==T, wtanan:= eval(as.name(wt))*scaleEU]
-		DTseam[ UE_wave==T, wtanan:= eval(as.name(wt))*scaleUE]
-		scale_chng <- DTseam[ (changer_anan==T) & changer==T& (EU_wave|UE_wave|EE_wave)  & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ (changer_anan==T) & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
-		DTseam[ changer==T & (EE_wave|EU_wave|UE_wave), wtanan:= eval(as.name(wt))/scale_chng]
+		DTseam[ EU_wave==T, wtanan:= eval(as.name(wt))*scaleEUUE]
+		DTseam[ UE_wave==T, wtanan:= eval(as.name(wt))*scaleEUUE]
+		#scale_chng <- DTseam[ (changer_anan==T) & changer==T& (EU_wave|UE_wave|EE_wave)  & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ (changer_anan==T) & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
+		#DTseam[ changer==T & (EE_wave|EU_wave|UE_wave), wtanan:= eval(as.name(wt))/scale_chng]
 		
 		origwt = wt
-		wt = "truncweight"
+		wt = "wtanan"
 	}
 	
 	# setup labels
@@ -215,10 +223,10 @@ for( wc in c("wagechange_anan","wagechangeEUE_wave","rawwgchangeEUE_wave","rawwg
 	}else{
 		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),ch := changer_anan]
 		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),st := stayer_anan]
-		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),sw := switched_anan]
-		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EUfrq := EU_anan]
-		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EEfrq := EE_anan]
-		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), UEfrq := UE_anan]
+		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),sw := switched_wave]
+		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EUfrq := EU_wave]
+		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EEfrq := EE_wave]
+		DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), UEfrq := UE_wave]
 		DTseam[!(EUfrq|EEfrq|UEfrq) & ch==T, ch := NA]
 	}
 	if(demolbl==1){

@@ -669,13 +669,25 @@ if(wc == "wagechangeEUE_wave"|wc == "reswgchangeEUE_wave"){
 	wt = "truncweight"
 	#upweight the EE_wave to EE_anan and EU_wave and UE_wave to EU_anan and UE_anan
 	DTseam[ , wtanan:= eval(as.name(wt))]
-	scaleEE   = DTseam[ EE_anan==T & !(EU_anan|UE_anan)& is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ EE_wave==T        & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
-	scaleEUUE = DTseam[ (EU_anan|UE_anan)              & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ (EU_wave|UE_wave) & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
+	
+	#could upweight the EE_wave to EE_anan and EU_wave and UE_wave to EU_anan and UE_anan
+	fracEE = DTseam[ changer_anan & !(EU_wave|UE_wave|EE_wave) , mean(EE_anan)]  #DTseam[ EE_anan==T & !(EU_anan|UE_anan)& is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ EE_wave==T & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
+	fracEU = DTseam[ changer_anan & !(EU_wave|UE_wave|EE_wave) , mean(EU_anan)]  #DTseam[ EU_anan==T &                     is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ EU_wave==T & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
+	fracUE = DTseam[ changer_anan & !(EU_wave|UE_wave|EE_wave) , mean(UE_anan)]  #DTseam[ UE_anan==T &                     is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]/DTseam[ UE_wave==T & is.finite(wagechange_anan) & is.finite(switched_wave), sum(eval(as.name(wt)))]
+	fracEUUE = DTseam[ changer_anan & !(EU_wave|UE_wave|EE_wave) , mean(UE_anan|EU_anan)] 
+	fracEE = fracEE/(fracEE+fracEUUE)
+	fracEUUE = fracEUUE/(fracEE+fracEUUE)
+	
+	scaleEE = fracEE*DTseam[ changer_anan==T ,sum(eval(as.name(wt))) ]/DTseam[ changer_anan==T & EE_wave==T ,sum(eval(as.name(wt))) ]
+	scaleEU = fracEU*DTseam[ changer_anan==T ,sum(eval(as.name(wt))) ]/DTseam[ changer_anan==T & EU_wave==T ,sum(eval(as.name(wt))) ]
+	scaleUE = fracUE*DTseam[ changer_anan==T ,sum(eval(as.name(wt))) ]/DTseam[ changer_anan==T & UE_wave==T ,sum(eval(as.name(wt))) ]
+	scaleEUUE = fracEUUE*DTseam[ changer_anan==T ,sum(eval(as.name(wt))) ]/DTseam[ changer_anan==T & (EU_wave|UE_wave) ,sum(eval(as.name(wt))) ]
 	
 	DTseam[ EE_wave==T, wtanan:= eval(as.name(wt))*scaleEE]
-	DTseam[ (EU_wave|UE_wave), wtanan:= eval(as.name(wt))*scaleEUUE]
+	DTseam[ EU_wave==T, wtanan:= eval(as.name(wt))*scaleEUUE]
+	DTseam[ UE_wave==T, wtanan:= eval(as.name(wt))*scaleEUUE]
 	origwt = wt
-#	wt = "wtanan"
+	wt = "wtanan"
 }
 
 # setup labels
@@ -717,10 +729,11 @@ if(freq == "wave"){
 }else{
 	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),ch := changer_anan]
 	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),st := stayer_anan]
-	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),sw := switched_anan]
-	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EUfrq := EU_anan]
-	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EEfrq := EE_anan]
-	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), UEfrq := UE_anan]
+	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),sw := switched_wave]
+	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EUfrq := EU_wave]
+	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EEfrq := EE_wave]
+	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), UEfrq := UE_wave]
+	DTseam[!(EUfrq|EEfrq|UEfrq) & ch==T, ch := NA]
 }
 DTseam[ EUfrq==T, dur := max.unempdur_wave]
 DTseam[ !EUfrq==T | !is.finite(dur), dur := 0.]
@@ -748,13 +761,13 @@ if( freq == "wave"){
 # wc_Rec_mmts   <- wcRec[  , c(wtd.mean(eval(as.name(wc)),weights=eval(as.name(wt)),na.rm=T), 
 # 							 wtd.4qtlmoments( xt= eval(as.name(wc)) ,wt= eval(as.name(wt))))]
 
-Dist_dif = data.table(cbind(qtlgridOut,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_rec,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR,
-							MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_un,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_sw))
-names(Dist_dif) <- c("Qtls", "Dif", "CF Dif","CF Dif, ex un","CF Dif, ex sw")
+Dist_dif = data.table(cbind(qtlgridOut,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_rec,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR))#,
+							#MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_un,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_sw))
+names(Dist_dif) <- c("Qtls", "Dif", "CF Dif")#,"CF Dif, ex un","CF Dif, ex sw")
 Dist_melt <- melt(Dist_dif,id.vars = "Qtls")
 ggplot(Dist_melt, aes(x=Qtls,y=value,color=variable))+geom_smooth(se=F,span=0.1)+theme_bw()+
 	xlab("Annual-Annual Log Earnings Change Quantile")+ylab("Difference Expansion - Recession")+
-	scale_color_manual(labels=c("Data","Recession Returns","Recession Returns, Expansion Unemployment Returns","Recession Returns, Expansion Switching Returns"),
+	scale_color_manual(labels=c("Data","Recession Returns"),#,"Recession Returns, Expansion Unemployment Returns","Recession Returns, Expansion Switching Returns"),
 					   values=c("black",hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:3)]))+ 
 	scale_x_continuous(breaks=seq(0,1,1/4),minor_breaks = seq(0,1,1/8) )+
 	theme(legend.title = element_blank(),text = element_text(size=20),
@@ -771,13 +784,13 @@ Dist_dif_qtl <- Dist_dif
 
 #with levels on the x-axis
 Dist_dif = data.table(cbind(MM_betaE_betaR_IR$wc_exp*.75+MM_betaE_betaR_IR$wc_rec*.25,
-							MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_rec,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR,
-							MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_un,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_sw))
-names(Dist_dif) <- c("WChng", "Dif", "CF Dif","CF Dif, ex un","CF Dif, ex sw")
+							MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_rec,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR))#,
+						#	MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_un,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_BR_sw))
+names(Dist_dif) <- c("WChng", "Dif", "CF Dif")#,"CF Dif, ex un","CF Dif, ex sw")
 Dist_melt <- melt(Dist_dif,id.vars = "WChng")
 ggplot(Dist_melt, aes(x=WChng,y=value,color=variable))+geom_smooth(se=F,span=0.1,method="loess",n=20)+theme_bw()+
 	xlab("Annual-Annual Log Earnings Change")+ylab("Difference Expansion - Recession")+
-	scale_color_manual(labels=c("Data","Recession Returns","Recession Returns, Expansion Unemployment Returns","Recession Returns, Expansion Switching Returns"),
+	scale_color_manual(labels=c("Data","Recession Returns"),#,"Recession Returns, Expansion Unemployment Returns","Recession Returns, Expansion Switching Returns"),
 					   values=c("black",hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:3)]))+ 
 	theme(legend.title = element_blank(),text = element_text(size=20),
 		  legend.position = c(0.65,0.8),
@@ -790,45 +803,31 @@ out_wavedist <- xtable(Dist_dif, digits=3,
 print(out_wavedist,include.rownames=T, include.colnames=T,
 	  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 
-#figure out what does what:
-Dist_dif_exi = cbind(qtlgridOut,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_rec)
-for( i in seq(1,dim(MM_betaE_betaR_IR$wc_BR_exi)[2] )){
-	Dist_dif_exi = cbind(Dist_dif_exi, MM_betaE_betaR_IR$wc_BR_exi[,i,1])
-}
-
-#figure out what does what:
-Dist_dif_onlyi = cbind(qtlgridOut,MM_betaE_betaR_IR$wc_exp-MM_betaE_betaR_IR$wc_rec)
-for( i in seq(1,dim(MM_betaE_betaR_IR$wc_BR_onlyi)[2] )){
-	Dist_dif_onlyi = cbind(Dist_dif_onlyi, MM_betaE_betaR_IR$wc_BR_onlyi[,i,1])
-}
-
-
-#decomp top/bottom 5%, 10%:
-Decomp_tails = array(0.,dim=c(4,NS))
+#figure out what does what: decomp top/bottom 5%, 10%:
+Decomp_tails = array(0.,dim=c(4,NS+1))
 Nqtl_5 = sum(qtlgridOut<=0.05)
 Nqtl_10 = sum(qtlgridOut<=0.025)
 for(si in seq(1,NS)){
-	Decomp_tails[1, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut<=0.05] - MM_betaE_betaR_IR$wc_BR_exi[qtlgridOut<=0.05,si,1]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=0.05] - MM_betaE_betaR_IR$wc_BR_onlyi[qtlgridOut<=0.05,si,1]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=0.05] - MM_betaE_betaR_IR$wc_rec[qtlgridOut<=0.05])
-	Decomp_tails[2, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut<=.025] - MM_betaE_betaR_IR$wc_BR_exi[qtlgridOut<=.025,si,1]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=.025] - MM_betaE_betaR_IR$wc_BR_onlyi[qtlgridOut<=.025,si,1]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=.025] - MM_betaE_betaR_IR$wc_rec[qtlgridOut<=.025])
-	Decomp_tails[3, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut>=.975] - MM_betaE_betaR_IR$wc_BR_exi[qtlgridOut>=.975,si,1]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=.975] - MM_betaE_betaR_IR$wc_BR_onlyi[qtlgridOut>=.975,si,1]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=.975] - MM_betaE_betaR_IR$wc_rec[qtlgridOut>=.975])
-	Decomp_tails[4, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut>=0.95] - MM_betaE_betaR_IR$wc_BR_exi[qtlgridOut>=0.95,si,1]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=0.95] - MM_betaE_betaR_IR$wc_BR_onlyi[qtlgridOut>=0.95,si,1]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=0.95] - MM_betaE_betaR_IR$wc_rec[qtlgridOut>=0.95])
+	Decomp_tails[1, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut<=.025] - MM_betaE_betaR_IR$wc_BR_exi[qtlgridOut<=.025,si,1]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=.025] - MM_betaE_betaR_IR$wc_BR_onlyi[qtlgridOut<=.025,si,1]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=.025] - MM_betaE_betaR_IR$wc_rec[qtlgridOut<=.025])
+	Decomp_tails[2, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut<=0.05] - MM_betaE_betaR_IR$wc_BR_exi[qtlgridOut<=0.05,si,1]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=0.05] - MM_betaE_betaR_IR$wc_BR_onlyi[qtlgridOut<=0.05,si,1]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=0.05] - MM_betaE_betaR_IR$wc_rec[qtlgridOut<=0.05])
+	Decomp_tails[3, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut>=0.95] - MM_betaE_betaR_IR$wc_BR_exi[qtlgridOut>=0.95,si,1]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=0.95] - MM_betaE_betaR_IR$wc_BR_onlyi[qtlgridOut>=0.95,si,1]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=0.95] - MM_betaE_betaR_IR$wc_rec[qtlgridOut>=0.95])
+	Decomp_tails[4, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut>=.975] - MM_betaE_betaR_IR$wc_BR_exi[qtlgridOut>=.975,si,1]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=.975] - MM_betaE_betaR_IR$wc_BR_onlyi[qtlgridOut>=.975,si,1]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=.975] - MM_betaE_betaR_IR$wc_rec[qtlgridOut>=.975])
+}
+Decomp_tails[, NS+1] = rowSums(Decomp_tails)
+Decomp_tails<- data.table(Decomp_tails)
+rownames(Decomp_tails) <- c("$\leq$ 2.5\%","$\leq$ 5.0\%","$\geq$ 95.0\%","$\geq$ 97.5\%")
+if(NS==8){
+	names(Decomp_tails)<-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay_nosw","stay_sw","total")
+}else{
+	names(Decomp_tails)<-c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay_nosw","stay_sw","total")
 }
 
-Dist_dif_exi<- data.table(Dist_dif_exi)
-if(NS==8){
-	names(Dist_dif_exi)<-c("Qtl","Data","EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay_nosw","stay_sw")
-	names(Decomp_tails)<-c("Qtl","Data","EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay_nosw","stay_sw")
-}else{
-	names(Dist_dif_exi)<-c("Qtl","Data","EE_sw","EU_sw","EE_nosw","EU_nosw","stay_nosw","stay_sw")
-	names(Decomp_tails)<-c("Qtl","Data","EE_sw","EU_sw","EE_nosw","EU_nosw","stay_nosw","stay_sw")
-}
-Dist_dif_onlyi<- data.table(Dist_dif_onlyi)
-if(NS==8){
-	names(Dist_dif_exi)<-c("Qtl","Data","EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay_nosw","stay_sw")
-}else{
-	names(Dist_dif_exi)<-c("Qtl","Data","EE_sw","EU_sw","EE_nosw","EU_nosw","stay_nosw","stay_sw")
-}
-
+nametab <- "TailMM"
+Decomp_tails <- xtable(Decomp_tails, digits=3, 
+							align="l|cccccc|cc|c", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+print(Decomp_tails,include.rownames=T, hline.after= c(nrow(Decomp_tails)), 
+	  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
+	
 
 #!!!!!!!!!!!
 # Compare distributions ---------------------------------------------------
