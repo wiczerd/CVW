@@ -38,9 +38,7 @@ regressors <- c("age",
 				"black", 
 				"hispanic")
 
-sipp <- readRDS(paste0(datadir,"/DTall_3.RData"))
-
-sipp <- subset(sipp, seam==T)
+sipp <- readRDS(paste0(datadir,"/DTseam.RData"))
 
 rec_dates <- read.table(textConnection(
 "Peak, Trough
@@ -61,8 +59,10 @@ sipp[ , max.nempdur_wave := Max_narm(max.nempdur), by=list(id,wave)]
 sipp[ EE_wave==T, max.nempdur_wave := 0]
 sipp[ EE_wave==T, max.unempdur_wave := 0]
 
-sipp[ validEUUE==T | (EE_wave==T&midEE==F) , validTransX := T]
-sipp[ (validEUUE==T & EU_wave==T & midEE==F) | (EE_wave==T&midEE==F) , validTransX_sep := T]
+sipp[ , t:= year+month/12 - 1990]
+
+sipp[ validEUUE==T | EE_wave==T , validTransX := T]
+sipp[ validEUUE==T & EU_wave==T | EE_wave==T , validTransX_sep := T]
 
 sipp[ , fil_unrt := `filtered.unrate$cycle`]
 
