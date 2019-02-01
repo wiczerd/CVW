@@ -193,7 +193,7 @@ int main() {
 
 	success = draw_shocks(&sk);
 
-	success = sol_ss( &par, &vf, &pf, &sk);
+	success = sol_dyn( &par, &vf, &pf, &sk);
 
 	success = sim(&par, &vf, &pf, &ht, &sk);
 
@@ -264,13 +264,32 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 				int iU = ai*NP*NG*NS*NZ + pi*NG*NS*NZ + gi*NS*NZ + si*NZ +zi;
 
+				//compute expectations over A, Pt
+				double EAPWE = 0.;
+				int aai, ppi;
+				for(aai=0;aai<NA;aai++){
+					for(ppi=0;ppi<NP;ppi++)  EAPWE += gsl_matrix_get( vf0.WE,  aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + si*NZ*NT +zi*NT+ ti ,ji)*
+							gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
+				}
+
 				double EtTWE = 0.;
 				int tti,zzi;
-				for(tti=ti;tti<NT;tti++)
-					EtTWE +=  gsl_matrix_get(vf0.WE, ai*NP*NG*NS*NZ*NT + pi*NG*NS*NZ*NT+ gi*NS*NZ*NT + si*NZ*NT +zi*NT+ tti ,ji) *gsl_vector_get(par->tprob,tti);
+				for(aai=0;aai<NA;aai++){
+					for(ppi=0;ppi<NP;ppi++){
+						for(tti=ti;tti<NT;tti++)
+							EtTWE +=  gsl_matrix_get(vf0.WE, aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + si*NZ*NT +zi*NT+ tti ,ji) *gsl_vector_get(par->tprob,tti)*
+							                gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
+					}
+				}
 				double EtWE = 0.;
-				for(tti=0;tti<NT;tti++)
-					EtWE += gsl_matrix_get(vf0.WE, ai*NP*NG*NS*NZ*NT + pi*NG*NS*NZ*NT+ gi*NS*NZ*NT + si*NZ*NT +zi*NT+ tti ,ji) *par->tprob->data[tti];
+				for(aai=0;aai<NA;aai++) {
+					for (ppi = 0; ppi < NP; ppi++) {
+
+						for (tti = 0; tti < NT; tti++)
+							EtWE += gsl_matrix_get(vf0.WE, aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT + gi*NS*NZ*NT + si*NZ*NT + zi*NT + tti, ji) *
+							        par->tprob->data[tti]*gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
+					}
+				}
 
 				int jji;
 				double REhr = -par->kappa;
@@ -280,12 +299,24 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 					EzWE[jji]  = 0.;
 					EztWE[jji] = 0.;
 					if(jji!=ji){
-						for(zzi =0;zzi<NZ;zzi++)
-							EzWE[jji] +=  gsl_matrix_get(vf0.WE, ai*NP*NG*NS*NZ*NT + pi*NG*NS*NZ*NT+ gi*NS*NZ*NT + zzi*NT,jji ) * gsl_vector_get(par->zprob,zzi) ;
 
-						for(tti=0;tti<NT;tti++){
-							for(zzi=0;zzi<NZ;zzi++)
-								EztWE[jji] += gsl_matrix_get(vf0.WE,ai*NP*NG*NS*NZ*NT + pi*NG*NS*NZ*NT+ gi*NS*NZ*NT + zzi*NT + tti,jji) *gsl_vector_get(par->zprob,zzi)*gsl_vector_get(par->tprob,tti);
+						for(aai=0;aai<NA;aai++){
+							for(ppi=0;ppi<NP;ppi++) {
+								for (zzi = 0; zzi < NZ; zzi++)
+									EzWE[jji] += gsl_matrix_get(vf0.WE,
+									                            aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT +gi*NS*NZ*NT + zzi*NT, jji) *
+									             gsl_vector_get(par->zprob, zzi)*gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
+
+							}
+						}
+						for(aai=0;aai<NA;aai++){
+							for(ppi=0;ppi<NP;ppi++) {
+								for(tti=0;tti<NT;tti++){
+									for(zzi=0;zzi<NZ;zzi++)
+										EztWE[jji] += gsl_matrix_get(vf0.WE,aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + zzi*NT + tti,jji) *
+												gsl_vector_get(par->zprob,zzi)*gsl_vector_get(par->tprob,tti)*gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
+								}
+							}
 						}
 
 						// constructing RE
@@ -297,21 +328,21 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				for(jji=0;jji<JJ;jji++){
 					if(jji!=ji) totalphaS += par->alpha0*pow(gsl_matrix_get(pf->sE[jji],ii,ji),1.-par->alpha1);
 				}
-				REhr +=   (1. - gsl_min( totalphaS,1. ))* gsl_matrix_get(vf0.WE,ii,ji);
+				REhr +=   (1. - gsl_min( totalphaS,1. ))* EAPWE;
 
 				gsl_matrix_set( vf->RE,ii,ji,REhr);
 
 				gsl_matrix_set( pf->mE,ii,ji, REhr/rhotightening/
-				(REhr/rhotightening+ gsl_matrix_get(vf0.WE,ii,ji)/rhotightening) );
+				(REhr/rhotightening+ EAPWE/rhotightening) );
 
 				//set search direction for next iteration:
 				double sEjiDenom = 0.;
 				for(jji=0;jji<JJ;jji++){
-					if(jji!=ji) sEjiDenom += pow(-par->kappa+ par->lambdaEM0*EztWE[jji] + (1.-par->lambdaEM0)*EzWE[jji]- gsl_matrix_get(vf0.WE,ii,ji) , 1/par->alpha1);
+					if(jji!=ji) sEjiDenom += pow(-par->kappa+ par->lambdaEM0*EztWE[jji] + (1.-par->lambdaEM0)*EzWE[jji]- EAPWE , 1/par->alpha1);
 				}
 				for(jji=0;jji<JJ;jji++){
 					if(jji!=ji){
-						gsl_matrix_set(pf->sE[jji] ,ii,ji, pow(-par->kappa+ par->lambdaEM0*EztWE[jji] + (1.-par->lambdaEM0)*EzWE[jji]- gsl_matrix_get(vf0.WE,ii,ji) , 1/par->alpha1)/sEjiDenom);
+						gsl_matrix_set(pf->sE[jji] ,ii,ji, pow(-par->kappa+ par->lambdaEM0*EztWE[jji] + (1.-par->lambdaEM0)*EzWE[jji]- EAPWE , 1/par->alpha1)/sEjiDenom);
 					}else{ // this is kind of redundant because it should have initialized to 0
 						gsl_matrix_set(pf->sE[jji] ,ii,ji, 0.);
 					}
@@ -327,9 +358,10 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 				// update the value function
 				double WEhr = wagevec[ii][ji] + beta*gsl_matrix_get(pf->dE,ii,ji)*gsl_matrix_get(vf0.WU,iU,ji) +
-				              beta*(1.-gsl_matrix_get(pf->dE,ii,ji))*( gsl_matrix_get(pf->mE,ii,ji)*gsl_matrix_get( vf->RE,ii,ji) +
-				              (1.-gsl_matrix_get(pf->mE,ii,ji))*(par->gdfthr*par->lambdaES0*EtWE + (1.-par->gdfthr)*par->lambdaES0*EtTWE+
-				              (1.-par->lambdaES0)*gsl_matrix_get(vf->WE,ii,ji ) )  );
+				              beta*(1.-gsl_matrix_get(pf->dE,ii,ji))*(
+				              		gsl_matrix_get(pf->mE,ii,ji)*gsl_matrix_get( vf->RE,ii,ji) +
+				              		(1.-gsl_matrix_get(pf->mE,ii,ji))*(par->gdfthr*par->lambdaES0*EtWE + (1.-par->gdfthr)*par->lambdaES0*EtTWE+
+				                                                (1.-par->lambdaES0)*EAPWE )  );
 
 				gsl_matrix_set( vf->WE, ii,ji,WEhr);
 
@@ -650,22 +682,22 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 		}
 
 
-		if(print_lev >=2){
-			printmat("whist.csv",ht->whist[0]);
-			printmat_int("uhist.csv",ht->uhist[0]);
-			printvec_int("Ahist.csv",ht->Ahist[0]);
-			printmat_int("Phist.csv",ht->Phist[0]);
-			printmat_int("xGhist.csv",ht->xhist[0][0]);
-			printmat_int("xShist.csv",ht->xhist[0][1]);
-			printmat_int("zhist.csv",ht->xhist[0][2]);
-			printmat_int("thhist.csv",ht->xhist[0][3]);
-
-		}
-
-
 		for(i=0;i<Nsim;i++) free(xt[i]);
 		for(i=0;i<Nsim;i++) free(xtm1[i]);
 		free(xt);free(xtm1);free(jt);free(jtm1);free(ut);free(utm1);
+	} // end omp loop over ll
+
+
+	if(print_lev >=2){
+		printmat("whist.csv",ht->whist[0]);
+		printmat_int("uhist.csv",ht->uhist[0]);
+		printvec_int("Ahist.csv",ht->Ahist[0]);
+		printmat_int("Phist.csv",ht->Phist[0]);
+		printmat_int("xGhist.csv",ht->xhist[0][0]);
+		printmat_int("xShist.csv",ht->xhist[0][1]);
+		printmat_int("zhist.csv",ht->xhist[0][2]);
+		printmat_int("thhist.csv",ht->xhist[0][3]);
+
 	}
 
 }
