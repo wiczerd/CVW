@@ -382,47 +382,63 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				int si = (ii - ai*NP*NG*NS*NZ - pi*NG*NS*NZ - gi*NS*NZ)/(NZ) ;
 				int zi =  ii - ai*NP*NG*NS*NZ - pi*NG*NS*NZ - gi*NS*NZ -  si*NZ ;
 
-				int jji,zzi,tti;
+				int jji,zzi,tti,aai,ppi;
 
+				double EAPWU = 0.;
+				for(aai=0;aai<NA;aai++){
+					for(ppi=0;ppi<NP;ppi++) {
+						EAPWU += gsl_matrix_get(vf0.WU, aai*NP*NG*NS*NZ+ppi*NG*NS*NZ+gi*NS*NZ + si*NZ + zi,ji)*
+								gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
+					}
+				}
 				double EzWU[JJ];
 				double RUhr = -par->kappa;
 				for(jji=0;jji<JJ;jji++){
 					EzWU[jji]=0;
 					if(jji!=ji){
-						for( zzi=0;zzi<NZ;zzi++ )
-							EzWU[jji] += gsl_matrix_get(vf0.WU, ai*NP*NG*NS*NZ+pi*NG*NS*NZ+gi*NS*NZ + zzi,jji)*gsl_vector_get(par->zprob,zzi);
+						for(aai=0;aai<NA;aai++){
+							for(ppi=0;ppi<NP;ppi++) {
+								for( zzi=0;zzi<NZ;zzi++ )
+									EzWU[jji] += gsl_matrix_get(vf0.WU, aai*NP*NG*NS*NZ+ppi*NG*NS*NZ+gi*NS*NZ + zzi,jji)*
+											gsl_vector_get(par->zprob,zzi)*gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[jji],pi,ppi);
+							}
+						}
 					}
 					RUhr += par-> alpha0*pow(gsl_matrix_get(pf->sU[jji],ii,ji),1.-par->alpha1 )*EzWU[jji];
 				}
 				double totalalphaS = 0;
 				for(jji=0;jji<JJ;jji++)
 					totalalphaS += par-> alpha0*pow(gsl_matrix_get(pf->sU[jji],ii,ji),1.-par->alpha1 );
-				RUhr += (1.-totalalphaS )*gsl_matrix_get(vf0.WU,ii,ji);
+				RUhr += (1.-totalalphaS )*EAPWU;
 				gsl_matrix_set(vf->RU, ii,ji, RUhr);
 
 				double EtWE=0;
-				for(tti=0;tti<NT;tti++)
-					EtWE += gsl_max(gsl_matrix_get(vf0.WE, ai*NP*NG*NS*NZ*NT+pi*NG*NS*NZ*NT+gi*NS*NZ*NT+si*NZ*NT + zi*NT+tti,ji), vf0.WU->data[ii*vf0.WU->tda+ji] )*
-					        gsl_vector_get(par->tprob,tti);
+				for(aai=0;aai<NA;aai++){
+					for(ppi=0;ppi<NP;ppi++) {
+						for(tti=0;tti<NT;tti++)
+							EtWE += gsl_max(gsl_matrix_get(vf0.WE, aai*NP*NG*NS*NZ*NT+ppi*NG*NS*NZ*NT+gi*NS*NZ*NT+si*NZ*NT + zi*NT+tti,ji), vf0.WU->data[ii*vf0.WU->tda+ji] )*
+							        gsl_vector_get(par->tprob,tti)*gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
+					}
+				}
 
 				gsl_matrix_set(pf->mU,ii,ji, RUhr/rhotightening/( RUhr/rhotightening +
-				                                                  ((1.-par->lambdaU0)*gsl_matrix_get(vf0.WU,ii,ji)+
-				                                                  par->lambdaU0*gsl_max(EtWE,gsl_matrix_get(vf0.WU,ii,ji))  )/rhotightening) );
+				                                                  ((1.-par->lambdaU0)*EAPWU+
+				                                                  par->lambdaU0*gsl_max(EtWE,EAPWU)  )/rhotightening) );
 				//search dir for next iterations
 				double sUdenom = 0.;
 				for(jji=0;jji<JJ;jji++){
-					if(jji!=ji) sUdenom += pow(-par->kappa + EzWU[jji]- gsl_matrix_get(vf0.WU,ii,ji) ,1./par->alpha1);
+					if(jji!=ji) sUdenom += pow(-par->kappa + EzWU[jji]- EAPWU ,1./par->alpha1);
 				}
 				for(jji=0;jji<JJ;jji++){
 					if(jji!=ji){
-						gsl_matrix_set(pf->sU[jji],ii,ji,pow(-par->kappa + EzWU[jji]-gsl_matrix_get(vf0.WU,ii,ji) ,1./par->alpha1)/sUdenom );
+						gsl_matrix_set(pf->sU[jji],ii,ji,pow(-par->kappa + EzWU[jji] - EAPWU ,1./par->alpha1)/sUdenom );
 					}else{//this is kind of redundant, because it should have initialized to 0
 						gsl_matrix_set(pf->sU[jji],ii,ji,0.);
 					}
 				}
 
 				gsl_matrix_set( vf->WU, ii, ji, b + beta*( pf->mU->data[ii*pf->mU->tda + ji]*vf->RU->data[ii*vf->RU->tda+ji] +
-						(1.-pf->mU->data[ii*pf->mU->tda + ji])*( (1.-par->lambdaU0)*vf0.WU->data[ii*vf0.WU->tda+ji] + par->lambdaU0*EtWE ) ) );
+						(1.-pf->mU->data[ii*pf->mU->tda + ji])*( (1.-par->lambdaU0)*EAPWU + par->lambdaU0*EtWE ) ) );
 
 			}
 		}
