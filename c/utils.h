@@ -526,9 +526,9 @@ void printmat_int(char* name, gsl_matrix_int* mat){
 
 	for(yi=0;yi<rows;yi++){
 		for(bi=0;bi<cols-1;bi++){
-			fprintf(matfile,"%f,",gsl_matrix_int_get(mat,yi,bi));
+			fprintf(matfile,"%d,",gsl_matrix_int_get(mat,yi,bi));
 		}
-		fprintf(matfile,"%f\n",gsl_matrix_int_get(mat, yi,cols-1));
+		fprintf(matfile,"%d\n",gsl_matrix_int_get(mat, yi,cols-1));
 	}
 	printf("Printing matrix to, %s\n",name);
 	fclose(matfile);
@@ -550,7 +550,7 @@ void printvec_int(char* name, gsl_vector_int* vec){
 	matfile = fopen(name, "w");
 
 	for(ri=0;ri<rows;ri++){
-		fprintf(matfile,"%f\n",gsl_vector_int_get(vec,ri));
+		fprintf(matfile,"%d\n",gsl_vector_int_get(vec,ri));
 	}
 	printf("Printing matrix to, %s\n",name);
 	fclose(matfile);
