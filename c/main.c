@@ -49,7 +49,7 @@ int verbose = 3;
 int print_lev = 3;
 
 int maxiter = 5000;
-double rhotightening = 0.1;
+double rhotightening = 0.01;
 double wageconst = 0.; // to make sure the average wage is ~1
 
 double beta	= 0.997;		// discount factor
@@ -600,7 +600,6 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 				Ptm1[ji] = Pt[ji];
 				Pt[ji]=0;
 				for(ai=0;ai<NP;ai++) if(gsl_matrix_get(sk->Psel[ll],ti,ji) > cmPtrans[ji][Ptm1[ji]][ai]) ++Pt[ji];
-				if( ti>=burnin ) gsl_matrix_int_set(ht->Phist[ll],ti-burnin,ji, Pt[ji]);
 			}
 			for(i=0;i<Nsim;i++){
 				jtm1[i] = jt[i];
@@ -620,6 +619,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 					for(xi=0;xi<4;xi++)	gsl_matrix_int_set(ht->xhist[ll][xi],i, ti-burnin,xt[i][xi]);
 					gsl_matrix_int_set(ht->uhist[ll],i,ti-burnin,ut[i]);
 					gsl_matrix_int_set(ht->jhist[ll],i,ti-burnin,jt[i]);
+					if( ti>=burnin ) gsl_matrix_int_set(ht->Phist[ll],i,ti-burnin, Pt[jt[i]]);
 				}
 
 				//evaluate decision rules for the worker:
@@ -729,13 +729,6 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 				}
 			} // i=1:NSim
 
-
-			int jsum[JJ];
-			for(ji=0;ji<JJ;ji++) jsum[ji]=0;
-			for(i=0;i<Nsim;i++){
-				jsum[jt[i]]++;
-			}
-			if(ll==0) printf("There are %d in occupation 0 and %d in occupation J\n",jsum[0],jsum[JJ-1]);
 		}
 
 
@@ -906,7 +899,7 @@ void alloc_hists( struct hists *ht ){
 			ht->xhist[ll][ji] = gsl_matrix_int_calloc(Nsim,TT);
 		ht->jhist[ll] = gsl_matrix_int_calloc(Nsim,TT);
 		ht->Ahist[ll] = gsl_vector_int_calloc(TT);
-		ht->Phist[ll] = gsl_matrix_int_calloc(Nsim,JJ);
+		ht->Phist[ll] = gsl_matrix_int_calloc(Nsim,TT);
 	}
 }
 
