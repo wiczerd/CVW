@@ -73,6 +73,7 @@ struct cal_params{
 	gsl_matrix * lambdaEM;
 	gsl_matrix * lambdaES;
 	gsl_matrix * lambdaU;
+	gsl_matrix * delta;
 	gsl_vector * AloadP; //loading on A for each P
 	gsl_vector * Plev;
 	gsl_vector * Alev;
@@ -104,7 +105,7 @@ struct polfuns{
 	gsl_matrix * mU;    // NUN X JJ - to switch, unemployed
 	gsl_matrix ** sE;    // NN X JJ X JJ  - where to search, employed
 	gsl_matrix ** sU;    // NUN X JJ X JJ - where to search, unemployed
-	gsl_matrix * dE;    // separate into non-employment?
+
 };
 
 struct shocks{
@@ -215,21 +216,26 @@ int main() {
 	gsl_matrix_set_all(par.lambdaU,par.lambdaU0);
 	gsl_matrix_set_all(par.lambdaES,par.lambdaES0);
 	gsl_matrix_set_all(par.lambdaEM,par.lambdaEM0);
+	gsl_matrix_set_all(par.delta,delta_avg);
 
 
+	// print out the grids
 	printvec("Alev.csv", par.Alev);printvec("zlev.csv", par.zlev);
 	printvec("Thlev.csv", par.tlev);printvec("Plev.csv", par.Plev);
 
 
 	success = draw_shocks(&sk);
+	if(verbose>2 && success != 0) printf("Problem drawing shocks\n");
 
 	success = sol_dyn( &par, &vf, &pf, &sk);
+	if(verbose>2 && success != 0) printf("Problem solving model\n");
 
 	success = sim(&par, &vf, &pf, &ht, &sk);
+	if(verbose>2 && success != 0) printf("Problem simulating model\n");
 
 	free_mats(&vf,&pf,&ht,&sk);
 	free_pars(&par);
-    return 0;
+    return success;
 }
 
 int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, struct shocks * sk ){
@@ -376,17 +382,10 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 					}
 				}
 
-				// set separation rate for next iteration
-				double dEhr = exp( gsl_matrix_get(vf0.WU,iU,ji) - gsl_matrix_get(vf0.WE,ii,ji) )/
-				              ( exp( gsl_matrix_get(vf0.WU,iU,ji) - gsl_matrix_get(vf0.WE,ii,ji) ) +
-				                exp(gsl_matrix_get(pf->mE,ii,ji)*gsl_matrix_get(vf->RE,ii,ji)+
-				                    (1.-gsl_matrix_get(pf->mE,ii,ji))*((1.-par->gdfthr)*par->lambdaES0*EtTWE+par->gdfthr*par->lambdaES0*EtWE+
-				                                                       (1.-par->lambdaES0)*gsl_matrix_get(vf0.WE,ii,ji) ) - gsl_matrix_get(vf0.WE,ii,ji) )  ) ;
-				gsl_matrix_set(pf->dE,ii,ji, dEhr);
 
 				// update the value function
-				double WEhr = wagevec[ii][ji] + beta*gsl_matrix_get(pf->dE,ii,ji)*gsl_matrix_get(vf0.WU,iU,ji) +
-				              beta*(1.-gsl_matrix_get(pf->dE,ii,ji))*(
+				double WEhr = wagevec[ii][ji] + beta*delta_avg*gsl_matrix_get(vf0.WU,iU,ji) +
+				              beta*(1.- delta_avg )*(
 				              		gsl_matrix_get(pf->mE,ii,ji)*gsl_matrix_get( vf->RE,ii,ji) +
 				              		(1.-gsl_matrix_get(pf->mE,ii,ji))*(par->gdfthr*par->lambdaES0*EtWE + (1.-par->gdfthr)*par->lambdaES0*EtTWE+
 				                                                (1.-par->lambdaES0)*EAPWE )  );
@@ -636,7 +635,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 						gsl_matrix_set(ht->whist[ll], i, ti-burnin,wagehr);
 					}
 					// employed workers' choices
-					if( gsl_matrix_get(pf->dE, ii,jt[i])>gsl_matrix_get(sk->dsel[ll],i,ti) ){
+					if( gsl_matrix_get(par->delta, ti,jt[i])>gsl_matrix_get(sk->dsel[ll],i,ti) ){
 						ut[i] = 1;
 					}else{
 						// stay or go?
@@ -758,13 +757,13 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 int draw_shocks(struct shocks * sk){
 	int ji,i,ti,ll;
 
-	int success, seed;
+	int seed;
 
 #pragma parallel for private(ll, ti,i,ji)
 	for(ll=0;ll<Npaths;ll++){
 		gsl_rng * rng0 = gsl_rng_alloc( gsl_rng_default );
 		seed = 12281951 + 10*omp_get_thread_num();
-		gsl_rng_set( rng0, 12281951 );
+		gsl_rng_set( rng0, seed );
 
 		for(ti=0;ti<TTT;ti++){
 			gsl_vector_set(sk->Asel[ll],ti, gsl_rng_uniform(rng0));
@@ -787,7 +786,7 @@ int draw_shocks(struct shocks * sk){
 		gsl_rng_free(rng0);
 	}
 
-	success = 0;
+	return 0;
 }
 
 void allocate_pars( struct cal_params * par){
@@ -797,6 +796,7 @@ void allocate_pars( struct cal_params * par){
 	par->lambdaEM= gsl_matrix_calloc(TTT,JJ) ;
 	par->lambdaES= gsl_matrix_calloc(TTT,JJ) ;
 	par->lambdaU = gsl_matrix_calloc(TTT,JJ) ;
+	par->delta   = gsl_matrix_calloc(TTT,JJ) ;
 	par->Plev    = gsl_vector_calloc(NP) ;
 	par->Alev    = gsl_vector_calloc(NA) ;
 	par->xGlev   = gsl_vector_calloc(NG) ;
@@ -830,7 +830,6 @@ void allocate_mats( struct valfuns * vf, struct polfuns * pf, struct hists * ht,
 
 	alloc_valfuns(vf);
 	alloc_hists(ht);
-	pf -> dE =  gsl_matrix_calloc( NN,JJ );
 	pf -> mE =  gsl_matrix_calloc( NN,JJ );
 	pf -> mU =  gsl_matrix_calloc( NUN,JJ );
 	pf -> sE = malloc(sizeof(gsl_matrix*)*JJ);
@@ -907,7 +906,7 @@ void alloc_hists( struct hists *ht ){
 void free_mats(struct valfuns * vf, struct polfuns * pf, struct hists *ht,struct shocks * sk){
 
 	int j;
-	gsl_matrix_free(pf->dE);
+
 	gsl_matrix_free(pf->mU);
 	gsl_matrix_free(pf->mE);
 	for (j = 0; j <JJ ; j++) {
@@ -954,6 +953,7 @@ void free_pars( struct cal_params * par){
 	gsl_matrix_free(par->lambdaEM) ;
 	gsl_matrix_free(par->lambdaES);
 	gsl_matrix_free(par->lambdaU);
+	gsl_matrix_free(par->delta);
 	gsl_vector_free(par->Plev);
 	gsl_vector_free(par->Alev);
 	gsl_vector_free(par->xGlev);
@@ -1001,7 +1001,6 @@ void free_hists( struct hists *ht ){
 void init_pf( struct polfuns *pf ,struct cal_params * par){
 
 	int ji;
-	gsl_matrix_set_all(pf->dE,delta_avg);
 	gsl_matrix_set_all(pf->mE,0.5);
 	gsl_matrix_set_all(pf->mU,0.5);
 	for(ji=0;ji<JJ;ji++) gsl_matrix_set_all(pf->sE[ji],1./(double)(JJ-1));
