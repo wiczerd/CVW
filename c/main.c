@@ -69,11 +69,11 @@ struct cal_params{
 	double var_ae;		// innovations to aggregate shock
 	double var_pe;		// innovations to occ-specific shock
 	double wage_curve;  // curviness of wage function
+    double delta_Acoef;
 
-	gsl_matrix * lambdaEM;
+    gsl_matrix * lambdaEM;
 	gsl_matrix * lambdaES;
 	gsl_matrix * lambdaU;
-	gsl_matrix * delta;
 	gsl_vector * AloadP; //loading on A for each P
 	gsl_vector * Plev;
 	gsl_vector * Alev;
@@ -201,6 +201,7 @@ int main() {
 	par.kappa     = 1.0 ;
 	par.gdfthr    = 0.5 ;
 	par.wage_curve= 2.  ;
+	par.delta_Acoef = 0.;
 
 
 	int ai = NA/2;int pi = NP/2;int gi = NG/2;int si = NS/2;int zi = NZ/2;	int thi = NT/2;
@@ -216,7 +217,7 @@ int main() {
 	gsl_matrix_set_all(par.lambdaU,par.lambdaU0);
 	gsl_matrix_set_all(par.lambdaES,par.lambdaES0);
 	gsl_matrix_set_all(par.lambdaEM,par.lambdaEM0);
-	gsl_matrix_set_all(par.delta,delta_avg);
+
 
 
 	// print out the grids
@@ -298,6 +299,8 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 				int iU = ai*NP*NG*NS*NZ + pi*NG*NS*NZ + gi*NS*NZ + si*NZ +zi;
 
+
+				double delta_hr = delta_avg + par->delta_Acoef * gsl_vector_get(par->Alev,ai);
 				//compute expectations over A, Pt
 				double EAPWE = 0.;
 				int aai, ppi;
@@ -384,8 +387,8 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 
 				// update the value function
-				double WEhr = wagevec[ii][ji] + beta*delta_avg*gsl_matrix_get(vf0.WU,iU,ji) +
-				              beta*(1.- delta_avg )*(
+				double WEhr = wagevec[ii][ji] + beta*delta_hr*gsl_matrix_get(vf0.WU,iU,ji) +
+				              beta*(1.- delta_hr )*(
 				              		gsl_matrix_get(pf->mE,ii,ji)*gsl_matrix_get( vf->RE,ii,ji) +
 				              		(1.-gsl_matrix_get(pf->mE,ii,ji))*(par->gdfthr*par->lambdaES0*EtWE + (1.-par->gdfthr)*par->lambdaES0*EtTWE+
 				                                                (1.-par->lambdaES0)*EAPWE )  );
@@ -635,7 +638,8 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 						gsl_matrix_set(ht->whist[ll], i, ti-burnin,wagehr);
 					}
 					// employed workers' choices
-					if( gsl_matrix_get(par->delta, ti,jt[i])>gsl_matrix_get(sk->dsel[ll],i,ti) ){
+					double delta_hr =delta_avg + par->delta_Acoef * par->Alev->data[At];
+					if( delta_hr >gsl_matrix_get(sk->dsel[ll],i,ti) ){
 						ut[i] = 1;
 					}else{
 						// stay or go?
@@ -796,7 +800,6 @@ void allocate_pars( struct cal_params * par){
 	par->lambdaEM= gsl_matrix_calloc(TTT,JJ) ;
 	par->lambdaES= gsl_matrix_calloc(TTT,JJ) ;
 	par->lambdaU = gsl_matrix_calloc(TTT,JJ) ;
-	par->delta   = gsl_matrix_calloc(TTT,JJ) ;
 	par->Plev    = gsl_vector_calloc(NP) ;
 	par->Alev    = gsl_vector_calloc(NA) ;
 	par->xGlev   = gsl_vector_calloc(NG) ;
@@ -953,7 +956,6 @@ void free_pars( struct cal_params * par){
 	gsl_matrix_free(par->lambdaEM) ;
 	gsl_matrix_free(par->lambdaES);
 	gsl_matrix_free(par->lambdaU);
-	gsl_matrix_free(par->delta);
 	gsl_vector_free(par->Plev);
 	gsl_vector_free(par->Alev);
 	gsl_vector_free(par->xGlev);
