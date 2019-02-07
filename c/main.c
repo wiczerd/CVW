@@ -1,4 +1,4 @@
-
+//gcc -fopenmp main.c -lgsl -lgslcblas -lm -o CVW.out
 #ifdef _MKL_USE
 #include "mkl_lapacke.h"
 #endif
