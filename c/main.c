@@ -35,21 +35,21 @@ int static NS = 2;     //number of occ tenure types
 int static NZ = 7;     //number of occ match-quality types
 int static NT = 3;     //number of firm theta match-quality types
 int static NP = 5;     //number of occupation-specific productivies
-int static NA = 2;     //number of aggregate productivities
+int static NA = 5;     //number of aggregate productivities
 
 int NN ,NUN;
 
-int static TT      = 12*15;     // periods per simulation path
+int static TT      = 12*15;    // periods per simulation path
 int static burnin  = 48;       // number of periods to throw away each time
 int static TTT ;
-int static Npaths  = 50;       // number of simulation paths to draw
-int static Nsim    = 1000;
+int static Npaths  = 100;      // number of simulation paths to draw
+int static Nsim    = 5000;
 
 int verbose = 3;
-int print_lev = 3;
+int print_lev = 0;
 
 int maxiter = 5000;
-double rhotightening = .5;
+double rhotightening = 0.5;
 double wageconst = 0.; // to make sure the average wage is ~1
 
 double beta	= 0.997;		// discount factor
@@ -61,8 +61,10 @@ double urt_avg = .055;     // average separation rate
 
 struct cal_params{
 	double gdfthr, lambdaEM0, lambdaES0, lambdaU0, var_les, var_lem, var_lu ;
-	double alpha0; 	// scale of alpha function
-	double alpha1;		// concavity of alpha function
+	double alphaU0; 	// scale of alpha function
+	double alphaU1;		// concavity of alpha function
+	double alphaE0; 	// scale of alpha function
+	double alphaE1;		// concavity of alpha function
 	double kappa;		// cost of switching
 	double autoa;		// persistence of aggregate shock
 	double autop;		// persistence of occ-specific shock
@@ -174,6 +176,16 @@ int main() {
 	for(i=0;i<JJ;i++){
 		gsl_matrix_set_all(par.Ptrans[i], 0.05/( (double)NP-1. ));
 		for(ii=0;ii<NP;ii++)gsl_matrix_set(par.Ptrans[i],ii,ii, 0.95);
+		gsl_matrix_set(par.Ptrans[i],0,NP-1, 0.);gsl_matrix_set(par.Ptrans[i],NP-1,0, 0.);
+
+		int ri,ci;
+		for(ri=0;ri<NP;ri++){
+			double rsum =0.;
+			for(ci=0;ci<NP;ci++)rsum += gsl_matrix_get(par.Ptrans[i],ri,ci);
+			gsl_vector_view Pr = gsl_matrix_row( par.Ptrans[i],ri);
+			gsl_vector_scale(& Pr.vector,1./rsum);
+		}
+
 	}
 	gsl_matrix_set_all(par.Atrans, 0.025/( (double)NA-1. ));
 	for(ii=0;ii<NA;ii++) gsl_matrix_set(par.Atrans,ii,ii,0.975);
@@ -187,26 +199,36 @@ int main() {
 	gsl_vector_set_all(par.tprob, 1./(double) NT);
 	gsl_vector_set_all(par.zprob, 1./((double) NZ));
 	gsl_vector_set_all(par.AloadP,1.0);
-	for(i=0;i<NA;i++) gsl_vector_set(par.Alev ,i,-0.05 + .1* (double)i/(double) (NA-1));
+	par.autoa = 0.95;par.var_ae = 0.01*0.01;
+	rouwenhorst(par.autoa,pow(par.var_ae,0.5),par.Atrans,par.Alev);
+
+	par.autop = 0.95; par.var_pe = 0.02*0.2;
+//	rouwenhorst(par.autop,pow(par.var_pe,0.5),par.Ptrans[0],par.Plev);
+//	for(i=1;i<JJ;i++){
+//		gsl_matrix_memcpy(par.Ptrans[i],par.Ptrans[0]);
+//	}
+
 	for(i=0;i<NP;i++) gsl_vector_set(par.Plev ,i,-0.05 + .1* (double)i/(double) (NP-1));
 	for(i=0;i<NG;i++) gsl_vector_set(par.xGlev,i,-0.2  + .4* (double)i/(double) (NG-1));
 	for(i=0;i<NS;i++) gsl_vector_set(par.xSlev,i,-0.2  + .4* (double)i/(double) (NS-1));
 	for(i=0;i<NZ;i++) gsl_vector_set(par.zlev ,i,-0.2  + .4* (double)i/(double) (NZ-1));
 	for(i=0;i<NT;i++) gsl_vector_set(par.tlev ,i,-0.1  + .2* (double)i/(double) (NT-1));
 	for(ji=0;ji<JJ;ji++) gsl_vector_set(par.jprob,ji,1./(double)JJ);
-	par.alpha1 = 0.5;
-	par.alpha0 = pow((double)(JJ-1),-par.alpha1);
+	par.alphaE1 = 0.5;
+	par.alphaE0 = 0.05*pow((double)(JJ-1),-par.alphaE1);
+	par.alphaU1 = 0.5;
+	par.alphaU0 = 0.5*pow((double)(JJ-1),-par.alphaU1);
 	par.lambdaU0  = 0.3 ;
 	par.lambdaES0 = 0.03;
-	par.lambdaEM0 = 0.03;
-	par.kappa     = 5.0 ;
+	par.lambdaEM0 = 0.3;
+	par.kappa     = 0.5 ;
 	par.gdfthr    = 0.5 ;
-	par.wage_curve= 2.  ;
+	par.wage_curve= 1.5 ;
 	par.delta_Acoef = 0.;
 
 	delta_avg = 0.055*par.lambdaU0/(1.-0.055);
 
-	int ai = NA/2;int pi = NP/2;int gi = NG/2;int si = NS/2;int zi = NZ/2;	int thi = NT/2;
+	int ai = NA/2;int pi = NP/2;int gi = NG/2;int si = NS/2;int zi = NZ/2;	int thi = NT/2; ji=0;
 
 	wage_lev = pow(exp(par.AloadP->data[ji] * par.Alev->data[ai]) *
 	                      exp(par.Plev->data[pi]) *
@@ -223,8 +245,11 @@ int main() {
 
 
 	// print out the grids
-	printvec("Alev.csv", par.Alev);printvec("zlev.csv", par.zlev);
-	printvec("Thlev.csv", par.tlev);printvec("Plev.csv", par.Plev);
+	if(print_lev>1){
+		printvec("Alev.csv", par.Alev);printvec("zlev.csv", par.zlev);
+		printmat("Atrans.csv",par.Atrans);printmat("Ptrans.csv",par.Ptrans[0]);
+		printvec("Thlev.csv", par.tlev);printvec("Plev.csv", par.Plev);
+	}
 
 
 	success = draw_shocks(&sk);
@@ -250,7 +275,6 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 	alloc_valfuns(&vf0);
 
 	double**wagevec;
-	double wmean =0.;
 	wagevec = malloc(sizeof(double*)*NN);
 	for(ii=0;ii<NN;ii++)wagevec[ii] = malloc( sizeof(double)*JJ );
 
@@ -359,13 +383,13 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 						}
 
 						// constructing RE
-						REhr += par->alpha0* pow( gsl_matrix_get( pf->sE[jji],ii,ji),1.-par->alpha1)*(par->lambdaEM0*EztWE[jji] +(1.-par->lambdaEM0)*EzWE[jji] ) ;
+						REhr += par->alphaE0* pow( gsl_matrix_get( pf->sE[jji],ii,ji),1.-par->alphaE1)*(par->lambdaEM0*EztWE[jji] +(1.-par->lambdaEM0)*EzWE[jji] ) ;
 
 					}
 				}
 				double totalphaS = 0;
 				for(jji=0;jji<JJ;jji++){
-					if(jji!=ji) totalphaS += par->alpha0*pow(gsl_matrix_get(pf->sE[jji],ii,ji),1.-par->alpha1);
+					if(jji!=ji) totalphaS += par->alphaE0*pow(gsl_matrix_get(pf->sE[jji],ii,ji),1.-par->alphaE1);
 				}
 				REhr +=   (1. - gsl_min( totalphaS,1. ))* EAPWE;
 
@@ -377,11 +401,11 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				//set search direction for next iteration:
 				double sEjiDenom = 0.;
 				for(jji=0;jji<JJ;jji++){
-					if(jji!=ji) sEjiDenom += pow(-par->kappa+ par->lambdaEM0*EztWE[jji] + (1.-par->lambdaEM0)*EzWE[jji]- EAPWE , 1/par->alpha1);
+					if(jji!=ji) sEjiDenom += pow(-par->kappa+ par->lambdaEM0*EztWE[jji] + (1.-par->lambdaEM0)*EzWE[jji]- EAPWE , 1/par->alphaE1);
 				}
 				for(jji=0;jji<JJ;jji++){
 					if(jji!=ji){
-						gsl_matrix_set(pf->sE[jji] ,ii,ji, pow(-par->kappa+ par->lambdaEM0*EztWE[jji] + (1.-par->lambdaEM0)*EzWE[jji]- EAPWE , 1/par->alpha1)/sEjiDenom);
+						gsl_matrix_set(pf->sE[jji] ,ii,ji, pow(-par->kappa+ par->lambdaEM0*EztWE[jji] + (1.-par->lambdaEM0)*EzWE[jji]- EAPWE , 1/par->alphaE1)/sEjiDenom);
 					}else{ // this is kind of redundant because it should have initialized to 0
 						gsl_matrix_set(pf->sE[jji] ,ii,ji, 0.);
 					}
@@ -436,20 +460,21 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 							}
 						}
 					}
-					RUhr += par-> alpha0*pow(gsl_matrix_get(pf->sU[jji],ii,ji),1.-par->alpha1 )*EzWU[jji];
+					RUhr += par-> alphaU0*pow(gsl_matrix_get(pf->sU[jji],ii,ji),1.-par->alphaU1 )*EzWU[jji];
 				}
 				double totalalphaS = 0;
 				for(jji=0;jji<JJ;jji++)
-					totalalphaS += par-> alpha0*pow(gsl_matrix_get(pf->sU[jji],ii,ji),1.-par->alpha1 );
+					totalalphaS += par-> alphaU0*pow(gsl_matrix_get(pf->sU[jji],ii,ji),1.-par->alphaU1 );
 				RUhr += (1.-totalalphaS )*EAPWU;
 				gsl_matrix_set(vf->RU, ii,ji, RUhr);
 
 				double EtWE=0;
 				for(aai=0;aai<NA;aai++){
 					for(ppi=0;ppi<NP;ppi++) {
-						for(tti=0;tti<NT;tti++)
-							EtWE += gsl_max(gsl_matrix_get(vf0.WE, aai*NP*NG*NS*NZ*NT+ppi*NG*NS*NZ*NT+gi*NS*NZ*NT+si*NZ*NT + zi*NT+tti,ji), vf0.WU->data[ii*vf0.WU->tda+ji] )*
-							        gsl_vector_get(par->tprob,tti)*gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
+						for(tti=0;tti<NT;tti++){
+							int iihr = aai*NP*NG*NS*NZ*NT+ppi*NG*NS*NZ*NT+gi*NS*NZ*NT+si*NZ*NT+zi*NT+tti;
+							EtWE += gsl_max(gsl_matrix_get(vf0.WE, (size_t)iihr, (size_t)ji), vf0.WU->data[ii*vf0.WU->tda+ji] )*
+							        gsl_vector_get(par->tprob,(size_t)tti)*gsl_matrix_get(par->Atrans,(size_t)ai,(size_t)aai)*gsl_matrix_get(par->Ptrans[ji], (size_t)pi, (size_t)ppi);}
 					}
 				}
 
@@ -460,11 +485,11 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				//search dir for next iterations
 				double sUdenom = 0.;
 				for(jji=0;jji<JJ;jji++){
-					if(jji!=ji) sUdenom += pow(-par->kappa + EzWU[jji]- EAPWU ,1./par->alpha1);
+					if(jji!=ji) sUdenom += pow(-par->kappa + EzWU[jji]- EAPWU ,1./par->alphaU1);
 				}
 				for(jji=0;jji<JJ;jji++){
 					if(jji!=ji){
-						gsl_matrix_set(pf->sU[jji],ii,ji,pow(-par->kappa + EzWU[jji] - EAPWU ,1./par->alpha1)/sUdenom );
+						gsl_matrix_set(pf->sU[jji],ii,ji,pow(-par->kappa + EzWU[jji] - EAPWU ,1./par->alphaU1)/sUdenom );
 					}else{//this is kind of redundant, because it should have initialized to 0
 						gsl_matrix_set(pf->sU[jji],ii,ji,0.);
 					}
@@ -487,7 +512,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 			success = (int) maxdist;
 		}
 	}
-
+	for(ii=0;ii<NN;ii++)free(wagevec[ii]);
 	free(wagevec);
 	free_valfuns(&vf0);
 
@@ -595,7 +620,11 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 			xt[i][3] =0;
 			for(thi=0;thi<NT;thi++) if( gsl_matrix_get(sk->thsel[ll],i,0) > cmtprob[thi] ) ++ xt[i][3] ;
 
-			if( gsl_matrix_get( sk->lambdaUsel[ll],i,0) <  urt_avg ) ut[i] =1;
+			if( gsl_matrix_get( sk->lambdaUsel[ll],i,0) <  urt_avg ){
+				ut[i] =1;
+			}else{
+				ut[i] =0;
+			}
 
 		}
 		for(ti=0;ti<TTT;ti++){
@@ -666,7 +695,9 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 								xt[i][1] = 0; // lose specific skill
 								// draw a new z:
 								xt[i][2] =0;
-								for(zi=0;zi<NZ;zi++) if( gsl_matrix_get(sk->zsel[ll],i,0) > cmzprob[zi] ) ++ xt[i][2] ;
+								for(zi=0;zi<NZ;zi++){
+									if( gsl_matrix_get(sk->zsel[ll],i,ti) > cmzprob[zi] ) ++ xt[i][2] ;
+								}
 								if( gsl_matrix_get(sk->lambdaMsel[ll],i,ti)<  gsl_matrix_get(par->lambdaEM,ti,jt[i]) ){
 									// draw a new theta
 									xt[i][3] = 0;
@@ -709,7 +740,9 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 							xt[i][1] = 0; // lose specific skill
 							// draw a new z:
 							xt[i][2] =0;
-							for(zi=0;zi<NZ;zi++) if( gsl_matrix_get(sk->zsel[ll],i,0) > cmzprob[zi] ) ++ xt[i][2] ;
+							for(zi=0;zi<NZ;zi++){
+								if( gsl_matrix_get(sk->zsel[ll],i,ti) > cmzprob[zi] ) ++ xt[i][2] ;
+							}
 							if( gsl_matrix_get(sk->lambdaUsel[ll],i,ti)<  gsl_matrix_get(par->lambdaU,ti,jt[i]) ){
 								// draw a new theta
 								xt[i][3] = 0;
@@ -761,6 +794,8 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 		printmat("swprob_hist.csv", swprob_hist );
 	}
 
+
+	gsl_matrix_free(swprob_hist);
 }
 
 
@@ -769,10 +804,10 @@ int draw_shocks(struct shocks * sk){
 
 	int seed;
 
-#pragma parallel for private(ll, ti,i,ji)
+// #pragma parallel for private(ll, ti,i,ji)
 	for(ll=0;ll<Npaths;ll++){
 		gsl_rng * rng0 = gsl_rng_alloc( gsl_rng_default );
-		seed = 12281951 + 10*omp_get_thread_num();
+		seed = 12281951 ;//+ 10*omp_get_thread_num();
 		gsl_rng_set( rng0, seed );
 
 		for(ti=0;ti<TTT;ti++){
@@ -861,11 +896,11 @@ void allocate_mats( struct valfuns * vf, struct polfuns * pf, struct hists * ht,
 	sk->msel       = malloc(sizeof(gsl_matrix*)*Npaths);
 
 	for(j=0;j<Npaths;j++){
-		sk->Asel[j] = gsl_vector_calloc(Nsim);
+		sk->Asel[j] = gsl_vector_calloc(TTT);
+		sk->Psel[j]       = gsl_matrix_calloc(TTT,JJ);
 		sk->lambdaMsel[j] = gsl_matrix_calloc(Nsim,TTT);
 		sk->lambdaSsel[j] = gsl_matrix_calloc(Nsim,TTT);
 		sk->lambdaUsel[j] = gsl_matrix_calloc(Nsim,TTT);
-		sk->Psel[j]       = gsl_matrix_calloc(Nsim,JJ);
 		sk->thsel[j]      = gsl_matrix_calloc(Nsim,TTT);
 		sk->xGsel[j]      = gsl_matrix_calloc(Nsim,TTT);
 		sk->xSsel[j]      = gsl_matrix_calloc(Nsim,TTT);
@@ -927,6 +962,9 @@ void free_mats(struct valfuns * vf, struct polfuns * pf, struct hists *ht,struct
 	for(j=0;j<Npaths;j++){
 		gsl_vector_free(sk->Asel[j]);
 		gsl_matrix_free(sk->Psel[j]);
+		gsl_matrix_free(sk->lambdaMsel[j]);
+		gsl_matrix_free(sk->lambdaSsel[j]);
+		gsl_matrix_free(sk->lambdaUsel[j]);
 		gsl_matrix_free(sk->thsel[j]);
 		gsl_matrix_free(sk->xGsel[j]);
 		gsl_matrix_free(sk->xSsel[j]);
@@ -937,6 +975,10 @@ void free_mats(struct valfuns * vf, struct polfuns * pf, struct hists *ht,struct
 	}
 	free(sk->Asel);
 	free(sk->Psel);
+	free(sk->lambdaSsel);
+	free(sk->lambdaUsel);
+	free(sk->lambdaMsel);
+
 	free(sk->thsel);
 	free(sk->xGsel);
 	free(sk->xSsel);
