@@ -19,8 +19,8 @@
 
 int set_matrix_block(gsl_matrix * dest,gsl_matrix *source,int left,int top){
 	int i,j;
-	int right = source->size1 + left;
-	int bottom = source->size2 + top;
+	int right = (int)source->size1 + left;
+	int bottom = (int)source->size2 + top;
 	for(i=left;i<right;i++){
 		for(j=top;j<bottom;j++){
 			double sourceij = gsl_matrix_get(source,i-left,j-top);
@@ -32,8 +32,8 @@ int set_matrix_block(gsl_matrix * dest,gsl_matrix *source,int left,int top){
 int outer(gsl_vector * a,gsl_vector* b, gsl_matrix* C){
 	// computes a*b' = C
 	int Na,Nb,r,c;
-	Na = a->size;
-	Nb = b->size;
+	Na = (int)a->size;
+	Nb = (int)b->size;
 	if (C->size1!=Na || C->size2!=Nb){
 		printf("Matrix C is the wrong size, Na,Nb=(%d,%d), C=(%d,%d)\n",Na,Nb,(int)C->size1,(int)C->size2);
 		return 1;
@@ -492,7 +492,7 @@ int isfinmat(gsl_matrix * mat){
 int isfinvec(gsl_vector * vec){
 	int r,Nr,status;
 	status =0;
-	Nr = vec->size;
+	Nr = (int)vec->size;
 	//#pragma omp parallel for default(shared) private(r)
 	for(r=0;r<Nr;r++){
 		if(gsl_finite(vec->data[r])==0){
@@ -503,10 +503,73 @@ int isfinvec(gsl_vector * vec){
 	return status;
 }
 
+
+int rouwenhorst(double ar1, double sig, gsl_matrix * pi_out, gsl_vector * grid_inout){
+
+	gsl_matrix * PP = gsl_matrix_calloc(2,2);
+	gsl_matrix *PPm1= gsl_matrix_calloc(2,2);
+	gsl_matrix * qPP= gsl_matrix_calloc(2,2);
+	int i,ii, ri,ci;
+	int N = (int)grid_inout->size;
+
+	double q = (ar1+1.)/2.;double p =(ar1+1.)/2;
+	double nu = pow((double)(N-1)/(1.-ar1*ar1),0.5)*sig;
+
+	gsl_matrix_set(PP,0,0, p);gsl_matrix_set(PP,0,1, 1.-p);
+	gsl_matrix_set(PP,1,1, q);gsl_matrix_set(PP,1,0, 1.-q);
+
+	gsl_matrix_memcpy(  PPm1,PP);
+
+	for(i=2;i<N;i++){
+		gsl_matrix_free(PP);
+		gsl_matrix_free(qPP);
+
+		PP = gsl_matrix_calloc(i+1,i+1);
+		qPP = gsl_matrix_calloc(i+1,i+1);
+
+		set_matrix_block(PP,PPm1,0,0);
+		gsl_matrix_scale(PP,p);
+		set_matrix_block(qPP,PPm1,1,0);
+		gsl_matrix_scale(qPP,1.-q);
+		gsl_matrix_add(PP,qPP );
+		gsl_matrix_set_zero(qPP);
+		set_matrix_block(qPP,PPm1,0,1);
+		gsl_matrix_scale(qPP,1.-p);
+		gsl_matrix_add(PP,qPP);
+		gsl_matrix_set_zero(qPP);
+		set_matrix_block(qPP,PPm1,1,1);
+		gsl_matrix_scale(qPP,q);
+		gsl_matrix_add(PP,qPP);
+
+		for(ri=1;ri<i;ri++){
+			for(ci=0;ci<i;ci++) PP->data[ri*PP->tda+ci] *= 0.5;
+		}
+
+		gsl_matrix_free(PPm1);
+		PPm1 = gsl_matrix_calloc(i+1,i+1);
+		gsl_matrix_memcpy( PPm1,PP);
+	}
+
+	for(i=0;i<N;i++){
+		gsl_vector_set(grid_inout,i, 2.*nu*((double)i)/((double)N-1.) -nu);
+	}
+	// make sure rowsums are 1
+	for(ri=0;ri<N;ri++){
+		double rsum=0;
+		for(ci=0;ci<N;ci++) rsum+= PP->data[ri*PP->tda+ci];
+		gsl_vector PPr = (gsl_matrix_row(PP,ri).vector);
+		gsl_vector_scale( &PPr , 1./rsum);
+	}
+
+	gsl_matrix_memcpy(pi_out,PP);
+	gsl_matrix_free(PP);gsl_matrix_free(PPm1);gsl_matrix_free(qPP);
+
+}
+
 void printmat(char* name, gsl_matrix* mat){
 	FILE* matfile;int yi,bi;
-	int rows = mat->size1;
-	int cols = mat->size2;
+	int rows = (int)mat->size1;
+	int cols = (int)mat->size2;
 	matfile = fopen(name, "w");
 
 	for(yi=0;yi<rows;yi++){
@@ -520,8 +583,8 @@ void printmat(char* name, gsl_matrix* mat){
 }
 void printmat_int(char* name, gsl_matrix_int* mat){
 	FILE* matfile;int yi,bi;
-	int rows = mat->size1;
-	int cols = mat->size2;
+	int rows = (int)mat->size1;
+	int cols = (int)mat->size2;
 	matfile = fopen(name, "w");
 
 	for(yi=0;yi<rows;yi++){
@@ -535,7 +598,7 @@ void printmat_int(char* name, gsl_matrix_int* mat){
 }
 void printvec(char* name, gsl_vector* vec){
 	FILE* matfile;int ri;
-	int rows = vec->size;
+	int rows = (int)vec->size;
 	matfile = fopen(name, "w");
 
 	for(ri=0;ri<rows;ri++){
@@ -546,7 +609,7 @@ void printvec(char* name, gsl_vector* vec){
 }
 void printvec_int(char* name, gsl_vector_int* vec){
 	FILE* matfile; int ri;
-	int rows = vec->size;
+	int rows = (int)vec->size;
 	matfile = fopen(name, "w");
 
 	for(ri=0;ri<rows;ri++){
