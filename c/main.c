@@ -46,7 +46,7 @@ int static Npaths  = 100;      // number of simulation paths to draw
 int static Nsim    = 5000;
 
 int verbose = 3;
-int print_lev = 0;
+int print_lev = 3;
 
 int maxiter = 5000;
 double rhotightening = 0.5;
@@ -68,10 +68,13 @@ struct cal_params{
 	double kappa;		// cost of switching
 	double autoa;		// persistence of aggregate shock
 	double autop;		// persistence of occ-specific shock
+	double autoz; 		// persistence of match-quality shock
 	double var_ae;		// innovations to aggregate shock
 	double var_pe;		// innovations to occ-specific shock
+	double var_ze;		// innovations to match-quality shock
 	double wage_curve;  // curviness of wage function
     double delta_Acoef;
+    double zloss;
 
     gsl_matrix * lambdaEM;
 	gsl_matrix * lambdaES;
@@ -191,8 +194,22 @@ int main() {
 	for(ii=0;ii<NA;ii++) gsl_matrix_set(par.Atrans,ii,ii,0.975);
 	gsl_matrix_set_all(par.xGtrans, 0.025/( (double)NG-1. ));
 	for(ii=0;ii<NG;ii++) gsl_matrix_set(par.xGtrans,ii,ii,0.975);
-	gsl_matrix_set_all(par.ztrans, 0.025/( (double)NZ-1. ));
-	for(ii=0;ii<NZ;ii++) gsl_matrix_set(par.ztrans,ii,ii,0.975);
+	gsl_matrix_view ztransLower =gsl_matrix_submatrix(par.ztrans,1,1,NZ-1,NZ-1);
+	gsl_vector_view zlevLower = gsl_vector_subvector(par.zlev,1,NZ-1);
+	gsl_vector_view zprobLower = gsl_vector_subvector(par.zprob,1,NZ-1);
+	par.var_ze = 0.025*0.025; par.autoz = 0.975;
+	rouwenhorst(par.autoz ,pow(par.var_ze,0.5),& (ztransLower.matrix), &(zlevLower.vector) );
+	ergod_dist( &(ztransLower.matrix) , &(zprobLower.vector));
+	gsl_vector_set(par.zlev,0,5*par.zlev->data[1]);
+	gsl_vector_set(par.zprob,0,0.);
+	for(ii=0;ii<NZ;ii++){
+		gsl_matrix_set(par.ztrans,ii,0,par.zloss);
+		gsl_matrix_set(par.ztrans,0,ii,gsl_vector_get(par.zprob,ii));
+	}
+
+
+	//gsl_matrix_set_all(par.ztrans, 0.025/( (double)NZ-1. ));
+	//for(ii=0;ii<NZ;ii++) gsl_matrix_set(par.ztrans,ii,ii,0.975);
 
 	gsl_matrix_set_all(par.xStrans,.025/( (double)NS-1.) );
 	for(ii=0;ii<NS;ii++) gsl_matrix_set(par.xStrans,ii,ii,.975);
@@ -203,15 +220,15 @@ int main() {
 	rouwenhorst(par.autoa,pow(par.var_ae,0.5),par.Atrans,par.Alev);
 
 	par.autop = 0.95; par.var_pe = 0.02*0.2;
-//	rouwenhorst(par.autop,pow(par.var_pe,0.5),par.Ptrans[0],par.Plev);
-//	for(i=1;i<JJ;i++){
-//		gsl_matrix_memcpy(par.Ptrans[i],par.Ptrans[0]);
-//	}
+	rouwenhorst(par.autop,pow(par.var_pe,0.5),par.Ptrans[0],par.Plev);
+	for(i=1;i<JJ;i++){
+		gsl_matrix_memcpy(par.Ptrans[i],par.Ptrans[0]);
+	}
 
-	for(i=0;i<NP;i++) gsl_vector_set(par.Plev ,i,-0.05 + .1* (double)i/(double) (NP-1));
+//	for(i=0;i<NP;i++) gsl_vector_set(par.Plev ,i,-0.05 + .1* (double)i/(double) (NP-1));
 	for(i=0;i<NG;i++) gsl_vector_set(par.xGlev,i,-0.2  + .4* (double)i/(double) (NG-1));
 	for(i=0;i<NS;i++) gsl_vector_set(par.xSlev,i,-0.2  + .4* (double)i/(double) (NS-1));
-	for(i=0;i<NZ;i++) gsl_vector_set(par.zlev ,i,-0.2  + .4* (double)i/(double) (NZ-1));
+	//for(i=0;i<NZ;i++) gsl_vector_set(par.zlev ,i,-0.2  + .4* (double)i/(double) (NZ-1));
 	for(i=0;i<NT;i++) gsl_vector_set(par.tlev ,i,-0.1  + .2* (double)i/(double) (NT-1));
 	for(ji=0;ji<JJ;ji++) gsl_vector_set(par.jprob,ji,1./(double)JJ);
 	par.alphaE1 = 0.5;

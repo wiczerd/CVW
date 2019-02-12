@@ -72,6 +72,30 @@ double norm1mat(gsl_matrix *m){
 	return mn;
 }
 
+int ergod_dist( gsl_matrix * Pi, gsl_vector * dist){
+    int N,i;
+
+    N = (int)Pi->size1;
+    if(Pi->size2 != N){
+        printf(" Transition matrix is not square ");
+    }
+    gsl_matrix * PiPi = gsl_matrix_calloc(N,N);
+    gsl_matrix * PiPiPi = gsl_matrix_calloc(N,N);
+
+    gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,1.,Pi,Pi,0.,PiPi);
+    for(i=0;i<N*N*N*N*N*N*N*N;i++) {
+        gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,1.,Pi,PiPi,0.,PiPiPi);
+        gsl_matrix_memcpy(PiPi,PiPiPi);
+    }
+
+    for(i=0;i<N;i++) gsl_vector_set(dist,i,gsl_matrix_get(PiPi,0,i));
+
+    gsl_matrix_free(PiPi);gsl_matrix_free(PiPiPi);
+
+    return 0;
+
+}
+
 int kron(int TransA,int TransB,gsl_matrix* A,gsl_matrix* B,int TransC,gsl_matrix* C){
 //computes kronecker products of A \oprod B = C
 	int rA,rB,cA,cB, ri1,ri2,ci1,ci2;
