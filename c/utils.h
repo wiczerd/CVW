@@ -590,11 +590,15 @@ int rouwenhorst(double ar1, double sig, gsl_matrix * pi_out, gsl_vector * grid_i
 
 }
 
-void printmat(char* name, gsl_matrix* mat){
+void printmat(char* name, gsl_matrix* mat, int append){
 	FILE* matfile;int yi,bi;
 	int rows = (int)mat->size1;
 	int cols = (int)mat->size2;
-	matfile = fopen(name, "w");
+	if(append == 0){
+		matfile = fopen(name, "w");
+	}else{
+		matfile = fopen(name, "a");
+	}
 
 	for(yi=0;yi<rows;yi++){
 		for(bi=0;bi<cols-1;bi++){
@@ -605,12 +609,17 @@ void printmat(char* name, gsl_matrix* mat){
 	printf("Printing matrix to, %s\n",name);
 	fclose(matfile);
 }
-void printmat_int(char* name, gsl_matrix_int* mat){
+
+
+void printmat_int(char* name, gsl_matrix_int* mat, int append){
 	FILE* matfile;int yi,bi;
 	int rows = (int)mat->size1;
 	int cols = (int)mat->size2;
-	matfile = fopen(name, "w");
-
+	if(append == 0){
+		matfile = fopen(name, "w");
+	}else{
+		matfile = fopen(name, "a");
+	}
 	for(yi=0;yi<rows;yi++){
 		for(bi=0;bi<cols-1;bi++){
 			fprintf(matfile,"%d,",gsl_matrix_int_get(mat,yi,bi));
@@ -620,22 +629,28 @@ void printmat_int(char* name, gsl_matrix_int* mat){
 	printf("Printing matrix to, %s\n",name);
 	fclose(matfile);
 }
-void printvec(char* name, gsl_vector* vec){
+void printvec(char* name, gsl_vector* vec, int append){
 	FILE* matfile;int ri;
 	int rows = (int)vec->size;
-	matfile = fopen(name, "w");
-
+	if(append == 0){
+		matfile = fopen(name, "w");
+	}else{
+		matfile = fopen(name, "a");
+	}
 	for(ri=0;ri<rows;ri++){
 		fprintf(matfile,"%f\n",gsl_vector_get(vec,ri));
 	}
 	printf("Printing matrix to, %s\n",name);
 	fclose(matfile);
 }
-void printvec_int(char* name, gsl_vector_int* vec){
+void printvec_int(char* name, gsl_vector_int* vec, int append){
 	FILE* matfile; int ri;
 	int rows = (int)vec->size;
-	matfile = fopen(name, "w");
-
+	if(append == 0){
+		matfile = fopen(name, "w");
+	}else{
+		matfile = fopen(name, "a");
+	}
 	for(ri=0;ri<rows;ri++){
 		fprintf(matfile,"%d\n",gsl_vector_int_get(vec,ri));
 	}

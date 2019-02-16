@@ -263,9 +263,9 @@ int main() {
 
 	// print out the grids
 	if(print_lev>1){
-		printvec("Alev.csv", par.Alev);printvec("zlev.csv", par.zlev);
-		printmat("Atrans.csv",par.Atrans);printmat("Ptrans.csv",par.Ptrans[0]);
-		printvec("Thlev.csv", par.tlev);printvec("Plev.csv", par.Plev);
+		printvec("Alev.csv", par.Alev,0);printvec("zlev.csv", par.zlev,0);
+		printmat("Atrans.csv",par.Atrans,0);printmat("Ptrans.csv",par.Ptrans[0],0);
+		printvec("Thlev.csv", par.tlev,0);printvec("Plev.csv", par.Plev,0);
 	}
 
 
@@ -553,7 +553,9 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 	double cmxGprob[NG];
 	double cmxSprob[NS];
 
-	gsl_matrix * swprob_hist = gsl_matrix_calloc(Nsim,TT);
+	gsl_matrix ** swprob_hist = malloc(sizeof(gsl_matrix *)*Npaths);
+	for(ll=0;ll<Npaths;ll++)
+		swprob_hist[ll] = gsl_matrix_calloc(Nsim,TT);
 
 	cmjprob[0] = par->jprob->data[0];
 	for(ji=0;ji<JJ-1;ji++) cmjprob[ji+1] = par->jprob->data[ji+1] + cmjprob[ji];
@@ -695,7 +697,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 						ut[i] = 1;
 					}else{
 						// stay or go?
-						if( ti>=burnin && ll==0) gsl_matrix_set(swprob_hist,i,ti-burnin,  gsl_matrix_get(pf->mE,ii,jt[i]) );
+						if( ti>=burnin ) gsl_matrix_set(swprob_hist[ll],i,ti-burnin,  gsl_matrix_get(pf->mE,ii,jt[i]) );
 						if( gsl_matrix_get(pf->mE,ii,jt[i])>gsl_matrix_get(sk->msel[ll],i,ti) ){
 							//RE
 							double sij[JJ]; sij[0] =0.;
@@ -743,7 +745,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 					ii = At*NP*NG*NS*NZ + Pt[jt[i]]*NG*NS*NZ + xt[i][0]*NS*NZ +xt[i][1]*NZ +xt[i][2];
 					if( ti>=burnin){ gsl_matrix_set(ht->whist[ll],i,ti-burnin,0.);}
 					// stay or go?
-					if( ti>=burnin && ll==0) gsl_matrix_set(swprob_hist,i,ti-burnin,  gsl_matrix_get(pf->mU,ii,jt[i]) );
+					if( ti>=burnin ) gsl_matrix_set(swprob_hist[ll],i,ti-burnin,  gsl_matrix_get(pf->mU,ii,jt[i]) );
 					if( gsl_matrix_get(pf->mU,ii,jt[i])>gsl_matrix_get(sk->msel[ll],i,ti) ){
 						//RU
 						double sij[JJ];
@@ -798,21 +800,27 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 
 
 	if(print_lev >=2){
-		printmat("whist.csv",ht->whist[0]);
-		printmat_int("uhist.csv",ht->uhist[0]);
-		printvec_int("Ahist.csv",ht->Ahist[0]);
-		printmat_int("Phist.csv",ht->Phist[0]);
-		printmat_int("jhist.csv",ht->jhist[0]);
-		printmat_int("xGhist.csv",ht->xhist[0][0]);
-		printmat_int("xShist.csv",ht->xhist[0][1]);
-		printmat_int("zhist.csv",ht->xhist[0][2]);
-		printmat_int("thhist.csv",ht->xhist[0][3]);
+		int append =0;
+		for(ll=0;ll<Npaths;ll++){
+			printmat("whist.csv",ht->whist[ll],append );
+			printmat_int("uhist.csv",ht->uhist[ll],append );
+			printvec_int("Ahist.csv",ht->Ahist[ll],append );
+			printmat_int("Phist.csv",ht->Phist[ll],append );
+			printmat_int("jhist.csv",ht->jhist[ll],append );
+			printmat_int("xGhist.csv",ht->xhist[ll][0],append );
+			printmat_int("xShist.csv",ht->xhist[ll][1],append );
+			printmat_int("zhist.csv",ht->xhist[ll][2],append );
+			printmat_int("thhist.csv",ht->xhist[ll][3],append );
 
-		printmat("swprob_hist.csv", swprob_hist );
+			printmat("swprob_hist.csv", swprob_hist[ll],append );
+			append = 1;
+		}
 	}
 
+	for(ll=0;ll<Npaths;ll++)
+		gsl_matrix_free(swprob_hist[ll]);
+	free(swprob_hist);
 
-	gsl_matrix_free(swprob_hist);
 }
 
 
