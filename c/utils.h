@@ -606,7 +606,7 @@ void printmat(char* name, gsl_matrix* mat, int append){
 		}
 		fprintf(matfile,"%f\n",gsl_matrix_get(mat, yi,cols-1));
 	}
-	printf("Printing matrix to, %s\n",name);
+	if(append==0) printf("Printing matrix to, %s\n",name);
 	fclose(matfile);
 }
 
@@ -626,7 +626,7 @@ void printmat_int(char* name, gsl_matrix_int* mat, int append){
 		}
 		fprintf(matfile,"%d\n",gsl_matrix_int_get(mat, yi,cols-1));
 	}
-	printf("Printing matrix to, %s\n",name);
+	if(append==0) printf("Printing matrix to, %s\n",name);
 	fclose(matfile);
 }
 void printvec(char* name, gsl_vector* vec, int append){
@@ -640,7 +640,7 @@ void printvec(char* name, gsl_vector* vec, int append){
 	for(ri=0;ri<rows;ri++){
 		fprintf(matfile,"%f\n",gsl_vector_get(vec,ri));
 	}
-	printf("Printing matrix to, %s\n",name);
+	if(append==0) printf("Printing matrix to, %s\n",name);
 	fclose(matfile);
 }
 void printvec_int(char* name, gsl_vector_int* vec, int append){
@@ -654,7 +654,7 @@ void printvec_int(char* name, gsl_vector_int* vec, int append){
 	for(ri=0;ri<rows;ri++){
 		fprintf(matfile,"%d\n",gsl_vector_int_get(vec,ri));
 	}
-	printf("Printing matrix to, %s\n",name);
+	if(append==0) printf("Printing matrix to, %s\n",name);
 	fclose(matfile);
 }
 

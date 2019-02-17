@@ -42,7 +42,7 @@ int NN ,NUN;
 int static TT      = 12*15;    // periods per simulation path
 int static burnin  = 48;       // number of periods to throw away each time
 int static TTT ;
-int static Npaths  = 100;      // number of simulation paths to draw
+int static Npaths  = 50;      // number of simulation paths to draw
 int static Nsim    = 5000;
 
 int verbose = 3;
@@ -343,12 +343,13 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				int iU = ai*NP*NG*NS*NZ + pi*NG*NS*NZ + gi*NS*NZ + si*NZ +zi;
 
 
-				double delta_hr = delta_avg + par->delta_Acoef * gsl_vector_get(par->Alev,ai);
+				double delta_hr = delta_avg + par->delta_Acoef * gsl_vector_get(par->Alev,ai) ;
 				//compute expectations over A, Pt
 				double EAPWE = 0.;
 				int aai, ppi;
 				for(aai=0;aai<NA;aai++){
-					for(ppi=0;ppi<NP;ppi++)  EAPWE += gsl_matrix_get( vf0.WE,  aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + si*NZ*NT +zi*NT+ ti ,ji)*
+					for(ppi=0;ppi<NP;ppi++)  EAPWE += gsl_max(gsl_matrix_get( vf0.WE,  aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + si*NZ*NT +zi*NT+ ti ,ji),
+					                                          gsl_matrix_get( vf0.WU,  aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + si*NZ    +zi        ,ji))*
 							gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
 				}
 
@@ -357,8 +358,9 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				for(aai=0;aai<NA;aai++){
 					for(ppi=0;ppi<NP;ppi++){
 						for(tti=ti;tti<NT;tti++)
-							EtTWE +=  gsl_matrix_get(vf0.WE, aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + si*NZ*NT +zi*NT+ tti ,ji) *gsl_vector_get(par->tprob,tti)*
-							                gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
+							EtTWE +=  gsl_max(gsl_matrix_get(vf0.WE, aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + si*NZ*NT +zi*NT+ tti ,ji) ,
+							                  gsl_matrix_get(vf0.WU, aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + si*NZ    +zi         ,ji))*
+									gsl_vector_get(par->tprob,tti)*gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
 					}
 				}
 				double EtWE = 0.;
@@ -366,7 +368,8 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 					for (ppi = 0; ppi < NP; ppi++) {
 
 						for (tti = 0; tti < NT; tti++)
-							EtWE += gsl_matrix_get(vf0.WE, aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT + gi*NS*NZ*NT + si*NZ*NT + zi*NT + tti, ji) *
+							EtWE += gsl_max(gsl_matrix_get(vf0.WE, aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT + gi*NS*NZ*NT + si*NZ*NT + zi*NT + tti, ji) ,
+									        gsl_matrix_get(vf0.WU, aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ    + gi*NS*NZ    + si*NZ    + zi         , ji))*
 							        par->tprob->data[tti]*gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
 					}
 				}
@@ -383,8 +386,10 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 						for(aai=0;aai<NA;aai++){
 							for(ppi=0;ppi<NP;ppi++) {
 								for (zzi = 0; zzi < NZ; zzi++)
-									EzWE[jji] += gsl_matrix_get(vf0.WE,
-									                            aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT +gi*NS*NZ*NT + zzi*NT, jji) *
+									EzWE[jji] += gsl_max(gsl_matrix_get(vf0.WE,
+									                            aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT +gi*NS*NZ*NT + zzi*NT, jji) ,
+									                     gsl_matrix_get(vf0.WU,
+									                            aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ    +gi*NS*NZ    + zzi   , jji)       		)*
 									             gsl_vector_get(par->zprob, zzi)*gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
 
 							}
@@ -393,7 +398,8 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 							for(ppi=0;ppi<NP;ppi++) {
 								for(tti=0;tti<NT;tti++){
 									for(zzi=0;zzi<NZ;zzi++)
-										EztWE[jji] += gsl_matrix_get(vf0.WE,aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + zzi*NT + tti,jji) *
+										EztWE[jji] += gsl_max(gsl_matrix_get(vf0.WE,aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + zzi*NT + tti,jji) ,
+												              gsl_matrix_get(vf0.WU,aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + zzi         ,jji))*
 												(par->zprob->data[zzi])*(par->tprob->data[tti])*gsl_matrix_get(par->Atrans,(size_t)ai,(size_t)aai)*gsl_matrix_get(par->Ptrans[ji],(size_t)pi,(size_t)ppi);
 								}
 							}
@@ -620,7 +626,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 		ut = malloc(sizeof(int)*Nsim);
 		utm1 = malloc(sizeof(int)*Nsim);
 
-		int ai,gi,si,zi,thi,xi,ii,jji;
+		int ai,gi,si,zi,thi,xi,ii,iU,jji;
 
 		// initial productivity:
 		At =NA/2;
@@ -682,6 +688,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 				if(utm1[i]==0){
 
 					ii = At*NP*NG*NS*NZ*NT + Pt[jt[i]]*NG*NS*NZ*NT + xt[i][0]*NS*NZ*NT+xt[i][1]*NZ*NT+xt[i][2]*NT+xt[i][3];
+					iU = At*NP*NG*NS*NZ    + Pt[jt[i]]*NG*NS*NZ    + xt[i][0]*NS*NZ   +xt[i][1]*NZ   +xt[i][2];
 					if(ti>=burnin) {
 						double wagehr = pow(exp(par->Alev->data[At]) + exp(par->Plev->data[Pt[jt[i]]]) *
 						                    exp(par->xGlev->data[xt[i][0]]) *
@@ -693,7 +700,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 					}
 					// employed workers' choices
 					double delta_hr =delta_avg + par->delta_Acoef * par->Alev->data[At];
-					if( delta_hr >gsl_matrix_get(sk->dsel[ll],i,ti) ){
+					if( delta_hr >gsl_matrix_get(sk->dsel[ll],i,ti) || gsl_matrix_get(vf->WU,iU,jt[i]) > gsl_matrix_get(vf->WE,ii,jt[i]) ){
 						ut[i] = 1;
 					}else{
 						// stay or go?
@@ -765,7 +772,8 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 							if( gsl_matrix_get(sk->lambdaUsel[ll],i,ti)<  gsl_matrix_get(par->lambdaU,ti,jt[i]) ){
 								// draw a new theta
 								xt[i][3] = 0;
-								for(thi =xt[i][3];thi<NT;thi++) if( gsl_matrix_get( sk->thsel[ll],i,ti ) > cmtprob[thi] ) ++xt[i][3];
+								for(thi =xt[i][3];thi<NT;thi++)
+									if( gsl_matrix_get( sk->thsel[ll],i,ti ) > cmtprob[thi] ) ++xt[i][3];
 								int iM = At*NP*NG*NS*NZ*NT + Pt[jt[i]]*NG*NS*NZ*NT + xt[i][0]*NS*NZ*NT+xt[i][1]*NZ*NT+xt[i][2]*NT+xt[i][3];
 								if( gsl_matrix_get(vf->WE,iM,jt[i]) < gsl_matrix_get(vf->WU,ii,jt[i])){
 									xt[i][3] = xtm1[i][3];
