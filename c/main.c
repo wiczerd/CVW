@@ -40,7 +40,7 @@ int static NA = 5;     //number of aggregate productivities
 int NN ,NUN;
 
 int static TT      = 12*15;    // periods per simulation path
-int static burnin  = 0;       // number of periods to throw away each time
+int static burnin  = 48;       // number of periods to throw away each time
 int static TTT ;
 int static Npaths  = 50;      // number of simulation paths to draw
 int static Nsim    = 2000;
@@ -137,7 +137,17 @@ struct hists{
 	gsl_matrix_int ** jhist;
 	gsl_vector_int ** Ahist;
 	gsl_matrix_int ** Phist;
+	gsl_matrix_int ** J2Jhist;
 
+};
+
+struct stats{
+	double swProb_U;
+	double swProb_EE;
+	double J2Jprob;
+	double unrate;
+	double findrate;
+	double seprate;
 };
 
 void allocate_pars( struct cal_params * par );
@@ -155,8 +165,10 @@ void init_vf( struct valfuns *vf ,struct cal_params * par);
 
 int draw_shocks(struct shocks * sk);
 
+// solve, simulate and compute sumary statistics
 int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, struct shocks * sk);
 int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk );
+int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk, struct stats *st  );
 
 int main() {
 
@@ -168,6 +180,8 @@ int main() {
 	struct polfuns pf;
 	struct shocks sk;
 	struct hists ht;
+
+	struct stats st;
 
 	allocate_mats(&vf,&pf,&ht,&sk);
 	allocate_pars(&par);
@@ -243,8 +257,8 @@ int main() {
 	par.alphaU0 = 0.5*pow((double)(JJ-1),-par.alphaU1);
 	par.lambdaU0  = 0.4 / 0.5;
 	par.lambdaES0 = 0.03;
-	par.lambdaEM0 = 0.3;
-	par.kappa     = 0.5 ;
+	par.lambdaEM0 = 0.8;
+	par.kappa     = 0.1 ;
 	par.gdfthr    = 0.5 ;
 	par.wage_curve= 1.5 ;
 	par.delta_Acoef = 0.;
@@ -282,6 +296,17 @@ int main() {
 
 	success = sim(&par, &vf, &pf, &ht, &sk);
 	if(verbose>2 && success != 0) printf("Problem simulating model\n");
+
+	success = sum_stats(&par,&vf,&pf,&ht,&sk, &st);
+
+	if(verbose>=2){
+		printf(" unemployment rate is %f \n", st.unrate);
+		printf(" J2J rate is %f  \n", st.J2Jprob);
+		printf(" finding and separation rates are %f, %f  \n", st.findrate, st.seprate);
+		printf(" occupation switching rates conditional on EE or EUE are %f, %f  \n", st.swProb_EE, st.swProb_U);
+
+
+	}
 
 	free_mats(&vf,&pf,&ht,&sk);
 	free_pars(&par);
@@ -569,14 +594,11 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 	gsl_matrix ** swprob_hist = malloc(sizeof(gsl_matrix *)*Npaths);
 	gsl_matrix ** WE_hist = malloc(sizeof(gsl_matrix *)*Npaths);
 	gsl_matrix ** WU_hist = malloc(sizeof(gsl_matrix *)*Npaths);
-	gsl_matrix_int ** J2J_hist = malloc(sizeof(gsl_matrix_int *)*Npaths);
-
 
 	for(ll=0;ll<Npaths;ll++){
 		swprob_hist[ll] = gsl_matrix_calloc(Nsim,TT);
 		WE_hist[ll] = gsl_matrix_calloc(Nsim,TT);
 		WU_hist[ll] = gsl_matrix_calloc(Nsim,TT);
-		J2J_hist[ll] = gsl_matrix_int_calloc(Nsim,TT);
 	}
 
 	cmjprob[0] = par->jprob->data[0];
@@ -744,8 +766,8 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 								for(zi=0;zi<NZ;zi++){
 									if( gsl_matrix_get(sk->zsel[ll],i,ti) > cmzprob[zi] ) ++ xt[i][2] ;
 								}
-								if( gsl_matrix_get(sk->lambdaMsel[ll],i,ti)<  gsl_matrix_get(par->lambdaEM,ti,jt[i]) ){
-									gsl_matrix_int_set(J2J_hist[ll],i,ti,1);
+								if( gsl_matrix_get(sk->lambdaMsel[ll],i,ti)<  gsl_matrix_get(par->lambdaEM,ti,jt[i]) ) {
+									if(ti>=burnin) gsl_matrix_int_set(ht->J2Jhist[ll], i, ti-burnin, 1);
 									// draw a new theta
 									for(thi =xtm1[i][3];thi<NT;thi++) if( gsl_matrix_get( sk->thsel[ll],i,ti ) > cmtprob[thi] ) ++xt[i][3];
 									xt[i][3] = xt[i][3]>NT-1 ? NT-1: xt[i][3];
@@ -757,13 +779,13 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 							//WEm
 							if( gsl_matrix_get(sk->lambdaSsel[ll],i,ti) < gsl_matrix_get(par->lambdaES,ti,jt[i]) ) {
 								if (gsl_matrix_get(sk->lambdaUsel[ll], i, ti) <par->gdfthr) { //godfather (gamma) shock?
-									gsl_matrix_int_set(J2J_hist[ll], i, ti, 1);
+									if(ti>=burnin) gsl_matrix_int_set(ht->J2Jhist[ll], i, ti-burnin, 1);
 									xt[i][3] = 0;
 									for (thi = 0; thi < NT; thi++)
 										if (gsl_matrix_get(sk->thsel[ll], i, ti) > cmtprob[thi])++xt[i][3];
 									xt[i][3] = xt[i][3] > NT - 1 ? NT - 1 : xt[i][3];
 								}else {
-									gsl_matrix_int_set(J2J_hist[ll], i, ti, 1);
+									if(ti>=burnin) gsl_matrix_int_set(ht->J2Jhist[ll], i, ti-burnin, 1);
 									for (thi = xtm1[i][3]; thi < NT; thi++)
 										if (gsl_matrix_get(sk->thsel[ll], i, ti) > cmtprob[thi])++xt[i][3];
 									xt[i][3] = xt[i][3] > NT - 1 ? NT - 1 : xt[i][3];
@@ -848,7 +870,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 			printmat("swprob_hist.csv", swprob_hist[ll],append );
 			printmat("WUhist.csv", WU_hist[ll],append );
 			printmat("WEhist.csv", WE_hist[ll],append );
-			printmat_int("J2Jhist.csv", J2J_hist[ll],append );
+			printmat_int("J2Jhist.csv", ht->J2Jhist[ll],append );
 			append = 1;
 		}
 	}
@@ -856,12 +878,74 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 	for(ll=0;ll<Npaths;ll++){
 		gsl_matrix_free(swprob_hist[ll]);
 		gsl_matrix_free(WE_hist[ll]);gsl_matrix_free(WU_hist[ll]);
-		gsl_matrix_int_free(J2J_hist[ll]);
 	}
 	free(swprob_hist);
 	free(WE_hist);
 	free(WU_hist);
-	free(J2J_hist);
+
+}
+
+int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk, struct stats *st  ){
+
+	int ll, i,ti;
+
+	int Nemp=0, Nunemp = 0, Nfnd =0, Nsep =0, NswU = 0, NswE=0, NJ2J=0, Nspell=0;
+
+	double * w_stns = malloc(sizeof(double) *Nsim*TT*Npaths );
+	double * w_stsw = malloc(sizeof(double) *Nsim*TT*Npaths );
+	double * w_EEsw = malloc(sizeof(double) *Nsim*TT*Npaths );
+
+
+#pragma parallel for private(ll,ti,i) reduction( +: Nemp ) reduction( +:Nunemp) reduction( +: Nfnd) reduction( +: Nsep) reduction( +: NswU) reduction( +: NswE) reduction( +: Nspell)
+	for(ll=0;ll<Npaths;ll++){
+
+		int Nemp_ll = 0, Nunemp_ll = 0, Nfnd_ll =0, Nsep_ll = 0, NswU_ll = 0, NswE_ll=0, NJ2J_ll=0,Nspell_ll=0;
+		int sw_spell=0,uspell=0;
+		for(i=0;i<Nsim;i++){
+			for(ti=0;ti<TT-1;ti++){
+				if( gsl_matrix_int_get(ht->uhist[ll],i,ti) ==0 ){
+					Nemp_ll += 1;
+					if( gsl_matrix_int_get(ht->uhist[ll],i,ti+1) ==1 ){
+						Nsep_ll +=1;
+						sw_spell = 0;
+						uspell =0;
+					}
+					if( gsl_matrix_int_get(ht->J2Jhist[ll],i,ti+1) ==1 ){
+						NJ2J_ll +=1;
+						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) ) NswE_ll +=1;
+					}
+				}else{
+					Nunemp_ll +=1;
+					if (uspell ==0){ // first period in unemployment for this spell
+						uspell = 1;
+						Nspell_ll += 1;
+					}
+					if( gsl_matrix_int_get(ht->uhist[ll],i,ti+1) ==0 ) Nfnd_ll +=1;
+
+					if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) && sw_spell == 0 ){
+						NswU_ll +=1; sw_spell = 1; //only count the switch once per unemployment spell
+					}
+				}
+			}
+		}
+
+		Nemp += Nemp_ll;
+		Nunemp += Nunemp_ll;
+		Nfnd += Nfnd_ll;
+		Nsep += Nsep_ll;
+		NswU += NswU_ll;
+		NswE += NswE_ll;
+		NJ2J += NJ2J_ll;
+		Nspell += Nspell_ll;
+	}
+
+	st->J2Jprob  = (double) NJ2J / (double) Nemp ;
+	st->findrate = (double) Nfnd / (double) Nunemp;
+	st->seprate  = (double) Nsep / (double) Nemp ;
+	st->swProb_EE = (double) NswE / (double) NJ2J;
+	st->swProb_U = (double) NswU / (double) Nspell;
+	st->unrate =  (double) Nunemp / (double) ( Nunemp + Nemp );
+
 
 }
 
@@ -999,8 +1083,9 @@ void alloc_hists( struct hists *ht ){
 	ht->uhist = malloc(sizeof(gsl_matrix_int *)*Npaths);
 	ht->whist = malloc(sizeof(gsl_matrix      *)*Npaths);
 	ht->jhist = malloc(sizeof(gsl_matrix_int *)*Npaths);
-	ht->Ahist = malloc(sizeof(gsl_vector_int *)    *Npaths);
-	ht->Phist = malloc(sizeof(gsl_matrix_int *)    *Npaths);
+	ht->Ahist = malloc(sizeof(gsl_vector_int *)   *Npaths);
+	ht->Phist = malloc(sizeof(gsl_matrix_int *)   *Npaths);
+	ht->J2Jhist = malloc(sizeof(gsl_matrix_int *) *Npaths);
 
 	for(ll=0;ll<Npaths;ll++){
 		ht->uhist[ll] = gsl_matrix_int_calloc(Nsim,TT);
@@ -1010,6 +1095,7 @@ void alloc_hists( struct hists *ht ){
 		ht->jhist[ll] = gsl_matrix_int_calloc(Nsim,TT);
 		ht->Ahist[ll] = gsl_vector_int_calloc(TT);
 		ht->Phist[ll] = gsl_matrix_int_calloc(Nsim,TT);
+		ht->J2Jhist[ll] = gsl_matrix_int_calloc(Nsim,TT);
 	}
 }
 
@@ -1102,6 +1188,7 @@ void free_hists( struct hists *ht ){
 		gsl_matrix_int_free(ht->jhist[ll]);
 		gsl_vector_int_free(ht->Ahist[ll]);
 		gsl_matrix_int_free(ht->Phist[ll]);
+		gsl_matrix_int_free(ht->J2Jhist[ll]);
 	}
 
 	free(ht->uhist);
@@ -1112,6 +1199,8 @@ void free_hists( struct hists *ht ){
 	free(ht->jhist);
 	free(ht->Ahist);
 	free(ht->Phist);
+	free(ht->J2Jhist);
+
 
 
 }
