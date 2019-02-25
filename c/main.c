@@ -937,7 +937,15 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		NswSt  += NswSt_ll;
 	}
 
-	double * w_stns = malloc(sizeof(double) *(Nemp-Nsep-NJ2J-NswSt) );
+    st->J2Jprob  = (double) NJ2J / (double) Nemp ;
+    st->findrate = (double) Nfnd / (double) Nunemp;
+    st->seprate  = (double) Nsep / (double) Nemp ;
+    st->swProb_EE = (double) NswE / (double) NJ2J;
+    st->swProb_U = (double) NswU / (double) Nspell;
+    st->unrate =  (double) Nunemp / (double) ( Nunemp + Nemp );
+
+
+    double * w_stns = malloc(sizeof(double) *(Nemp-Nsep-NJ2J-NswSt) );
 	double * w_stsw = malloc(sizeof(double) *(NswSt) );
 	double * w_EEsw = malloc(sizeof(double) *(NswE) );
 	double * w_EEns = malloc(sizeof(double) *(NJ2J - NswE) );
@@ -955,8 +963,8 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		double wlast =0., wnext=0.;
 		for(i=0;i<Nsim;i++){
 			for(ti=3;ti<TT-3;ti++){
-				wlast += gsl_matrix_get( ht->whist[ll] ,i,ti-1) + gsl_matrix_get( ht->whist[ll] ,i,ti-2)+ gsl_matrix_get( ht->whist[ll] ,i,ti-3);
-				wnext += gsl_matrix_get( ht->whist[ll] ,i,ti) + gsl_matrix_get( ht->whist[ll] ,i,ti+1)+ gsl_matrix_get( ht->whist[ll] ,i,ti+2);
+				wlast = gsl_matrix_get( ht->whist[ll] ,i,ti-1) + gsl_matrix_get( ht->whist[ll] ,i,ti-2)+ gsl_matrix_get( ht->whist[ll] ,i,ti-3);
+				wnext = gsl_matrix_get( ht->whist[ll] ,i,ti) + gsl_matrix_get( ht->whist[ll] ,i,ti+1)+ gsl_matrix_get( ht->whist[ll] ,i,ti+2);
 
 				double w_EU;
 				if( gsl_matrix_int_get(ht->uhist[ll],i,ti) ==0 ){
@@ -968,18 +976,22 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 					if( gsl_matrix_int_get(ht->J2Jhist[ll],i,ti+1) ==1 ){
 
 						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) ){
-
+                            w_EEsw[idx_EEsw] = wnext - wlast;
+                            idx_EEsw ++;
 						}else{
-							
+                            w_EEns[idx_EEns] = wnext - wlast;
+                            idx_EEns ++;
 						}
 					}else{  // not EE
 						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) ){
-
+                            w_stsw[idx_stsw] = wnext - wlast;
+						    idx_stsw ++;
 						}else{
-
+                            w_stns[idx_stns] = wnext - wlast;
+                            idx_stns ++;
 						}
 					}
-				}else{ //employed
+				}else{ //unemployed
 
 					if (uspell ==0){ // first period in unemployment for this spell
 						uspell = 1;
@@ -1008,15 +1020,6 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		}
 
 	}
-
-
-
-	st->J2Jprob  = (double) NJ2J / (double) Nemp ;
-	st->findrate = (double) Nfnd / (double) Nunemp;
-	st->seprate  = (double) Nsep / (double) Nemp ;
-	st->swProb_EE = (double) NswE / (double) NJ2J;
-	st->swProb_U = (double) NswU / (double) Nspell;
-	st->unrate =  (double) Nunemp / (double) ( Nunemp + Nemp );
 
 
 	free(w_stns);free(w_stsw);free(w_EEns);free(w_EEsw);free(w_EUns);free(w_EUsw);free(w_UEns);free(w_UEsw);
