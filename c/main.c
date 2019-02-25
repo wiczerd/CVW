@@ -170,6 +170,19 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk );
 int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk, struct stats *st  );
 
+int static inline ggi_get( gsl_matrix_int * mat, int ri ,int ci){
+	return gsl_matrix_int_get( mat, (size_t) ri, (size_t) ci );
+}
+double static inline gg_get( gsl_matrix * mat, int ri ,int ci){
+	return gsl_matrix_get( mat, (size_t) ri, (size_t) ci );
+}
+void static inline ggi_set( gsl_matrix_int * mat, int ri ,int ci, int val){
+	gsl_matrix_int_set( mat, (size_t) ri, (size_t) ci , val);
+}
+void static inline gg_set( gsl_matrix * mat, int ri ,int ci, double val){
+	gsl_matrix_set( mat, (size_t) ri, (size_t) ci , val);
+}
+
 int main() {
 
 	int i,ii,ji;
@@ -192,22 +205,21 @@ int main() {
 
 	for(i=0;i<JJ;i++){
 		gsl_matrix_set_all(par.Ptrans[i], 0.05/( (double)NP-1. ));
-		for(ii=0;ii<NP;ii++)gsl_matrix_set(par.Ptrans[i],ii,ii, 0.95);
-		gsl_matrix_set(par.Ptrans[i],0,NP-1, 0.);gsl_matrix_set(par.Ptrans[i],NP-1,0, 0.);
+		for(ii=0;ii<NP;ii++)gg_set(par.Ptrans[i],ii,ii, 0.95);
+		gg_set(par.Ptrans[i],0,NP-1, 0.);gg_set(par.Ptrans[i],NP-1,0, 0.);
 
 		int ri,ci;
 		for(ri=0;ri<NP;ri++){
 			double rsum =0.;
-			for(ci=0;ci<NP;ci++)rsum += gsl_matrix_get(par.Ptrans[i],ri,ci);
+			for(ci=0;ci<NP;ci++)rsum += gg_get(par.Ptrans[i],ri,ci);
 			gsl_vector_view Pr = gsl_matrix_row( par.Ptrans[i],ri);
 			gsl_vector_scale(& Pr.vector,1./rsum);
 		}
-
 	}
 	gsl_matrix_set_all(par.Atrans, 0.025/( (double)NA-1. ));
-	for(ii=0;ii<NA;ii++) gsl_matrix_set(par.Atrans,ii,ii,0.975);
+	for(ii=0;ii<NA;ii++) gg_set(par.Atrans,ii,ii,0.975);
 	gsl_matrix_set_all(par.xGtrans, 0.025/( (double)NG-1. ));
-	for(ii=0;ii<NG;ii++) gsl_matrix_set(par.xGtrans,ii,ii,0.975);
+	for(ii=0;ii<NG;ii++) gg_set(par.xGtrans,ii,ii,0.975);
 	gsl_matrix_view ztransLower =gsl_matrix_submatrix(par.ztrans,1,1,NZ-1,NZ-1);
 	gsl_vector_view zlevLower = gsl_vector_subvector(par.zlev,1,NZ-1);
 	gsl_vector_view zprobLower = gsl_vector_subvector(par.zprob,1,NZ-1);
@@ -218,8 +230,8 @@ int main() {
 	gsl_vector_set(par.zlev,0,5*par.zlev->data[1]);
 	gsl_vector_set(par.zprob,0,0.);
 	for(ii=0;ii<NZ;ii++){
-		gsl_matrix_set(par.ztrans,ii,0,par.zloss);
-		gsl_matrix_set(par.ztrans,0,ii,gsl_vector_get(par.zprob,ii));
+		gg_set(par.ztrans,ii,0,par.zloss);
+		gg_set(par.ztrans,0,ii,gsl_vector_get(par.zprob,ii));
 		gsl_vector_view zrow = gsl_matrix_row(par.ztrans,ii);
 		if(ii>0){
 			double zrowsum = 0;
@@ -233,7 +245,7 @@ int main() {
 	//for(ii=0;ii<NZ;ii++) gsl_matrix_set(par.ztrans,ii,ii,0.975);
 
 	gsl_matrix_set_all(par.xStrans,.025/( (double)NS-1.) );
-	for(ii=0;ii<NS;ii++) gsl_matrix_set(par.xStrans,ii,ii,.975);
+	for(ii=0;ii<NS;ii++) gg_set(par.xStrans,ii,ii,.975);
 	gsl_vector_set_all(par.tprob, 1./(double) NT);
 	gsl_vector_set_all(par.zprob, 1./((double) NZ));
 	gsl_vector_set_all(par.AloadP,1.0);
@@ -347,14 +359,14 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 	for(ji=0;ji<JJ;ji++) {
 		for (ii = 0; ii < NN; ii++) {
-			gsl_matrix_set(vf0.WE, ii, ji,
+			gg_set(vf0.WE, ii, ji,
 			               wagevec[ii][ji] / (1. - beta));
 		}
 	}
 	for(ii=0;ii<NUN;ii++){
-		gsl_matrix_set(vf0.WU,ii,0,
+		gg_set(vf0.WU,ii,0,
 		               (1.-par->lambdaU0)*b/(1.-beta) + par->lambdaU0*wagevec[ii*NT+NT/2][0]/(1.-beta));
-		for(ji=1;ji<JJ;ji++)  gsl_matrix_set(vf0.WU,ii,ji, gsl_matrix_get(vf0.WU,ii,0));
+		for(ji=1;ji<JJ;ji++)  gg_set(vf0.WU,ii,ji, gg_get(vf0.WU,ii,0));
 	}
 
 
@@ -378,9 +390,9 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				double EAPWE = 0.;
 				int aai, ppi;
 				for(aai=0;aai<NA;aai++){
-					for(ppi=0;ppi<NP;ppi++)  EAPWE += gsl_max(gsl_matrix_get( vf0.WE,  aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + si*NZ*NT +zi*NT+ ti ,ji),
-					                                          gsl_matrix_get( vf0.WU,  aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + si*NZ    +zi        ,ji))*
-							gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
+					for(ppi=0;ppi<NP;ppi++)  EAPWE += gsl_max(gg_get( vf0.WE,  aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + si*NZ*NT +zi*NT+ ti ,ji),
+					                                          gg_get( vf0.WU,  aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + si*NZ    +zi        ,ji))*
+							gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
 				}
 
 				double EtTWE = 0.;
@@ -390,9 +402,9 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				for(aai=0;aai<NA;aai++){
 					for(ppi=0;ppi<NP;ppi++){
 						for(tti=ti;tti<NT;tti++)
-							EtTWE +=  gsl_max(gsl_matrix_get(vf0.WE, aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + si*NZ*NT +zi*NT+ tti ,ji) ,
-							                  gsl_matrix_get(vf0.WU, aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + si*NZ    +zi         ,ji))*
-									gsl_vector_get(par->tprob,tti)/ttiprod *gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
+							EtTWE +=  gsl_max(gg_get(vf0.WE, aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + si*NZ*NT +zi*NT+ tti ,ji) ,
+							                  gg_get(vf0.WU, aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + si*NZ    +zi         ,ji))*
+									gsl_vector_get(par->tprob,tti)/ttiprod *gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
 					}
 				}
 				double EtWE = 0.;
@@ -400,9 +412,9 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 					for (ppi = 0; ppi < NP; ppi++) {
 
 						for (tti = 0; tti < NT; tti++)
-							EtWE += gsl_max(gsl_matrix_get(vf0.WE, aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT + gi*NS*NZ*NT + si*NZ*NT + zi*NT + tti, ji) ,
-									        gsl_matrix_get(vf0.WU, aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ    + gi*NS*NZ    + si*NZ    + zi         , ji))*
-							        par->tprob->data[tti]*gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
+							EtWE += gsl_max(gg_get(vf0.WE, aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT + gi*NS*NZ*NT + si*NZ*NT + zi*NT + tti, ji) ,
+									        gg_get(vf0.WU, aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ    + gi*NS*NZ    + si*NZ    + zi         , ji))*
+							        par->tprob->data[tti]*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
 					}
 				}
 
@@ -418,11 +430,11 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 						for(aai=0;aai<NA;aai++){
 							for(ppi=0;ppi<NP;ppi++) {
 								for (zzi = 0; zzi < NZ; zzi++)
-									EzWE[jji] += gsl_max(gsl_matrix_get(vf0.WE,
+									EzWE[jji] += gsl_max(gg_get(vf0.WE,
 									                            aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT +gi*NS*NZ*NT + zzi*NT + ti, jji) ,
-									                     gsl_matrix_get(vf0.WU,
+									                     gg_get(vf0.WU,
 									                            aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ    +gi*NS*NZ    + zzi        , jji)  )*
-									             gsl_vector_get(par->zprob, zzi)*gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
+									             gsl_vector_get(par->zprob, zzi)*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
 
 							}
 						}
@@ -430,28 +442,28 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 							for(ppi=0;ppi<NP;ppi++) {
 								for(tti=0;tti<NT;tti++){
 									for(zzi=0;zzi<NZ;zzi++)
-										EztWE[jji] += gsl_max(gsl_matrix_get(vf0.WE,aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + zzi*NT + tti,jji) ,
-												              gsl_matrix_get(vf0.WU,aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + zzi         ,jji))*
-												(par->zprob->data[zzi])*(par->tprob->data[tti])*gsl_matrix_get(par->Atrans,(size_t)ai,(size_t)aai)*gsl_matrix_get(par->Ptrans[ji],(size_t)pi,(size_t)ppi);
+										EztWE[jji] += gsl_max(gg_get(vf0.WE,aai*NP*NG*NS*NZ*NT + ppi*NG*NS*NZ*NT+ gi*NS*NZ*NT + zzi*NT + tti,jji) ,
+												              gg_get(vf0.WU,aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + zzi         ,jji))*
+												(par->zprob->data[zzi])*(par->tprob->data[tti])*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
 								}
 							}
 						}
 
 						// constructing RE
-						REhr += par->alphaE0* pow( gsl_matrix_get( pf->sE[jji],ii,ji),1.-par->alphaE1)*(par->lambdaEM0*EztWE[jji] +(1.-par->lambdaEM0)*EzWE[jji] ) ;
+						REhr += par->alphaE0* pow( gg_get( pf->sE[jji],ii,ji),1.-par->alphaE1)*(par->lambdaEM0*EztWE[jji] +(1.-par->lambdaEM0)*EzWE[jji] ) ;
 
 					}
 				}
 				double totalphaS = 0;
 				for(jji=0;jji<JJ;jji++){
-					if(jji!=ji) totalphaS += par->alphaE0*pow(gsl_matrix_get(pf->sE[jji],ii,ji),1.-par->alphaE1);
+					if(jji!=ji) totalphaS += par->alphaE0*pow(gg_get(pf->sE[jji],ii,ji),1.-par->alphaE1);
 				}
 				REhr +=   (1. - gsl_min( totalphaS,1. ))* EAPWE;
 
-				gsl_matrix_set( vf->RE,ii,ji,REhr);
+				gg_set( vf->RE,ii,ji,REhr);
                 double mhr = exp((REhr-EAPWE)/rhotightening)/
                              ( exp((REhr-EAPWE)/rhotightening)+ 1.);
-				gsl_matrix_set( pf->mE,ii,ji, mhr );
+				gg_set( pf->mE,ii,ji, mhr );
 
 				//set search direction for next iteration:
 				double sEjiDenom = 0.;
@@ -460,23 +472,23 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				}
 				for(jji=0;jji<JJ;jji++){
 					if(jji!=ji){
-						gsl_matrix_set(pf->sE[jji] ,ii,ji, pow(-par->kappa+ par->lambdaEM0*EztWE[jji] + (1.-par->lambdaEM0)*EzWE[jji]- EAPWE , 1/par->alphaE1)/sEjiDenom);
+						gg_set(pf->sE[jji] ,ii,ji, pow(-par->kappa+ par->lambdaEM0*EztWE[jji] + (1.-par->lambdaEM0)*EzWE[jji]- EAPWE , 1/par->alphaE1)/sEjiDenom);
 					}else{ // this is kind of redundant because it should have initialized to 0
-						gsl_matrix_set(pf->sE[jji] ,ii,ji, 0.);
+						gg_set(pf->sE[jji] ,ii,ji, 0.);
 					}
 				}
 
 
 				// update the value function
-				double WEhr = wagevec[ii][ji] + beta*delta_hr*gsl_matrix_get(vf0.WU,iU,ji) +
+				double WEhr = wagevec[ii][ji] + beta*delta_hr*gg_get(vf0.WU,iU,ji) +
 				              beta*(1.- delta_hr )*(
-				              		gsl_matrix_get(pf->mE,ii,ji)*gsl_matrix_get( vf->RE,ii,ji) +
-				              		(1.-gsl_matrix_get(pf->mE,ii,ji))*(par->gdfthr*par->lambdaES0*EtWE + (1.-par->gdfthr)*par->lambdaES0*EtTWE+
+				              		gg_get(pf->mE,ii,ji)*gg_get( vf->RE,ii,ji) +
+				              		(1.-gg_get(pf->mE,ii,ji))*(par->gdfthr*par->lambdaES0*EtWE + (1.-par->gdfthr)*par->lambdaES0*EtTWE+
 				                                                (1.-par->lambdaES0)*EAPWE )  );
 
-				gsl_matrix_set( vf->WE, ii,ji,WEhr);
+				gg_set( vf->WE, ii,ji,WEhr);
 
-				gsl_matrix_set( vf-> WEdist, ii,ji, gsl_matrix_get(vf->WE,ii,ji) - gsl_matrix_get(vf0.WE,ii,ji) );
+				gg_set( vf-> WEdist, ii,ji, gg_get(vf->WE,ii,ji) - gg_get(vf0.WE,ii,ji) );
 
 
 			} // OMP loop over state ii
@@ -498,8 +510,8 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				double EAPWU = 0.;
 				for(aai=0;aai<NA;aai++){
 					for(ppi=0;ppi<NP;ppi++) {
-						EAPWU += gsl_matrix_get(vf0.WU, aai*NP*NG*NS*NZ+ppi*NG*NS*NZ+gi*NS*NZ + si*NZ + zi,ji)*
-								gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[ji],pi,ppi);
+						EAPWU += gg_get(vf0.WU, aai*NP*NG*NS*NZ+ppi*NG*NS*NZ+gi*NS*NZ + si*NZ + zi,ji)*
+								gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
 					}
 				}
 				double EzWU[JJ];
@@ -510,30 +522,30 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 						for(aai=0;aai<NA;aai++){
 							for(ppi=0;ppi<NP;ppi++) {
 								for( zzi=0;zzi<NZ;zzi++ )
-									EzWU[jji] += gsl_matrix_get(vf0.WU, aai*NP*NG*NS*NZ+ppi*NG*NS*NZ+gi*NS*NZ + zzi,jji)*
-											gsl_vector_get(par->zprob,zzi)*gsl_matrix_get(par->Atrans,ai,aai)*gsl_matrix_get(par->Ptrans[jji],pi,ppi);
+									EzWU[jji] += gg_get(vf0.WU, aai*NP*NG*NS*NZ+ppi*NG*NS*NZ+gi*NS*NZ + zzi,jji)*
+											gsl_vector_get(par->zprob,zzi)*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[jji],pi,ppi);
 							}
 						}
 					}
-					RUhr += par-> alphaU0*pow(gsl_matrix_get(pf->sU[jji],ii,ji),1.-par->alphaU1 )*EzWU[jji];
+					RUhr += par-> alphaU0*pow(gg_get(pf->sU[jji],ii,ji),1.-par->alphaU1 )*EzWU[jji];
 				}
 				double totalalphaS = 0;
 				for(jji=0;jji<JJ;jji++)
-					totalalphaS += par-> alphaU0*pow(gsl_matrix_get(pf->sU[jji],ii,ji),1.-par->alphaU1 );
+					totalalphaS += par-> alphaU0*pow(gg_get(pf->sU[jji],ii,ji),1.-par->alphaU1 );
 				RUhr += (1.-totalalphaS )*EAPWU;
-				gsl_matrix_set(vf->RU, ii,ji, RUhr);
+				gg_set(vf->RU, ii,ji, RUhr);
 
 				double EtWE=0;
 				for(aai=0;aai<NA;aai++){
 					for(ppi=0;ppi<NP;ppi++) {
 						for(tti=0;tti<NT;tti++){
 							int iihr = aai*NP*NG*NS*NZ*NT+ppi*NG*NS*NZ*NT+gi*NS*NZ*NT+si*NZ*NT+zi*NT+tti;
-							EtWE += gsl_max(gsl_matrix_get(vf0.WE, (size_t)iihr, (size_t)ji), vf0.WU->data[ii*vf0.WU->tda+ji] )*
-							        gsl_vector_get(par->tprob,(size_t)tti)*gsl_matrix_get(par->Atrans,(size_t)ai,(size_t)aai)*gsl_matrix_get(par->Ptrans[ji], (size_t)pi, (size_t)ppi);}
+							EtWE += gsl_max(gg_get(vf0.WE, iihr, ji), vf0.WU->data[ii*vf0.WU->tda+ji] )*
+							        gsl_vector_get(par->tprob,tti)*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji], pi, ppi);}
 					}
 				}
 
-				gsl_matrix_set(pf->mU,ii,ji, exp(RUhr/rhotightening-((1.-par->lambdaU0)*EAPWU+
+				gg_set(pf->mU,ii,ji, exp(RUhr/rhotightening-((1.-par->lambdaU0)*EAPWU+
                                                        par->lambdaU0*gsl_max(EtWE,EAPWU)  )/rhotightening)/
                         (exp(RUhr/rhotightening-((1.-par->lambdaU0)*EAPWU+
                                                 par->lambdaU0*gsl_max(EtWE,EAPWU)  )/rhotightening)+1.) );
@@ -544,13 +556,13 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				}
 				for(jji=0;jji<JJ;jji++){
 					if(jji!=ji){
-						gsl_matrix_set(pf->sU[jji],ii,ji,pow(-par->kappa + EzWU[jji] - EAPWU ,1./par->alphaU1)/sUdenom );
+						gg_set(pf->sU[jji],ii,ji,pow(-par->kappa + EzWU[jji] - EAPWU ,1./par->alphaU1)/sUdenom );
 					}else{//this is kind of redundant, because it should have initialized to 0
-						gsl_matrix_set(pf->sU[jji],ii,ji,0.);
+						gg_set(pf->sU[jji],ii,ji,0.);
 					}
 				}
 
-				gsl_matrix_set( vf->WU, ii, ji, b + beta*( pf->mU->data[ii*pf->mU->tda + ji]*vf->RU->data[ii*vf->RU->tda+ji] +
+				gg_set( vf->WU, ii, ji, b + beta*( pf->mU->data[ii*pf->mU->tda + ji]*vf->RU->data[ii*vf->RU->tda+ji] +
 						(1.-pf->mU->data[ii*pf->mU->tda + ji])*( (1.-par->lambdaU0)*EAPWU + par->lambdaU0*EtWE ) ) );
 
 			}
@@ -614,8 +626,8 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 		gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,1.,par->xGtrans,xtrans2,0.,xGprob);
 		gsl_matrix_memcpy(xtrans2,xGprob);
 	}
-	cmxGprob[0]=gsl_matrix_get(xGprob,0,0);
-	for(i=0;i<NG-1;i++) cmxGprob[i+1] = gsl_matrix_get(xGprob,0,i+1) + cmxGprob[i];
+	cmxGprob[0]=gg_get(xGprob,0,0);
+	for(i=0;i<NG-1;i++) cmxGprob[i+1] = gg_get(xGprob,0,i+1) + cmxGprob[i];
 	gsl_matrix_free(xtrans2);gsl_matrix_free(xGprob);
 
 	gsl_matrix * xStrans2 = gsl_matrix_calloc(NS,NS);
@@ -625,26 +637,26 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 		gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,1.,par->xStrans,xStrans2,0.,xSprob);
 		gsl_matrix_memcpy(xStrans2,xSprob);
 	}
-	cmxSprob[0]=gsl_matrix_get(xSprob,0,0);
-	for(i=0;i<NS-1;i++) cmxSprob[i+1] = gsl_matrix_get(xSprob,0,i+1) + cmxSprob[i];
+	cmxSprob[0]=gg_get(xSprob,0,0);
+	for(i=0;i<NS-1;i++) cmxSprob[i+1] = gg_get(xSprob,0,i+1) + cmxSprob[i];
 	gsl_matrix_free(xSprob);gsl_matrix_free(xStrans2);
 
 	for(ji=0;ji<JJ;ji++){
 		for(i=0;i<NP;i++){
-			for(ti=0;ti<NP;ti++) cmPtrans[ji][i][ti] = ti>0 ? cmPtrans[ji][i][ti-1] + gsl_matrix_get(par->Ptrans[ji],i,ti) : gsl_matrix_get(par->Ptrans[ji],i,ti);
+			for(ti=0;ti<NP;ti++) cmPtrans[ji][i][ti] = ti>0 ? cmPtrans[ji][i][ti-1] + gg_get(par->Ptrans[ji],i,ti) : gg_get(par->Ptrans[ji],i,ti);
 		}
 	}
 	for(i=0;i<NA;i++){
-		for(ti=0;ti<NA;ti++) cmAtrans[i][ti] = ti>0 ? gsl_matrix_get(par->Atrans,i,ti) + cmAtrans[i][ti-1]: gsl_matrix_get(par->Atrans,i,ti) ;
+		for(ti=0;ti<NA;ti++) cmAtrans[i][ti] = ti>0 ? gg_get(par->Atrans,i,ti) + cmAtrans[i][ti-1]: gg_get(par->Atrans,i,ti) ;
 	}
 	for(i=0;i<NZ;i++){
-		for(ti=0;ti<NZ;ti++) cmztrans[i][ti] = ti>0 ? gsl_matrix_get(par->ztrans,i,ti) + cmztrans[i][ti-1] : gsl_matrix_get(par->ztrans,i,ti);
+		for(ti=0;ti<NZ;ti++) cmztrans[i][ti] = ti>0 ? gg_get(par->ztrans,i,ti) + cmztrans[i][ti-1] : gg_get(par->ztrans,i,ti);
 	}
 	for(i=0;i<NG;i++){
-		for(ti=0;ti<NG;ti++) cmxGtrans[i][ti] = ti>0 ? gsl_matrix_get(par->xGtrans,i,ti) + cmxGtrans[i][ti-1] : gsl_matrix_get(par->xGtrans,i,ti);
+		for(ti=0;ti<NG;ti++) cmxGtrans[i][ti] = ti>0 ? gg_get(par->xGtrans,i,ti) + cmxGtrans[i][ti-1] : gg_get(par->xGtrans,i,ti);
 	}
 	for(i=0;i<NS;i++){
-		for(ti=0;ti<NS;ti++) cmxStrans[i][ti] = ti>0 ? gsl_matrix_get(par->xStrans,i,ti) + cmxStrans[i][ti-1] : gsl_matrix_get(par->xStrans,i,ti);
+		for(ti=0;ti<NS;ti++) cmxStrans[i][ti] = ti>0 ? gg_get(par->xStrans,i,ti) + cmxStrans[i][ti-1] : gg_get(par->xStrans,i,ti);
 	}
 
 	#pragma omp parallel for private(i,ti,ll,ji) firstprivate(cmzprob,cmtprob,cmjprob,cmAtrans,cmPtrans,cmxGtrans,cmxStrans,cmztrans)
@@ -673,17 +685,17 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 		// initial allocation for all these guys
 		for(i=0;i<Nsim;i++) {
 			jt[i] = 0;
-			for (ji = 0; ji < JJ; ji++) if (gsl_matrix_get(sk->jsel[ll], i, 0) > cmjprob[ji]) ++ jt[i] ;
+			for (ji = 0; ji < JJ; ji++) if (gg_get(sk->jsel[ll], i, 0) > cmjprob[ji]) ++ jt[i] ;
 			xt[i][0] = 0;
-			for (gi = 0; gi < NG; gi++) if (gsl_matrix_get(sk->xGsel[ll], i, 0) > cmxGprob[gi]) ++ xt[i][0] ;
+			for (gi = 0; gi < NG; gi++) if (gg_get(sk->xGsel[ll], i, 0) > cmxGprob[gi]) ++ xt[i][0] ;
 			xt[i][1] = 0;
-			for (si = 0; si < NS; si++) if (gsl_matrix_get(sk->xSsel[ll], i, 0) > cmxSprob[si]) ++ xt[i][1] ;
+			for (si = 0; si < NS; si++) if (gg_get(sk->xSsel[ll], i, 0) > cmxSprob[si]) ++ xt[i][1] ;
 			xt[i][2] =0;
-			for(zi=0;zi<NZ;zi++) if( gsl_matrix_get(sk->zsel[ll],i,0) > cmzprob[zi] ) ++ xt[i][2] ;
+			for(zi=0;zi<NZ;zi++) if( gg_get(sk->zsel[ll],i,0) > cmzprob[zi] ) ++ xt[i][2] ;
 			xt[i][3] =0;
-			for(thi=0;thi<NT;thi++) if( gsl_matrix_get(sk->thsel[ll],i,0) > cmtprob[thi] ) ++ xt[i][3] ;
+			for(thi=0;thi<NT;thi++) if( gg_get(sk->thsel[ll],i,0) > cmtprob[thi] ) ++ xt[i][3] ;
 
-			if( gsl_matrix_get( sk->lambdaUsel[ll],i,0) <  urt_avg ){
+			if( gg_get( sk->lambdaUsel[ll],i,0) <  urt_avg ){
 				ut[i] =1;
 			}else{
 				ut[i] =0;
@@ -698,7 +710,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 			for(ji=0;ji<JJ;ji++) {
 				Ptm1[ji] = Pt[ji];
 				Pt[ji]=0;
-				for(ai=0;ai<NP;ai++) if(gsl_matrix_get(sk->Psel[ll],ti,ji) > cmPtrans[ji][Ptm1[ji]][ai]) ++Pt[ji];
+				for(ai=0;ai<NP;ai++) if(gg_get(sk->Psel[ll],ti,ji) > cmPtrans[ji][Ptm1[ji]][ai]) ++Pt[ji];
 			}
 			for(i=0;i<Nsim;i++){
 				jtm1[i] = jt[i];
@@ -706,11 +718,11 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 				// increment individual specific shocks:
 				for(xi=0;xi<4;xi++) xtm1[i][xi] = xt[i][xi];
 				xt[i][0] = 0;
-				for (gi = 0; gi < NG; gi++) if (gsl_matrix_get(sk->xGsel[ll], i, 0) > cmxGtrans[xtm1[i][0]][gi]) ++ xt[i][0] ;
+				for (gi = 0; gi < NG; gi++) if (gg_get(sk->xGsel[ll], i, 0) > cmxGtrans[xtm1[i][0]][gi]) ++ xt[i][0] ;
 				xt[i][1] = 0;
-				for (si = 0; si < NS; si++) if (gsl_matrix_get(sk->xSsel[ll], i, 0) > cmxStrans[xtm1[i][1]][si]) ++ xt[i][1] ;
+				for (si = 0; si < NS; si++) if (gg_get(sk->xSsel[ll], i, 0) > cmxStrans[xtm1[i][1]][si]) ++ xt[i][1] ;
 				xt[i][2] =0;
-				for(zi=0;zi<NZ;zi++) if( gsl_matrix_get(sk->zsel[ll],i,0) > cmztrans[xtm1[i][2]][zi] ) ++ xt[i][2] ;
+				for(zi=0;zi<NZ;zi++) if( gg_get(sk->zsel[ll],i,0) > cmztrans[xtm1[i][2]][zi] ) ++ xt[i][2] ;
 				// xt[i][3]? no need to redraw theta unless later there's a job switch
 				xt[i][3] = xtm1[i][3];
 
@@ -719,13 +731,13 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 
 				//put the shocks in the history matrix
 				if(ti>=burnin){
-					for(xi=0;xi<4;xi++)	gsl_matrix_int_set(ht->xhist[ll][xi],i, ti-burnin,xtm1[i][xi]);
-					gsl_matrix_int_set(ht->uhist[ll],i,ti-burnin,ut[i]);
-					gsl_matrix_int_set(ht->jhist[ll],i,ti-burnin,jt[i]);
-					gsl_matrix_int_set(ht->Phist[ll],i,ti-burnin, Pt[jt[i]]);
+					for(xi=0;xi<4;xi++)	ggi_set(ht->xhist[ll][xi],i, ti-burnin,xtm1[i][xi]);
+					ggi_set(ht->uhist[ll],i,ti-burnin,ut[i]);
+					ggi_set(ht->jhist[ll],i,ti-burnin,jt[i]);
+					ggi_set(ht->Phist[ll],i,ti-burnin, Pt[jt[i]]);
 
-					gsl_matrix_set(WE_hist[ll],i,ti-burnin, gsl_matrix_get(vf->WE,ii,jt[i]));
-					gsl_matrix_set(WU_hist[ll],i,ti-burnin, gsl_matrix_get(vf->WU,iU,jt[i]));
+					gg_set(WE_hist[ll],i,ti-burnin, gg_get(vf->WE,ii,jt[i]));
+					gg_set(WU_hist[ll],i,ti-burnin, gg_get(vf->WU,iU,jt[i]));
 				}
 
 				//evaluate decision rules for the worker:
@@ -738,24 +750,24 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 						                    exp(par->zlev->data[xt[i][2]]) *
 						                    exp(par->tlev->data[xt[i][3]]), 1. - par->wage_curve) /
 						                (1. - par->wage_curve) + wage_lev;
-						gsl_matrix_set(ht->whist[ll], i, ti-burnin,wagehr);
+						gg_set(ht->whist[ll], i, ti-burnin,wagehr);
 					}
 					// employed workers' choices
 					double delta_hr =delta_avg + par->delta_Acoef * par->Alev->data[At];
-					if( delta_hr >gsl_matrix_get(sk->dsel[ll],i,ti) || gsl_matrix_get(vf->WU,iU,jt[i]) > gsl_matrix_get(vf->WE,ii,jt[i]) ){
+					if( delta_hr >gg_get(sk->dsel[ll],i,ti) || gg_get(vf->WU,iU,jt[i]) > gg_get(vf->WE,ii,jt[i]) ){
 						ut[i] = 1;
 					}else{
 						// stay or go?
-						if( ti>=burnin ) gsl_matrix_set(swprob_hist[ll],i,ti-burnin,  gsl_matrix_get(pf->mE,ii,jt[i]) );
-						if( gsl_matrix_get(pf->mE,ii,jt[i])>gsl_matrix_get(sk->msel[ll],i,ti) ){
+						if( ti>=burnin ) gg_set(swprob_hist[ll],i,ti-burnin,  gg_get(pf->mE,ii,jt[i]) );
+						if( gg_get(pf->mE,ii,jt[i])>gg_get(sk->msel[ll],i,ti) ){
 							//RE
 							double sij[JJ]; sij[0] =0.;
 
-							for(jji=0;jji<JJ;jji++) sij[jji] = jji > 0 ? sij[jji-1] + gsl_matrix_get(pf->sE[jji],ii,jt[i]) : gsl_matrix_get(pf->sE[jji],ii,jt[i]);
-							// successfully switched: if( gsl_matrix_get(sk->jsel[ll],i,ti) <  sij[JJ])
+							for(jji=0;jji<JJ;jji++) sij[jji] = jji > 0 ? sij[jji-1] + gg_get(pf->sE[jji],ii,jt[i]) : gg_get(pf->sE[jji],ii,jt[i]);
+							// successfully switched: if( gg_get(sk->jsel[ll],i,ti) <  sij[JJ])
 							jt[i] = 0;
 							for(jji=0;jji<JJ;jji++){
-								if (gsl_matrix_get(sk->jsel[ll], i, ti) > sij[jji]){
+								if (gg_get(sk->jsel[ll], i, ti) > sij[jji]){
 									jt[i] ++;
 								}
 							}
@@ -764,12 +776,12 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 								// draw a new z:
 								xt[i][2] =0;
 								for(zi=0;zi<NZ;zi++){
-									if( gsl_matrix_get(sk->zsel[ll],i,ti) > cmzprob[zi] ) ++ xt[i][2] ;
+									if( gg_get(sk->zsel[ll],i,ti) > cmzprob[zi] ) ++ xt[i][2] ;
 								}
-								if( gsl_matrix_get(sk->lambdaMsel[ll],i,ti)<  gsl_matrix_get(par->lambdaEM,ti,jt[i]) ) {
-									if(ti>=burnin) gsl_matrix_int_set(ht->J2Jhist[ll], i, ti-burnin, 1);
+								if( gg_get(sk->lambdaMsel[ll],i,ti)<  gg_get(par->lambdaEM,ti,jt[i]) ) {
+									if(ti>=burnin) ggi_set(ht->J2Jhist[ll], i, ti-burnin, 1);
 									// draw a new theta
-									for(thi =xtm1[i][3];thi<NT;thi++) if( gsl_matrix_get( sk->thsel[ll],i,ti ) > cmtprob[thi] ) ++xt[i][3];
+									for(thi =xtm1[i][3];thi<NT;thi++) if( gg_get( sk->thsel[ll],i,ti ) > cmtprob[thi] ) ++xt[i][3];
 									xt[i][3] = xt[i][3]>NT-1 ? NT-1: xt[i][3];
 								}
 							}// else nothing happens (except paid kappa)
@@ -777,17 +789,17 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 
 						}else{
 							//WEm
-							if( gsl_matrix_get(sk->lambdaSsel[ll],i,ti) < gsl_matrix_get(par->lambdaES,ti,jt[i]) ) {
-								if (gsl_matrix_get(sk->lambdaUsel[ll], i, ti) <par->gdfthr) { //godfather (gamma) shock?
-									if(ti>=burnin) gsl_matrix_int_set(ht->J2Jhist[ll], i, ti-burnin, 1);
+							if( gg_get(sk->lambdaSsel[ll],i,ti) < gg_get(par->lambdaES,ti,jt[i]) ) {
+								if (gg_get(sk->lambdaUsel[ll], i, ti) <par->gdfthr) { //godfather (gamma) shock?
+									if(ti>=burnin) ggi_set(ht->J2Jhist[ll], i, ti-burnin, 1);
 									xt[i][3] = 0;
 									for (thi = 0; thi < NT; thi++)
-										if (gsl_matrix_get(sk->thsel[ll], i, ti) > cmtprob[thi])++xt[i][3];
+										if (gg_get(sk->thsel[ll], i, ti) > cmtprob[thi])++xt[i][3];
 									xt[i][3] = xt[i][3] > NT - 1 ? NT - 1 : xt[i][3];
 								}else {
-									if(ti>=burnin) gsl_matrix_int_set(ht->J2Jhist[ll], i, ti-burnin, 1);
+									if(ti>=burnin) ggi_set(ht->J2Jhist[ll], i, ti-burnin, 1);
 									for (thi = xtm1[i][3]; thi < NT; thi++)
-										if (gsl_matrix_get(sk->thsel[ll], i, ti) > cmtprob[thi])++xt[i][3];
+										if (gg_get(sk->thsel[ll], i, ti) > cmtprob[thi])++xt[i][3];
 									xt[i][3] = xt[i][3] > NT - 1 ? NT - 1 : xt[i][3];
 								}
 							}
@@ -796,31 +808,31 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 				// ut ==1 unemployed
 				}else{
 					ii = At*NP*NG*NS*NZ + Pt[jt[i]]*NG*NS*NZ + xt[i][0]*NS*NZ +xt[i][1]*NZ +xt[i][2];
-					if( ti>=burnin){ gsl_matrix_set(ht->whist[ll],i,ti-burnin,0.);}
+					if( ti>=burnin){ gg_set(ht->whist[ll],i,ti-burnin,0.);}
 					// stay or go?
-					if( ti>=burnin ) gsl_matrix_set(swprob_hist[ll],i,ti-burnin,  gsl_matrix_get(pf->mU,ii,jt[i]) );
-					if( gsl_matrix_get(pf->mU,ii,jt[i])>gsl_matrix_get(sk->msel[ll],i,ti) ){
+					if( ti>=burnin ) gg_set(swprob_hist[ll],i,ti-burnin,  gg_get(pf->mU,ii,jt[i]) );
+					if( gg_get(pf->mU,ii,jt[i])>gg_get(sk->msel[ll],i,ti) ){
 						//RU
 						double sij[JJ];
-						for(jji=0;jji<JJ;jji++) sij[jji] = jji>0 ? sij[jji-1] + gsl_matrix_get(pf->sU[jji],ii,jt[i]): gsl_matrix_get(pf->sU[jji],ii,jt[i]);
-						// successfully switched: if( gsl_matrix_get(sk->jsel[ll],i,ti) <  sij[JJ])
+						for(jji=0;jji<JJ;jji++) sij[jji] = jji>0 ? sij[jji-1] + gg_get(pf->sU[jji],ii,jt[i]): gg_get(pf->sU[jji],ii,jt[i]);
+						// successfully switched: if( gg_get(sk->jsel[ll],i,ti) <  sij[JJ])
 						jt[i] = 0;
 						for(jji=0;jji<JJ;jji++)
-							if (gsl_matrix_get(sk->jsel[ll], i, ti) > sij[jji]) ++jt[i];
+							if (gg_get(sk->jsel[ll], i, ti) > sij[jji]) ++jt[i];
 
 						if( jt[i] != jtm1[i] ){ // switchers
 							xt[i][1] = 0; // lose specific skill
 							// draw a new z:
 							xt[i][2] =0;
 							for(zi=0;zi<NZ;zi++){
-								if( gsl_matrix_get(sk->zsel[ll],i,ti) > cmzprob[zi] ) ++ xt[i][2] ;
+								if( gg_get(sk->zsel[ll],i,ti) > cmzprob[zi] ) ++ xt[i][2] ;
 							}
-							if( gsl_matrix_get(sk->lambdaUsel[ll],i,ti)<  gsl_matrix_get(par->lambdaU,ti,jt[i]) ){
+							if( gg_get(sk->lambdaUsel[ll],i,ti)<  gg_get(par->lambdaU,ti,jt[i]) ){
 								// draw a new theta
 								xt[i][3] = 0;
-								for(thi =0;thi<NT;thi++) if( gsl_matrix_get( sk->thsel[ll],i,ti ) > cmtprob[thi] ) ++xt[i][3];
+								for(thi =0;thi<NT;thi++) if( gg_get( sk->thsel[ll],i,ti ) > cmtprob[thi] ) ++xt[i][3];
 								int iM = At*NP*NG*NS*NZ*NT + Pt[jt[i]]*NG*NS*NZ*NT + xt[i][0]*NS*NZ*NT+xt[i][1]*NZ*NT+xt[i][2]*NT+xt[i][3];
-								if( gsl_matrix_get(vf->WE,iM,jt[i]) < gsl_matrix_get(vf->WU,ii,jt[i])){
+								if( gg_get(vf->WE,iM,jt[i]) < gg_get(vf->WU,ii,jt[i])){
 									ut[i] = 1;
 									xt[i][3] = xtm1[i][3];
 								}else{
@@ -830,11 +842,11 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 						}// else nothing happens (except paid kappa)
 					// not moving
 					}else{
-						if( gsl_matrix_get(sk->lambdaUsel[ll],i,ti)< gsl_matrix_get(par->lambdaU,ti,jt[i] )){ // found a job??
+						if( gg_get(sk->lambdaUsel[ll],i,ti)< gg_get(par->lambdaU,ti,jt[i] )){ // found a job??
 							xt[i][3] = 0;
-							for(thi =0;thi<NT;thi++) if( gsl_matrix_get( sk->thsel[ll],i,ti ) > cmtprob[thi] ) ++xt[i][3];
+							for(thi =0;thi<NT;thi++) if( gg_get( sk->thsel[ll],i,ti ) > cmtprob[thi] ) ++xt[i][3];
 							int iM = At*NP*NG*NS*NZ*NT + Pt[jt[i]]*NG*NS*NZ*NT + xt[i][0]*NS*NZ*NT+xt[i][1]*NZ*NT+xt[i][2]*NT+xt[i][3];
-							if( gsl_matrix_get(vf->WE,iM,jt[i]) < gsl_matrix_get(vf->WU,ii,jt[i])){
+							if( gg_get(vf->WE,iM,jt[i]) < gg_get(vf->WU,ii,jt[i])){
 								ut[i]  = 1;
 								xt[i][3] = xtm1[i][3];
 							}else{
@@ -896,31 +908,28 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	for(ll=0;ll<Npaths;ll++){
 
 		int Nemp_ll = 0, Nunemp_ll = 0, Nfnd_ll =0, Nsep_ll = 0, NswU_ll = 0, NswE_ll=0, NJ2J_ll=0,Nspell_ll=0, NswSt_ll =0;
-		int sw_spell=0,uspell=0;
+		int sw_spell=0;
 		for(i=0;i<Nsim;i++){
 			for(ti=0;ti<TT-1;ti++){
-				if( gsl_matrix_int_get(ht->uhist[ll],i,ti) ==0 ){
+				if( ggi_get(ht->uhist[ll],i,ti) ==0 ){
 					Nemp_ll += 1;
-					if( gsl_matrix_int_get(ht->uhist[ll],i,ti+1) ==1 ){
+					if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
 						Nsep_ll +=1;
-						sw_spell = gsl_matrix_int_get(ht->jhist[ll],i,ti);
-						uspell =0;
+						sw_spell = ggi_get(ht->jhist[ll],i,ti);
 					}
-					if( gsl_matrix_int_get(ht->J2Jhist[ll],i,ti+1) ==1 ){
+					if( ggi_get(ht->J2Jhist[ll],i,ti+1) ==1 ){
 						NJ2J_ll +=1;
-						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) ) NswE_ll +=1;
+						if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ) NswE_ll +=1;
 					}else{  // not EE
-						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) ) NswSt_ll += 1;
+						if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ) NswSt_ll += 1;
 					}
 				}else{
 					Nunemp_ll +=1;
-					if (uspell ==0){ // first period in unemployment for this spell
-						uspell = 1;
-						Nspell_ll += 1;
-					}
-					if( gsl_matrix_int_get(ht->uhist[ll],i,ti+1) ==0 ){
+
+					if( ggi_get(ht->uhist[ll],i,ti+1) ==0 ){
 						Nfnd_ll +=1;
-						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) != sw_spell ) NswU_ll += 1; //only count switches at the end of the spell.
+						Nspell_ll += 1;
+						if( ggi_get(ht->jhist[ll],i,ti+1) != sw_spell ) NswU_ll += 1; //only count switches at the end of the spell.
 					}
 				}
 			}
@@ -963,19 +972,18 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		double wlast =0., wnext=0.;
 		for(i=0;i<Nsim;i++){
 			for(ti=3;ti<TT-3;ti++){
-				wlast = gsl_matrix_get( ht->whist[ll] ,i,ti-1) + gsl_matrix_get( ht->whist[ll] ,i,ti-2)+ gsl_matrix_get( ht->whist[ll] ,i,ti-3);
-				wnext = gsl_matrix_get( ht->whist[ll] ,i,ti) + gsl_matrix_get( ht->whist[ll] ,i,ti+1)+ gsl_matrix_get( ht->whist[ll] ,i,ti+2);
+				wlast = gg_get( ht->whist[ll] ,i,ti-1) + gg_get( ht->whist[ll] ,i,ti-2)+ gg_get( ht->whist[ll] ,i,ti-3);
+				wnext = gg_get( ht->whist[ll] ,i,ti) + gg_get( ht->whist[ll] ,i,ti+1)+ gg_get( ht->whist[ll] ,i,ti+2);
 
-				double w_EU;
-				if( gsl_matrix_int_get(ht->uhist[ll],i,ti) ==0 ){
-					if( gsl_matrix_int_get(ht->uhist[ll],i,ti+1) ==1 ){
+				double w_EU=0.;
+				if( ggi_get(ht->uhist[ll],i,ti) ==0 ){
+					if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
 						w_EU = wnext- wlast; //not yet sure if this will be a switch or not, so just store it for now.
-						sw_spell = gsl_matrix_int_get(ht->jhist[ll],i,ti);
-						uspell =0;
+						sw_spell = ggi_get(ht->jhist[ll],i,ti);
 					}
-					if( gsl_matrix_int_get(ht->J2Jhist[ll],i,ti+1) ==1 ){
+					if( ggi_get(ht->J2Jhist[ll],i,ti+1) ==1 ){
 
-						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) ){
+						if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ){
                             w_EEsw[idx_EEsw] = wnext - wlast;
                             idx_EEsw ++;
 						}else{
@@ -983,7 +991,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
                             idx_EEns ++;
 						}
 					}else{  // not EE
-						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) ){
+						if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ){
                             w_stsw[idx_stsw] = wnext - wlast;
 						    idx_stsw ++;
 						}else{
@@ -993,11 +1001,9 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 					}
 				}else{ //unemployed
 
-					if (uspell ==0){ // first period in unemployment for this spell
-						uspell = 1;
-					}
-					if( gsl_matrix_int_get(ht->uhist[ll],i,ti+1) ==0 ){
-						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) != sw_spell){
+
+					if( ggi_get(ht->uhist[ll],i,ti+1) ==0 ){
+						if( ggi_get(ht->jhist[ll],i,ti+1) != sw_spell){
 							w_UEsw[idx_UEsw] = wnext-wlast;
 							w_EUsw[idx_EUsw] = w_EU;
 							idx_UEsw ++;
@@ -1012,7 +1018,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
 					}
 
-					if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) && sw_spell == 0 ){
+					if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) && sw_spell == 0 ){
 						sw_spell = 1; //only count the switch once per unemployment spell
 					}
 				}
@@ -1041,19 +1047,19 @@ int draw_shocks(struct shocks * sk){
 		for(ti=0;ti<TTT;ti++){
 			gsl_vector_set(sk->Asel[ll],ti, gsl_rng_uniform(rng0));
 			for(i=0;i<Nsim;i++){
-				gsl_matrix_set( sk->zsel[ll]      ,i,ti, gsl_rng_uniform(rng0) );
-				gsl_matrix_set( sk->thsel[ll]     ,i,ti, gsl_rng_uniform(rng0) );
-				gsl_matrix_set( sk->lambdaMsel[ll],i,ti, gsl_rng_uniform(rng0) );
-				gsl_matrix_set( sk->lambdaSsel[ll],i,ti, gsl_rng_uniform(rng0) );
-				gsl_matrix_set( sk->lambdaUsel[ll],i,ti, gsl_rng_uniform(rng0) );
-				gsl_matrix_set( sk->xSsel[ll]     ,i,ti, gsl_rng_uniform(rng0) );
-				gsl_matrix_set( sk->xGsel[ll]     ,i,ti, gsl_rng_uniform(rng0) );
-				gsl_matrix_set( sk->jsel[ll]      ,i,ti, gsl_rng_uniform(rng0) );
-				gsl_matrix_set( sk->dsel[ll]      ,i,ti, gsl_rng_uniform(rng0) );
-				gsl_matrix_set( sk->msel[ll]      ,i,ti, gsl_rng_uniform(rng0) );
+				gg_set( sk->zsel[ll]      ,i,ti, gsl_rng_uniform(rng0) );
+				gg_set( sk->thsel[ll]     ,i,ti, gsl_rng_uniform(rng0) );
+				gg_set( sk->lambdaMsel[ll],i,ti, gsl_rng_uniform(rng0) );
+				gg_set( sk->lambdaSsel[ll],i,ti, gsl_rng_uniform(rng0) );
+				gg_set( sk->lambdaUsel[ll],i,ti, gsl_rng_uniform(rng0) );
+				gg_set( sk->xSsel[ll]     ,i,ti, gsl_rng_uniform(rng0) );
+				gg_set( sk->xGsel[ll]     ,i,ti, gsl_rng_uniform(rng0) );
+				gg_set( sk->jsel[ll]      ,i,ti, gsl_rng_uniform(rng0) );
+				gg_set( sk->dsel[ll]      ,i,ti, gsl_rng_uniform(rng0) );
+				gg_set( sk->msel[ll]      ,i,ti, gsl_rng_uniform(rng0) );
 			}
 			for(ji=0;ji<JJ;ji++){
-				gsl_matrix_set(sk->Psel[ll] , ti,ji, gsl_rng_uniform(rng0));
+				gg_set(sk->Psel[ll] , ti,ji, gsl_rng_uniform(rng0));
 			}
 		}
 		gsl_rng_free(rng0);
