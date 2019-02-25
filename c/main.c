@@ -889,17 +889,13 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
 	int ll, i,ti;
 
-	int Nemp=0, Nunemp = 0, Nfnd =0, Nsep =0, NswU = 0, NswE=0, NJ2J=0, Nspell=0;
-
-	double * w_stns = malloc(sizeof(double) *Nsim*TT*Npaths );
-	double * w_stsw = malloc(sizeof(double) *Nsim*TT*Npaths );
-	double * w_EEsw = malloc(sizeof(double) *Nsim*TT*Npaths );
+	int Nemp=0, Nunemp = 0, Nfnd =0, Nsep =0, NswU = 0, NswE=0, NJ2J=0, Nspell=0, NswSt=0;
 
 
-#pragma parallel for private(ll,ti,i) reduction( +: Nemp ) reduction( +:Nunemp) reduction( +: Nfnd) reduction( +: Nsep) reduction( +: NswU) reduction( +: NswE) reduction( +: Nspell)
+#pragma parallel for private(ll,ti,i) reduction( +: Nemp ) reduction( +:Nunemp) reduction( +: Nfnd) reduction( +: Nsep) reduction( +: NswU) reduction( +: NswE) reduction( +: Nspell) reduction( +: NswSt)
 	for(ll=0;ll<Npaths;ll++){
 
-		int Nemp_ll = 0, Nunemp_ll = 0, Nfnd_ll =0, Nsep_ll = 0, NswU_ll = 0, NswE_ll=0, NJ2J_ll=0,Nspell_ll=0;
+		int Nemp_ll = 0, Nunemp_ll = 0, Nfnd_ll =0, Nsep_ll = 0, NswU_ll = 0, NswE_ll=0, NJ2J_ll=0,Nspell_ll=0, NswSt_ll =0;
 		int sw_spell=0,uspell=0;
 		for(i=0;i<Nsim;i++){
 			for(ti=0;ti<TT-1;ti++){
@@ -907,12 +903,14 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 					Nemp_ll += 1;
 					if( gsl_matrix_int_get(ht->uhist[ll],i,ti+1) ==1 ){
 						Nsep_ll +=1;
-						sw_spell = 0;
+						sw_spell = gsl_matrix_int_get(ht->jhist[ll],i,ti);
 						uspell =0;
 					}
 					if( gsl_matrix_int_get(ht->J2Jhist[ll],i,ti+1) ==1 ){
 						NJ2J_ll +=1;
 						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) ) NswE_ll +=1;
+					}else{  // not EE
+						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) ) NswSt_ll += 1;
 					}
 				}else{
 					Nunemp_ll +=1;
@@ -920,10 +918,9 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 						uspell = 1;
 						Nspell_ll += 1;
 					}
-					if( gsl_matrix_int_get(ht->uhist[ll],i,ti+1) ==0 ) Nfnd_ll +=1;
-
-					if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) && sw_spell == 0 ){
-						NswU_ll +=1; sw_spell = 1; //only count the switch once per unemployment spell
+					if( gsl_matrix_int_get(ht->uhist[ll],i,ti+1) ==0 ){
+						Nfnd_ll +=1;
+						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) != sw_spell ) NswU_ll += 1; //only count switches at the end of the spell.
 					}
 				}
 			}
@@ -937,7 +934,82 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		NswE += NswE_ll;
 		NJ2J += NJ2J_ll;
 		Nspell += Nspell_ll;
+		NswSt  += NswSt_ll;
 	}
+
+	double * w_stns = malloc(sizeof(double) *(Nemp-Nsep-NJ2J-NswSt) );
+	double * w_stsw = malloc(sizeof(double) *(NswSt) );
+	double * w_EEsw = malloc(sizeof(double) *(NswE) );
+	double * w_EEns = malloc(sizeof(double) *(NJ2J - NswE) );
+	double * w_EUsw = malloc(sizeof(double) *(NswU) );
+	double * w_EUns = malloc(sizeof(double) *(Nspell - NswU) );
+	double * w_UEsw = malloc(sizeof(double) *(NswU) );
+	double * w_UEns = malloc(sizeof(double) *(Nspell - NswU) );
+
+
+	int idx_EUns =0, idx_UEns =0, idx_EEns=0, idx_EUsw=0,idx_UEsw=0,idx_EEsw=0;
+	int idx_stns =0, idx_stsw =0;
+	for(ll=0;ll<Npaths;ll++){
+
+		int sw_spell=0,uspell=0;
+		double wlast =0., wnext=0.;
+		for(i=0;i<Nsim;i++){
+			for(ti=3;ti<TT-3;ti++){
+				wlast += gsl_matrix_get( ht->whist[ll] ,i,ti-1) + gsl_matrix_get( ht->whist[ll] ,i,ti-2)+ gsl_matrix_get( ht->whist[ll] ,i,ti-3);
+				wnext += gsl_matrix_get( ht->whist[ll] ,i,ti) + gsl_matrix_get( ht->whist[ll] ,i,ti+1)+ gsl_matrix_get( ht->whist[ll] ,i,ti+2);
+
+				double w_EU;
+				if( gsl_matrix_int_get(ht->uhist[ll],i,ti) ==0 ){
+					if( gsl_matrix_int_get(ht->uhist[ll],i,ti+1) ==1 ){
+						w_EU = wnext- wlast; //not yet sure if this will be a switch or not, so just store it for now.
+						sw_spell = gsl_matrix_int_get(ht->jhist[ll],i,ti);
+						uspell =0;
+					}
+					if( gsl_matrix_int_get(ht->J2Jhist[ll],i,ti+1) ==1 ){
+
+						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) ){
+
+						}else{
+							
+						}
+					}else{  // not EE
+						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) ){
+
+						}else{
+
+						}
+					}
+				}else{ //employed
+
+					if (uspell ==0){ // first period in unemployment for this spell
+						uspell = 1;
+					}
+					if( gsl_matrix_int_get(ht->uhist[ll],i,ti+1) ==0 ){
+						if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) != sw_spell){
+							w_UEsw[idx_UEsw] = wnext-wlast;
+							w_EUsw[idx_EUsw] = w_EU;
+							idx_UEsw ++;
+							idx_EUsw ++;
+						}else{
+							w_UEns[idx_UEns] = wnext-wlast;
+							w_EUns[idx_EUns] = w_EU;
+							idx_UEns ++;
+							idx_EUns ++;
+						}
+
+
+					}
+
+					if( gsl_matrix_int_get(ht->jhist[ll],i,ti+1) !=gsl_matrix_int_get(ht->jhist[ll],i,ti) && sw_spell == 0 ){
+						sw_spell = 1; //only count the switch once per unemployment spell
+					}
+				}
+			}
+		}
+
+	}
+
+
 
 	st->J2Jprob  = (double) NJ2J / (double) Nemp ;
 	st->findrate = (double) Nfnd / (double) Nunemp;
@@ -946,6 +1018,8 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	st->swProb_U = (double) NswU / (double) Nspell;
 	st->unrate =  (double) Nunemp / (double) ( Nunemp + Nemp );
 
+
+	free(w_stns);free(w_stsw);free(w_EEns);free(w_EEsw);free(w_EUns);free(w_EUsw);free(w_UEns);free(w_UEsw);
 
 }
 
