@@ -735,8 +735,8 @@ if(freq == "wave"){
 	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), UEfrq := UE_wave]
 	DTseam[!(EUfrq|EEfrq|UEfrq) & ch==T, ch := NA]
 }
-DTseam[ EUfrq==T, dur := max.unempdur_wave]
-DTseam[ !EUfrq==T | !is.finite(dur), dur := 0.]
+DTseam[ EUfrq==T|UEfrq==T, dur := max.unempdur_wave]
+DTseam[ !(EUfrq==T|UEfrq==T) | !is.finite(dur), dur := 0.]
 DTseam <- DTseam[ (sw|!sw) & (ch|st), ]
 
 if( freq == "wave"){
@@ -745,6 +745,8 @@ if( freq == "wave"){
 	MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
 	saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE_nodur.RData"))
 }else{
+	MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
+	saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN_dur.RData"))
 	MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
 	saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN.RData"))
 	# MM_betaE_betaR_IR <-readRDS(paste0(outputdir,"/MM_ANAN.RData"))
@@ -773,7 +775,7 @@ ggplot(Dist_melt, aes(x=Qtls,y=value,color=variable))+geom_smooth(se=F,span=0.1)
 	theme(legend.title = element_blank(),text = element_text(size=20),
 		  legend.position = c(0.5,0.8),
 		  legend.background = element_rect(linetype = "solid",color = "white"))	
-nametab = "cf_qtls"
+nametab = "cf_qtls_wdur"
 ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".eps"),device=cairo_ps,height=5,width=10)
 ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".png"),height=5,width=10)
 out_wavedist <- xtable(Dist_dif, digits=3, 
@@ -795,7 +797,7 @@ ggplot(Dist_melt, aes(x=WChng,y=value,color=variable))+geom_smooth(se=F,span=0.1
 	theme(legend.title = element_blank(),text = element_text(size=20),
 		  legend.position = c(0.65,0.8),
 		  legend.background = element_rect(linetype = "solid",color = "white"))	
-nametab = "cf_wchng"
+nametab = "cf_wchng_wdur"
 ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".eps"),device=cairo_ps,height=5,width=10)
 ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".png"),height=5,width=10)
 out_wavedist <- xtable(Dist_dif, digits=3, 
