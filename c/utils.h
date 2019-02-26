@@ -17,6 +17,21 @@
 #include <gsl/gsl_cdf.h>
 
 
+int comp_dble_asc( const void * a, const void * b ){
+	double x = *(double *)a;
+	double y = *(double *)a;
+	if( x<y ) return -1; //flip the sign for descending order
+	if( x>y ) return  1;
+	return 0;
+}
+int comp_dble_desc( const void * a, const void * b ){
+	double x = *(double *)a;
+	double y = *(double *)a;
+	if( x<y ) return  1; //flip the sign for descending order
+	if( x>y ) return -1;
+	return 0;
+}
+
 int set_matrix_block(gsl_matrix * dest,gsl_matrix *source,int left,int top){
 	int i,j;
 	int right = (int)source->size1 + left;

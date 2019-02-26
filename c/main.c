@@ -981,22 +981,24 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 						w_EU = wnext- wlast; //not yet sure if this will be a switch or not, so just store it for now.
 						sw_spell = ggi_get(ht->jhist[ll],i,ti);
 					}
-					if( ggi_get(ht->J2Jhist[ll],i,ti+1) ==1 ){
+					else{
+						if( ggi_get(ht->J2Jhist[ll],i,ti+1) ==1 ){
 
-						if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ){
-                            w_EEsw[idx_EEsw] = wnext - wlast;
-                            idx_EEsw ++;
-						}else{
-                            w_EEns[idx_EEns] = wnext - wlast;
-                            idx_EEns ++;
-						}
-					}else{  // not EE
-						if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ){
-                            w_stsw[idx_stsw] = wnext - wlast;
-						    idx_stsw ++;
-						}else{
-                            w_stns[idx_stns] = wnext - wlast;
-                            idx_stns ++;
+							if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ){
+	                            w_EEsw[idx_EEsw] = wnext - wlast;
+	                            idx_EEsw ++;
+							}else{
+	                            w_EEns[idx_EEns] = wnext - wlast;
+	                            idx_EEns ++;
+							}
+						}else{  // not EE
+							if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ){
+	                            w_stsw[idx_stsw] = wnext - wlast;
+							    idx_stsw ++;
+							}else{
+	                            w_stns[idx_stns] = wnext - wlast;
+	                            idx_stns ++;
+							}
 						}
 					}
 				}else{ //unemployed
@@ -1014,19 +1016,26 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 							idx_UEns ++;
 							idx_EUns ++;
 						}
-
-
 					}
-
 					if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) && sw_spell == 0 ){
 						sw_spell = 1; //only count the switch once per unemployment spell
 					}
 				}
 			}
 		}
-
 	}
 
+	qsort(w_stns, (size_t)idx_stns,sizeof(double), &comp_dble_asc);
+	qsort(w_stsw, (size_t)idx_stsw,sizeof(double), &comp_dble_asc);
+
+	qsort(w_EEns, (size_t)idx_EEns,sizeof(double), &comp_dble_asc);
+	qsort(w_EEsw, (size_t)idx_EEsw,sizeof(double), &comp_dble_asc);
+
+	qsort(w_EUns, (size_t)idx_EUns,sizeof(double), &comp_dble_asc);
+	qsort(w_EUsw, (size_t)idx_EUsw,sizeof(double), &comp_dble_asc);
+
+	qsort(w_UEns, (size_t)idx_UEns,sizeof(double), &comp_dble_asc);
+	qsort(w_UEsw, (size_t)idx_UEsw,sizeof(double), &comp_dble_asc);
 
 	free(w_stns);free(w_stsw);free(w_EEns);free(w_EEsw);free(w_EUns);free(w_EUsw);free(w_UEns);free(w_UEsw);
 
