@@ -45,6 +45,8 @@ int static TTT ;
 int static Npaths  = 50;      // number of simulation paths to draw
 int static Nsim    = 2000;
 
+int static Nqtls   = 5; // number of quantiles that will use to compare distributions
+
 int verbose = 3;
 int print_lev = 3;
 
@@ -148,6 +150,15 @@ struct stats{
 	double unrate;
 	double findrate;
 	double seprate;
+
+	double *UEsw_qtls; // will be Nqtls long
+	double *UEns_qtls;
+	double *EEsw_qtls;
+	double *EEns_qtls;
+	double *EUsw_qtls;
+	double *EUns_qtls;
+	double *stsw_qtls;
+	double *stns_qtls;
 };
 
 void allocate_pars( struct cal_params * par );
@@ -165,11 +176,13 @@ void init_vf( struct valfuns *vf ,struct cal_params * par);
 
 int draw_shocks(struct shocks * sk);
 
-// solve, simulate and compute sumary statistics
+// solve, simulate and compute summary statistics
 int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, struct shocks * sk);
 int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk );
 int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk, struct stats *st  );
 
+
+// some helper functions to reduce typing
 int static inline ggi_get( gsl_matrix_int * mat, int ri ,int ci){
 	return gsl_matrix_int_get( mat, (size_t) ri, (size_t) ci );
 }
@@ -181,6 +194,20 @@ void static inline ggi_set( gsl_matrix_int * mat, int ri ,int ci, int val){
 }
 void static inline gg_set( gsl_matrix * mat, int ri ,int ci, double val){
 	gsl_matrix_set( mat, (size_t) ri, (size_t) ci , val);
+}
+void w_qtls( double* vec, int stride, int len, double * qtls_out ){
+	if(Nqtls ==5){
+		qtls_out[0] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.1);
+		qtls_out[1] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.25);
+		qtls_out[2] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.5);
+		qtls_out[3] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.75);
+		qtls_out[4] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.9);
+	}
+	else{
+		int qi ;
+		for(qi = 0; qi<Nqtls;qi++)
+			qtls_out[qi] = gsl_stats_quantile_from_sorted_data(vec,(size_t)stride,(size_t)len, (double)(qi+1)/(double)(Nqtls+1)  );
+	}
 }
 
 int main() {
@@ -195,6 +222,11 @@ int main() {
 	struct hists ht;
 
 	struct stats st;
+
+	st.EEns_qtls = malloc(Nqtls);st.EEsw_qtls = malloc(Nqtls);
+	st.EUns_qtls = malloc(Nqtls);st.EUsw_qtls = malloc(Nqtls);
+	st.UEns_qtls = malloc(Nqtls);st.UEsw_qtls = malloc(Nqtls);
+	st.stns_qtls = malloc(Nqtls);st.stsw_qtls = malloc(Nqtls);
 
 	allocate_mats(&vf,&pf,&ht,&sk);
 	allocate_pars(&par);
@@ -322,6 +354,11 @@ int main() {
 
 	free_mats(&vf,&pf,&ht,&sk);
 	free_pars(&par);
+	free(st.EEns_qtls);free(st.EEsw_qtls);
+	free(st.EUns_qtls);free(st.EUsw_qtls);
+	free(st.UEns_qtls);free(st.UEsw_qtls);
+	free(st.stns_qtls);free(st.stsw_qtls);
+
     return success;
 }
 
@@ -1036,6 +1073,18 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
 	qsort(w_UEns, (size_t)idx_UEns,sizeof(double), &comp_dble_asc);
 	qsort(w_UEsw, (size_t)idx_UEsw,sizeof(double), &comp_dble_asc);
+
+	w_qtls(w_stns,1,idx_stns,st->stns_qtls);
+	w_qtls(w_stsw,1,idx_stns,st->stsw_qtls);
+	w_qtls(w_EEns,1,idx_stns,st->EEns_qtls);
+	w_qtls(w_EEsw,1,idx_stns,st->EEsw_qtls);
+	w_qtls(w_EUns,1,idx_stns,st->EUns_qtls);
+	w_qtls(w_EUsw,1,idx_stns,st->EUsw_qtls);
+	w_qtls(w_UEns,1,idx_stns,st->UEns_qtls);
+	w_qtls(w_UEsw,1,idx_stns,st->UEsw_qtls);
+
+
+
 
 	free(w_stns);free(w_stsw);free(w_EEns);free(w_EEsw);free(w_EUns);free(w_EUsw);free(w_UEns);free(w_UEsw);
 
