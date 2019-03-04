@@ -770,8 +770,8 @@ sipp_wave[ next.wave == wave+1, next.ustintid_wave := shift(ustintid_wave,type="
 sipp_wave[UE_wave==T & midUE ==T , ustintid_wave   :=next.ustintid_wave  ]
 sipp_wave[EU_wave==T & midEU ==T , ustintid_wave   :=next.ustintid_wave  ]
 
-#EU,UE trumps EE
-sipp_wave[ (EU_wave==T | UE_wave==T) & EE_wave==T, EE_wave:=F]
+#EU,UE does not trump EE --- Allow both to co-exists
+# sipp_wave[ (EU_wave==T | UE_wave==T) & EE_wave==T, EE_wave:=F]
 
 #add switchedOcc_wave to whole ustintid and create occL, occD
 sipp_wave[ ustintid_wave>0 & EU_wave!=T & midEU!=T, switchedOcc_wave:=NA]

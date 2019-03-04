@@ -20,6 +20,7 @@ wt <- "truncweight"
 wc <- "wagechange_anan"
 recDef <- "recIndic2_wave"
 
+wdur = T #will include duration in the variables in the regression
 
 minEarn = 1040 
 minLEarn = log(2*minEarn)
@@ -262,11 +263,17 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 	wc_BR_exstay_pctile <- array(0.,dim=c(length(qtlgridOut),Nsims))
 	wc_BR_exstay_moments <- array(0.,dim=c(Nmoments,Nsims))
 	
-	wc_BR_exi_moments <- array(0.,dim=c(Nmoments,NS,Nsims))
-	wc_BR_exi_pctile <- array(0.,dim=c(length(qtlgridOut),NS,Nsims))
-	
-	wc_BR_onlyi_pctile <- array(0.,dim=c(length(qtlgridOut),NS,Nsims))
-	wc_BR_onlyi_moments <- array(0.,dim=c(Nmoments,NS,Nsims))
+	if( durEU ==F ){
+		wc_BR_exi_moments <- array(0.,dim=c(Nmoments,NS,Nsims))
+		wc_BR_exi_pctile <- array(0.,dim=c(length(qtlgridOut),NS,Nsims))
+		wc_BR_onlyi_pctile <- array(0.,dim=c(length(qtlgridOut),NS,Nsims))
+		wc_BR_onlyi_moments <- array(0.,dim=c(Nmoments,NS,Nsims))
+	}else{
+		wc_BR_exi_moments <- array(0.,dim=c(Nmoments,NS+1,Nsims))
+		wc_BR_exi_pctile <- array(0.,dim=c(length(qtlgridOut),NS+1,Nsims))
+		wc_BR_onlyi_pctile <- array(0.,dim=c(length(qtlgridOut),NS+1,Nsims))
+		wc_BR_onlyi_moments <- array(0.,dim=c(Nmoments,NS+1,Nsims))
+	}
 	
 	for( simiter in seq(1,Nsims)){	
 		
@@ -461,20 +468,25 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		
 		#turn off each individually
 		wc_BR_exi <-matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1)
-		for(ni in seq(1,NS)){
+		NNS = ifelse(wdur==T,NS+1,NS)
+		for(ni in seq(1,NNS)){
 			qi = 1
 			for(q in qtlgridSamp){
 				sumBetaR <- ""
 				for(si in seq(1,NS) ){
-					if(si != ni){
-						sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
+					if(si == ni){
+						sumBetaR <- paste(sumBetaR,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
 					}
 					else{# use the expansions coefficients
-						sumBetaR <- paste(sumBetaR,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
+						sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
 					}
 				}
 				if( durEU == T){
-					sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
+					if(si==NS+1){
+						sumBetaR <- paste(sumBetaR,paste0("betaE[",as.character(NS+1),",qi]*dur" ))
+					}else{
+						sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
+					}
 				}else{
 					sumBetaR <- paste(sumBetaR,"0")
 				}
@@ -487,7 +499,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		}
 		#turn on each individually
 		wc_BR_onlyi <-matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1)
-		for(ni in seq(1,NS)){
+		NNS = ifelse(wdur==T,NS+1, NS)
+		for(ni in seq(1,NNS)){
 			qi = 1
 			for(q in qtlgridSamp){
 				sumBetaE <- ""
@@ -500,7 +513,11 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 					}
 				}
 				if( durEU == T){
-					sumBetaE <- paste(sumBetaE,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
+					if(ni==NS+1){
+						sumBetaE <- paste(sumBetaE,paste0("betaR[",as.character(NS+1),",qi]*dur" ))
+					}else{
+						sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(NS+1),",qi]*dur" ))
+					}
 				}else{
 					sumBetaE <- paste(sumBetaE,"0")
 				}
@@ -510,7 +527,6 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			wc_BR_onlyi_pctile[,ni,simiter] <- quantile(wc_BR_onlyi,probs=qtlgridOutTruncCor,na.rm=T)
 			wc_BR_onlyi_moments[ ,ni,simiter] <- moments_compute_qtls(qtlpts=qtlgridOut,distpts=wc_BR_onlyi_pctile[,ni,simiter])
 			wc_BR_onlyi_moments[1,ni,simiter] <- mean( wc_BR_onlyi,na.rm = T )
-			
 		}
 		
 		if(no_occ ==F){
@@ -740,15 +756,21 @@ DTseam[ !(EUfrq==T|UEfrq==T) | !is.finite(dur), dur := 0.]
 DTseam <- DTseam[ (sw|!sw) & (ch|st), ]
 
 if( freq == "wave"){
-	MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
-	saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
-	MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
-	saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE_nodur.RData"))
+	if(wdur ==T){
+		MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
+		saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
+	}else{
+		MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
+		saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE_nodur.RData"))
+	}
 }else{
-	MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
-	saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN_dur.RData"))
-	MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
-	saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN.RData"))
+	if(wdur==T){
+		MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
+		saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN_dur.RData"))
+	}else{
+		MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
+		saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN.RData"))
+	}
 	# MM_betaE_betaR_IR <-readRDS(paste0(outputdir,"/MM_ANAN.RData"))
 }
 
@@ -806,27 +828,37 @@ print(out_wavedist,include.rownames=T, include.colnames=T,
 	  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 
 #figure out what does what: decomp top/bottom 5%, 10%:
-Decomp_tails = array(0.,dim=c(4,NS+1))
+if(wdur==T){
+	NNS=NS+1
+}
+Decomp_tails = array(0.,dim=c(4,NNS+1))
 Nqtl_5 = sum(qtlgridOut<=0.05)
 Nqtl_10 = sum(qtlgridOut<=0.025)
-for(si in seq(1,NS)){
+for(si in seq(1,NNS)){
 	Decomp_tails[1, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut<=.025] - MM_betaE_betaR_IR$wc_BR_exi[qtlgridOut<=.025,si,1]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=.025] - MM_betaE_betaR_IR$wc_BR_onlyi[qtlgridOut<=.025,si,1]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=.025] - MM_betaE_betaR_IR$wc_rec[qtlgridOut<=.025])
 	Decomp_tails[2, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut<=0.05] - MM_betaE_betaR_IR$wc_BR_exi[qtlgridOut<=0.05,si,1]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=0.05] - MM_betaE_betaR_IR$wc_BR_onlyi[qtlgridOut<=0.05,si,1]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut<=0.05] - MM_betaE_betaR_IR$wc_rec[qtlgridOut<=0.05])
 	Decomp_tails[3, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut>=0.95] - MM_betaE_betaR_IR$wc_BR_exi[qtlgridOut>=0.95,si,1]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=0.95] - MM_betaE_betaR_IR$wc_BR_onlyi[qtlgridOut>=0.95,si,1]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=0.95] - MM_betaE_betaR_IR$wc_rec[qtlgridOut>=0.95])
 	Decomp_tails[4, si] = sum(-0.5*(MM_betaE_betaR_IR$wc_BR[qtlgridOut>=.975] - MM_betaE_betaR_IR$wc_BR_exi[qtlgridOut>=.975,si,1]) + 0.5*(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=.975] - MM_betaE_betaR_IR$wc_BR_onlyi[qtlgridOut>=.975,si,1]))/sum(MM_betaE_betaR_IR$wc_exp[qtlgridOut>=.975] - MM_betaE_betaR_IR$wc_rec[qtlgridOut>=.975])
 }
-Decomp_tails[, NS+1] = rowSums(Decomp_tails)
+Decomp_tails[, NNS+1] = rowSums(Decomp_tails)
+if(wdur==T){
+	Decomp_tails <- Decomp_tails[, c(seq(1,NS-2),NS+1,NS-1,NS,NNS+1)]
+}
+
 Decomp_tails<- data.table(Decomp_tails)
-rownames(Decomp_tails) <- c("$\leq$ 2.5\%","$\leq$ 5.0\%","$\geq$ 95.0\%","$\geq$ 97.5\%")
+rownames(Decomp_tails) <- c("$\\leq$ 2.5\\%","$\\leq$ 5.0\\%","$\\geq$ 95.0\\%","$\\geq$ 97.5\\%")
 if(NS==8){
-	names(Decomp_tails)<-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay_nosw","stay_sw","total")
+	if(wdur==F){ names(Decomp_tails)<-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","stay_nosw","stay_sw","total")
+	}else{  names(Decomp_tails)<-c("EE_sw","UE_sw","EU_sw","EE_nosw","UE_nosw","EU_nosw","dur","stay_nosw","stay_sw","total")}
 }else{
 	names(Decomp_tails)<-c("EE_sw","EU_sw","EE_nosw","EU_nosw","stay_nosw","stay_sw","total")
 }
 
 nametab <- "TailMM"
+aligntxt =ifelse(wdur==T, "l|cccccc|c|cc|c","l|cccccc|cc|c")
+
 Decomp_tails <- xtable(Decomp_tails, digits=3, 
-							align="l|cccccc|cc|c", caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+							align=aligntxt, caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 print(Decomp_tails,include.rownames=T, hline.after= c(nrow(Decomp_tails)), 
 	  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 	

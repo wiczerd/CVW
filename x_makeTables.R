@@ -652,7 +652,7 @@ for( wc in c("wagechange_anan","wagechangeEUE_wave","rawwgchangeEUE_wave","rawwg
 				  add.to.row=rowtitles, file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 		}
 		
-		
+		save.image(file=paste0(outputdir,"/wgtabs_boot.RData"))
 	}
 	
 	
