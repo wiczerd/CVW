@@ -592,7 +592,7 @@ if(max_wavefreq==2){
 }
 
 #set up jobchng_wave and EU_wave with ustintid
-sipp_wave[ EE_wave==T & (lfstat_wave>1 | next.lfstat_wave>1), EE_wave:=F]
+# sipp_wave[ EE_wave==T & (lfstat_wave>1 | next.lfstat_wave>1), EE_wave:=F] # Should not require conseutive in LFS for EE
 if(max_wavefreq==1){
 	sipp_wave[ ,ustintid_wave := ustintid_max]
 	
@@ -1077,9 +1077,9 @@ saveRDS(sipp, paste0(outputdir,"/DTall_3_ann.RData"))
 if(final_plots==T){
 	recessions.df = read.table(textConnection(
 	"Peak, Trough
-	1990-07-01, 1991-03-01
-	2001-03-01, 2001-11-01
-	2007-12-01, 2009-06-01"), sep=',',
+1990-07-01, 1991-03-01
+2001-03-01, 2001-11-01
+2007-12-01, 2009-06-01"), sep=',',
 	colClasses=c('Date', 'Date'), header=TRUE)
 		
 	sipp[ ,maxwis:= max(wave),by=panel]
@@ -1115,7 +1115,7 @@ if(final_plots==T){
 	ggsave(filename = paste0(figuredir,"/UE_wave.png"),height= 5,width=10)
 	
 	
-	EE_wave <- sipp[lfstat_wave==1 & next.lfstat_wave==1 & wave>1 & wave<maxwis-1 , .(EE_wave = weighted.mean(EE_wave & !midEE, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
+	EE_wave <- sipp_wave[lfstat_wave==1 & next.lfstat_wave==1 & wave>1 & wave<maxwis-1 , .(EE_wave = weighted.mean(EE_wave & !midEE, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(EE_wave) + theme_bw()+
 		geom_point( aes(date, EE_wave, color = panel, group = panel)) +
 		geom_line( aes(date, EE_wave, color = panel, group = panel)) +xlab("") + ylab("EE wave-frequency") +
