@@ -1075,13 +1075,13 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	qsort(w_UEsw, (size_t)idx_UEsw,sizeof(double), &comp_dble_asc);
 
 	w_qtls(w_stns,1,idx_stns,st->stns_qtls);
-	w_qtls(w_stsw,1,idx_stns,st->stsw_qtls);
-	w_qtls(w_EEns,1,idx_stns,st->EEns_qtls);
-	w_qtls(w_EEsw,1,idx_stns,st->EEsw_qtls);
-	w_qtls(w_EUns,1,idx_stns,st->EUns_qtls);
-	w_qtls(w_EUsw,1,idx_stns,st->EUsw_qtls);
-	w_qtls(w_UEns,1,idx_stns,st->UEns_qtls);
-	w_qtls(w_UEsw,1,idx_stns,st->UEsw_qtls);
+	w_qtls(w_stsw,1,idx_stsw,st->stsw_qtls);
+	w_qtls(w_EEns,1,idx_EEns,st->EEns_qtls);
+	w_qtls(w_EEsw,1,idx_EEsw,st->EEsw_qtls);
+	w_qtls(w_EUns,1,idx_EUns,st->EUns_qtls);
+	w_qtls(w_EUsw,1,idx_EUsw,st->EUsw_qtls);
+	w_qtls(w_UEns,1,idx_UEns,st->UEns_qtls);
+	w_qtls(w_UEsw,1,idx_UEsw,st->UEsw_qtls);
 
 
 
