@@ -314,6 +314,10 @@ DTseam[ !(is.finite(EE_wave) & is.finite(EU_wave)&is.finite(UE_wave)), changer:=
 DTseam[ !(is.finite(EE_anan) & is.finite(EU_anan)&is.finite(UE_anan)), changer_anan:=NA]
 
 DTseam <- subset(DTseam, is.finite(wpfinwgt) & is.finite(wagechange_wave))
+
+# setup partwt, partition weight gives 1/2 weight to the EE and EU,UE that are in the same period
+DTseam[ , partwt := truncweight]
+
 saveRDS(DTseam, paste0(outputdir,"/DTseam.RData"))
 
 DTseam <- subset(DTseam, select = c("id","wave","truncweight","wisRemaining"))

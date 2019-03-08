@@ -169,6 +169,7 @@ ggsave(paste0(outdir,"/all_wagechange_anan.png"),height=5,width=10)
 DTseam[ , g:=NULL]
 DTseam[  EE_wave==T & UE_wave==F & EU_wave ==F , g := 2]
 DTseam[  EE_wave==F & UE_wave==T | EU_wave ==T , g := 1]
+DTseam[  EE_wave==T &(UE_wave==T | EU_wave ==T), g := id%%2 + 1]
 DTseam[!(EE_anan==T | UE_anan==T | EU_anan ==T), g := 3]
 DTseam[ !(changer_anan==T|stayer_anan==T|(EU_wave==F & nextann.wavewage<= 0)), g:=NA]
 DTseam[ g==3 & (EU_anan | UE_anan | EE_anan), g:=NA]
