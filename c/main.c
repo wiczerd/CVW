@@ -52,7 +52,7 @@ int print_lev = 3;
 
 int maxiter = 5000;
 double vftol = 1e-3;
-double rhotightening = 0.5;
+double rhotightening = 1.;
 
 double beta	= 0.997;		// discount factor
 double b 	= 0.0; 			// unemployment benefit
@@ -223,10 +223,10 @@ int main() {
 
 	struct stats st;
 
-	st.EEns_qtls = malloc(Nqtls);st.EEsw_qtls = malloc(Nqtls);
-	st.EUns_qtls = malloc(Nqtls);st.EUsw_qtls = malloc(Nqtls);
-	st.UEns_qtls = malloc(Nqtls);st.UEsw_qtls = malloc(Nqtls);
-	st.stns_qtls = malloc(Nqtls);st.stsw_qtls = malloc(Nqtls);
+	st.EEns_qtls = malloc(Nqtls*sizeof(double));st.EEsw_qtls = malloc(Nqtls*sizeof(double));
+	st.EUns_qtls = malloc(Nqtls*sizeof(double));st.EUsw_qtls = malloc(Nqtls*sizeof(double));
+	st.UEns_qtls = malloc(Nqtls*sizeof(double));st.UEsw_qtls = malloc(Nqtls*sizeof(double));
+	st.stns_qtls = malloc(Nqtls*sizeof(double));st.stsw_qtls = malloc(Nqtls*sizeof(double));
 
 	allocate_mats(&vf,&pf,&ht,&sk);
 	allocate_pars(&par);
@@ -298,7 +298,7 @@ int main() {
 	par.alphaE1 = 0.5;
 	par.alphaE0 = 0.1*pow((double)(JJ-1),-par.alphaE1);
 	par.alphaU1 = 0.5;
-	par.alphaU0 = 0.5*pow((double)(JJ-1),-par.alphaU1);
+	par.alphaU0 = 0.7*pow((double)(JJ-1),-par.alphaU1);
 	par.lambdaU0  = 0.4 / 0.5;
 	par.lambdaES0 = 0.03;
 	par.lambdaEM0 = 0.8;
