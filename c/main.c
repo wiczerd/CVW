@@ -500,6 +500,10 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				gg_set( vf->RE,ii,ji,REhr);
                 double mhr = exp((REhr-EAPWE)/rhotightening)/
                              ( exp((REhr-EAPWE)/rhotightening)+ 1.);
+				if( isinf(mhr) | isnan(mhr) ){
+					mhr = REhr >= EAPWE ? 1. : 0. ;
+				}
+
 				gg_set( pf->mE,ii,ji, mhr );
 
 				//set search direction for next iteration:
@@ -581,11 +585,15 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 							        gsl_vector_get(par->tprob,tti)*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji], pi, ppi);}
 					}
 				}
-
-				gg_set(pf->mU,ii,ji, exp(RUhr/rhotightening-((1.-par->lambdaU0)*EAPWU+
-                                                       par->lambdaU0*gsl_max(EtWE,EAPWU)  )/rhotightening)/
-                        (exp(RUhr/rhotightening-((1.-par->lambdaU0)*EAPWU+
-                                                par->lambdaU0*gsl_max(EtWE,EAPWU)  )/rhotightening)+1.) );
+				double mhr = exp(RUhr/rhotightening-((1.-par->lambdaU0)*EAPWU+
+				                                       par->lambdaU0*gsl_max(EtWE,EAPWU)  )/rhotightening)/
+				               (exp(RUhr/rhotightening-((1.-par->lambdaU0)*EAPWU+
+				                                        par->lambdaU0*gsl_max(EtWE,EAPWU)  )/rhotightening)+1.);
+				if( isinf(mhr) | isnan(mhr) ){
+					mhr = RUhr > (1.-par->lambdaU0)*EAPWU+ par->lambdaU0*gsl_max(EtWE,EAPWU) ?
+							1. : 0. ;
+				}
+				gg_set(pf->mU,ii,ji, mhr );
 				//search dir for next iterations
 				double sUdenom = 0.;
 				for(jji=0;jji<JJ;jji++){
