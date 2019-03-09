@@ -1,4 +1,5 @@
 //gcc -fopenmp main.c -lgsl -lgslcblas -lm -o CVW.out
+// valgrind --leak-check=yes --error-limit=no --track-origins=yes --log-file=CVWvalgrind.log ./CVW_dbg.out &
 #ifdef _MKL_USE
 #include "mkl_lapacke.h"
 #endif
@@ -27,7 +28,6 @@
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_statistics.h>
-
 // declare some parameters that will be global scope
 int static JJ = 3;     // number of occupations
 int static NG = 2;     //number of human capital types
@@ -1008,9 +1008,13 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		int sw_spell=0,uspell=0;
 		double wlast =0., wnext=0.;
 		for(i=0;i<Nsim;i++){
-			for(ti=3;ti<TT-3;ti++){
-				wlast = gg_get( ht->whist[ll] ,i,ti-1) + gg_get( ht->whist[ll] ,i,ti-2)+ gg_get( ht->whist[ll] ,i,ti-3);
-				wnext = gg_get( ht->whist[ll] ,i,ti) + gg_get( ht->whist[ll] ,i,ti+1)+ gg_get( ht->whist[ll] ,i,ti+2);
+			for(ti=0;ti<TT-1;ti++){
+				if( ti>3 && ti< TT-2  ){
+					wlast = gg_get( ht->whist[ll] ,i,ti-1) + gg_get( ht->whist[ll] ,i,ti-2)+ gg_get( ht->whist[ll] ,i,ti-3);
+					wnext = gg_get( ht->whist[ll] ,i,ti) + gg_get( ht->whist[ll] ,i,ti+1)+ gg_get( ht->whist[ll] ,i,ti+2);
+				}else{
+					wlast = 0.; wnext=0.;
+				}
 
 				double w_EU=0.;
 				if( ggi_get(ht->uhist[ll],i,ti) ==0 ){
@@ -1040,7 +1044,6 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 					}
 				}else{ //unemployed
 
-
 					if( ggi_get(ht->uhist[ll],i,ti+1) ==0 ){
 						if( ggi_get(ht->jhist[ll],i,ti+1) != sw_spell){
 							w_UEsw[idx_UEsw] = wnext-wlast;
@@ -1054,9 +1057,9 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 							idx_EUns ++;
 						}
 					}
-					if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) && sw_spell == 0 ){
-						sw_spell = 1; //only count the switch once per unemployment spell
-					}
+//					if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) && sw_spell == 0 ){
+//						sw_spell = 1; //only count the switch once per unemployment spell
+//					}
 				}
 			}
 		}
