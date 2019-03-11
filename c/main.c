@@ -52,13 +52,13 @@ int print_lev = 3;
 
 int maxiter = 5000;
 double vftol = 1e-3;
-double rhotightening = 1.;
+double rhotightening = .5;
 
 double beta	= 0.997;		// discount factor
 double b 	= 0.0; 			// unemployment benefit
 double wage_lev = 1;        // will be a shifter so the average wage is >0
 
-double delta_avg = .03;     // average separation rate
+double delta_avg = .01;     // average separation rate
 double urt_avg = .055;     // average separation rate
 
 struct cal_params{
@@ -76,6 +76,7 @@ struct cal_params{
 	double var_ze;		// innovations to match-quality shock
 	double wage_curve;  // curviness of wage function
     double delta_Acoef;
+    double lambdaU_Acoef,lambdaES_Acoef,lambdaEM_Acoef;
     double zloss;
 
     gsl_matrix * lambdaEM;
@@ -256,7 +257,7 @@ int main() {
 	gsl_vector_view zlevLower = gsl_vector_subvector(par.zlev,1,NZ-1);
 	gsl_vector_view zprobLower = gsl_vector_subvector(par.zprob,1,NZ-1);
 	par.var_ze = 0.025*0.025; par.autoz = 0.975;
-	par.zloss  = 0.01;
+	par.zloss  = 0.025;
 	rouwenhorst(par.autoz ,pow(par.var_ze,0.5),& (ztransLower.matrix), &(zlevLower.vector) );
 	ergod_dist( &(ztransLower.matrix) , &(zprobLower.vector));
 	gsl_vector_set(par.zlev,0,5*par.zlev->data[1]);
@@ -296,16 +297,19 @@ int main() {
 	for(i=0;i<NT;i++) gsl_vector_set(par.tlev ,i,-0.1  + .2* (double)i/(double) (NT-1));
 	for(ji=0;ji<JJ;ji++) gsl_vector_set(par.jprob,ji,1./(double)JJ);
 	par.alphaE1 = 0.5;
-	par.alphaE0 = 0.1*pow((double)(JJ-1),-par.alphaE1);
+	par.alphaE0 = 0.05*pow((double)(JJ-1),-par.alphaE1);
 	par.alphaU1 = 0.5;
-	par.alphaU0 = 0.7*pow((double)(JJ-1),-par.alphaU1);
-	par.lambdaU0  = 0.4 / 0.5;
-	par.lambdaES0 = 0.03;
+	par.alphaU0 = 1.*pow((double)(JJ-1),-par.alphaU1);
+	par.lambdaU0  = 0.2 / 0.5;
+	par.lambdaES0 = 0.01;
 	par.lambdaEM0 = 0.8;
-	par.kappa     = 0.1 ;
+	par.kappa     = 0.01 ;
 	par.gdfthr    = 0.5 ;
 	par.wage_curve= 1.5 ;
 	par.delta_Acoef = 0.;
+	par.lambdaU_Acoef = 0.;
+    par.lambdaES_Acoef = 0.;
+	par.lambdaEM_Acoef = 0.;
 
 
 	int ai = 0;int pi = 0;int gi = 0;int si = 0;int zi = 1;	int thi = 0; ji=0;
@@ -548,6 +552,8 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 				int jji,zzi,tti,aai,ppi;
 
+				double lambdaUhr = par->lambdaU0 + par->lambdaU_Acoef*par->Alev->data[ai];
+
 				double EAPWU = 0.;
 				for(aai=0;aai<NA;aai++){
 					for(ppi=0;ppi<NP;ppi++) {
@@ -585,12 +591,12 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 							        gsl_vector_get(par->tprob,tti)*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji], pi, ppi);}
 					}
 				}
-				double mhr = exp(RUhr/rhotightening-((1.-par->lambdaU0)*EAPWU+
-				                                       par->lambdaU0*gsl_max(EtWE,EAPWU)  )/rhotightening)/
-				               (exp(RUhr/rhotightening-((1.-par->lambdaU0)*EAPWU+
-				                                        par->lambdaU0*gsl_max(EtWE,EAPWU)  )/rhotightening)+1.);
+				double mhr = exp(RUhr/rhotightening-((1.-lambdaUhr)*EAPWU+
+                        lambdaUhr*gsl_max(EtWE,EAPWU)  )/rhotightening)/
+				               (exp(RUhr/rhotightening-((1.-lambdaUhr)*EAPWU+
+                                       lambdaUhr*gsl_max(EtWE,EAPWU)  )/rhotightening)+1.);
 				if( isinf(mhr) | isnan(mhr) ){
-					mhr = RUhr > (1.-par->lambdaU0)*EAPWU+ par->lambdaU0*gsl_max(EtWE,EAPWU) ?
+					mhr = RUhr > (1.-lambdaUhr)*EAPWU+ lambdaUhr*gsl_max(EtWE,EAPWU) ?
 							1. : 0. ;
 				}
 				gg_set(pf->mU,ii,ji, mhr );
