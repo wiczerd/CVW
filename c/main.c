@@ -425,6 +425,8 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 				int iU = ai*NP*NG*NS*NZ + pi*NG*NS*NZ + gi*NS*NZ + si*NZ +zi;
 
+                double lambdaEMhr = par->lambdaEM0 + par->lambdaEM_Acoef*par->Alev->data[ai];
+                double lambdaEShr = par->lambdaES0 + par->lambdaES_Acoef*par->Alev->data[ai];
 
 				double delta_hr = delta_avg + par->delta_Acoef * gsl_vector_get(par->Alev,ai) ;
 				//compute expectations over A, Pt
@@ -491,7 +493,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 						}
 
 						// constructing RE
-						REhr += par->alphaE0* pow( gg_get( pf->sE[jji],ii,ji),1.-par->alphaE1)*(par->lambdaEM0*EztWE[jji] +(1.-par->lambdaEM0)*EzWE[jji] ) ;
+						REhr += par->alphaE0* pow( gg_get( pf->sE[jji],ii,ji),1.-par->alphaE1)*(lambdaEMhr*EztWE[jji] +(1.- lambdaEMhr)*EzWE[jji] ) ;
 
 					}
 				}
@@ -513,11 +515,11 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				//set search direction for next iteration:
 				double sEjiDenom = 0.;
 				for(jji=0;jji<JJ;jji++){
-					if(jji!=ji) sEjiDenom += pow(-par->kappa+ par->lambdaEM0*EztWE[jji] + (1.-par->lambdaEM0)*EzWE[jji]- EAPWE , 1/par->alphaE1);
+					if(jji!=ji) sEjiDenom += pow(-par->kappa+ lambdaEMhr*EztWE[jji] + (1.-lambdaEMhr)*EzWE[jji]- EAPWE , 1/par->alphaE1);
 				}
 				for(jji=0;jji<JJ;jji++){
 					if(jji!=ji){
-						gg_set(pf->sE[jji] ,ii,ji, pow(-par->kappa+ par->lambdaEM0*EztWE[jji] + (1.-par->lambdaEM0)*EzWE[jji]- EAPWE , 1/par->alphaE1)/sEjiDenom);
+						gg_set(pf->sE[jji] ,ii,ji, pow(-par->kappa+ lambdaEMhr*EztWE[jji] + (1.-lambdaEMhr)*EzWE[jji]- EAPWE , 1/par->alphaE1)/sEjiDenom);
 					}else{ // this is kind of redundant because it should have initialized to 0
 						gg_set(pf->sE[jji] ,ii,ji, 0.);
 					}
@@ -528,8 +530,8 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				double WEhr = wagevec[ii][ji] + beta*delta_hr*gg_get(vf0.WU,iU,ji) +
 				              beta*(1.- delta_hr )*(
 				              		gg_get(pf->mE,ii,ji)*gg_get( vf->RE,ii,ji) +
-				              		(1.-gg_get(pf->mE,ii,ji))*(par->gdfthr*par->lambdaES0*EtWE + (1.-par->gdfthr)*par->lambdaES0*EtTWE+
-				                                                (1.-par->lambdaES0)*EAPWE )  );
+				              		(1.-gg_get(pf->mE,ii,ji))*(par->gdfthr*lambdaEShr*EtWE + (1.-par->gdfthr)*lambdaEShr*EtTWE+
+				                                                (1.-lambdaEShr)*EAPWE )  );
 
 				gg_set( vf->WE, ii,ji,WEhr);
 
