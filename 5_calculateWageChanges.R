@@ -289,6 +289,7 @@ DTall[ nawavewage==T, occwage_wave:=NA_real_]
 
 DTseam <- DTall[ seam==T]
 DTseam[ , next.occwage_wave := shift(occwage_wave,type="lead"), by=id]
+DTseam[ , last.occwage_wave := shift(occwage_wave,type="lag") , by=id]
 DTseam[ switchedOcc_wave==T, occwagechange_wave:= next.occwage_wave-occwage_wave]
 DTseam[ switchedOcc_wave==F, occwagechange_wave:= 0.]
 
