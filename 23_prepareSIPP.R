@@ -1117,7 +1117,7 @@ if(final_plots==T){
 	
 	EE_wave <- sipp_wave[lfstat_wave==1 & next.lfstat_wave==1 & wave>1 & wave<maxwis-1 , .(EE_wave = weighted.mean(EE_wave & !midEE, wpfinwgt, na.rm = TRUE)), by = list(panel, date)]
 	ggplot(EE_wave) + theme_bw()+
-		geom_point( aes(date, EE_wave, color = panel, group = panel)) +
+		geom_point( aes(date, EE_wave, color = panel, group = panel)) + ylim(c(0.001,0.06))+
 		geom_line( aes(date, EE_wave, color = panel, group = panel)) +xlab("") + ylab("EE wave-frequency") +
 		geom_rect(data=recessions.df, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='pink', alpha=0.2)
 	

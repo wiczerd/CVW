@@ -307,9 +307,9 @@ int main() {
 	par.gdfthr    = 0.5 ;
 	par.wage_curve= 1.5 ;
 	par.delta_Acoef = 0.;
-	par.lambdaU_Acoef = 0.;
-    par.lambdaES_Acoef = 0.;
-	par.lambdaEM_Acoef = 0.;
+	par.lambdaU_Acoef = 0.0;
+    par.lambdaES_Acoef = 0.0;
+	par.lambdaEM_Acoef = 0.0;
 
 
 	int ai = 0;int pi = 0;int gi = 0;int si = 0;int zi = 1;	int thi = 0; ji=0;
@@ -616,7 +616,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				}
 
 				gg_set( vf->WU, ii, ji, b + beta*( pf->mU->data[ii*pf->mU->tda + ji]*vf->RU->data[ii*vf->RU->tda+ji] +
-						(1.-pf->mU->data[ii*pf->mU->tda + ji])*( (1.-par->lambdaU0)*EAPWU + par->lambdaU0*EtWE ) ) );
+						(1.-pf->mU->data[ii*pf->mU->tda + ji])*( (1.-lambdaUhr)*EAPWU + lambdaUhr*EtWE ) ) );
 
 			}
 		}
@@ -765,6 +765,13 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 				Pt[ji]=0;
 				for(ai=0;ai<NP;ai++) if(gg_get(sk->Psel[ll],ti,ji) > cmPtrans[ji][Ptm1[ji]][ai]) ++Pt[ji];
 			}
+			double lambdaEMhr[JJ];double lambdaEShr[JJ]; double lambdaUhr[JJ];
+			for(i=0;i<JJ;i++){
+				lambdaEMhr[i] = (par->lambdaEM0 + par->lambdaEM_Acoef*At);
+				lambdaEShr[i] = (par->lambdaES0 + par->lambdaES_Acoef*At);
+				lambdaUhr[i]  = (par->lambdaU0  + par->lambdaU_Acoef *At);
+			}
+
 			for(i=0;i<Nsim;i++){
 				jtm1[i] = jt[i];
 				utm1[i] = ut[i];
@@ -831,7 +838,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 								for(zi=0;zi<NZ;zi++){
 									if( gg_get(sk->zsel[ll],i,ti) > cmzprob[zi] ) ++ xt[i][2] ;
 								}
-								if( gg_get(sk->lambdaMsel[ll],i,ti)<  gg_get(par->lambdaEM,ti,jt[i]) ) {
+								if( gg_get(sk->lambdaMsel[ll],i,ti)<  lambdaEMhr[jt[i]] ) {
 									if(ti>=burnin) ggi_set(ht->J2Jhist[ll], i, ti-burnin, 1);
 									// draw a new theta
 									for(thi =xtm1[i][3];thi<NT;thi++) if( gg_get( sk->thsel[ll],i,ti ) > cmtprob[thi] ) ++xt[i][3];
@@ -842,8 +849,8 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 
 						}else{
 							//WEm
-							if( gg_get(sk->lambdaSsel[ll],i,ti) < gg_get(par->lambdaES,ti,jt[i]) ) {
-								if (gg_get(sk->lambdaUsel[ll], i, ti) <par->gdfthr) { //godfather (gamma) shock?
+							if( gg_get(sk->lambdaSsel[ll],i,ti) < lambdaEShr[jt[i]] ) {
+								if (gg_get(sk->lambdaUsel[ll], i, ti) < par->gdfthr) { //godfather (gamma) shock?
 									if(ti>=burnin) ggi_set(ht->J2Jhist[ll], i, ti-burnin, 1);
 									xt[i][3] = 0;
 									for (thi = 0; thi < NT; thi++)
@@ -880,7 +887,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 							for(zi=0;zi<NZ;zi++){
 								if( gg_get(sk->zsel[ll],i,ti) > cmzprob[zi] ) ++ xt[i][2] ;
 							}
-							if( gg_get(sk->lambdaUsel[ll],i,ti)<  gg_get(par->lambdaU,ti,jt[i]) ){
+							if( gg_get(sk->lambdaUsel[ll],i,ti)<  lambdaUhr[jt[i]] ){
 								// draw a new theta
 								xt[i][3] = 0;
 								for(thi =0;thi<NT;thi++) if( gg_get( sk->thsel[ll],i,ti ) > cmtprob[thi] ) ++xt[i][3];
@@ -895,7 +902,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 						}// else nothing happens (except paid kappa)
 					// not moving
 					}else{
-						if( gg_get(sk->lambdaUsel[ll],i,ti)< gg_get(par->lambdaU,ti,jt[i] )){ // found a job??
+						if( gg_get(sk->lambdaUsel[ll],i,ti)< lambdaUhr[jt[i]] ){ // found a job??
 							xt[i][3] = 0;
 							for(thi =0;thi<NT;thi++) if( gg_get( sk->thsel[ll],i,ti ) > cmtprob[thi] ) ++xt[i][3];
 							int iM = At*NP*NG*NS*NZ*NT + Pt[jt[i]]*NG*NS*NZ*NT + xt[i][0]*NS*NZ*NT+xt[i][1]*NZ*NT+xt[i][2]*NT+xt[i][3];
