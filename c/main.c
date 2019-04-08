@@ -79,9 +79,6 @@ struct cal_params{
     double lambdaU_Acoef,lambdaES_Acoef,lambdaEM_Acoef;
     double zloss;
 
-    gsl_matrix * lambdaEM;
-	gsl_matrix * lambdaES;
-	gsl_matrix * lambdaU;
 	gsl_vector * AloadP; //loading on A for each P
 	gsl_vector * Plev;
 	gsl_vector * Alev;
@@ -182,6 +179,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk );
 int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk, struct stats *st  );
 
+double param_dist( struct cal_params *par, int Npar, double * err_vec , int Nerr);
 
 // some helper functions to reduce typing
 int static inline ggi_get( gsl_matrix_int * mat, int ri ,int ci){
@@ -321,10 +319,6 @@ int main() {
 	                      exp(par.xSlev->data[si]) *
 	                      exp(par.xGlev->data[gi]), 1.-par.wage_curve) / (1. - par.wage_curve);
 	wage_lev = wage_lev - wage_lev0 ;
-
-	gsl_matrix_set_all(par.lambdaU,par.lambdaU0);
-	gsl_matrix_set_all(par.lambdaES,par.lambdaES0);
-	gsl_matrix_set_all(par.lambdaEM,par.lambdaEM0);
 
 
 
@@ -1113,6 +1107,39 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
 
 	free(w_stns);free(w_stsw);free(w_EEns);free(w_EEsw);free(w_EUns);free(w_EUsw);free(w_UEns);free(w_UEsw);
+}
+
+double param_dist(  struct cal_params *par , int Npar, double * err_vec , int Nerr){
+
+	// Takes in a parameters vector and pumps out an error vector
+
+	int i;
+
+	struct valfuns vf;
+	struct polfuns pf;
+	struct shocks sk;
+	struct hists ht;
+
+	struct stats st;
+
+	st.EEns_qtls = malloc(Nqtls*sizeof(double));st.EEsw_qtls = malloc(Nqtls*sizeof(double));
+	st.EUns_qtls = malloc(Nqtls*sizeof(double));st.EUsw_qtls = malloc(Nqtls*sizeof(double));
+	st.UEns_qtls = malloc(Nqtls*sizeof(double));st.UEsw_qtls = malloc(Nqtls*sizeof(double));
+	st.stns_qtls = malloc(Nqtls*sizeof(double));st.stsw_qtls = malloc(Nqtls*sizeof(double));
+
+	allocate_mats(&vf,&pf,&ht,&sk);
+	allocate_pars(&par);
+
+	init_pf(&pf,&par);
+	init_vf(&vf,&par);
+
+
+	double quad_dist =0;
+	for(i=0;i<Nerr;i++)
+		quad_dist += err_vec[i]*err_vec[i];
+
+
+	return(quad_dist);
 
 }
 
@@ -1156,9 +1183,6 @@ void allocate_pars( struct cal_params * par){
 	int ji;
 	TTT = TT + burnin;
 
-	par->lambdaEM= gsl_matrix_calloc(TTT,JJ) ;
-	par->lambdaES= gsl_matrix_calloc(TTT,JJ) ;
-	par->lambdaU = gsl_matrix_calloc(TTT,JJ) ;
 	par->Plev    = gsl_vector_calloc(NP) ;
 	par->Alev    = gsl_vector_calloc(NA) ;
 	par->xGlev   = gsl_vector_calloc(NG) ;
@@ -1321,9 +1345,6 @@ void free_valfuns(struct valfuns *vf){
 void free_pars( struct cal_params * par){
 	int ji;
 
-	gsl_matrix_free(par->lambdaEM) ;
-	gsl_matrix_free(par->lambdaES);
-	gsl_matrix_free(par->lambdaU);
 	gsl_vector_free(par->Plev);
 	gsl_vector_free(par->Alev);
 	gsl_vector_free(par->xGlev);
