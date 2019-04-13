@@ -775,6 +775,15 @@ if( freq == "wave"){
 }
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# The calibration targets ------------------------------------------------
+#J2J
+DTseam[ lfstat_wave ==1 , wtd.mean(EE_wave,na.rm = T, weights = truncweight )]
+#find rate
+DTseam[ lfstat_wave >1 & changer_anan , wtd.mean(UE_wave,na.rm = T, weights = truncweight )]
+#sep rate
+DTseam[ lfstat_wave ==1 & changer_anan , wtd.mean(EU_wave,na.rm = T, weights = truncweight )]
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #Extracting the dist and moments -----------------------------------
  # wcExp <- subset(DTseam,eval(as.name(recDef))==F)
  # wcRec <- subset(DTseam,eval(as.name(recDef))==T)
