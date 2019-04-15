@@ -373,7 +373,6 @@ int main(int argc,char *argv[] ) {
 	double *x0 = malloc(sizeof(double)*Nparams);
 
 
-	glb_par = &par;
 	//parameter space:
 	// alphaE/alphaU, alphaU, lambdaU,lambdaES/lambdaU, lambdaEM/lambdaU
 	par.param_lbub[0] = 0.; par.param_lbub[0+Nparams] = 1.;
@@ -384,11 +383,29 @@ int main(int argc,char *argv[] ) {
 
 	for(i=0;i<Nparams;i++) x0[i] = 0.5*(par.param_lbub[i]+par.param_lbub[i+Nparams]);
 
+//	double dist = param_dist(x0, & par ,Nparams,err,Nparams);
+//	printf("error is: (%f,%f,%f,%f,%f) for overall obj %f ", err[0],err[1],err[2],err[3],err[4], dist);
+
+	glb_par = &par;
+
+	int npt = 2*Nparams+1;
+	double rhobeg = 0.25;
+	double rhoend = 1e-8;
+	int maxfun = 400*(Nparams+1);
+	double *wspace = malloc(sizeof(double)* (npt+5)*(npt+Nparams)+3*Nparams*(Nparams+5)/2 );
+
+	double*dfbols_lb,*dfbols_ub;
+	dfbols_lb = malloc(sizeof(double)*Nparams);
+	dfbols_ub = malloc(sizeof(double)*Nparams);
+	for(i=0;i<Nparams;i++){ dfbols_lb[i]=0.;dfbols_ub[i]=1.; }
+
+	bobyqa_h_(&Nparams,&npt,x0,dfbols_lb,dfbols_ub,&rhobeg,&rhoend,&success,&maxfun,wspace,&Nparams);
+
 	double dist = param_dist(x0, & par ,Nparams,err,Nparams);
 	printf("error is: (%f,%f,%f,%f,%f) for overall obj %f ", err[0],err[1],err[2],err[3],err[4], dist);
 
 	free(err); free(x0);
-
+	free(wspace);free(dfbols_lb);free(dfbols_ub);
 
 	free_mats(&vf,&pf,&ht,&sk);
 	free_pars(&par);
@@ -1285,13 +1302,23 @@ void dfovec_iface_(double * f, double * x, int * n){
 	// this is going to interface with dovec.f and call param_dist using the global params
 	unsigned nv = *n;
 	int i;
+	int verbose_old,print_lev_old;
 
+	if(verbose>1) printf("Entering DFBOLS evaluation\n");
+	verbose_old = verbose;
+	print_lev_old = print_lev;
+
+	verbose=0;
+	print_lev=0;
 	double * x0 = malloc(sizeof(double)*nv);
 	for(i=0;i<nv;i++)
 		x0[i] = x[i] * (glb_par->param_lbub[i+nv]-glb_par->param_lbub[i])+glb_par->param_lbub[i];
 
 
 	param_dist( x0, glb_par, (int) nv ,f, (int) nv );
+
+	verbose=verbose_old;
+	print_lev = print_lev_old;
 
 	free(x0);
 }
