@@ -46,6 +46,7 @@ int static Npaths  = 50;      // number of simulation paths to draw
 int static Nsim    = 2000;
 
 int static Nqtls   = 5; // number of quantiles that will use to compare distributions
+int        Nparams = 5;
 
 int verbose = 3;
 int print_lev = 3;
@@ -67,6 +68,7 @@ struct cal_params{
 	double alphaU1;		// concavity of alpha function
 	double alphaE0; 	// scale of alpha function
 	double alphaE1;		// concavity of alpha function
+	double alphaEmult,alphaUmult; // mu
 	double kappa;		// cost of switching
 	double autoa;		// persistence of aggregate shock
 	double autop;		// persistence of occ-specific shock
@@ -79,6 +81,8 @@ struct cal_params{
     double delta_Acoef;
     double lambdaU_Acoef,lambdaES_Acoef,lambdaEM_Acoef;
     double zloss;
+
+    double * param_lbub;
 
 	gsl_vector * AloadP; //loading on A for each P
 	gsl_vector * Plev;
@@ -181,11 +185,16 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk, struct stats *st  );
 
 void set_dat( struct stats * );
-double param_dist( struct cal_params *par, int Npar, double * err_vec , int Nerr);
+double param_dist( double * x, struct cal_params *par, int Npar, double * err_vec , int Nerr);
 
 
 // interface for dfbols
 void dfovec_iface_(double * f, double * x, int * n);
+// global parameters structure:
+struct cal_params * glb_par;
+
+
+
 
 // some helper functions to reduce typing
 int static inline ggi_get( gsl_matrix_int * mat, int ri ,int ci){
@@ -227,6 +236,13 @@ int main(int argc,char *argv[] ) {
 	struct hists ht;
 
 	struct stats st;
+
+#ifdef _DFBOLS_USE
+//	if(alg0%3 == 0)
+//		dfbols_flag = 1;
+#endif
+
+
 
 	st.EEns_qtls = malloc(Nqtls*sizeof(double));st.EEsw_qtls = malloc(Nqtls*sizeof(double));
 	st.EUns_qtls = malloc(Nqtls*sizeof(double));st.EUsw_qtls = malloc(Nqtls*sizeof(double));
@@ -279,10 +295,6 @@ int main(int argc,char *argv[] ) {
 		}
 	}
 
-
-	//gsl_matrix_set_all(par.ztrans, 0.025/( (double)NZ-1. ));
-	//for(ii=0;ii<NZ;ii++) gsl_matrix_set(par.ztrans,ii,ii,0.975);
-
 	gsl_matrix_set_all(par.xStrans,.025/( (double)NS-1.) );
 	for(ii=0;ii<NS;ii++) gg_set(par.xStrans,ii,ii,.975);
 	gsl_vector_set_all(par.epsprob, 1./(double) NE);
@@ -297,10 +309,7 @@ int main(int argc,char *argv[] ) {
 	}
 
 //	for(i=0;i<NP;i++) gsl_vector_set(par.Plev ,i,-0.05 + .1* (double)i/(double) (NP-1));
-	for(i=0;i<NG;i++) gsl_vector_set(par.xGlev,i,-0.2  + .4* (double)i/(double) (NG-1));
-	for(i=0;i<NS;i++) gsl_vector_set(par.xSlev,i,-0.2  + .4* (double)i/(double) (NS-1));
-	for(i=0;i<NE;i++) gsl_vector_set(par.epslev ,i,-0.1  + .2* (double)i/(double) (NE-1));
-	for(ji=0;ji<JJ;ji++) gsl_vector_set(par.jprob,ji,1./(double)JJ);
+
 	par.alphaE1 = 0.5;
 	par.alphaE0 = 0.05*pow((double)(JJ-1),-par.alphaE1);
 	par.alphaU1 = 0.5;
@@ -316,8 +325,10 @@ int main(int argc,char *argv[] ) {
     par.lambdaES_Acoef = 0.0;
 	par.lambdaEM_Acoef = 0.0;
 
+	par.var_eps = 0.1;
 
-	int ai = 0;int pi = 0;int gi = 0;int si = 0;int zi = 1;	int thi = 0; ji=0;
+
+/*	int ai = 0;int pi = 0;int gi = 0;int si = 0;int zi = 1;	int thi = 0; ji=0;
 
 	double wage_lev0 = pow(exp(par.AloadP->data[ji] * par.Alev->data[ai]) *
 	                      exp(par.Plev->data[pi]) *
@@ -356,6 +367,28 @@ int main(int argc,char *argv[] ) {
 
 
 	}
+*/
+	double * err = malloc(sizeof(double)*Nparams);
+
+	double *x0 = malloc(sizeof(double)*Nparams);
+
+
+	glb_par = &par;
+	//parameter space:
+	// alphaE/alphaU, alphaU, lambdaU,lambdaES/lambdaU, lambdaEM/lambdaU
+	par.param_lbub[0] = 0.; par.param_lbub[0+Nparams] = 1.;
+	par.param_lbub[1] = 0.; par.param_lbub[1+Nparams] = 1.;
+	par.param_lbub[2] = 0.; par.param_lbub[2+Nparams] = 1.;
+	par.param_lbub[3] = 0.; par.param_lbub[3+Nparams] = 1.;
+	par.param_lbub[4] = 0.; par.param_lbub[4+Nparams] = 1.;
+
+	for(i=0;i<Nparams;i++) x0[i] = 0.5*(par.param_lbub[i]+par.param_lbub[i+Nparams]);
+
+	double dist = param_dist(x0, & par ,Nparams,err,Nparams);
+	printf("error is: (%f,%f,%f,%f,%f) for overall obj %f ", err[0],err[1],err[2],err[3],err[4], dist);
+
+	free(err); free(x0);
+
 
 	free_mats(&vf,&pf,&ht,&sk);
 	free_pars(&par);
@@ -938,7 +971,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 			printmat_int("xGhist.csv",ht->xhist[ll][0],append );
 			printmat_int("xShist.csv",ht->xhist[ll][1],append );
 			printmat_int("zhist.csv",ht->xhist[ll][2],append );
-			printmat_int("thhist.csv",ht->xhist[ll][3],append );
+			printmat_int("epshist.csv",ht->xhist[ll][3],append );
 
 			printmat("swprob_hist.csv", swprob_hist[ll],append );
 			printmat("WUhist.csv", WU_hist[ll],append );
@@ -1121,14 +1154,17 @@ void set_dat( struct stats * dat){
 	dat->J2Jprob = 0.03404871;
 	dat->findrate = 0.3946638;
 	dat->seprate  =  0.08879628;
+	dat->swProb_EE = 0.5183493;
+	dat->swProb_U = 0.5485121;
+
 
 }
 
-double param_dist(  struct cal_params *par , int Npar, double * err_vec , int Nerr){
+double param_dist( double * x, struct cal_params *par , int Npar, double * err_vec , int Nerr){
 
 	// Takes in a parameters vector and pumps out an error vector
 
-	int i,ii;
+	int i,ii,ji;
 	int success;
 
 	struct valfuns vf;
@@ -1141,13 +1177,20 @@ double param_dist(  struct cal_params *par , int Npar, double * err_vec , int Ne
 
 	set_dat(&dat);
 
+	par->alphaE1 = 0.5;
+	par->alphaE0 = x[1]*x[0]*pow((double)(JJ-1),-par->alphaE1);
+	par->alphaU1 = 0.5;
+	par->alphaU0 = x[1]*pow((double)(JJ-1),-par->alphaU1);
+	par->lambdaU0  = x[2];
+	par->lambdaES0 = x[3]*x[2];
+	par->lambdaEM0 = x[4]*x[2];
+
 	st.EEns_qtls = malloc(Nqtls*sizeof(double));st.EEsw_qtls = malloc(Nqtls*sizeof(double));
 	st.EUns_qtls = malloc(Nqtls*sizeof(double));st.EUsw_qtls = malloc(Nqtls*sizeof(double));
 	st.UEns_qtls = malloc(Nqtls*sizeof(double));st.UEsw_qtls = malloc(Nqtls*sizeof(double));
 	st.stns_qtls = malloc(Nqtls*sizeof(double));st.stsw_qtls = malloc(Nqtls*sizeof(double));
 
 	allocate_mats(&vf,&pf,&ht,&sk);
-	allocate_pars(par);
 
 	init_pf(&pf,par);
 	init_vf(&vf,par);
@@ -1184,10 +1227,14 @@ double param_dist(  struct cal_params *par , int Npar, double * err_vec , int Ne
 				gsl_cdf_gaussian_P( (double) i/( (double)NE-1.), par->var_eps ));
 	}
 
+	for(i=0;i<NG;i++) gsl_vector_set(par->xGlev,i,-0.2  + .4* (double)i/(double) (NG-1));
+	for(i=0;i<NS;i++) gsl_vector_set(par->xSlev,i,-0.2  + .4* (double)i/(double) (NS-1));
+	for(ji=0;ji<JJ;ji++) gsl_vector_set(par->jprob,ji,1./(double)JJ);
+
 	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	// come back and figure out how to do xS and xG !!!!
 
-	int ai = 0;int pi = 0;int gi = 0;int si = 0;int zi = 1;	int thi = 0; int ji=0;
+	int ai = 0;int pi = 0;int gi = 0;int si = 0;int zi = 1;	int thi = 0; ji=0;
 
 	double wage_lev0 = pow(exp(par->AloadP->data[ji] * par->Alev->data[ai]) *
 	                       exp(par->Plev->data[pi]) *
@@ -1202,35 +1249,52 @@ double param_dist(  struct cal_params *par , int Npar, double * err_vec , int Ne
 		printvec("Alev.csv", par->Alev,0);printvec("zlev.csv", par->zlev,0);
 		printmat("Atrans.csv",par->Atrans,0);printmat("Ptrans.csv",par->Ptrans[0],0);
 		printmat("ztrans.csv",par->ztrans,0);
-		printvec("Thlev.csv", par->epslev,0);printvec("Plev.csv", par->Plev,0);
+		printvec("epslev.csv", par->epslev,0);printvec("Plev.csv", par->Plev,0);
 	}
 
 	success = draw_shocks(&sk);
 	if(verbose>2 && success != 0) printf("Problem drawing shocks\n");
 
-	success = sol_dyn( &par, &vf, &pf, &sk);
+	success = sol_dyn( par, &vf, &pf, &sk);
 	if(verbose>2 && success != 0) printf("Problem solving model\n");
 
-	success = sim(&par, &vf, &pf, &ht, &sk);
+	success = sim(par, &vf, &pf, &ht, &sk);
 	if(verbose>2 && success != 0) printf("Problem simulating model\n");
 
-	success = sum_stats(&par,&vf,&pf,&ht,&sk, &st);
+	success = sum_stats(par,&vf,&pf,&ht,&sk, &st);
 
 	//form error vector
 	err_vec[0] = st.J2Jprob - dat.J2Jprob;
 	err_vec[1] = st.findrate - dat.findrate;
 	err_vec[2] = st.seprate- dat.seprate;
+	err_vec[3] = st.swProb_EE - dat.swProb_EE;
+	err_vec[4] = st.swProb_U  - dat.swProb_U;
 
 
 	double quad_dist =0;
 	for(i=0;i<Nerr;i++)
 		quad_dist += err_vec[i]*err_vec[i];
 
+	free_mats(&vf,&pf,&ht,&sk);
 
 	return(quad_dist);
 
 }
 
+void dfovec_iface_(double * f, double * x, int * n){
+	// this is going to interface with dovec.f and call param_dist using the global params
+	unsigned nv = *n;
+	int i;
+
+	double * x0 = malloc(sizeof(double)*nv);
+	for(i=0;i<nv;i++)
+		x0[i] = x[i] * (glb_par->param_lbub[i+nv]-glb_par->param_lbub[i])+glb_par->param_lbub[i];
+
+
+	param_dist( x0, glb_par, (int) nv ,f, (int) nv );
+
+	free(x0);
+}
 
 int draw_shocks(struct shocks * sk){
 	int ji,i,ti,ll;
@@ -1280,6 +1344,7 @@ void allocate_pars( struct cal_params * par){
 
 	par->AloadP = gsl_vector_calloc(JJ);
 	par->Ptrans = malloc(sizeof(gsl_matrix*)*JJ);
+	par->param_lbub = malloc(sizeof(double)*Nparams*2);
 	for(ji=0;ji<JJ;ji++){
 		par-> Ptrans[ji] = gsl_matrix_calloc(NP,NP);
 	}
@@ -1444,6 +1509,7 @@ void free_pars( struct cal_params * par){
 		gsl_matrix_free(par-> Ptrans[ji]);
 	}
 	free(par->Ptrans);
+	free(par->param_lbub);
 	gsl_matrix_free(par->Atrans);
 	gsl_matrix_free(par->xGtrans);
 	gsl_matrix_free(par->xStrans);
