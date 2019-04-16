@@ -392,17 +392,17 @@ int main(int argc,char *argv[] ) {
 	double rhobeg = 0.25;
 	double rhoend = 1e-8;
 	int maxfun = 400*(Nparams+1);
-	double *wspace = malloc(sizeof(double)* (npt+5)*(npt+Nparams)+3*Nparams*(Nparams+5)/2 );
+	double *wspace = calloc( (npt+5)*(npt+Nparams)+3*Nparams*(Nparams+5)/2 ,sizeof(double) );
 
 	double*dfbols_lb,*dfbols_ub;
-	dfbols_lb = malloc(sizeof(double)*Nparams);
-	dfbols_ub = malloc(sizeof(double)*Nparams);
+	dfbols_lb = calloc(Nparams,sizeof(double));
+	dfbols_ub = calloc(Nparams,sizeof(double));
 	for(i=0;i<Nparams;i++){ dfbols_lb[i]=0.;dfbols_ub[i]=1.; }
-
-	bobyqa_h_(&Nparams,&npt,x0,dfbols_lb,dfbols_ub,&rhobeg,&rhoend,&success,&maxfun,wspace,&Nparams);
+    int dfbols_printlev = print_lev > 3? 3:print_lev; dfbols_printlev = print_lev <0 ? 0:print_lev;
+	bobyqa_h_(&Nparams,&npt,x0,dfbols_lb,dfbols_ub,&rhobeg,&rhoend,&dfbols_printlev ,&maxfun,wspace,&Nparams);
 
 	double dist = param_dist(x0, & par ,Nparams,err,Nparams);
-	printf("error is: (%f,%f,%f,%f,%f) for overall obj %f ", err[0],err[1],err[2],err[3],err[4], dist);
+	printf("error is: (%f,%f,%f,%f,%f) for overall obj %f \n", err[0],err[1],err[2],err[3],err[4], dist);
 
 	free(err); free(x0);
 	free(wspace);free(dfbols_lb);free(dfbols_ub);
@@ -476,8 +476,8 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 				int iU = ai*NP*NG*NS*NZ + pi*NG*NS*NZ + gi*NS*NZ + si*NZ +zi;
 
-                double lambdaEMhr = par->lambdaEM0 + par->lambdaEM_Acoef*par->Alev->data[ai];
-                double lambdaEShr = par->lambdaES0 + par->lambdaES_Acoef*par->Alev->data[ai];
+                double lambdaEMhr = par->lambdaEM0 + par->lambdaEM_Acoef*gsl_vector_get(par->Alev,ai);
+                double lambdaEShr = par->lambdaES0 + par->lambdaES_Acoef*gsl_vector_get(par->Alev,ai);
 
 				double delta_hr = delta_avg + par->delta_Acoef * gsl_vector_get(par->Alev,ai) ;
 				//compute expectations over A, Pt
@@ -514,8 +514,8 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 				int jji;
 				double REhr = -par->kappa;
-				double EzWE[JJ];
-				double EztWE[JJ];
+				double *EzWE =malloc(JJ*sizeof(double));
+				double *EztWE=malloc(JJ*sizeof(double));
 				for(jji=0;jji<JJ;jji++){
 					EzWE[jji]  = 0.;
 					EztWE[jji] = 0.;
@@ -588,7 +588,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 				gg_set( vf-> WEdist, ii,ji, gg_get(vf->WE,ii,ji) - gg_get(vf0.WE,ii,ji) );
 
-
+				free(EztWE);free(EzWE);
 			} // OMP loop over state ii
 		}
 		gsl_matrix_memcpy(vf0.WE,vf->WE);
@@ -1293,6 +1293,11 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 		quad_dist += err_vec[i]*err_vec[i];
 
 	free_mats(&vf,&pf,&ht,&sk);
+
+	free(st.EEns_qtls);free(st.EEsw_qtls);
+	free(st.EUns_qtls);free(st.EUsw_qtls);
+	free(st.UEns_qtls);free(st.UEsw_qtls);
+	free(st.stns_qtls);free(st.stsw_qtls);
 
 	return(quad_dist);
 
