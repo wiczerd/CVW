@@ -781,8 +781,24 @@ DTseam[ lfstat_wave ==1 , wtd.mean(EE_wave,na.rm = T, weights = truncweight )]
 #find rate
 DTseam[ lfstat_wave >1 & changer_anan , wtd.mean(UE_wave,na.rm = T, weights = truncweight )]
 #sep rate
-DTseam[ lfstat_wave ==1 & changer_anan , wtd.mean(EU_wave,na.rm = T, weights = truncweight )]
+DTseam[ lfstat_wave ==1 , wtd.mean(EU_wave,na.rm = T, weights = truncweight )]
+#sw_U rate
+DTseam[ changer_anan & EU_wave==T , wtd.mean(switched_wave,na.rm = T, weights = truncweight )]
+#sw_E rate
+DTseam[ changer_anan & EE_wave==T , wtd.mean(switched_wave,na.rm = T, weights = truncweight )]
+#sw_st rate
+DTseam[ stayer_anan==T  , wtd.mean(switched_wave,na.rm = T, weights = truncweight )]
 
+DTseam[ switched_wave==T & changer_anan & UE_wave==T, wtd.mean(max.unempdur_wave, na.rm=T, weights=truncweight)]
+
+DTseam[ switched_wave==F & changer_anan & UE_wave==T, wtd.mean(max.unempdur_wave, na.rm=T, weights=truncweight)]
+
+#fnd rate (monthly)
+#DTall[ lfstat>1 & matched_EUUE, mean(NE,na.rm = T)]
+#sep rate (monthly)
+#DTall[ lfstat==1 , mean(EN& matched_EUUE,na.rm = T)]
+#sw_st rate (monthly)
+#DTall[ lfstat==1 & next.lfstat==1 & EE==F, mean(switched,na.rm = T)]
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #Extracting the dist and moments -----------------------------------
  # wcExp <- subset(DTseam,eval(as.name(recDef))==F)

@@ -45,13 +45,16 @@ int static TTT ;
 int static Npaths  = 50;      // number of simulation paths to draw
 int static Nsim    = 2000;
 
+int static Npwave  = 4;
+int static Anan    = 1;
 int static Nqtls   = 5; // number of quantiles that will use to compare distributions
 int        Nparams = 6;
+
 
 int verbose = 3;
 int print_lev = 3;
 
-int maxiter = 5000;
+int maxiter = 200;//5000;
 double vftol = 1e-3;
 double rhotightening = .5;
 
@@ -157,6 +160,8 @@ struct stats{
 	double unrate;
 	double findrate;
 	double seprate;
+	double udur_nosw;
+	double udur_sw;
 
 	double *UEsw_qtls; // will be Nqtls long
 	double *UEns_qtls;
@@ -367,7 +372,7 @@ int main(int argc,char *argv[] ) {
 	dfbols_ub = calloc(Nparams,sizeof(double));
 	for(i=0;i<Nparams;i++){ dfbols_lb[i]=0.;dfbols_ub[i]=1.; }
     int dfbols_printlev = print_lev > 3? 3:print_lev; dfbols_printlev = print_lev <0 ? 0:print_lev;
-	bobyqa_h_(&Nparams,&npt,x0,dfbols_lb,dfbols_ub,&rhobeg,&rhoend,&dfbols_printlev ,&maxfun,wspace,&Nparams);
+//	bobyqa_h_(&Nparams,&npt,x0,dfbols_lb,dfbols_ub,&rhobeg,&rhoend,&dfbols_printlev ,&maxfun,wspace,&Nparams);
 
 	double dist = param_dist(x0, & par ,Nparams,err,Nparams);
 	printf("error is: (%f,%f,%f,%f,%f,%f) for overall obj %f \n", err[0],err[1],err[2],err[3],err[4],err[5], dist);
@@ -989,47 +994,61 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
 	int ll, i,ti,wi,si;
 
-	int Nemp=0, Nunemp = 0, Nfnd =0, Nsep =0, NswU = 0, NswE=0, NJ2J=0, Nspell=0, NswSt=0;
+	int Nemp=0, Nunemp = 0, Nfnd =0, Nsep =0, NswU = 0, NswE=0, NJ2J=0, Nspell=0, NswSt=0,Ndur_sw,Ndur_nosw;
 
 
-#pragma parallel for private(ll,ti,i,wi,si) reduction( +: Nemp ) reduction( +:Nunemp) reduction( +: Nfnd) reduction( +: Nsep) reduction( +: NswU) reduction( +: NswE) reduction( +: Nspell) reduction( +: NswSt)
+#pragma parallel for private(ll,ti,i,wi,si) reduction( +: Nemp ) reduction( +:Nunemp) reduction( +: Nfnd) reduction( +: Nsep) reduction( +: NswU) reduction( +: NswE) reduction( +: Nspell) reduction( +: NswSt) reduction( +: Ndur_sw) reduction( +: Ndur_nosw)
 	for(ll=0;ll<Npaths;ll++){
 
-		int Nemp_ll = 0, Nunemp_ll = 0, Nfnd_ll =0, Nsep_ll = 0, NswU_ll = 0, NswE_ll=0, NJ2J_ll=0,Nspell_ll=0, NswSt_ll =0;
-		int sw_spell=0;
+		int Nemp_ll = 0, Nunemp_ll = 0, Nfnd_ll =0, Nsep_ll = 0, NswU_ll = 0, NswE_ll=0, NJ2J_ll=0,Nspell_ll=0, NswSt_ll =0, Ndur_sw_ll, Ndur_nosw_ll;
+		int sw_spell=0,tsep=0;
 		for(i=0;i<Nsim;i++){
-			for(wi=0;wi<TT/4;wi++){//first loop over waves (wi), then loop over reference month (si)
-                int Nemp_wi = 0,Nspell_wi=0,Nfnd_wi=0,Nsep_wi=0,NJ2J_wi=0,NswE_wi=0,NswSt_wi=0,Nunemp_wi=0,NswU_wi=0;
-
-			    for(si=0;si<4;si++){
-                    ti = si + wi * 4;
-                    if(ti<TT){
+			for(wi=0;wi<(TT/Npwave);wi++){//first loop over waves (wi), then loop over reference month (si)
+                int Nemp_wi = 0,Nspell_wi=0,Nfnd_wi=0,Nsep_wi=0,NJ2J_wi=0,NswE_wi=0,NswSt_wi=0,Nunemp_wi=0,NswU_wi=0,Ndur_sw_wi=0,Ndur_nosw_wi=0;
+			    for(si=0;si<Npwave;si++){
+                    ti = si + wi * Npwave;
+                    if(ti<TT-1){
                         if( ggi_get(ht->uhist[ll],i,ti) ==0 ){
                             Nemp_wi=1;
                             if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
                                 Nsep_wi=1;
                                 sw_spell = ggi_get(ht->jhist[ll],i,ti);
+	                            tsep = ti;
                             }
                             if( ggi_get(ht->J2Jhist[ll],i,ti+1) ==1 ){
                                 NJ2J_wi = 1;
-                                if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ) NswE_ll +=1;
+                                if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ) NswE_wi +=1;
                             }else{  // not EE
-                                if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ) NswSt_ll += 1;
+                                if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ) NswSt_wi += 1;
                             }
                         }else{
-                            Nunemp_ll +=1;
+                            Nunemp_wi =1;
 
                             if( ggi_get(ht->uhist[ll],i,ti+1) ==0 ){
-                                Nfnd_ll +=1;
-                                Nspell_ll += 1;
-                                if( ggi_get(ht->jhist[ll],i,ti+1) != sw_spell ) NswU_ll += 1; //only count switches at the end of the spell.
+                                Nfnd_wi =1;
+                                Nspell_wi += 1;
+                                if( ggi_get(ht->jhist[ll],i,ti+1) != sw_spell ){
+                                	NswU_wi += 1; //only count switches at the end of the spell.
+                                    Ndur_sw_wi = ti - tsep;
+                                }else{
+	                                Ndur_nosw_wi = ti - tsep;
+                                }
                             }
                         }
                     }
 			    }
-                Nemp_ll += Nemp_wi;
-                Nsep_ll += Nsep_wi;
-                NJ2J_ll += NJ2J_wi;
+			    //sum over waves. Kepping s.t. count any transition only once during wave
+                Nemp_ll  += Nemp_wi;
+                Nsep_ll  += Nsep_wi;
+                NJ2J_ll  += NJ2J_wi;
+                NswE_ll  += NswE_wi;
+                NswSt_ll += NswSt_wi;
+                Nunemp_ll+= Nunemp_wi;
+                Nfnd_ll  += Nfnd_wi;
+                Nspell_ll+= Nspell_wi;
+                NswU_ll  += NswU_wi;
+                Ndur_sw_ll  += Ndur_sw_wi;
+				Ndur_nosw_ll  += Ndur_nosw_wi;
 			}
 		}
 
@@ -1042,6 +1061,8 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		NJ2J += NJ2J_ll;
 		Nspell += Nspell_ll;
 		NswSt  += NswSt_ll;
+		Ndur_sw  += Ndur_sw_ll;
+		Ndur_nosw  += Ndur_nosw_ll;
 	}
 
     st->J2Jprob  = (double) NJ2J / (double) Nemp ;
@@ -1051,16 +1072,18 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
     st->swProb_U = Nspell>0 ? (double) NswU / (double) Nspell : 0.;
 	st->swProb_st = (Nemp-NJ2J)>0 ? (double) NswSt / (double) (Nemp-NJ2J): 0.;
     st->unrate =  (double) Nunemp / (double) ( Nunemp + Nemp );
+    st->udur_nosw = (double) Ndur_nosw/ (double)(Nunemp - NswU);
+	st->udur_sw = (double) Ndur_sw/ (double)NswU;
 
 
-    double * w_stns = malloc(sizeof(double) *(Nemp-Nsep-NJ2J-NswSt) );
-	double * w_stsw = malloc(sizeof(double) *(NswSt) );
-	double * w_EEsw = malloc(sizeof(double) *(NswE) );
-	double * w_EEns = malloc(sizeof(double) *(NJ2J - NswE) );
-	double * w_EUsw = malloc(sizeof(double) *(NswU) );
-	double * w_EUns = malloc(sizeof(double) *(Nspell - NswU) );
-	double * w_UEsw = malloc(sizeof(double) *(NswU) );
-	double * w_UEns = malloc(sizeof(double) *(Nspell - NswU) );
+    double * w_stns = malloc(sizeof(double) *(Nemp-Nsep-NJ2J-NswSt)*Npwave );
+	double * w_stsw = malloc(sizeof(double) *(NswSt)*Npwave );
+	double * w_EEsw = malloc(sizeof(double) *(NswE)*Npwave );
+	double * w_EEns = malloc(sizeof(double) *(NJ2J - NswE)*Npwave );
+	double * w_EUsw = malloc(sizeof(double) *(NswU)*Npwave );
+	double * w_EUns = malloc(sizeof(double) *(Nspell - NswU)*Npwave );
+	double * w_UEsw = malloc(sizeof(double) *(NswU)*Npwave );
+	double * w_UEns = malloc(sizeof(double) *(Nspell - NswU)*Npwave );
 
 
 	int idx_EUns =0, idx_UEns =0, idx_EEns=0, idx_EUsw=0,idx_UEsw=0,idx_EEsw=0;
@@ -1070,58 +1093,101 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		int sw_spell=0,uspell=0;
 		double wlast =0., wnext=0.;
 		for(i=0;i<Nsim;i++){
-			for(ti=0;ti<TT-1;ti++){
-				if( ti>3 && ti< TT-2  ){
-					wlast = gg_get( ht->whist[ll] ,i,ti-1) + gg_get( ht->whist[ll] ,i,ti-2)+ gg_get( ht->whist[ll] ,i,ti-3);
-					wnext = gg_get( ht->whist[ll] ,i,ti) + gg_get( ht->whist[ll] ,i,ti+1)+ gg_get( ht->whist[ll] ,i,ti+2);
-				}else{
-					wlast = 0.; wnext=0.;
+			for(wi=0;wi<TT/Npwave;wi++){
+				double w_EEsw_wi =0., w_EEns_wi=0., w_stsw_wi=0.,w_stns_wi=0.,w_UEsw_wi=0.,w_UEns_wi=0.,w_EUsw_wi=0.,w_EUns_wi=0.;
+				int    I_EEsw_wi =0,  I_EEns_wi=0 , I_stsw_wi=0 ,I_stns_wi=0 ,I_UEsw_wi=0 ,I_UEns_wi=0 ,I_EUsw_wi=0 ,I_EUns_wi=0 ;
+				for(si=0;si<Npwave;si++){
+					ti = si + wi * 4;
+
+					if( ti>3 && ti< TT-2 && Anan==0 ){
+						wlast = gg_get( ht->whist[ll] ,i,ti-1) + gg_get( ht->whist[ll] ,i,ti-2)+ gg_get( ht->whist[ll] ,i,ti-3);
+						wnext = gg_get( ht->whist[ll] ,i,ti) + gg_get( ht->whist[ll] ,i,ti+1)+ gg_get( ht->whist[ll] ,i,ti+2);
+					}else if( wi>3 && wi< TT/Npwave-2 && Anan==1  ){
+						int ri=0;wlast=0;wnext=0;
+						for(ri=Npwave;ri<Npwave*4;ri++)
+							wlast += gg_get(ht->whist[ll], i, ti - ri) ;
+						for(ri=0;ri<Npwave*3;ri++)
+							wnext += gg_get( ht->whist[ll] ,i,ti+ri) ;
+					}else{
+						wlast = 0.; wnext=0.;
+					}
+
+					double w_EU=0.;
+					if( ggi_get(ht->uhist[ll],i,ti) ==0 ){
+						if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
+							w_EU = wnext- wlast; //not yet sure if this will be a switch or not, so just store it for now.
+							sw_spell = ggi_get(ht->jhist[ll],i,ti);
+						}
+						else{
+							if( ggi_get(ht->J2Jhist[ll],i,ti+1) ==1 ){
+
+								if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ){
+		                            w_EEsw_wi = wnext - wlast;
+									I_EEsw_wi = 1;
+								}else{
+									w_EEns_wi = wnext - wlast;
+									I_EEns_wi = 1;
+								}
+							}else{  // not EE
+								if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ){
+									w_stsw_wi = wnext - wlast;
+									I_stsw_wi = 1;
+
+								}else{
+									w_stns_wi = wnext - wlast;
+									I_stns_wi = 1;
+								}
+							}
+						}
+					}else{ //unemployed
+
+						if( ggi_get(ht->uhist[ll],i,ti+1) ==0 ){
+							if( ggi_get(ht->jhist[ll],i,ti+1) != sw_spell){
+								w_UEsw_wi = wnext - wlast;
+								w_EUsw_wi = w_EU;
+								I_UEsw_wi = 1;
+								I_EUsw_wi = 1;
+
+							}else{
+								w_UEns_wi = wnext-wlast;
+								w_EUns_wi = w_EU;
+								I_UEns_wi = 1;
+								I_EUns_wi = 1;
+
+							}
+						}
+	//					if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) && sw_spell == 0 ){
+	//						sw_spell = 1; //only count the switch once per unemployment spell
+	//					}
+					}
 				}
-
-				double w_EU=0.;
-				if( ggi_get(ht->uhist[ll],i,ti) ==0 ){
-					if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
-						w_EU = wnext- wlast; //not yet sure if this will be a switch or not, so just store it for now.
-						sw_spell = ggi_get(ht->jhist[ll],i,ti);
-					}
-					else{
-						if( ggi_get(ht->J2Jhist[ll],i,ti+1) ==1 ){
-
-							if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ){
-	                            w_EEsw[idx_EEsw] = wnext - wlast;
-	                            idx_EEsw ++;
-							}else{
-	                            w_EEns[idx_EEns] = wnext - wlast;
-	                            idx_EEns ++;
-							}
-						}else{  // not EE
-							if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ){
-	                            w_stsw[idx_stsw] = wnext - wlast;
-							    idx_stsw ++;
-							}else{
-	                            w_stns[idx_stns] = wnext - wlast;
-	                            idx_stns ++;
-							}
-						}
-					}
-				}else{ //unemployed
-
-					if( ggi_get(ht->uhist[ll],i,ti+1) ==0 ){
-						if( ggi_get(ht->jhist[ll],i,ti+1) != sw_spell){
-							w_UEsw[idx_UEsw] = wnext-wlast;
-							w_EUsw[idx_EUsw] = w_EU;
-							idx_UEsw ++;
-							idx_EUsw ++;
-						}else{
-							w_UEns[idx_UEns] = wnext-wlast;
-							w_EUns[idx_EUns] = w_EU;
-							idx_UEns ++;
-							idx_EUns ++;
-						}
-					}
-//					if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) && sw_spell == 0 ){
-//						sw_spell = 1; //only count the switch once per unemployment spell
-//					}
+				if(I_EEsw_wi ==1){
+					w_EEsw[idx_EEsw] =w_EEsw_wi;
+					idx_EEsw ++;
+				}
+				if(I_EEns_wi==1){
+					w_EEns[idx_EEns] = w_EEns_wi;
+					idx_EEns ++;
+				}
+				if(I_stsw_wi==1){
+					w_stsw[idx_stsw] = w_stsw_wi;
+					idx_stsw ++;
+				}
+				if(I_stns_wi==1){
+					w_stns[idx_stns] = w_stns_wi;
+					idx_stns ++;
+				}
+				if(I_UEsw_wi==1){
+					w_UEsw[idx_UEsw] = w_UEsw_wi;
+					w_EUsw[idx_EUsw] = w_EUsw_wi;
+					idx_UEsw ++;
+					idx_EUsw ++;
+				}
+				if(I_UEns_wi==1){
+					w_UEns[idx_UEns] = w_UEns_wi;
+					w_EUns[idx_EUns] = w_EUns_wi;
+					idx_UEns ++;
+					idx_EUns ++;
 				}
 			}
 		}
@@ -1156,12 +1222,15 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
 void set_dat( struct stats * dat){
 
-	dat->J2Jprob = 0.009818978;//1.-pow(1.-0.03404871,.25);
-	dat->findrate = 0.1874104;//1.-pow(1.-0.3946638,.25);
-	dat->seprate  =  0.01245339;//1.-pow(1.-0.02227534,.25);
+	dat->J2Jprob = 0.03404871;//0.009818978;//1.-pow(1.-0.03404871,.25);
+	dat->findrate = 0.3946638;//0.1874104;//1.-pow(1.-0.3946638,.25);
+	dat->seprate  =  0.02227534;//0.01245339;//1.-pow(1.-0.02227534,.25);
 	dat->swProb_EE = 0.5026808;
 	dat->swProb_U = 0.5362486;
-	dat->swProb_st = 0.01189657;//0.01999708;
+	dat->swProb_st = 0.01999708; //	dat->swProb_st = 0.01999708; //
+	dat->udur_nosw= 5.448572;
+	dat->udur_sw=  6.397636;
+
 
 }
 
