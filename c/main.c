@@ -884,14 +884,13 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 						}else{
 							//WEm
 							if( gg_get(sk->lambdaSsel[ll],i,ti) < lambdaEShr[jt[i]] ) {
+								if(ti>=burnin) ggi_set(ht->J2Jhist[ll], i, ti-burnin, 1);
 								if (gg_get(sk->lambdaUsel[ll], i, ti) < par->gdfthr) { //godfather (gamma) shock?
-									if(ti>=burnin) ggi_set(ht->J2Jhist[ll], i, ti-burnin, 1);
 									xt[i][3] = 0;
 									for (thi = 0; thi < NE; thi++)
 										if (gg_get(sk->epssel[ll], i, ti) > cmepsprob[thi])++xt[i][3];
 									xt[i][3] = xt[i][3] > NE - 1 ? NE - 1 : xt[i][3];
 								}else {
-									if(ti>=burnin) ggi_set(ht->J2Jhist[ll], i, ti-burnin, 1);
 									for (thi = xtm1[i][3]; thi < NE; thi++)
 										if (gg_get(sk->epssel[ll], i, ti) > cmepsprob[thi])++xt[i][3];
 									xt[i][3] = xt[i][3] > NE - 1 ? NE - 1 : xt[i][3];
@@ -995,13 +994,13 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
 	int ll, i,ti,wi,si;
 
-	int Nemp=0, Nunemp = 0, Nfnd =0, Nsep =0, NswU = 0, NswE=0, NJ2J=0, Nspell=0, NswSt=0,Ndur_sw,Ndur_nosw;
+	int Nemp=0, Nunemp = 0, Nfnd =0, Nsep =0, NswU = 0, NswE=0, NJ2J=0, Nspell=0, NswSt=0,Ndur_sw=0,Ndur_nosw=0;
 
 
 #pragma parallel for private(ll,ti,i,wi,si) reduction( +: Nemp ) reduction( +:Nunemp) reduction( +: Nfnd) reduction( +: Nsep) reduction( +: NswU) reduction( +: NswE) reduction( +: Nspell) reduction( +: NswSt) reduction( +: Ndur_sw) reduction( +: Ndur_nosw)
 	for(ll=0;ll<Npaths;ll++){
 
-		int Nemp_ll = 0, Nunemp_ll = 0, Nfnd_ll =0, Nsep_ll = 0, NswU_ll = 0, NswE_ll=0, NJ2J_ll=0,Nspell_ll=0, NswSt_ll =0, Ndur_sw_ll, Ndur_nosw_ll;
+		int Nemp_ll = 0, Nunemp_ll = 0, Nfnd_ll =0, Nsep_ll = 0, NswU_ll = 0, NswE_ll=0, NJ2J_ll=0,Nspell_ll=0, NswSt_ll =0, Ndur_sw_ll=0, Ndur_nosw_ll=0;
 		int sw_spell=0,tsep=0;
 		for(i=0;i<Nsim;i++){
 			for(wi=0;wi<(TT/Npwave);wi++){//first loop over waves (wi), then loop over reference month (si)
@@ -1077,14 +1076,14 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	st->udur_sw = (double) Ndur_sw/ (double)NswU;
 
 
-    double * w_stns = malloc(sizeof(double) *(Nemp-Nsep-NswSt)*Npwave );
-	double * w_stsw = malloc(sizeof(double) *(NswSt)*Npwave );
-	double * w_EEsw = malloc(sizeof(double) *(NswE)*Npwave );
-	double * w_EEns = malloc(sizeof(double) *(NJ2J - NswE)*Npwave );
-	double * w_EUsw = malloc(sizeof(double) *(NswU)*Npwave );
-	double * w_EUns = malloc(sizeof(double) *(Nspell - NswU)*Npwave );
-	double * w_UEsw = malloc(sizeof(double) *(NswU)*Npwave );
-	double * w_UEns = malloc(sizeof(double) *(Nspell - NswU)*Npwave );
+    double * w_stns = malloc(sizeof(double) * Nemp  *Npwave );
+	double * w_stsw = malloc(sizeof(double) * NswSt *Npwave );
+	double * w_EEsw = malloc(sizeof(double) * NswE  *Npwave );
+	double * w_EEns = malloc(sizeof(double) * NJ2J  *Npwave );
+	double * w_EUsw = malloc(sizeof(double) * NswU  *Npwave );
+	double * w_EUns = malloc(sizeof(double) * Nspell*Npwave );
+	double * w_UEsw = malloc(sizeof(double) * NswU  *Npwave );
+	double * w_UEns = malloc(sizeof(double) * Nspell*Npwave );
 
 
 	int idx_EUns =0, idx_UEns =0, idx_EEns=0, idx_EUsw=0,idx_UEsw=0,idx_EEsw=0;
@@ -1100,12 +1099,12 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 				for(si=0;si<Npwave;si++){
 					ti = si + wi * 4;
                     if(ti<TT-1 ){ //can't get transitions unless ti+1 defined
-
+	                    wlast=0;wnext=0;
                         if( ti>3 && ti< TT-2 && Anan==0 ){
                             wlast = gg_get( ht->whist[ll] ,i,ti-1) + gg_get( ht->whist[ll] ,i,ti-2)+ gg_get( ht->whist[ll] ,i,ti-3);
                             wnext = gg_get( ht->whist[ll] ,i,ti) + gg_get( ht->whist[ll] ,i,ti+1)+ gg_get( ht->whist[ll] ,i,ti+2);
                         }else if( wi>3 && wi< TT/Npwave-3 && Anan==1  ){
-                            int ri=0;wlast=0;wnext=0;
+                            int ri=0;
                             for(ri=Npwave;ri<Npwave*4;ri++)
                                 wlast += gg_get(ht->whist[ll], i, ti - ri) ;
                             for(ri=0;ri<Npwave*3;ri++)
@@ -1219,8 +1218,14 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
 
 
-
-	free(w_stns);free(w_stsw);free(w_EEns);free(w_EEsw);free(w_EUns);free(w_EUsw);free(w_UEns);free(w_UEsw);
+	free(w_stns);
+	free(w_stsw);
+	free(w_EEns);
+	free(w_EEsw);
+	free(w_EUns);
+	free(w_EUsw);
+	free(w_UEns);
+	free(w_UEsw);
 }
 
 void set_dat( struct stats * dat){
