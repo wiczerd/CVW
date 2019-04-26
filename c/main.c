@@ -343,8 +343,8 @@ int main(int argc,char *argv[] ) {
 
 
 	//parameter space:
-	// alphaE , alphaU, lambdaU,lambdaES, lambdaEM, delta_avg
-	par.param_lbub[0] = 0.001; par.param_lbub[0+Nparams] = 0.2;
+	// alphaE , alphaU, lambdaU,lambdaES, lambdaEM, delta_avg, zloss_prob
+	par.param_lbub[0] = 0.001; par.param_lbub[0+Nparams] = 1.;
 	par.param_lbub[1] = 0.001; par.param_lbub[1+Nparams] = 1.;
 	par.param_lbub[2] = 0.001; par.param_lbub[2+Nparams] = 0.5;
 	par.param_lbub[3] = 0.001; par.param_lbub[3+Nparams] = 1.;
@@ -1017,18 +1017,18 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
                             }
                             if( ggi_get(ht->J2Jhist[ll],i,ti+1) ==1 ){
                                 NJ2J_wi = 1;
-                                if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ) NswE_wi +=1;
+                                if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ) NswE_wi =1;
                             }else{  // not EE
-                                if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ) NswSt_wi += 1;
+                                if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ) NswSt_wi = 1;
                             }
                         }else{
                             Nunemp_wi =1;
 
                             if( ggi_get(ht->uhist[ll],i,ti+1) ==0 ){
                                 Nfnd_wi =1;
-                                Nspell_wi += 1;
+                                Nspell_wi = 1;
                                 if( ggi_get(ht->jhist[ll],i,ti+1) != sw_spell ){
-                                	NswU_wi += 1; //only count switches at the end of the spell.
+                                	NswU_wi = 1; //only count switches at the end of the spell.
                                     Ndur_sw_wi = ti - tsep;
                                 }else{
 	                                Ndur_nosw_wi = ti - tsep;
