@@ -57,6 +57,7 @@ int print_lev = 3;
 int maxiter = 5000;
 double vftol = 1e-3;
 double rhotightening = .5;
+double caltol = 1e-3;
 
 double beta	= 0.997;		// discount factor
 double b 	= 0.0; 			// unemployment benefit
@@ -242,7 +243,7 @@ void w_qtls( double* vec, int stride, int len, double * qtls_out ){
 
 int main(int argc,char *argv[] ) {
 
-	int i,ii,ji;
+	int i,ii,ji,j;
 	int success, rank,nnodes;
 
 	struct cal_params par;
@@ -379,22 +380,29 @@ int main(int argc,char *argv[] ) {
 #endif
 
 
-	// rank 0 should send this to everyone:
-	double ** x0starts = malloc(sizeof(double*)*nnodes*nstarts);
-	for(i=0;i<nstarts*nnodes;i++){
-		x0starts[i] = malloc(sizeof(double)*Nparams);}
+	double * x0starts,*caldist,*calx;
+	double * x0starts_j = malloc(sizeof(double)*nstarts*Nparams);
+	double * caldist_j = malloc(sizeof(double)*nstarts);
+	double * calx_j    = malloc(sizeof(double)*nstarts*Nparams);
 
-	if(nnodes*nstarts>1){
-		//pseudo-random starting point draws
-		gsl_qrng *qrng = gsl_qrng_alloc(gsl_qrng_sobol,Nparams);
-		for(i=0;i<nstarts*nnodes;i++){
-			gsl_qrng_get(qrng,x0);
-			for(ii=0;ii<Nparams;ii++) x0starts[i][ii] = x0[ii];
+	if(rank==0){
+		// rank 0 should scatter this out to everyone:
+		x0starts = malloc(sizeof(double)*nnodes*nstarts*Nparams);
+		caldist = malloc(sizeof(double)*nnodes*nstarts);
+		calx    = malloc(sizeof(double)*nnodes*nstarts*Nparams);
+
+		if(nnodes*nstarts>1){
+			//pseudo-random starting point draws
+			gsl_qrng *qrng = gsl_qrng_alloc(gsl_qrng_sobol,Nparams);
+			for(i=0;i<nstarts*nnodes;i++){
+				gsl_qrng_get(qrng,x0);
+				for(ii=0;ii<Nparams;ii++) x0starts[i*Nparams+ii] = x0[ii];
+			}
+			gsl_qrng_free(qrng);
 		}
-		gsl_qrng_free(qrng);
-	}
-	else{
-		for(i=0;i<Nparams;i++) x0starts[0][i] = 0.5*(par.param_lbub[i]+par.param_lbub[i+Nparams]);
+		else{
+			for(i=0;i<Nparams;i++) x0starts[i] = 0.5*(par.param_lbub[i]+par.param_lbub[i+Nparams]);
+		}
 	}
 
 	sprintf(calhi_f,"calhist%d.csv",rank);
@@ -403,16 +411,25 @@ int main(int argc,char *argv[] ) {
 	fprintf(calhist,",alphaE0,alphaU0, lambdaU0,lambdaES,lambdaEM,delta,zloss \n");
 	fclose(calhist);
 
+#ifdef _MPI_USE
+	int nsend = Nparams*nstarts;
+	if(rank==0){
+		MPI_Scatter( x0starts , nsend,MPI_DOUBLE,x0starts_j,nsend,MPI_DOUBLE,0,MPI_COMM_WORLD);
+	}
+#else
+	for(i=0;i<nstarts*Nparams;i++){
+		x0starts_j[i] = x0starts[i];
+	}
+#endif
 
-	double * caldist = malloc(sizeof(double )*nstarts);
-	double** calx    = malloc(sizeof(double*)*nstarts);
-	for(i=0;i<(nstarts);i++) calx[i] = malloc(sizeof(double)*Nparams);
+
 	double mindist = 1e6;
 	double * minx = calloc(Nparams,sizeof(double));
 
-	for(i=0;i<nstarts;i++){
+	i=0;
+	while(i<nstarts){
 
-		for(ii=0;ii<Nparams;ii++) x0[ii] = x0starts[rank*nstarts +i][ii] ;
+		for(ii=0;ii<Nparams;ii++) x0[ii] = x0starts_j[i*Nparams+ii] ;
 		double dist;
 
 
@@ -496,21 +513,44 @@ int main(int argc,char *argv[] ) {
 			nlopt_destroy(opt);
 			free(nlopt_lb);free(nlopt_ub);
 		}
-		caldist[i] = dist;
-		for(ii=0;ii<Nparams;ii++) calx[i][ii] = x0[ii];
-		if (dist<mindist){
-			mindist = dist;
-			for(ii=0;ii<Nparams;ii++) minx[ii] = x0[ii];
+		caldist_j[i] = dist;
+		for(ii=0;ii<Nparams;ii++) calx_j[i*Nparams + ii] = x0[ii];
+
+#ifdef _MPI_USE
+		int ngather = nstarts*Nparams;
+		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_Gather(caldist_j,nstarts,MPI_DOUBLE,caldist,nstarts,MPI_DOUBLE,MPI_COMM_WORLD);
+		MPI_Gather(calx_j,ngather ,MPI_DOUBLE,calx,ngather ,MPI_DOUBLE,0,MPI_COMM_WORLD);
+#else
+		caldist = caldist_j;
+		for(ii=0;ii<Nparams;ii++) calx[ii] = calx_j[ii];
+#endif
+		if(rank==0){
+			for(j=0;j<nnodes;j++){
+				dist = caldist[j+i*nnodes];
+
+				if (dist<mindist){
+					mindist = dist;
+					for(ii=0;ii<Nparams;ii++) minx[ii] = calx[j*Nparams+ ii];
+				}
+			}
 		}
+		//check if less than tolerance and then broadcast a stop of the nstarts loop
+#ifdef _MPI_USE
+		MPI_Bcast(mindist,1,MPI_DOUBLE,0,MPI_COMM_WORLD);
+#endif
+		if(dist<caltol)
+			i=nstarts;
+		else
+			i++;
 	}
 
 
 	// gather all of the mindist back to node 1
 
-	for(i=0; i < nnodes*nstarts;i++){
-		free(x0starts[i]);
-		free(calx[i]);
-	}
+	free(x0starts_j);
+	free(caldist_j);free(calx_j);
+
 	free(x0starts);
 	free(caldist);free(calx);
 
