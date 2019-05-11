@@ -41,8 +41,8 @@ int NN ,NUN;
 int static TT      = 12*15;    // periods per simulation path
 int static burnin  = 48;       // number of periods to throw away each time
 int static TTT ;
-int static Npaths  = 50;      // number of simulation paths to draw
-int static Nsim    = 2000;
+int static Npaths  = 60;      // number of simulation paths to draw
+int static Nsim    = 4000;
 
 int static Npwave  = 4;
 int static Anan    = 1;
@@ -434,6 +434,8 @@ int main(int argc,char *argv[] ) {
 
 
 		if(i%2 ==0 && DFBOLS_ALG==1){
+			if(verbose>0)
+				printf("Beginning to evaluate a DFBOLS start point \n");
 
 			glb_par = &par;
 
@@ -441,7 +443,7 @@ int main(int argc,char *argv[] ) {
 			solver_state[0] = 1e4;
 			// allocations for DFBOLS
 			int npt = 2*Nparams+1;
-			double rhobeg = 0.5/(double)(nnodes*nstarts);
+			double rhobeg = 0.5*pow((double)(nnodes*nstarts),-1./(double)Nparams);
 			double rhoend = 1e-3;
 			int maxfun = 400*(Nparams+1);
 			double *wspace = calloc( (npt+5)*(npt+Nparams)+3*Nparams*(Nparams+5)/2 ,sizeof(double) );
@@ -470,11 +472,15 @@ int main(int argc,char *argv[] ) {
 				printf("%f)\n", x0[Nparams-1]);
 			}
 
-			free(err); free(x0);
+
 			free(solver_state);
 			free(wspace);free(dfbols_lb);free(dfbols_ub);
+			if(verbose>0)
+				printf("Evaluated a DFBOLS start point \n");
 		}else{
 
+			if(verbose>0)
+				printf("Beginning to evaluate a DFBOLS start point \n");
 			solver_state = malloc(sizeof(double)*(Nparams+1));
 			solver_state[0] = 1e4;
 			nlopt_opt opt  = nlopt_create(NLOPT_LN_NELDERMEAD,(unsigned)Nparams);
@@ -512,6 +518,8 @@ int main(int argc,char *argv[] ) {
 			free(solver_state);
 			nlopt_destroy(opt);
 			free(nlopt_lb);free(nlopt_ub);
+			if(verbose>0)
+				printf("Evaluated a NM start point \n");
 		}
 		caldist_j[i] = dist;
 		for(ii=0;ii<Nparams;ii++) calx_j[i*Nparams + ii] = x0[ii];
@@ -522,10 +530,12 @@ int main(int argc,char *argv[] ) {
 		MPI_Gather(caldist_j,nstarts,MPI_DOUBLE,caldist,nstarts,MPI_DOUBLE,MPI_COMM_WORLD);
 		MPI_Gather(calx_j,ngather ,MPI_DOUBLE,calx,ngather ,MPI_DOUBLE,0,MPI_COMM_WORLD);
 #else
-		caldist = caldist_j;
-		for(ii=0;ii<Nparams;ii++) calx[ii] = calx_j[ii];
+		for(ii=0;ii<nstarts;ii++) caldist[ii] = caldist_j[ii];
+		for(ii=0;ii<nstarts*Nparams;ii++) calx[ii] = calx_j[ii];
 #endif
 		if(rank==0){
+			if(verbose>0)
+				printf("Looking for best point \n");
 			for(j=0;j<nnodes;j++){
 				dist = caldist[j+i*nnodes];
 
@@ -554,6 +564,7 @@ int main(int argc,char *argv[] ) {
 	free(x0starts);
 	free(caldist);free(calx);
 
+	free(err); free(x0);
 	free(minx);
 
 	free_mats(&vf,&pf,&ht,&sk);
@@ -1264,10 +1275,10 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
     st->swProb_U = Nspell>0 ? (double) NswU / (double) Nspell : 0.;
 	st->swProb_st = Nnosep - NJ2J > 0 ? (double) NswSt / (double) (Nnosep- NJ2J): 0.;
     st->unrate =  (double) Nunemp / (double) ( Nunemp + Nemp );
-    st->udur_nosw = (double) Ndur_nosw/ (double)(Nunemp - NswU);
+    st->udur_nosw = Nspell - NswU>0 ? (double) Ndur_nosw/ (double)(Nspell - NswU): 0.;
 	st->udur_sw = (double) Ndur_sw/ (double)NswU;
 
-/*
+
     double * w_stns = Nemp>0   ? malloc(sizeof(double) * Nemp  *Npwave ): malloc(sizeof(double) * Nsim *TT/Npwave );
 	double * w_stsw = NswSt>0  ? malloc(sizeof(double) * NswSt *Npwave ): malloc(sizeof(double) * Nsim *TT/Npwave  );
 	double * w_EEsw = NswE>0   ? malloc(sizeof(double) * NswE  *Npwave ): malloc(sizeof(double) * Nsim *TT/Npwave  );
@@ -1308,7 +1319,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
                         double w_EU=0.;
                         if( ggi_get(ht->uhist[ll],i,ti) ==0 ){
                             if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
-                                w_EU = wnext- wlast; //not yet sure if this will be a switch or not, so just store it for now.
+                                if(wlast>0 && wnext >0 ) w_EU = wnext- wlast; //not yet sure if this will be a switch or not, so just store it for now.
                                 sw_spell = ggi_get(ht->jhist[ll],i,ti-1);
                             }
                             else{
@@ -1349,9 +1360,9 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
                                 }
                             }
-        //					if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) && sw_spell == 0 ){
-        //						sw_spell = 1; //only count the switch once per unemployment spell
-        //					}
+        					if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) && sw_spell == 0 ){
+        						sw_spell = 1; //only count the switch once per unemployment spell
+        					}
                         }
                     }
 				}
@@ -1417,7 +1428,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	free(w_EUns);
 	free(w_EUsw);
 	free(w_UEns);
-	free(w_UEsw);*/
+	free(w_UEsw);
 }
 
 void set_dat( struct stats * dat){
