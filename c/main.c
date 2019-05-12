@@ -55,7 +55,7 @@ int verbose = 3;
 int print_lev = 3;
 
 int maxiter = 5000;
-double vftol = 1e-3;
+double vftol = 1e-5;
 double rhotightening = .5;
 double caltol = 1e-3;
 
@@ -502,6 +502,11 @@ int main(int argc,char *argv[] ) {
 			nlopt_set_min_objective(opt,f_wrapper_nlopt, (void*) par_pt);
 			nlopt_optimize(opt,x0,&dist);
 
+			//double x0_out[] = {0.020719,1,0.124674,0.006769,0.607258,0.002561,0.040863};
+
+			for(i=0;i<Nparams;i++)
+					x0[i] = solver_state[i+1];
+
 			dist = param_dist(x0, & par ,Nparams,err,Nparams);
 
 			if(verbose>1){
@@ -845,8 +850,8 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 		gsl_matrix_memcpy(vf0.WU,vf->WU);
 		double maxdist = gsl_max( gsl_matrix_max(vf->WEdist),-gsl_matrix_min(vf->WEdist));
 		if(viter % 200 == 0 && verbose >1 )  printf("Max distance is %f on iteration %d \n", maxdist,viter);
-
-		if( maxdist < vftol ){
+		double tolhr = pow(viter+1,-1)*1e-2+vftol;
+		if( maxdist < tolhr ){
 			success = 0;
 			break;
 		}else{
@@ -1201,7 +1206,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	for(ll=0;ll<Npaths;ll++){
 
 		int Nemp_ll = 0, Nunemp_ll = 0,Nnosep_ll=0, Nfnd_ll =0, NswU_ll = 0, NswE_ll=0, NJ2J_ll=0,Nspell_ll=0, NswSt_ll =0, Ndur_sw_ll=0, Ndur_nosw_ll=0;
-		int sw_spell=0,tsep=0;
+		int sw_spell=-1,tsep=-1;
 		for(i=0;i<Nsim;i++){
 			sw_spell = -1;tsep=-1;
 			for(wi=0;wi<(TT/Npwave);wi++){//first loop over waves (wi), then loop over reference month (si)
@@ -1214,6 +1219,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
                             if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
                                 sw_spell = ggi_get(ht->jhist[ll],i,ti-1);
 	                            tsep = ti;
+	                            Nnosep_wi =0;
                             }else{
                             	Nnosep_wi =1;
 	                            if( ggi_get(ht->J2Jhist[ll],i,ti) ==1 ){
@@ -1239,7 +1245,8 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
                         }
                     }
 			    }
-			    if(NswSt_wi ==1 && NswE_wi==1) NswSt_wi=0; // stayer is exclusive
+				if(NswSt_wi ==1 && (NswE_wi==1 || Nunemp_wi ==1) ) NswSt_wi=0; // stayer is exclusive
+
 			    //sum over waves. Kepping s.t. count any transition only once during wave
                 Nemp_ll  += Nemp_wi;
                 Nnosep_ll+= Nnosep_wi;
@@ -1279,93 +1286,95 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	st->udur_sw = (double) Ndur_sw/ (double)NswU;
 
 
-    double * w_stns = Nemp>0   ? malloc(sizeof(double) * Nemp  *Npwave ): malloc(sizeof(double) * Nsim *TT/Npwave );
-	double * w_stsw = NswSt>0  ? malloc(sizeof(double) * NswSt *Npwave ): malloc(sizeof(double) * Nsim *TT/Npwave  );
-	double * w_EEsw = NswE>0   ? malloc(sizeof(double) * NswE  *Npwave ): malloc(sizeof(double) * Nsim *TT/Npwave  );
-	double * w_EEns = NJ2J>0   ? malloc(sizeof(double) * NJ2J  *Npwave ): malloc(sizeof(double) * Nsim *TT/Npwave  );
-	double * w_EUsw = NswU>0   ? malloc(sizeof(double) * NswU  *Npwave ): malloc(sizeof(double) * Nsim *TT/Npwave  );
-	double * w_EUns = Nspell>0 ? malloc(sizeof(double) * Nspell*Npwave ): malloc(sizeof(double) * Nsim *TT/Npwave  );
-	double * w_UEsw = NswU>0   ? malloc(sizeof(double) * NswU  *Npwave ): malloc(sizeof(double) * Nsim *TT/Npwave  );
-	double * w_UEns = Nspell>0 ? malloc(sizeof(double) * Nspell*Npwave ): malloc(sizeof(double) * Nsim *TT/Npwave  );
+    double * w_stns = Nemp>0   ? malloc(sizeof(double) * Nemp  ): malloc(sizeof(double) * Nsim *TT/Npwave );
+	double * w_stsw = NswSt>0  ? malloc(sizeof(double) * NswSt ): malloc(sizeof(double) * Nsim *TT/Npwave  );
+	double * w_EEsw = NswE>0   ? malloc(sizeof(double) * NswE  ): malloc(sizeof(double) * Nsim *TT/Npwave  );
+	double * w_EEns = NJ2J>0   ? malloc(sizeof(double) * NJ2J  ): malloc(sizeof(double) * Nsim *TT/Npwave  );
+	double * w_EUsw = NswU>0   ? malloc(sizeof(double) * NswU  ): malloc(sizeof(double) * Nsim *TT/Npwave  );
+	double * w_EUns = Nspell>0 ? malloc(sizeof(double) * Nspell): malloc(sizeof(double) * Nsim *TT/Npwave  );
+	double * w_UEsw = NswU>0   ? malloc(sizeof(double) * NswU  ): malloc(sizeof(double) * Nsim *TT/Npwave  );
+	double * w_UEns = Nspell>0 ? malloc(sizeof(double) * Nspell): malloc(sizeof(double) * Nsim *TT/Npwave  );
 
 
 	int idx_EUns =0, idx_UEns =0, idx_EEns=0, idx_EUsw=0,idx_UEsw=0,idx_EEsw=0;
 	int idx_stns =0, idx_stsw =0;
 	for(ll=0;ll<Npaths;ll++){
 
-		int sw_spell=0,uspell=0;
+		int sw_spell=-1;
 		double wlast =0., wnext=0.;
 		for(i=0;i<Nsim;i++){
 			for(wi=0;wi<TT/Npwave;wi++){
 				double w_EEsw_wi =0., w_EEns_wi=0., w_stsw_wi=0.,w_stns_wi=0.,w_UEsw_wi=0.,w_UEns_wi=0.,w_EUsw_wi=0.,w_EUns_wi=0.;
 				int    I_EEsw_wi =0,  I_EEns_wi=0 , I_stsw_wi=0 ,I_stns_wi=0 ,I_UEsw_wi=0 ,I_UEns_wi=0 ,I_EUsw_wi=0 ,I_EUns_wi=0 ;
+				sw_spell =-1;
+				wlast=0;wnext=0;
+				ti = wi*4;
+				if( ti>3 && ti< TT-Npwave && Anan==0 ){
+					wlast = gg_get( ht->whist[ll] ,i,ti-1) + gg_get( ht->whist[ll] ,i,ti-2)+ gg_get( ht->whist[ll] ,i,ti-3);
+					wnext = gg_get( ht->whist[ll] ,i,ti+Npwave) + gg_get( ht->whist[ll] ,i,ti+Npwave+1)+ gg_get( ht->whist[ll] ,i,ti+Npwave+2);
+				}else if( wi>3 && wi< TT/Npwave-3 && Anan==1  ){
+					int ri=0;
+					for(ri=1;ri<Npwave*3+1;ri++)
+						wlast += gg_get(ht->whist[ll], i, ti - ri) ;
+					for(ri=0;ri<Npwave*3;ri++)
+						wnext += gg_get( ht->whist[ll] ,i,ti+ri) ;
+				}else{
+					wlast = 0.; wnext=0.;
+				}
 				for(si=0;si<Npwave;si++){
 					ti = si + wi * 4;
                     if(ti<TT-1 && ti>0){ //can't get transitions unless ti+1 defined
-	                    wlast=0;wnext=0;
-                        if( ti>3 && ti< TT-2 && Anan==0 ){
-                            wlast = gg_get( ht->whist[ll] ,i,ti-1) + gg_get( ht->whist[ll] ,i,ti-2)+ gg_get( ht->whist[ll] ,i,ti-3);
-                            wnext = gg_get( ht->whist[ll] ,i,ti) + gg_get( ht->whist[ll] ,i,ti+1)+ gg_get( ht->whist[ll] ,i,ti+2);
-                        }else if( wi>3 && wi< TT/Npwave-3 && Anan==1  ){
-                            int ri=0;
-                            for(ri=Npwave;ri<Npwave*4;ri++)
-                                wlast += gg_get(ht->whist[ll], i, ti - ri) ;
-                            for(ri=0;ri<Npwave*3;ri++)
-                                wnext += gg_get( ht->whist[ll] ,i,ti+ri) ;
-                        }else{
-                            wlast = 0.; wnext=0.;
-                        }
-
                         double w_EU=0.;
-                        if( ggi_get(ht->uhist[ll],i,ti) ==0 ){
-                            if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
-                                if(wlast>0 && wnext >0 ) w_EU = wnext- wlast; //not yet sure if this will be a switch or not, so just store it for now.
+                        if( ggi_get(ht->uhist[ll],i,ti) ==0 && wlast>0 && wnext >0  ){
+
+                        	if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
+                                w_EU = log(wnext)- log(wlast); //not yet sure if this will be a switch or not, so just store it for now.
                                 sw_spell = ggi_get(ht->jhist[ll],i,ti-1);
-                            }
-                            else{
+                            }else{
                                 if( ggi_get(ht->J2Jhist[ll],i,ti) ==1 ){
 
                                     if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti-1) ){
-                                        w_EEsw_wi = wnext - wlast;
+                                        w_EEsw_wi = log(wnext)- log(wlast);
                                         I_EEsw_wi = 1;
                                     }else{
-                                        w_EEns_wi = wnext - wlast;
+                                        w_EEns_wi = log(wnext)- log(wlast);
                                         I_EEns_wi = 1;
                                     }
                                 }else{  // not EE
                                     if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti-1) ){
-                                        w_stsw_wi = wnext - wlast;
+                                        w_stsw_wi = log(wnext)- log(wlast);
                                         I_stsw_wi = 1;
 
                                     }else{
-                                        w_stns_wi = wnext - wlast;
+                                        w_stns_wi = log(wnext)- log(wlast);
                                         I_stns_wi = 1;
                                     }
                                 }
                             }
-                        }else{ //unemployed
+                        }else if(ggi_get(ht->uhist[ll],i,ti) ==1 && wlast>0 && wnext >0 ){ //unemployed
 
-                            if( ggi_get(ht->uhist[ll],i,ti+1) ==0 ){
+                            if( ggi_get(ht->uhist[ll],i,ti+1) ==0  && sw_spell>-1  ){
                                 if( ggi_get(ht->jhist[ll],i,ti+1) != sw_spell){
-                                    w_UEsw_wi = wnext - wlast;
+                                    w_UEsw_wi = log(wnext)- log(wlast);
                                     w_EUsw_wi = w_EU;
                                     I_UEsw_wi = 1;
                                     I_EUsw_wi = 1;
 
                                 }else{
-                                    w_UEns_wi = wnext-wlast;
+                                    w_UEns_wi = log(wnext)- log(wlast);
                                     w_EUns_wi = w_EU;
                                     I_UEns_wi = 1;
                                     I_EUns_wi = 1;
 
                                 }
                             }
-        					if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) && sw_spell == 0 ){
-        						sw_spell = 1; //only count the switch once per unemployment spell
-        					}
                         }
                     }
 				}
+				if( sw_spell>-1 ){ // can't lose a job and be a stayer
+					I_stsw_wi=0;I_stns_wi=0;
+				}
+
 				if(I_EEsw_wi ==1){
 					w_EEsw[idx_EEsw] =w_EEsw_wi;
 					idx_EEsw ++;
@@ -1374,11 +1383,11 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 					w_EEns[idx_EEns] = w_EEns_wi;
 					idx_EEns ++;
 				}
-				if(I_stsw_wi==1){
+				if(I_stsw_wi==1 && I_EEsw_wi==0 ){
 					w_stsw[idx_stsw] = w_stsw_wi;
 					idx_stsw ++;
 				}
-				if(I_stns_wi==1){
+				if(I_stns_wi==1 && I_EEns_wi==0 ){
 					w_stns[idx_stns] = w_stns_wi;
 					idx_stns ++;
 				}
@@ -1397,6 +1406,18 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 			}
 		}
 	}
+
+	if(verbose>1){
+		printf("w_stns is allocated %d, needs %d\n",Nemp*Npwave,idx_stns);
+		printf("w_stsw is allocated %d, needs %d\n",NswSt*Npwave,idx_stsw);
+		printf("w_EEsw is allocated %d, needs %d\n",NswE*Npwave,idx_EEsw);
+		printf("w_EEns is allocated %d, needs %d\n",NJ2J*Npwave,idx_EEns);
+		printf("w_EUsw is allocated %d, needs %d\n",NswU*Npwave,idx_EUsw);
+		printf("w_EUns is allocated %d, needs %d\n", Nspell*Npwave,idx_EUns);
+		printf("w_UEsw is allocated %d, needs %d\n",NswU*Npwave,idx_UEsw);
+		printf("w_UEns is allocated %d, needs %d\n",Nspell*Npwave,idx_UEns);
+	}
+
 
 	qsort(w_stns, (size_t)idx_stns,sizeof(double), &comp_dble_asc);
 	qsort(w_stsw, (size_t)idx_stsw,sizeof(double), &comp_dble_asc);
