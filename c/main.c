@@ -47,7 +47,7 @@ int static Nsim    = 4000;
 int static Npwave  = 4;
 int static Anan    = 1;
 int static Nqtls   = 5; // number of quantiles that will use to compare distributions
-int        Nparams = 7;
+int        Nparams = 14;
 
 int static nstarts = 1;
 
@@ -501,8 +501,6 @@ int main(int argc,char *argv[] ) {
 			//glb_par = &par;
 			nlopt_set_min_objective(opt,f_wrapper_nlopt, (void*) par_pt);
 			nlopt_optimize(opt,x0,&dist);
-
-			//double x0_out[] = {0.020719,1,0.124674,0.006769,0.607258,0.002561,0.040863};
 
 			for(i=0;i<Nparams;i++)
 					x0[i] = solver_state[i+1];
@@ -1407,16 +1405,16 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		}
 	}
 
-	if(verbose>1){
-		printf("w_stns is allocated %d, needs %d\n",Nemp*Npwave,idx_stns);
-		printf("w_stsw is allocated %d, needs %d\n",NswSt*Npwave,idx_stsw);
-		printf("w_EEsw is allocated %d, needs %d\n",NswE*Npwave,idx_EEsw);
-		printf("w_EEns is allocated %d, needs %d\n",NJ2J*Npwave,idx_EEns);
-		printf("w_EUsw is allocated %d, needs %d\n",NswU*Npwave,idx_EUsw);
-		printf("w_EUns is allocated %d, needs %d\n", Nspell*Npwave,idx_EUns);
-		printf("w_UEsw is allocated %d, needs %d\n",NswU*Npwave,idx_UEsw);
-		printf("w_UEns is allocated %d, needs %d\n",Nspell*Npwave,idx_UEns);
-	}
+//	if(verbose>1){
+//		printf("w_stns is allocated %d, needs %d\n",Nemp,idx_stns);
+//		printf("w_stsw is allocated %d, needs %d\n",NswSt,idx_stsw);
+//		printf("w_EEsw is allocated %d, needs %d\n",NswE,idx_EEsw);
+//		printf("w_EEns is allocated %d, needs %d\n",NJ2J,idx_EEns);
+//		printf("w_EUsw is allocated %d, needs %d\n",NswU,idx_EUsw);
+//		printf("w_EUns is allocated %d, needs %d\n", Nspell,idx_EUns);
+//		printf("w_UEsw is allocated %d, needs %d\n",NswU,idx_UEsw);
+//		printf("w_UEns is allocated %d, needs %d\n",Nspell,idx_UEns);
+//	}
 
 
 	qsort(w_stns, (size_t)idx_stns,sizeof(double), &comp_dble_asc);
@@ -1463,6 +1461,25 @@ void set_dat( struct stats * dat){
 	dat->udur_nosw= 5.448572;
 	dat->udur_sw=  6.397636;
 
+	double stsw[] = {-0.33831643,-0.12185895 ,0.01786183,0.18345242,0.44689113};
+	memcpy(dat->stsw_qtls ,stsw,Nqtls);
+	double stns[] = {-0.191465375, -0.065237539, -0.001523193, 0.086168956, 0.239770718};
+	memcpy(dat->stns_qtls ,stns,Nqtls);
+
+	double EUsw[] = {-2.25325384, -1.23791693, -0.55627011, 0.07654097, 0.82149574 };
+	memcpy(dat->EUsw_qtls ,EUsw,Nqtls);
+	double EUns[] = {-1.85892018, -1.06531582, -0.45595244, 0.02397662, 0.69029482 };
+	memcpy(dat->EUns_qtls ,EUsw,Nqtls);
+
+	double UEsw[] = {-1.14731344, -0.52494189, 0.05439134, 0.76429646, 1.52761627};
+	memcpy(dat->UEsw_qtls, UEsw,Nqtls);
+	double UEns[] = {-1.05169527, -0.50902791, -0.08222744, 0.50908986, 1.21678663};
+	memcpy(dat->UEns_qtls, UEns,Nqtls);
+
+	double EEsw[] = {-0.6016007, -0.2139596, 0.1109101, 0.5378298, 1.1205155};
+	memcpy(dat->EEsw_qtls, EEsw,Nqtls);
+	double EEns[] = {-0.48119935, -0.17915801, 0.05450329, 0.34849799, 0.82659345};
+	memcpy(dat->EEns_qtls, EEns,Nqtls);
 
 }
 
@@ -1492,6 +1509,16 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	par->lambdaEM0 = x[4];
 	par->delta_avg = x[5];
 	par->zloss     = x[6];
+
+	if(Nparams>7){
+		par->var_ze = x[7];
+		par->autoz = x[8];
+		par->var_eps = x[9];
+		par->var_pe = x[10];
+		par->autop = x[11];
+		par->var_ae = x[12];
+		par->autoa = x[13];
+	}
 
 	st.EEns_qtls = malloc(Nqtls*sizeof(double));st.EEsw_qtls = malloc(Nqtls*sizeof(double));
 	st.EUns_qtls = malloc(Nqtls*sizeof(double));st.EUsw_qtls = malloc(Nqtls*sizeof(double));
