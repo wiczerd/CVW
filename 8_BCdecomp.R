@@ -793,12 +793,20 @@ DTseam[ switched_wave==T & changer_anan & UE_wave==T, wtd.mean(max.unempdur_wave
 
 DTseam[ switched_wave==F & changer_anan & UE_wave==T, wtd.mean(max.unempdur_wave, na.rm=T, weights=truncweight)]
 
-#fnd rate (monthly)
-#DTall[ lfstat>1 & matched_EUUE, mean(NE,na.rm = T)]
-#sep rate (monthly)
-#DTall[ lfstat==1 , mean(EN& matched_EUUE,na.rm = T)]
-#sw_st rate (monthly)
-#DTall[ lfstat==1 & next.lfstat==1 & EE==F, mean(switched,na.rm = T)]
+#earnings change distributions:
+DTseam[ stayer_anan==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+DTseam[ stayer_anan==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+
+DTseam[ changer_anan==T & EU_wave==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+DTseam[ changer_anan==T & EU_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+
+DTseam[ changer_anan==T & UE_wave==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+DTseam[ changer_anan==T & UE_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+
+DTseam[ changer_anan==T & EE_wave==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+DTseam[ changer_anan==T & EE_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+
+
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #Extracting the dist and moments -----------------------------------
  # wcExp <- subset(DTseam,eval(as.name(recDef))==F)
