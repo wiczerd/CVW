@@ -42,7 +42,7 @@ int static TT      = 12*15;    // periods per simulation path
 int static burnin  = 48;       // number of periods to throw away each time
 int static TTT ;
 int static Npaths  = 60;      // number of simulation paths to draw
-int static Nsim    = 1000;//4000;
+int static Nsim    = 4000;
 
 int static Npwave  = 4;
 int static Anan    = 1;
@@ -55,7 +55,7 @@ int static nstarts = 1;
 int verbose = 3;
 int print_lev = 3;
 
-int maxiter = 400;//5000;
+int maxiter = 5000;
 double vftol = 1e-5;
 double rhotightening = .5;
 double caltol = 1e-3;
@@ -355,14 +355,14 @@ int main(int argc,char *argv[] ) {
 	par.param_lbub[6] = 0.001; par.param_lbub[6+Nparams] = 0.1;
 	// var_ze, autooz, var_eps, skew_eps
 	par.param_lbub[7] = 0.001; par.param_lbub[7+Nparams] = 0.5*0.5;
-	par.param_lbub[8] = 0.500; par.param_lbub[8+Nparams] = 1.0;
+	par.param_lbub[8] = 0.500; par.param_lbub[8+Nparams] = 0.999;
 	par.param_lbub[9] = 0.001; par.param_lbub[9+Nparams] = 0.5*0.5; //std of 0.5 as upper limit
 	par.param_lbub[10]=-2.000; par.param_lbub[10+Nparams]= 5.000;
 	//var_pe, autop, var_ae,autoa
 	par.param_lbub[11]= 0.001; par.param_lbub[11+Nparams]= 0.5*0.5;
-	par.param_lbub[12]= 0.500; par.param_lbub[12+Nparams]= 1.0;
+	par.param_lbub[12]= 0.500; par.param_lbub[12+Nparams]= 0.999;
 	par.param_lbub[13]= 0.001; par.param_lbub[13+Nparams]= 0.25;
-	par.param_lbub[14]= 0.500; par.param_lbub[14+Nparams]= 0.1;
+	par.param_lbub[14]= 0.500; par.param_lbub[14+Nparams]= 0.999;
 
 
 
@@ -1338,7 +1338,8 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
                         if( ggi_get(ht->uhist[ll],i,ti) ==0 && wlast>0 && wnext >0  ){
 
                         	if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
-                                w_EU = log(wnext)- log(wlast); //not yet sure if this will be a switch or not, so just store it for now.
+		                        I_EUns_wi =1;I_EUsw_wi =1; // don't yet know which will be
+                        		w_EU = log(wnext)- log(wlast); //not yet sure if this will be a switch or not, so just store it for now.
                                 sw_spell = ggi_get(ht->jhist[ll],i,ti-1);
                             }else{
                                 if( ggi_get(ht->J2Jhist[ll],i,ti) ==1 ){
@@ -1375,13 +1376,13 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
                                     w_EUns_wi = w_EU;
                                     I_UEns_wi = 1;
                                     I_EUns_wi = 1;
-
                                 }
                             }
                         }
                     }
 				}
-				if( sw_spell>-1 ){ // can't lose a job and be a stayer
+				if( I_EUns_wi==1 || I_EUsw_wi==1 || I_EEns_wi==1 || I_EEsw_wi==1 ){
+					// can't change a job and be a stayer
 					I_stsw_wi=0;I_stns_wi=0;
 				}
 
@@ -1666,7 +1667,7 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	err_vec[5] = (st.swProb_st - dat.swProb_st)*2/(st.swProb_st+ dat.swProb_st);
 
 	err_vec[6] = (mod_dur - dat_dur )*2/(mod_dur + dat_dur);
-	ii=6;
+	ii=7;
 	for(i=0;i<Nqtls;i++)
 		err_vec[ii+i] = (st.stns_qtls[i]-dat.stns_qtls[i])*2/(st.stns_qtls[i]+dat.stns_qtls[i])/(double)Nqtls;
 	ii += Nqtls;
