@@ -42,7 +42,7 @@ int static TT      = 12*15;    // periods per simulation path
 int static burnin  = 48;       // number of periods to throw away each time
 int static TTT ;
 int static Npaths  = 60;      // number of simulation paths to draw
-int static Nsim    = 4000;
+int static Nsim    = 1000;//4000;
 
 int static Npwave  = 4;
 int static Anan    = 1;
@@ -55,7 +55,7 @@ int static nstarts = 1;
 int verbose = 3;
 int print_lev = 3;
 
-int maxiter = 5000;
+int maxiter = 400;//5000;
 double vftol = 1e-5;
 double rhotightening = .5;
 double caltol = 1e-3;
@@ -230,16 +230,16 @@ void static inline gg_set( gsl_matrix * mat, int ri ,int ci, double val){
 }
 void w_qtls( double* vec, int stride, int len, double * qtls_out ){
 	if(Nqtls ==5){
-		qtls_out[0] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.1);
-		qtls_out[1] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.25);
-		qtls_out[2] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.5);
-		qtls_out[3] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.75);
-		qtls_out[4] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.9);
+		qtls_out[0] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 1.-0.1);
+		qtls_out[1] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 1.-0.25);
+		qtls_out[2] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 1.-0.5);
+		qtls_out[3] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 1.-0.75);
+		qtls_out[4] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 1.-0.9);
 	}
 	else{
 		int qi ;
 		for(qi = 0; qi<Nqtls;qi++)
-			qtls_out[qi] = gsl_stats_quantile_from_sorted_data(vec,(size_t)stride,(size_t)len, (double)(qi+1)/(double)(Nqtls+1)  );
+			qtls_out[qi] = gsl_stats_quantile_from_sorted_data(vec,(size_t)stride,(size_t)len, 1.-(double)(qi+1)/(double)(Nqtls+1)  );
 	}
 }
 
@@ -504,7 +504,7 @@ int main(int argc,char *argv[] ) {
 			nlopt_set_upper_bounds(opt,nlopt_ub);
 			double tol= 1e-4;
 			nlopt_set_xtol_rel(opt,tol);
-			//nlopt_set_ftol_abs(opt,tol);
+			nlopt_set_ftol_abs(opt,tol);
 			nlopt_set_ftol_rel(opt,tol);
 			nlopt_set_initial_step1(opt, 0.5/(double)(nnodes*nstarts) );
 			nlopt_set_maxeval(opt,100*(Nparams+1));
@@ -1315,6 +1315,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 			for(wi=0;wi<TT/Npwave;wi++){
 				double w_EEsw_wi =0., w_EEns_wi=0., w_stsw_wi=0.,w_stns_wi=0.,w_UEsw_wi=0.,w_UEns_wi=0.,w_EUsw_wi=0.,w_EUns_wi=0.;
 				int    I_EEsw_wi =0,  I_EEns_wi=0 , I_stsw_wi=0 ,I_stns_wi=0 ,I_UEsw_wi=0 ,I_UEns_wi=0 ,I_EUsw_wi=0 ,I_EUns_wi=0 ;
+				double w_EU=0.;
 				sw_spell =-1;
 				wlast=0;wnext=0;
 				ti = wi*4;
@@ -1333,7 +1334,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 				for(si=0;si<Npwave;si++){
 					ti = si + wi * 4;
                     if(ti<TT-1 && ti>0){ //can't get transitions unless ti+1 defined
-                        double w_EU=0.;
+
                         if( ggi_get(ht->uhist[ll],i,ti) ==0 && wlast>0 && wnext >0  ){
 
                         	if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
@@ -1427,33 +1428,43 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		printf("w_UEns is allocated %d, needs %d\n",Nspell,idx_UEns);
 	}
 
-	/*double * datvec = malloc(idx_EEns* sizeof(double));memcpy(datvec,w_EEns,idx_EEns);
-	qsort(datvec, (size_t)idx_EEns,sizeof(double), &comp_dble_asc);
+	/*
+	double * datvec = malloc(idx_EEns* sizeof(double));memcpy(datvec,w_EEns,idx_EEns*sizeof(double));
+	qsort(datvec, (size_t)idx_EEns,sizeof(double), &comp_dble_desc);
+	memcpy(w_EEns,datvec,idx_EEns*sizeof(double));
 	free(datvec);
-	datvec = malloc(idx_EEsw* sizeof(double));memcpy(datvec,w_EEsw,idx_EEsw);
-	qsort(datvec, (size_t)idx_EEsw,sizeof(double), &comp_dble_asc);
-	free(datvec);
-
-	datvec = malloc(idx_stns* sizeof(double));memcpy(datvec,w_stns,idx_stns);
-	qsort(datvec, (size_t)idx_stns,sizeof(double), &comp_dble_asc);
-	free(datvec);
-	datvec = malloc(idx_stsw* sizeof(double));memcpy(datvec,w_stsw,idx_stsw);
-	qsort(datvec, (size_t)idx_stsw,sizeof(double), &comp_dble_asc);
+	datvec = malloc(idx_EEsw* sizeof(double));memcpy(datvec,w_EEsw,idx_EEsw*sizeof(double));
+	qsort(datvec, (size_t)idx_EEsw,sizeof(double), &comp_dble_desc);
+	memcpy(w_EEsw,datvec,idx_EEsw*sizeof(double));
 	free(datvec);
 
-	datvec = malloc(idx_EUns* sizeof(double));memcpy(datvec,w_EUns,idx_EUns);
-	qsort(datvec, (size_t)idx_EUns,sizeof(double), &comp_dble_asc);
+	datvec = malloc(idx_stns* sizeof(double));memcpy(datvec,w_stns,idx_stns*sizeof(double));
+	qsort(datvec, (size_t)idx_stns,sizeof(double), &comp_dble_desc);
+	memcpy(w_stns,datvec,idx_stns*sizeof(double));
 	free(datvec);
-	datvec = malloc(idx_EUsw* sizeof(double));memcpy(datvec,w_EUsw,idx_EUsw);
-	qsort(datvec, (size_t)idx_EUsw,sizeof(double), &comp_dble_asc);
+	datvec = malloc(idx_stsw* sizeof(double));memcpy(datvec,w_stsw,idx_stsw*sizeof(double));
+	qsort(datvec, (size_t)idx_stsw,sizeof(double), &comp_dble_desc);
+	memcpy(w_stsw,datvec,idx_stsw*sizeof(double));
 	free(datvec);
 
-	datvec = malloc(idx_UEns* sizeof(double));memcpy(datvec,w_UEns,idx_UEns);
-	qsort(datvec , (size_t)idx_UEns,sizeof(double), &comp_dble_asc);
+	datvec = malloc(idx_EUns* sizeof(double));memcpy(datvec,w_EUns,idx_EUns*sizeof(double));
+	qsort(datvec, (size_t)idx_EUns,sizeof(double), &comp_dble_desc);
+	memcpy(w_EUns,datvec,idx_EUns*sizeof(double));
 	free(datvec);
-	datvec = malloc(idx_UEsw* sizeof(double));memcpy(datvec,w_UEsw,idx_UEsw);
-	qsort(datvec, (size_t)idx_UEsw,sizeof(double), &comp_dble_asc);
-	free(datvec);*/
+	datvec = malloc(idx_EUsw* sizeof(double));memcpy(datvec,w_EUsw,idx_EUsw*sizeof(double));
+	qsort(datvec, (size_t)idx_EUsw,sizeof(double), &comp_dble_desc);
+	memcpy(w_EUsw,datvec,idx_EUsw*sizeof(double));
+	free(datvec);
+
+	datvec = malloc(idx_UEns* sizeof(double));memcpy(datvec,w_UEns,idx_UEns*sizeof(double));
+	qsort(datvec , (size_t)idx_UEns,sizeof(double), &comp_dble_desc);
+	memcpy(w_UEns,datvec,idx_UEns*sizeof(double));
+	free(datvec);
+	datvec = malloc(idx_UEsw* sizeof(double));memcpy(datvec,w_UEsw,idx_UEsw*sizeof(double));
+	qsort(datvec, (size_t)idx_UEsw,sizeof(double), &comp_dble_desc);
+	memcpy(w_UEsw,datvec,idx_UEsw*sizeof(double));
+	free(datvec);
+	*/
 
 	qsort(w_EUns, (size_t)idx_EUns,sizeof(double), &comp_dble_asc);
 	qsort(w_EUsw, (size_t)idx_EUsw,sizeof(double), &comp_dble_asc);
@@ -1491,6 +1502,8 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
 void set_dat( struct stats * dat){
 
+	int i;
+
 	dat->J2Jprob = 0.03404871;//0.009818978;//1.-pow(1.-0.03404871,.25);
 	dat->findrate = 0.3946638;//0.1874104;//1.-pow(1.-0.3946638,.25);
 	dat->seprate  =  0.02227534;//0.01245339;//1.-pow(1.-0.02227534,.25);
@@ -1501,24 +1514,24 @@ void set_dat( struct stats * dat){
 	dat->udur_sw=  6.397636;
 
     double stsw[] = {-0.33831643,-0.12185895 ,0.01786183,0.18345242,0.44689113};
-    memcpy(dat->stsw_qtls ,stsw,Nqtls);
+    memcpy(dat->stsw_qtls ,stsw,Nqtls*sizeof(double));
     double stns[] = {-0.191465375, -0.065237539, -0.001523193, 0.086168956, 0.239770718};
-    memcpy(dat->stns_qtls ,stns,Nqtls);
+    memcpy(dat->stns_qtls ,stns,Nqtls*sizeof(double));
 
     double EUsw[] = {-2.25325384, -1.23791693, -0.55627011, 0.07654097, 0.82149574 };
-    memcpy(dat->EUsw_qtls ,EUsw,Nqtls);
+    memcpy(dat->EUsw_qtls ,EUsw,Nqtls*sizeof(double));
     double EUns[] = {-1.85892018, -1.06531582, -0.45595244, 0.02397662, 0.69029482 };
-    memcpy(dat->EUns_qtls ,EUsw,Nqtls);
+    memcpy(dat->EUns_qtls ,EUsw,Nqtls*sizeof(double));
 
     double UEsw[] = {-1.14731344, -0.52494189, 0.05439134, 0.76429646, 1.52761627};
-    memcpy(dat->UEsw_qtls, UEsw,Nqtls);
+    memcpy(dat->UEsw_qtls, UEsw,Nqtls*sizeof(double));
     double UEns[] = {-1.05169527, -0.50902791, -0.08222744, 0.50908986, 1.21678663};
-    memcpy(dat->UEns_qtls, UEns,Nqtls);
+    memcpy(dat->UEns_qtls, UEns,Nqtls*sizeof(double));
 
     double EEsw[] = {-0.6016007, -0.2139596, 0.1109101, 0.5378298, 1.1205155};
-    memcpy(dat->EEsw_qtls, EEsw,Nqtls);
+	memmove(dat->EEsw_qtls, EEsw,Nqtls*sizeof(double));
     double EEns[] = {-0.48119935, -0.17915801, 0.05450329, 0.34849799, 0.82659345};
-    memcpy(dat->EEns_qtls, EEns,Nqtls);
+    memmove(dat->EEns_qtls, EEns,Nqtls*sizeof(double));
 }
 
 double param_dist( double * x, struct cal_params *par , int Npar, double * err_vec , int Nerr){
