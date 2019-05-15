@@ -47,7 +47,8 @@ int static Nsim    = 4000;
 int static Npwave  = 4;
 int static Anan    = 1;
 int static Nqtls   = 5; // number of quantiles that will use to compare distributions
-int        Nparams = 14;
+int        Nparams = 15;
+int        Ntgts   = 7;
 
 int static nstarts = 1;
 
@@ -86,6 +87,7 @@ struct cal_params{
 	double var_pe;		// innovations to occ-specific shock
 	double var_ze;		// innovations to match-quality shock
 	double var_eps;     // variance of epsilon
+	double skew_eps;    // skewness of epsilon
 	double wage_curve;  // curviness of wage function
     double delta_Acoef;
 	double delta_avg;     // average separation rate
@@ -206,7 +208,7 @@ double solver_instance(double *x);
 double f_wrapper_nlopt(unsigned n, const double * x, double * grad, void * par);
 
 // interface for dfbols
-void dfovec_iface_(double * f, double * x, int * n);
+void dfovec_iface_(double * f, double * x, int * n, int* mv);
 // global parameters structure:
 struct cal_params * glb_par;
 
@@ -255,7 +257,7 @@ int main(int argc,char *argv[] ) {
 	struct stats st;
 
 
-
+	Ntgts = 7+Nqtls*8;
 	st.EEns_qtls = malloc(Nqtls*sizeof(double));st.EEsw_qtls = malloc(Nqtls*sizeof(double));
 	st.EUns_qtls = malloc(Nqtls*sizeof(double));st.EUsw_qtls = malloc(Nqtls*sizeof(double));
 	st.UEns_qtls = malloc(Nqtls*sizeof(double));st.UEsw_qtls = malloc(Nqtls*sizeof(double));
@@ -351,11 +353,20 @@ int main(int argc,char *argv[] ) {
 	par.param_lbub[4] = 0.001; par.param_lbub[4+Nparams] = 1.0;
 	par.param_lbub[5] = 0.001; par.param_lbub[5+Nparams] = 0.05;
 	par.param_lbub[6] = 0.001; par.param_lbub[6+Nparams] = 0.1;
+	// var_ze, autooz, var_eps, skew_eps
+	par.param_lbub[7] = 0.001; par.param_lbub[7+Nparams] = 0.5*0.5;
+	par.param_lbub[8] = 0.500; par.param_lbub[8+Nparams] = 1.0;
+	par.param_lbub[9] = 0.001; par.param_lbub[9+Nparams] = 0.5*0.5; //std of 0.5 as upper limit
+	par.param_lbub[10]=-2.000; par.param_lbub[10+Nparams]= 5.000;
+	//var_pe, autop, var_ae,autoa
+	par.param_lbub[11]= 0.001; par.param_lbub[11+Nparams]= 0.5*0.5;
+	par.param_lbub[12]= 0.500; par.param_lbub[12+Nparams]= 1.0;
+	par.param_lbub[13]= 0.001; par.param_lbub[13+Nparams]= 0.25;
+	par.param_lbub[14]= 0.500; par.param_lbub[14+Nparams]= 0.1;
 
 
 
-
-	double * err = malloc(sizeof(double)*Nparams);
+	double * err = malloc(sizeof(double)*Ntgts);
 	double *x0 = malloc(sizeof(double)*Nparams);
 
 	int DFBOLS_ALG;
@@ -424,7 +435,7 @@ int main(int argc,char *argv[] ) {
 
 
 	double mindist = 1e6;
-	double * minx = calloc(Nparams,sizeof(double));
+	double * minx = malloc(Nparams*sizeof(double));for(ii=0;ii<Nparams;ii++) minx[ii]=0;
 
 	i=0;
 	while(i<nstarts){
@@ -451,24 +462,24 @@ int main(int argc,char *argv[] ) {
 			double*dfbols_lb,*dfbols_ub;
 			dfbols_lb = calloc(Nparams,sizeof(double));
 			dfbols_ub = calloc(Nparams,sizeof(double));
-			for(i=0;i<Nparams;i++){ dfbols_lb[i]=0.;dfbols_ub[i]=1.; }
+			for(ii=0;ii<Nparams;ii++){ dfbols_lb[ii]=0.;dfbols_ub[ii]=1.; }
 		    int dfbols_printlev = print_lev > 3? 3:print_lev; dfbols_printlev = print_lev <0 ? 0:print_lev;
 
 			#ifdef _DFBOLS_USE
-		    bobyqa_h_(&Nparams,&npt,x0,dfbols_lb,dfbols_ub,&rhobeg,&rhoend,&dfbols_printlev ,&maxfun,wspace,&Nparams);
+		    bobyqa_h_(&Nparams,&npt,x0,dfbols_lb,dfbols_ub,&rhobeg,&rhoend,&dfbols_printlev ,&maxfun,wspace,&Ntgts);
 		    #endif
 
-			for(i=0;i<Nparams;i++) x0[i] = solver_state[i+1];
+			for(ii=0;ii<Nparams;ii++) x0[ii] = solver_state[ii+1];
 
-			dist = param_dist(x0, & par ,Nparams,err,Nparams);
+			dist = param_dist(x0, & par ,Nparams,err,Ntgts);
 			if(verbose>1){
 				printf("error is %f at vector:  (", dist);
-				for(i=0;i<Nparams-1;i++)
-					printf("%f,", err[i]);
-				printf("%f)\n", err[Nparams-1]);
+				for(ii=0;ii<Ntgts-1;ii++)
+					printf("%f,", err[ii]);
+				printf("%f)\n", err[Ntgts-1]);
 				printf("evaluated at (");
-				for(i=0;i<Nparams-1;i++)
-					printf("%f,", x0[i]);
+				for(ii=0;ii<Nparams-1;ii++)
+					printf("%f,", x0[ii]);
 				printf("%f)\n", x0[Nparams-1]);
 			}
 
@@ -480,41 +491,41 @@ int main(int argc,char *argv[] ) {
 		}else{
 
 			if(verbose>0)
-				printf("Beginning to evaluate a DFBOLS start point \n");
+				printf("Beginning to evaluate a NM start point \n");
 			solver_state = malloc(sizeof(double)*(Nparams+1));
 			solver_state[0] = 1e4;
-			nlopt_opt opt  = nlopt_create(NLOPT_LN_NELDERMEAD,(unsigned)Nparams);
+			nlopt_opt opt  = nlopt_create(NLOPT_LN_SBPLX,(unsigned)Nparams);
 
 			double*nlopt_lb,*nlopt_ub;
 			nlopt_lb = calloc(Nparams,sizeof(double));
 			nlopt_ub = calloc(Nparams,sizeof(double));
-			for(i=0;i<Nparams;i++){ nlopt_lb[i]=0.;nlopt_ub[i]=1.; }
+			for(ii=0;ii<Nparams;ii++){ nlopt_lb[ii]=0.;nlopt_ub[ii]=1.; }
 			nlopt_set_lower_bounds(opt,nlopt_lb);
 			nlopt_set_upper_bounds(opt,nlopt_ub);
 			double tol= 1e-4;
 			nlopt_set_xtol_rel(opt,tol);
-			nlopt_set_ftol_abs(opt,tol);
+			//nlopt_set_ftol_abs(opt,tol);
 			nlopt_set_ftol_rel(opt,tol);
 			nlopt_set_initial_step1(opt, 0.5/(double)(nnodes*nstarts) );
-			nlopt_set_maxeval(opt,400*(Nparams+1));
+			nlopt_set_maxeval(opt,100*(Nparams+1));
 			struct cal_params * par_pt = &par;
 			//glb_par = &par;
 			nlopt_set_min_objective(opt,f_wrapper_nlopt, (void*) par_pt);
 			nlopt_optimize(opt,x0,&dist);
 
-			for(i=0;i<Nparams;i++)
-					x0[i] = solver_state[i+1];
-
-			dist = param_dist(x0, & par ,Nparams,err,Nparams);
+			//for(ii=0;ii<Nparams;ii++)
+			//		x0[ii] = solver_state[ii+1];
+			for(ii=0;ii<Nparams;ii++) x0[ii] = x0starts_j[i*Nparams+ii] ;
+			dist = param_dist(x0, & par ,Nparams,err,Ntgts);
 
 			if(verbose>1){
 				printf("error is %f at vector:  (", dist);
-				for(i=0;i<Nparams-1;i++)
-					printf("%f,", err[i]);
-				printf("%f)\n", err[Nparams-1]);
+				for(ii=0;ii<Ntgts-1;ii++)
+					printf("%f,", err[ii]);
+				printf("%f)\n", err[Ntgts-1]);
 				printf("evaluated at (");
-				for(i=0;i<Nparams-1;i++)
-					printf("%f,", x0[i]);
+				for(ii=0;ii<Nparams-1;ii++)
+					printf("%f,", x0[ii]);
 				printf("%f)\n", x0[Nparams-1]);
 			}
 
@@ -1405,29 +1416,57 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		}
 	}
 
-//	if(verbose>1){
-//		printf("w_stns is allocated %d, needs %d\n",Nemp,idx_stns);
-//		printf("w_stsw is allocated %d, needs %d\n",NswSt,idx_stsw);
-//		printf("w_EEsw is allocated %d, needs %d\n",NswE,idx_EEsw);
-//		printf("w_EEns is allocated %d, needs %d\n",NJ2J,idx_EEns);
-//		printf("w_EUsw is allocated %d, needs %d\n",NswU,idx_EUsw);
-//		printf("w_EUns is allocated %d, needs %d\n", Nspell,idx_EUns);
-//		printf("w_UEsw is allocated %d, needs %d\n",NswU,idx_UEsw);
-//		printf("w_UEns is allocated %d, needs %d\n",Nspell,idx_UEns);
-//	}
+	if(verbose>1){
+		printf("w_stns is allocated %d, needs %d\n",Nemp,idx_stns);
+		printf("w_stsw is allocated %d, needs %d\n",NswSt,idx_stsw);
+		printf("w_EEsw is allocated %d, needs %d\n",NswE,idx_EEsw);
+		printf("w_EEns is allocated %d, needs %d\n",NJ2J,idx_EEns);
+		printf("w_EUsw is allocated %d, needs %d\n",NswU,idx_EUsw);
+		printf("w_EUns is allocated %d, needs %d\n", Nspell,idx_EUns);
+		printf("w_UEsw is allocated %d, needs %d\n",NswU,idx_UEsw);
+		printf("w_UEns is allocated %d, needs %d\n",Nspell,idx_UEns);
+	}
 
+	/*double * datvec = malloc(idx_EEns* sizeof(double));memcpy(datvec,w_EEns,idx_EEns);
+	qsort(datvec, (size_t)idx_EEns,sizeof(double), &comp_dble_asc);
+	free(datvec);
+	datvec = malloc(idx_EEsw* sizeof(double));memcpy(datvec,w_EEsw,idx_EEsw);
+	qsort(datvec, (size_t)idx_EEsw,sizeof(double), &comp_dble_asc);
+	free(datvec);
 
-	qsort(w_stns, (size_t)idx_stns,sizeof(double), &comp_dble_asc);
-	qsort(w_stsw, (size_t)idx_stsw,sizeof(double), &comp_dble_asc);
+	datvec = malloc(idx_stns* sizeof(double));memcpy(datvec,w_stns,idx_stns);
+	qsort(datvec, (size_t)idx_stns,sizeof(double), &comp_dble_asc);
+	free(datvec);
+	datvec = malloc(idx_stsw* sizeof(double));memcpy(datvec,w_stsw,idx_stsw);
+	qsort(datvec, (size_t)idx_stsw,sizeof(double), &comp_dble_asc);
+	free(datvec);
 
-	qsort(w_EEns, (size_t)idx_EEns,sizeof(double), &comp_dble_asc);
-	qsort(w_EEsw, (size_t)idx_EEsw,sizeof(double), &comp_dble_asc);
+	datvec = malloc(idx_EUns* sizeof(double));memcpy(datvec,w_EUns,idx_EUns);
+	qsort(datvec, (size_t)idx_EUns,sizeof(double), &comp_dble_asc);
+	free(datvec);
+	datvec = malloc(idx_EUsw* sizeof(double));memcpy(datvec,w_EUsw,idx_EUsw);
+	qsort(datvec, (size_t)idx_EUsw,sizeof(double), &comp_dble_asc);
+	free(datvec);
+
+	datvec = malloc(idx_UEns* sizeof(double));memcpy(datvec,w_UEns,idx_UEns);
+	qsort(datvec , (size_t)idx_UEns,sizeof(double), &comp_dble_asc);
+	free(datvec);
+	datvec = malloc(idx_UEsw* sizeof(double));memcpy(datvec,w_UEsw,idx_UEsw);
+	qsort(datvec, (size_t)idx_UEsw,sizeof(double), &comp_dble_asc);
+	free(datvec);*/
 
 	qsort(w_EUns, (size_t)idx_EUns,sizeof(double), &comp_dble_asc);
 	qsort(w_EUsw, (size_t)idx_EUsw,sizeof(double), &comp_dble_asc);
 
+	qsort(w_stns, (size_t)idx_stns,sizeof(double), &comp_dble_asc);
+	qsort(w_stsw, (size_t)idx_stsw,sizeof(double), &comp_dble_asc);
+
 	qsort(w_UEns, (size_t)idx_UEns,sizeof(double), &comp_dble_asc);
 	qsort(w_UEsw, (size_t)idx_UEsw,sizeof(double), &comp_dble_asc);
+
+	qsort(w_EEns, (size_t)idx_EEns,sizeof(double), &comp_dble_asc);
+	qsort(w_EEsw, (size_t)idx_EEsw,sizeof(double), &comp_dble_asc);
+
 
 	w_qtls(w_stns,1,idx_stns,st->stns_qtls);
 	w_qtls(w_stsw,1,idx_stsw,st->stsw_qtls);
@@ -1461,26 +1500,25 @@ void set_dat( struct stats * dat){
 	dat->udur_nosw= 5.448572;
 	dat->udur_sw=  6.397636;
 
-	double stsw[] = {-0.33831643,-0.12185895 ,0.01786183,0.18345242,0.44689113};
-	memcpy(dat->stsw_qtls ,stsw,Nqtls);
-	double stns[] = {-0.191465375, -0.065237539, -0.001523193, 0.086168956, 0.239770718};
-	memcpy(dat->stns_qtls ,stns,Nqtls);
+    double stsw[] = {-0.33831643,-0.12185895 ,0.01786183,0.18345242,0.44689113};
+    memcpy(dat->stsw_qtls ,stsw,Nqtls);
+    double stns[] = {-0.191465375, -0.065237539, -0.001523193, 0.086168956, 0.239770718};
+    memcpy(dat->stns_qtls ,stns,Nqtls);
 
-	double EUsw[] = {-2.25325384, -1.23791693, -0.55627011, 0.07654097, 0.82149574 };
-	memcpy(dat->EUsw_qtls ,EUsw,Nqtls);
-	double EUns[] = {-1.85892018, -1.06531582, -0.45595244, 0.02397662, 0.69029482 };
-	memcpy(dat->EUns_qtls ,EUsw,Nqtls);
+    double EUsw[] = {-2.25325384, -1.23791693, -0.55627011, 0.07654097, 0.82149574 };
+    memcpy(dat->EUsw_qtls ,EUsw,Nqtls);
+    double EUns[] = {-1.85892018, -1.06531582, -0.45595244, 0.02397662, 0.69029482 };
+    memcpy(dat->EUns_qtls ,EUsw,Nqtls);
 
-	double UEsw[] = {-1.14731344, -0.52494189, 0.05439134, 0.76429646, 1.52761627};
-	memcpy(dat->UEsw_qtls, UEsw,Nqtls);
-	double UEns[] = {-1.05169527, -0.50902791, -0.08222744, 0.50908986, 1.21678663};
-	memcpy(dat->UEns_qtls, UEns,Nqtls);
+    double UEsw[] = {-1.14731344, -0.52494189, 0.05439134, 0.76429646, 1.52761627};
+    memcpy(dat->UEsw_qtls, UEsw,Nqtls);
+    double UEns[] = {-1.05169527, -0.50902791, -0.08222744, 0.50908986, 1.21678663};
+    memcpy(dat->UEns_qtls, UEns,Nqtls);
 
-	double EEsw[] = {-0.6016007, -0.2139596, 0.1109101, 0.5378298, 1.1205155};
-	memcpy(dat->EEsw_qtls, EEsw,Nqtls);
-	double EEns[] = {-0.48119935, -0.17915801, 0.05450329, 0.34849799, 0.82659345};
-	memcpy(dat->EEns_qtls, EEns,Nqtls);
-
+    double EEsw[] = {-0.6016007, -0.2139596, 0.1109101, 0.5378298, 1.1205155};
+    memcpy(dat->EEsw_qtls, EEsw,Nqtls);
+    double EEns[] = {-0.48119935, -0.17915801, 0.05450329, 0.34849799, 0.82659345};
+    memcpy(dat->EEns_qtls, EEns,Nqtls);
 }
 
 double param_dist( double * x, struct cal_params *par , int Npar, double * err_vec , int Nerr){
@@ -1498,7 +1536,12 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	struct stats st;
 	struct stats dat;
 
-	set_dat(&dat);
+    dat.EEns_qtls = malloc(Nqtls*sizeof(double));dat.EEsw_qtls = malloc(Nqtls*sizeof(double));
+    dat.EUns_qtls = malloc(Nqtls*sizeof(double));dat.EUsw_qtls = malloc(Nqtls*sizeof(double));
+    dat.UEns_qtls = malloc(Nqtls*sizeof(double));dat.UEsw_qtls = malloc(Nqtls*sizeof(double));
+    dat.stns_qtls = malloc(Nqtls*sizeof(double));dat.stsw_qtls = malloc(Nqtls*sizeof(double));
+
+    set_dat(&dat);
 
 	par->alphaE1 = 0.5;
 	par->alphaE0 = x[0]*pow((double)(JJ-1),-par->alphaE1);
@@ -1510,15 +1553,16 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	par->delta_avg = x[5];
 	par->zloss     = x[6];
 
-	if(Nparams>7){
-		par->var_ze = x[7];
-		par->autoz = x[8];
-		par->var_eps = x[9];
-		par->var_pe = x[10];
-		par->autop = x[11];
-		par->var_ae = x[12];
-		par->autoa = x[13];
-	}
+    if(Nparams>7){
+        par->var_ze = x[7];
+        par->autoz = x[8];
+        par->var_eps = x[9];
+        par->skew_eps = x[10];
+        par->var_pe = x[11];
+        par->autop = x[12];
+        par->var_ae = x[13];
+        par->autoa = x[14];
+    }
 
 	st.EEns_qtls = malloc(Nqtls*sizeof(double));st.EEsw_qtls = malloc(Nqtls*sizeof(double));
 	st.EUns_qtls = malloc(Nqtls*sizeof(double));st.EUsw_qtls = malloc(Nqtls*sizeof(double));
@@ -1559,7 +1603,8 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	gsl_vector_set_all(par->epsprob, 1./(double) NE);
 	for(i=0;i<NE;i++){
 		gsl_vector_set( par->epslev,i,
-				gsl_cdf_gaussian_P( (double) i/( (double)NE-1.), par->var_eps ));
+				gsl_cdf_gaussian_P( (double) i/( (double)NE-1.), par->var_eps ) -
+				tfn( (double) i/( (double)NE-1.)/pow(par->var_eps,0.5),par->skew_eps )  );// skew-normal
 	}
 
 	for(i=0;i<NG;i++) gsl_vector_set(par->xGlev,i,-0.2  + .4* (double)i/(double) (NG-1));
@@ -1608,13 +1653,43 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	err_vec[5] = (st.swProb_st - dat.swProb_st)*2/(st.swProb_st+ dat.swProb_st);
 
 	err_vec[6] = (mod_dur - dat_dur )*2/(mod_dur + dat_dur);
-
+	ii=6;
+	for(i=0;i<Nqtls;i++)
+		err_vec[ii+i] = (st.stns_qtls[i]-dat.stns_qtls[i])*2/(st.stns_qtls[i]+dat.stns_qtls[i])/(double)Nqtls;
+	ii += Nqtls;
+	for(i=0;i<Nqtls;i++)
+		err_vec[ii+i] = (st.stsw_qtls[i]-dat.stsw_qtls[i])*2/(st.stsw_qtls[i]+dat.stsw_qtls[i])/(double)Nqtls;
+	ii += Nqtls;
+	for(i=0;i<Nqtls;i++)
+		err_vec[ii+i] = (st.EEns_qtls[i]-dat.EEns_qtls[i])*2/(st.EEns_qtls[i]+dat.EEns_qtls[i])/(double)Nqtls;
+	ii += Nqtls;
+	for(i=0;i<Nqtls;i++)
+		err_vec[ii+i] = (st.EEsw_qtls[i]-dat.EEsw_qtls[i])*2/(st.EEsw_qtls[i]+dat.EEsw_qtls[i])/(double)Nqtls;
+	ii += Nqtls;
+	for(i=0;i<Nqtls;i++)
+		err_vec[ii+i] = (st.EUns_qtls[i]-dat.EUns_qtls[i])*2/(st.EUns_qtls[i]+dat.EUns_qtls[i])/(double)Nqtls;
+	ii += Nqtls;
+	for(i=0;i<Nqtls;i++)
+		err_vec[ii+i] = (st.EUsw_qtls[i]-dat.EUsw_qtls[i])*2/(st.EUsw_qtls[i]+dat.EUsw_qtls[i])/(double)Nqtls;
+	ii += Nqtls;
+	for(i=0;i<Nqtls;i++)
+		err_vec[ii+i] = (st.UEns_qtls[i]-dat.UEns_qtls[i])*2/(st.UEns_qtls[i]+dat.UEns_qtls[i])/(double)Nqtls;
+	ii += Nqtls;
+	for(i=0;i<Nqtls;i++)
+		err_vec[ii+i] = (st.UEsw_qtls[i]-dat.UEsw_qtls[i])*2/(st.UEsw_qtls[i]+dat.UEsw_qtls[i])/(double)Nqtls;
+	ii += Nqtls;
 
 	double quad_dist =0;
 	for(i=0;i<Nerr;i++)
 		quad_dist += err_vec[i]*err_vec[i];
 
 	free_mats(&vf,&pf,&ht,&sk);
+
+	free(dat.EEns_qtls);free(dat.EEsw_qtls);
+	free(dat.EUns_qtls);free(dat.EUsw_qtls);
+	free(dat.UEns_qtls);free(dat.UEsw_qtls);
+	free(dat.stns_qtls);free(dat.stsw_qtls);
+
 
 	free(st.EEns_qtls);free(st.EEsw_qtls);
 	free(st.EUns_qtls);free(st.EUsw_qtls);
@@ -1632,7 +1707,7 @@ double f_wrapper_nlopt(unsigned n, const double * x, double * grad, void * par){
 	int verbose_old,print_lev_old;
 	struct cal_params*   cpar = (struct cal_params*)par;
 	double dist;
-	double * errvec = malloc(sizeof(double)*n);
+	double * errvec = malloc(sizeof(double)*Ntgts);
 
 	if(verbose>1) printf("Entering Nelder-Meade evaluation\n");
 	verbose_old = verbose;
@@ -1651,7 +1726,7 @@ double f_wrapper_nlopt(unsigned n, const double * x, double * grad, void * par){
 		printf("%f\n",x0[n-1]);
 	}
 
-	dist = param_dist( x0, cpar, (int) n ,  errvec, (int) n );
+	dist = param_dist( x0, cpar, (int) n ,  errvec, Ntgts );
 
 	verbose=verbose_old;
 	print_lev = print_lev_old;
@@ -1659,7 +1734,7 @@ double f_wrapper_nlopt(unsigned n, const double * x, double * grad, void * par){
 	if(print_lev>1){
 		calhist = fopen(calhi_f,"a+");
 		fprintf(calhist,"%f,",dist);
-		for(i=0;i<n;i++)
+		for(i=0;i<Ntgts;i++)
 			fprintf(calhist,"%f,",errvec[i]);
 		for(i=0;i<n-1;i++)
 			fprintf(calhist,"%f,",x0[i]);
@@ -1676,9 +1751,10 @@ double f_wrapper_nlopt(unsigned n, const double * x, double * grad, void * par){
 
 }
 
-void dfovec_iface_(double * f, double * x, int * n){
+void dfovec_iface_(double * f, double * x, int * n, int* m){
 	// this is going to interface with dfovec.f and call param_dist using the global params
-	unsigned nv = *n;
+	int nv = *n;
+	int mv = *m;
 	int i;
 	int verbose_old,print_lev_old;
 	double dist;
@@ -1694,7 +1770,7 @@ void dfovec_iface_(double * f, double * x, int * n){
 		x0[i] = x[i] * (glb_par->param_lbub[i+nv]-glb_par->param_lbub[i])+glb_par->param_lbub[i];
 
 
-	dist = param_dist( x0, glb_par, (int) nv ,f, (int) nv );
+	dist = param_dist( x0, glb_par, nv ,f, mv );
 
 	verbose=verbose_old;
 	print_lev = print_lev_old;
@@ -1702,7 +1778,7 @@ void dfovec_iface_(double * f, double * x, int * n){
 	if(print_lev>1){
 		calhist = fopen(calhi_f,"a+");
 		fprintf(calhist,"%f,",dist);
-		for(i=0;i<nv;i++)
+		for(i=0;i<mv;i++)
 			fprintf(calhist,"%f,",f[i]);
 		for(i=0;i<nv-1;i++)
 			fprintf(calhist,"%f,",x0[i]);
