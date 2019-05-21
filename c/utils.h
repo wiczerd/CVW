@@ -658,6 +658,21 @@ void printvec(char* name, gsl_vector* vec, int append){
 	if(append==0) printf("Printing matrix to, %s\n",name);
 	fclose(matfile);
 }
+void printarray(char* name, double* vec, int rows, int append){
+	FILE* matfile;int ri;
+
+	if(append == 0){
+		matfile = fopen(name, "w");
+	}else{
+		matfile = fopen(name, "a");
+	}
+	for(ri=0;ri<rows;ri++){
+		fprintf(matfile,"%f, ",vec[ri]);
+	}
+	fprintf(matfile,"\n");
+	if(append==0) printf("Printing matrix to, %s\n",name);
+	fclose(matfile);
+}
 void printvec_int(char* name, gsl_vector_int* vec, int append){
 	FILE* matfile; int ri;
 	int rows = (int)vec->size;

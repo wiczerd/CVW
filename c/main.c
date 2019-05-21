@@ -23,8 +23,7 @@
 #include <gsl/gsl_qrng.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_errno.h>
-#include <gsl/gsl_spline.h>
-#include <gsl/gsl_integration.h>
+#include <gsl/gsl_sort.h>
 #include <gsl/gsl_statistics.h>
 
 // declare some parameters that will be global scope
@@ -47,8 +46,16 @@ int static Nsim    = 4000;
 int static Npwave  = 4;
 int static Anan    = 1;
 int static Nqtls   = 5; // number of quantiles that will use to compare distributions
+double     qtlgrid[] = {0.1,0.25,0.5,0.75,0.9};
 int        Nparams = 15;
-int        Ntgts   = 7;
+int        Ntargets= 7;
+
+int        Ncluster = 3;
+int        Npar_cluster[4] ={7,0,0,0}; // first the flows parameters, then the dist params then the cyclcical parameters
+int        Ntgt_cluster[4] ={7,0,0,0};
+
+
+
 
 int static nstarts = 1;
 
@@ -73,6 +80,7 @@ double * solver_state;
 
 
 struct cal_params{
+	int cluster_hr;
 	double gdfthr, lambdaEM0, lambdaES0, lambdaU0, var_les, var_lem, var_lu ;
 	double alphaU0; 	// scale of alpha function
 	double alphaU1;		// concavity of alpha function
@@ -94,7 +102,10 @@ struct cal_params{
 	double lambdaU_Acoef,lambdaES_Acoef,lambdaEM_Acoef;
     double zloss;
 
-    double * param_lbub;
+    double * xopt;
+
+    double * param_lbub;  // the upper and lower bounds for all parameters
+    double ** cluster_lbub;
 
 	gsl_vector * AloadP; //loading on A for each P
 	gsl_vector * Plev;
@@ -213,8 +224,6 @@ void dfovec_iface_(double * f, double * x, int * n, int* mv);
 struct cal_params * glb_par;
 
 
-
-
 // some helper functions to reduce typing
 int static inline ggi_get( gsl_matrix_int * mat, int ri ,int ci){
 	return gsl_matrix_int_get( mat, (size_t) ri, (size_t) ci );
@@ -230,23 +239,28 @@ void static inline gg_set( gsl_matrix * mat, int ri ,int ci, double val){
 }
 void w_qtls( double* vec, int stride, int len, double * qtls_out ){
 	if(Nqtls ==5){
-		qtls_out[0] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 1.-0.1);
-		qtls_out[1] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 1.-0.25);
-		qtls_out[2] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 1.-0.5);
-		qtls_out[3] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 1.-0.75);
-		qtls_out[4] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 1.-0.9);
+		qtls_out[0] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.1);
+		qtls_out[1] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.25);
+		qtls_out[2] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.5);
+		qtls_out[3] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.75);
+		qtls_out[4] = gsl_stats_quantile_from_sorted_data(vec, (size_t)stride ,(size_t)len, 0.9);
 	}
 	else{
 		int qi ;
 		for(qi = 0; qi<Nqtls;qi++)
-			qtls_out[qi] = gsl_stats_quantile_from_sorted_data(vec,(size_t)stride,(size_t)len, 1.-(double)(qi+1)/(double)(Nqtls+1)  );
+			qtls_out[qi] = gsl_stats_quantile_from_sorted_data(vec,(size_t)stride,(size_t)len, (double)(qi+1)/(double)(Nqtls+1)  );
 	}
+	//check the order (i.e. must be increasing):
+	gsl_sort( qtls_out, 1, Nqtls );
+
 }
 
 int main(int argc,char *argv[] ) {
 
-	int i,ii,ji,j;
+	int i,ii,ji,j, ci;
 	int success, rank,nnodes;
+
+	int cal_now;
 
 	struct cal_params par;
 	struct valfuns vf;
@@ -257,7 +271,15 @@ int main(int argc,char *argv[] ) {
 	struct stats st;
 
 
-	Ntgts = 7+Nqtls*8;
+	// actually take this from argc
+	cal_now = 0;
+
+
+	Npar_cluster[1] = Nparams-Npar_cluster[0];
+	Ntargets = Npar_cluster[0]+Nqtls*8;
+	Ntgt_cluster[0] = Npar_cluster[0];
+	Ntgt_cluster[1] = Nqtls*8;
+
 	st.EEns_qtls = malloc(Nqtls*sizeof(double));st.EEsw_qtls = malloc(Nqtls*sizeof(double));
 	st.EUns_qtls = malloc(Nqtls*sizeof(double));st.EUsw_qtls = malloc(Nqtls*sizeof(double));
 	st.UEns_qtls = malloc(Nqtls*sizeof(double));st.UEsw_qtls = malloc(Nqtls*sizeof(double));
@@ -340,7 +362,7 @@ int main(int argc,char *argv[] ) {
     par.lambdaES_Acoef = 0.0;
 	par.lambdaEM_Acoef = 0.0;
 
-	par.var_eps = 0.1;
+	par.var_eps = 0.1;par.skew_eps = 0.;
 
 
 
@@ -353,21 +375,28 @@ int main(int argc,char *argv[] ) {
 	par.param_lbub[4] = 0.001; par.param_lbub[4+Nparams] = 1.0;
 	par.param_lbub[5] = 0.001; par.param_lbub[5+Nparams] = 0.05;
 	par.param_lbub[6] = 0.001; par.param_lbub[6+Nparams] = 0.1;
-	// var_ze, autooz, var_eps, skew_eps
-	par.param_lbub[7] = 0.001; par.param_lbub[7+Nparams] = 0.5*0.5;
-	par.param_lbub[8] = 0.500; par.param_lbub[8+Nparams] = 0.999;
-	par.param_lbub[9] = 0.001; par.param_lbub[9+Nparams] = 0.5*0.5; //std of 0.5 as upper limit
-	par.param_lbub[10]=-2.000; par.param_lbub[10+Nparams]= 5.000;
-	//var_pe, autop, var_ae,autoa
-	par.param_lbub[11]= 0.001; par.param_lbub[11+Nparams]= 0.5*0.5;
-	par.param_lbub[12]= 0.500; par.param_lbub[12+Nparams]= 0.999;
-	par.param_lbub[13]= 0.001; par.param_lbub[13+Nparams]= 0.25;
-	par.param_lbub[14]= 0.500; par.param_lbub[14+Nparams]= 0.999;
+	if(Nparams>Npar_cluster[0]){
+		// var_ze, autooz, var_eps, skew_eps
+		par.param_lbub[7] = 0.010; par.param_lbub[7+Nparams] = 0.5*0.5;
+		par.param_lbub[8] = 0.500; par.param_lbub[8+Nparams] = 0.999;
+		par.param_lbub[9] = 0.010; par.param_lbub[9+Nparams] = 0.5*0.5; //std of 0.5 as upper limit
+		par.param_lbub[10]=-2.000; par.param_lbub[10+Nparams]= 5.000;
+		//var_pe, autop, var_ae,autoa
+		par.param_lbub[11]= 0.010; par.param_lbub[11+Nparams]= 0.5*0.5;
+		par.param_lbub[12]= 0.500; par.param_lbub[12+Nparams]= 0.999;
+		par.param_lbub[13]= 0.010; par.param_lbub[13+Nparams]= 0.25;
+		par.param_lbub[14]= 0.500; par.param_lbub[14+Nparams]= 0.999;
+
+	}
 
 
+	par.cluster_lbub = malloc(sizeof(double*)*Ncluster);
+	//par.xopt = malloc(sizeof(double)*Nparams);
 
-	double * err = malloc(sizeof(double)*Ntgts);
+	double * err = malloc(sizeof(double)*Ntargets);
 	double *x0 = malloc(sizeof(double)*Nparams);
+	double *x0_clu;double *err_clu;
+
 
 	int DFBOLS_ALG;
 #ifdef _DFBOLS_USE
@@ -389,7 +418,6 @@ int main(int argc,char *argv[] ) {
 	nnodes = 1;
 
 #endif
-
 
 	double * x0starts,*caldist,*calx;
 	double * x0starts_j = malloc(sizeof(double)*nstarts*Nparams);
@@ -418,8 +446,23 @@ int main(int argc,char *argv[] ) {
 
 	sprintf(calhi_f,"calhist%d.csv",rank);
 	calhist = fopen(calhi_f,"w+");
-	fprintf(calhist,"dist,J2J_err,fnd_err,sep_err,swEE_err,swU_err,swSt_err,dur_ratio");
-	fprintf(calhist,",alphaE0,alphaU0, lambdaU0,lambdaES,lambdaEM,delta,zloss \n");
+	fprintf(calhist,"dist,J2J_err,fnd_err,sep_err,swEE_err,swU_err,swSt_err,dur_ratio,");
+	if(Ntargets>7){
+		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," stns%f, ",qtlgrid[ii]);
+		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," stsw%f, ",qtlgrid[ii]);
+		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," EEns%f, ",qtlgrid[ii]);
+		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," EEsw%f, ",qtlgrid[ii]);
+		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," EUns%f, ",qtlgrid[ii]);
+		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," EUsw%f, ",qtlgrid[ii]);
+		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," UEns%f, ",qtlgrid[ii]);
+		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," UEsw%f, ",qtlgrid[ii]);
+	}
+
+	fprintf(calhist,"alphaE0,alphaU0, lambdaU0,lambdaES,lambdaEM,delta,zloss,");
+	if(Nparams>7){
+		fprintf(calhist,"var_ze,autoz,var_eps,skew_eps,var_pe,autop,var_a,autoa");
+	}
+	fprintf(calhist,"\n");
 	fclose(calhist);
 
 #ifdef _MPI_USE
@@ -444,55 +487,83 @@ int main(int argc,char *argv[] ) {
 		double dist;
 
 
-		if(i%2 ==0 && DFBOLS_ALG==1){
+		if(i%2 ==0 ){ //free(wspace);free(dfbols_lb);free(dfbols_ub);
+
 			if(verbose>0)
 				printf("Beginning to evaluate a DFBOLS start point \n");
 
 			glb_par = &par;
 
-			solver_state = malloc(sizeof(double)*(Nparams+1));
-			solver_state[0] = 1e4;
-			// allocations for DFBOLS
-			int npt = 2*Nparams+1;
-			double rhobeg = 0.5*pow((double)(nnodes*nstarts),-1./(double)Nparams);
-			double rhoend = 1e-3;
-			int maxfun = 400*(Nparams+1);
-			double *wspace = calloc( (npt+5)*(npt+Nparams)+3*Nparams*(Nparams+5)/2 ,sizeof(double) );
 
-			double*dfbols_lb,*dfbols_ub;
-			dfbols_lb = calloc(Nparams,sizeof(double));
-			dfbols_ub = calloc(Nparams,sizeof(double));
-			for(ii=0;ii<Nparams;ii++){ dfbols_lb[ii]=0.;dfbols_ub[ii]=1.; }
-		    int dfbols_printlev = print_lev > 3? 3:print_lev; dfbols_printlev = print_lev <0 ? 0:print_lev;
+			// loop over clusters
+			for(ci=0;ci<Ncluster;ci++){
+				par.cluster_hr = ci;
 
-			#ifdef _DFBOLS_USE
-		    bobyqa_h_(&Nparams,&npt,x0,dfbols_lb,dfbols_ub,&rhobeg,&rhoend,&dfbols_printlev ,&maxfun,wspace,&Ntgts);
-		    #endif
+				solver_state = malloc(sizeof(double)*(Npar_cluster[ci]+1));
+				solver_state[0] = 1e4;
 
-			for(ii=0;ii<Nparams;ii++) x0[ii] = solver_state[ii+1];
+				// allocations for DFBOLS
 
-			dist = param_dist(x0, & par ,Nparams,err,Ntgts);
-			if(verbose>1){
-				printf("error is %f at vector:  (", dist);
-				for(ii=0;ii<Ntgts-1;ii++)
-					printf("%f,", err[ii]);
-				printf("%f)\n", err[Ntgts-1]);
-				printf("evaluated at (");
-				for(ii=0;ii<Nparams-1;ii++)
-					printf("%f,", x0[ii]);
-				printf("%f)\n", x0[Nparams-1]);
+				x0_clu = malloc(Npar_cluster[ci]*sizeof(double));
+				int npt = 2*Npar_cluster[ci] +1;
+				double rhobeg = 0.5*pow((double)(nnodes*nstarts),-1./(double)Npar_cluster[ci]);
+				double rhoend = 1e-3;
+				int maxfun = 400*(Npar_cluster[ci]+1);
+				double *wspace = calloc( (npt+5)*(npt+Npar_cluster[ci])+3*Npar_cluster[ci]*(Npar_cluster[ci]+5)/2 ,sizeof(double) );
+
+				double*dfbols_lb,*dfbols_ub;
+				dfbols_lb = calloc(Npar_cluster[ci],sizeof(double));
+				dfbols_ub = calloc(Npar_cluster[ci],sizeof(double));
+				par.cluster_lbub[ci] = malloc(2*Npar_cluster[ci]*sizeof(double));
+				for(ii=0;ii<Npar_cluster[ci];ii++){ dfbols_lb[ii]=0.;dfbols_ub[ii]=1.; }
+				int par_hr =0;
+				for(ii=0;ii<ci;ii++ ) par_hr += Npar_cluster[ii];
+				for(ii=0;ii<Npar_cluster[ci];ii++){
+					par.cluster_lbub[ci][ii] = par.param_lbub[ par_hr + ii];
+					par.cluster_lbub[ci][ Npar_cluster[ci] +ii] = par.param_lbub[ Nparams+par_hr + ii];
+				}
+				for(ii=0;ii<Npar_cluster[ci];ii++) x0_clu[ii] = x0[ii];
+
+			    int dfbols_printlev = print_lev > 3? 3:print_lev; dfbols_printlev = print_lev <0 ? 0:print_lev;
+				if( cal_now ==1 ){
+				#ifdef _DFBOLS_USE
+			    bobyqa_h_(&(Npar_cluster[ci]),&npt,x0_clu,dfbols_lb,dfbols_ub,&rhobeg,&rhoend,&dfbols_printlev ,&maxfun,wspace,&(Ntgt_cluster[ci]));
+				#endif
+				}else{
+					double x0in[] = {0.021973,	0.945344,	0.133491,	0.006753,0.564665,0.002207,0.041467};
+					for(ii=0;ii<Npar_cluster[ci];ii++) x0[ii] = x0in[ii];
+					ci = Ncluster;
+				}
+
+				for(ii=0;ii<Npar_cluster[ci];ii++) x0[ii] = solver_state[ii+1];
+
+				dist = param_dist(x0, & par ,Nparams,err,Ntargets);
+				if(verbose>1){
+					printf("error is %f at vector:  (", dist);
+					for(ii=0;ii<Ntargets-1;ii++)
+						printf("%f,", err[ii]);
+					printf("%f)\n", err[Ntargets-1]);
+					printf("evaluated at (");
+					for(ii=0;ii<Nparams-1;ii++)
+						printf("%f,", x0[ii]);
+					printf("%f)\n", x0[Nparams-1]);
+				}
+
+				free(wspace);free(dfbols_lb);free(dfbols_ub);
+				free(par.cluster_lbub[ci]);
+
 			}
 
 
 			free(solver_state);
-			free(wspace);free(dfbols_lb);free(dfbols_ub);
 			if(verbose>0)
 				printf("Evaluated a DFBOLS start point \n");
 		}else{
 
+
 			if(verbose>0)
 				printf("Beginning to evaluate a NM start point \n");
-			solver_state = malloc(sizeof(double)*(Nparams+1));
+			solver_state = malloc(sizeof(double)*(Npar_cluster[ci] +1));
 			solver_state[0] = 1e4;
 			nlopt_opt opt  = nlopt_create(NLOPT_LN_SBPLX,(unsigned)Nparams);
 
@@ -516,13 +587,13 @@ int main(int argc,char *argv[] ) {
 			//for(ii=0;ii<Nparams;ii++)
 			//		x0[ii] = solver_state[ii+1];
 			for(ii=0;ii<Nparams;ii++) x0[ii] = x0starts_j[i*Nparams+ii] ;
-			dist = param_dist(x0, & par ,Nparams,err,Ntgts);
+			dist = param_dist(x0, & par ,Nparams,err,Ntargets);
 
 			if(verbose>1){
 				printf("error is %f at vector:  (", dist);
-				for(ii=0;ii<Ntgts-1;ii++)
+				for(ii=0;ii<Ntargets-1;ii++)
 					printf("%f,", err[ii]);
-				printf("%f)\n", err[Ntgts-1]);
+				printf("%f)\n", err[Ntargets-1]);
 				printf("evaluated at (");
 				for(ii=0;ii<Nparams-1;ii++)
 					printf("%f,", x0[ii]);
@@ -1256,7 +1327,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 			    }
 				if(NswSt_wi ==1 && (NswE_wi==1 || Nunemp_wi ==1) ) NswSt_wi=0; // stayer is exclusive
 
-			    //sum over waves. Kepping s.t. count any transition only once during wave
+			    //sum over waves. Keeping s.t. count any transition only once during wave
                 Nemp_ll  += Nemp_wi;
                 Nnosep_ll+= Nnosep_wi;
                 NJ2J_ll  += NJ2J_wi;
@@ -1310,12 +1381,13 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	for(ll=0;ll<Npaths;ll++){
 
 		int sw_spell=-1;
-		double wlast =0., wnext=0.;
+		double wlast =-1., wnext=-1.;double w_EU=0.;
 		for(i=0;i<Nsim;i++){
 			for(wi=0;wi<TT/Npwave;wi++){
 				double w_EEsw_wi =0., w_EEns_wi=0., w_stsw_wi=0.,w_stns_wi=0.,w_UEsw_wi=0.,w_UEns_wi=0.,w_EUsw_wi=0.,w_EUns_wi=0.;
 				int    I_EEsw_wi =0,  I_EEns_wi=0 , I_stsw_wi=0 ,I_stns_wi=0 ,I_UEsw_wi=0 ,I_UEns_wi=0 ,I_EUsw_wi=0 ,I_EUns_wi=0 ;
-				double w_EU=0.;
+				int    sep=0;
+
 				sw_spell =-1;
 				wlast=0;wnext=0;
 				ti = wi*4;
@@ -1329,50 +1401,50 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 					for(ri=0;ri<Npwave*3;ri++)
 						wnext += gg_get( ht->whist[ll] ,i,ti+ri) ;
 				}else{
-					wlast = 0.; wnext=0.;
+					wlast=-1;wnext=-1;
 				}
 				for(si=0;si<Npwave;si++){
 					ti = si + wi * 4;
                     if(ti<TT-1 && ti>0){ //can't get transitions unless ti+1 defined
 
-                        if( ggi_get(ht->uhist[ll],i,ti) ==0 && wlast>0 && wnext >0  ){
+                        if( ggi_get(ht->uhist[ll],i,ti) ==0 && wlast>=0 && wnext >=0  ){
 
                         	if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
-		                        I_EUns_wi =1;I_EUsw_wi =1; // don't yet know which will be
-                        		w_EU = log(wnext)- log(wlast); //not yet sure if this will be a switch or not, so just store it for now.
+                        		int sep = 1;
+                        		w_EU = (wnext- wlast)/(wnext + wlast)*2.; //not yet sure if this will be a switch or not, so just store it for now.
                                 sw_spell = ggi_get(ht->jhist[ll],i,ti-1);
                             }else{
                                 if( ggi_get(ht->J2Jhist[ll],i,ti) ==1 ){
 
                                     if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti-1) ){
-                                        w_EEsw_wi = log(wnext)- log(wlast);
+                                        w_EEsw_wi = (wnext- wlast)/(wnext + wlast)*2;
                                         I_EEsw_wi = 1;
                                     }else{
-                                        w_EEns_wi = log(wnext)- log(wlast);
+                                        w_EEns_wi = (wnext- wlast)/(wnext + wlast)*2;
                                         I_EEns_wi = 1;
                                     }
                                 }else{  // not EE
                                     if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti-1) ){
-                                        w_stsw_wi = log(wnext)- log(wlast);
+                                        w_stsw_wi = (wnext- wlast)/(wnext + wlast)*2;
                                         I_stsw_wi = 1;
 
                                     }else{
-                                        w_stns_wi = log(wnext)- log(wlast);
+                                        w_stns_wi = (wnext- wlast)/(wnext + wlast)*2;
                                         I_stns_wi = 1;
                                     }
                                 }
                             }
-                        }else if(ggi_get(ht->uhist[ll],i,ti) ==1 && wlast>0 && wnext >0 ){ //unemployed
+                        }else if(ggi_get(ht->uhist[ll],i,ti) ==1 && wlast>=0 && wnext >=0 ){ //unemployed
 
                             if( ggi_get(ht->uhist[ll],i,ti+1) ==0  && sw_spell>-1  ){
                                 if( ggi_get(ht->jhist[ll],i,ti+1) != sw_spell){
-                                    w_UEsw_wi = log(wnext)- log(wlast);
+                                    w_UEsw_wi = (wnext- wlast)/(wnext + wlast)*2;
                                     w_EUsw_wi = w_EU;
                                     I_UEsw_wi = 1;
                                     I_EUsw_wi = 1;
 
                                 }else{
-                                    w_UEns_wi = log(wnext)- log(wlast);
+                                    w_UEns_wi = (wnext- wlast)/(wnext + wlast)*2;
                                     w_EUns_wi = w_EU;
                                     I_UEns_wi = 1;
                                     I_EUns_wi = 1;
@@ -1381,34 +1453,34 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
                         }
                     }
 				}
-				if( I_EUns_wi==1 || I_EUsw_wi==1 || I_EEns_wi==1 || I_EEsw_wi==1 ){
+				if( I_EUns_wi==1 || I_EUsw_wi==1 || I_EEns_wi==1 || I_EEsw_wi==1 || sep==1 ){
 					// can't change a job and be a stayer
 					I_stsw_wi=0;I_stns_wi=0;
 				}
 
-				if(I_EEsw_wi ==1){
+				if(I_EEsw_wi ==1 && idx_EEsw < NswE){
 					w_EEsw[idx_EEsw] =w_EEsw_wi;
 					idx_EEsw ++;
 				}
-				if(I_EEns_wi==1){
+				if(I_EEns_wi==1 && idx_EEns < NJ2J){
 					w_EEns[idx_EEns] = w_EEns_wi;
 					idx_EEns ++;
 				}
-				if(I_stsw_wi==1 && I_EEsw_wi==0 ){
+				if(I_stsw_wi==1 && idx_stsw < NswSt){
 					w_stsw[idx_stsw] = w_stsw_wi;
 					idx_stsw ++;
 				}
-				if(I_stns_wi==1 && I_EEns_wi==0 ){
+				if(I_stns_wi==1 && idx_stns < Nemp ){
 					w_stns[idx_stns] = w_stns_wi;
 					idx_stns ++;
 				}
-				if(I_UEsw_wi==1){
+				if(I_UEsw_wi==1 && idx_EUsw < NswU ){
 					w_UEsw[idx_UEsw] = w_UEsw_wi;
 					w_EUsw[idx_EUsw] = w_EUsw_wi;
 					idx_UEsw ++;
 					idx_EUsw ++;
 				}
-				if(I_UEns_wi==1){
+				if(I_UEns_wi==1 && idx_EUns < Nspell){
 					w_UEns[idx_UEns] = w_UEns_wi;
 					w_EUns[idx_EUns] = w_EUns_wi;
 					idx_UEns ++;
@@ -1429,56 +1501,31 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		printf("w_UEns is allocated %d, needs %d\n",Nspell,idx_UEns);
 	}
 
+
 	/*
-	double * datvec = malloc(idx_EEns* sizeof(double));memcpy(datvec,w_EEns,idx_EEns*sizeof(double));
-	qsort(datvec, (size_t)idx_EEns,sizeof(double), &comp_dble_desc);
-	memcpy(w_EEns,datvec,idx_EEns*sizeof(double));
-	free(datvec);
-	datvec = malloc(idx_EEsw* sizeof(double));memcpy(datvec,w_EEsw,idx_EEsw*sizeof(double));
-	qsort(datvec, (size_t)idx_EEsw,sizeof(double), &comp_dble_desc);
-	memcpy(w_EEsw,datvec,idx_EEsw*sizeof(double));
-	free(datvec);
+	qsort(w_EUns, (size_t)idx_EUns,sizeof(double), comp_dble_asc);
+	qsort(w_EUsw, (size_t)idx_EUsw,sizeof(double), comp_dble_asc);
 
-	datvec = malloc(idx_stns* sizeof(double));memcpy(datvec,w_stns,idx_stns*sizeof(double));
-	qsort(datvec, (size_t)idx_stns,sizeof(double), &comp_dble_desc);
-	memcpy(w_stns,datvec,idx_stns*sizeof(double));
-	free(datvec);
-	datvec = malloc(idx_stsw* sizeof(double));memcpy(datvec,w_stsw,idx_stsw*sizeof(double));
-	qsort(datvec, (size_t)idx_stsw,sizeof(double), &comp_dble_desc);
-	memcpy(w_stsw,datvec,idx_stsw*sizeof(double));
-	free(datvec);
+	qsort(w_stns, (size_t)idx_stns,sizeof(double), comp_dble_asc);
+	qsort(w_stsw, (size_t)idx_stsw,sizeof(double), comp_dble_asc);
 
-	datvec = malloc(idx_EUns* sizeof(double));memcpy(datvec,w_EUns,idx_EUns*sizeof(double));
-	qsort(datvec, (size_t)idx_EUns,sizeof(double), &comp_dble_desc);
-	memcpy(w_EUns,datvec,idx_EUns*sizeof(double));
-	free(datvec);
-	datvec = malloc(idx_EUsw* sizeof(double));memcpy(datvec,w_EUsw,idx_EUsw*sizeof(double));
-	qsort(datvec, (size_t)idx_EUsw,sizeof(double), &comp_dble_desc);
-	memcpy(w_EUsw,datvec,idx_EUsw*sizeof(double));
-	free(datvec);
+	qsort(w_UEns, (size_t)idx_UEns,sizeof(double), comp_dble_asc);
+	qsort(w_UEsw, (size_t)idx_UEsw,sizeof(double), comp_dble_asc);
 
-	datvec = malloc(idx_UEns* sizeof(double));memcpy(datvec,w_UEns,idx_UEns*sizeof(double));
-	qsort(datvec , (size_t)idx_UEns,sizeof(double), &comp_dble_desc);
-	memcpy(w_UEns,datvec,idx_UEns*sizeof(double));
-	free(datvec);
-	datvec = malloc(idx_UEsw* sizeof(double));memcpy(datvec,w_UEsw,idx_UEsw*sizeof(double));
-	qsort(datvec, (size_t)idx_UEsw,sizeof(double), &comp_dble_desc);
-	memcpy(w_UEsw,datvec,idx_UEsw*sizeof(double));
-	free(datvec);
+	qsort(w_EEns, (size_t)idx_EEns,sizeof(double), comp_dble_asc);
+	qsort(w_EEsw, (size_t)idx_EEsw,sizeof(double), comp_dble_asc);
 	*/
+	gsl_sort(w_EUns,1, idx_EUns);
+	gsl_sort(w_EUsw, 1,idx_EUsw);
 
-	qsort(w_EUns, (size_t)idx_EUns,sizeof(double), &comp_dble_asc);
-	qsort(w_EUsw, (size_t)idx_EUsw,sizeof(double), &comp_dble_asc);
+	gsl_sort(w_stns, 1,idx_stns);
+	gsl_sort(w_stsw, 1,idx_stsw);
 
-	qsort(w_stns, (size_t)idx_stns,sizeof(double), &comp_dble_asc);
-	qsort(w_stsw, (size_t)idx_stsw,sizeof(double), &comp_dble_asc);
+	gsl_sort(w_UEns, 1,idx_UEns);
+	gsl_sort(w_UEsw, 1,idx_UEsw);
 
-	qsort(w_UEns, (size_t)idx_UEns,sizeof(double), &comp_dble_asc);
-	qsort(w_UEsw, (size_t)idx_UEsw,sizeof(double), &comp_dble_asc);
-
-	qsort(w_EEns, (size_t)idx_EEns,sizeof(double), &comp_dble_asc);
-	qsort(w_EEsw, (size_t)idx_EEsw,sizeof(double), &comp_dble_asc);
-
+	gsl_sort(w_EEns, 1,idx_EEns);
+	gsl_sort(w_EEsw, 1,idx_EEsw);
 
 	w_qtls(w_stns,1,idx_stns,st->stns_qtls);
 	w_qtls(w_stsw,1,idx_stsw,st->stsw_qtls);
@@ -1550,32 +1597,43 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	struct stats st;
 	struct stats dat;
 
-    dat.EEns_qtls = malloc(Nqtls*sizeof(double));dat.EEsw_qtls = malloc(Nqtls*sizeof(double));
-    dat.EUns_qtls = malloc(Nqtls*sizeof(double));dat.EUsw_qtls = malloc(Nqtls*sizeof(double));
+    dat.EEns_qtls = malloc(Nqtls*sizeof(double));
+    dat.EEsw_qtls = malloc(Nqtls*sizeof(double));
+    dat.EUns_qtls = malloc(Nqtls*sizeof(double));
+    dat.EUsw_qtls = malloc(Nqtls*sizeof(double));
     dat.UEns_qtls = malloc(Nqtls*sizeof(double));dat.UEsw_qtls = malloc(Nqtls*sizeof(double));
     dat.stns_qtls = malloc(Nqtls*sizeof(double));dat.stsw_qtls = malloc(Nqtls*sizeof(double));
 
     set_dat(&dat);
 
-	par->alphaE1 = 0.5;
-	par->alphaE0 = x[0]*pow((double)(JJ-1),-par->alphaE1);
-	par->alphaU1 = 0.5;
-	par->alphaU0 = x[1]*pow((double)(JJ-1),-par->alphaU1);
-	par->lambdaU0  = x[2];
-	par->lambdaES0 = x[3];
-	par->lambdaEM0 = x[4];
-	par->delta_avg = x[5];
-	par->zloss     = x[6];
-
-    if(Nparams>7){
-        par->var_ze = x[7];
-        par->autoz = x[8];
-        par->var_eps = x[9];
-        par->skew_eps = x[10];
-        par->var_pe = x[11];
-        par->autop = x[12];
-        par->var_ae = x[13];
-        par->autoa = x[14];
+    if( par->cluster_hr ==0 ){
+		par->alphaE1 = 0.5;
+		par->alphaE0 = x[0]*pow((double)(JJ-1),-par->alphaE1);
+		par->alphaU1 = 0.5;
+		par->alphaU0 = x[1]*pow((double)(JJ-1),-par->alphaU1);
+		par->lambdaU0  = x[2];
+		par->lambdaES0 = x[3];
+		par->lambdaEM0 = x[4];
+		par->delta_avg = x[5];
+		par->zloss     = x[6];
+		/*
+	    par->var_ze = par->xopt[7];
+	    par->autoz = par->xopt[8];
+	    par->var_eps = par->xopt[9];
+	    par->skew_eps = par->xopt[10];
+	    par->var_pe = par->xopt[11];
+	    par->autop = par->xopt[12];
+	    par->var_ae = par->xopt[13];
+	    par->autoa = par->xopt[14]; */
+	}else if(par->cluster_hr==1){
+        par->var_ze = x[0];
+        par->autoz = x[1];
+        par->var_eps = x[2];
+        par->skew_eps = x[3];
+        par->var_pe = x[4];
+        par->autop = x[5];
+        par->var_ae = x[6];
+        par->autoa = x[7];
     }
 
 	st.EEns_qtls = malloc(Nqtls*sizeof(double));st.EEsw_qtls = malloc(Nqtls*sizeof(double));
@@ -1659,39 +1717,55 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 
 	//form error vector
 	double dat_dur = dat.udur_sw/dat.udur_nosw; double mod_dur = st.udur_sw/st.udur_nosw;
-	err_vec[0] = (st.J2Jprob   - dat.J2Jprob)*  2/(st.J2Jprob  + dat.J2Jprob);
-	err_vec[1] = (st.findrate  - dat.findrate)* 2/(st.findrate + dat.findrate);
-	err_vec[2] = (st.seprate   - dat.seprate)*  2/(st.seprate  + dat.seprate);
-	err_vec[3] = (st.swProb_EE - dat.swProb_EE)*2/(st.swProb_EE+ dat.swProb_EE);
-	err_vec[4] = (st.swProb_U  - dat.swProb_U)* 2/(st.swProb_U + dat.swProb_U);
-	err_vec[5] = (st.swProb_st - dat.swProb_st)*2/(st.swProb_st+ dat.swProb_st);
+	if( par->cluster_hr ==0 ){
+		err_vec[0] = (st.J2Jprob   - dat.J2Jprob)*  2/(st.J2Jprob  + dat.J2Jprob);
+		err_vec[1] = (st.findrate  - dat.findrate)* 2/(st.findrate + dat.findrate);
+		err_vec[2] = (st.seprate   - dat.seprate)*  2/(st.seprate  + dat.seprate);
+		err_vec[3] = (st.swProb_EE - dat.swProb_EE)*2/(st.swProb_EE+ dat.swProb_EE);
+		err_vec[4] = (st.swProb_U  - dat.swProb_U)* 2/(st.swProb_U + dat.swProb_U);
+		err_vec[5] = (st.swProb_st - dat.swProb_st)*2/(st.swProb_st+ dat.swProb_st);
 
-	err_vec[6] = (mod_dur - dat_dur )*2/(mod_dur + dat_dur);
+		err_vec[6] = (mod_dur - dat_dur )*2/(mod_dur + dat_dur);
+	}
+
 	ii=7;
-	for(i=0;i<Nqtls;i++)
-		err_vec[ii+i] = (st.stns_qtls[i]-dat.stns_qtls[i])*2/(st.stns_qtls[i]+dat.stns_qtls[i])/(double)Nqtls;
-	ii += Nqtls;
-	for(i=0;i<Nqtls;i++)
-		err_vec[ii+i] = (st.stsw_qtls[i]-dat.stsw_qtls[i])*2/(st.stsw_qtls[i]+dat.stsw_qtls[i])/(double)Nqtls;
-	ii += Nqtls;
-	for(i=0;i<Nqtls;i++)
-		err_vec[ii+i] = (st.EEns_qtls[i]-dat.EEns_qtls[i])*2/(st.EEns_qtls[i]+dat.EEns_qtls[i])/(double)Nqtls;
-	ii += Nqtls;
-	for(i=0;i<Nqtls;i++)
-		err_vec[ii+i] = (st.EEsw_qtls[i]-dat.EEsw_qtls[i])*2/(st.EEsw_qtls[i]+dat.EEsw_qtls[i])/(double)Nqtls;
-	ii += Nqtls;
-	for(i=0;i<Nqtls;i++)
-		err_vec[ii+i] = (st.EUns_qtls[i]-dat.EUns_qtls[i])*2/(st.EUns_qtls[i]+dat.EUns_qtls[i])/(double)Nqtls;
-	ii += Nqtls;
-	for(i=0;i<Nqtls;i++)
-		err_vec[ii+i] = (st.EUsw_qtls[i]-dat.EUsw_qtls[i])*2/(st.EUsw_qtls[i]+dat.EUsw_qtls[i])/(double)Nqtls;
-	ii += Nqtls;
-	for(i=0;i<Nqtls;i++)
-		err_vec[ii+i] = (st.UEns_qtls[i]-dat.UEns_qtls[i])*2/(st.UEns_qtls[i]+dat.UEns_qtls[i])/(double)Nqtls;
-	ii += Nqtls;
-	for(i=0;i<Nqtls;i++)
-		err_vec[ii+i] = (st.UEsw_qtls[i]-dat.UEsw_qtls[i])*2/(st.UEsw_qtls[i]+dat.UEsw_qtls[i])/(double)Nqtls;
-	ii += Nqtls;
+	if( par->cluster_hr ==1){
+		ii=0;
+		for(i=0;i<Nqtls;i++)
+			err_vec[ii+i] = (st.stns_qtls[i]-dat.stns_qtls[i])*2/(st.stns_qtls[i]+dat.stns_qtls[i])/(double)Nqtls;
+		ii += Nqtls;
+		for(i=0;i<Nqtls;i++)
+			err_vec[ii+i] = (st.stsw_qtls[i]-dat.stsw_qtls[i])*2/(st.stsw_qtls[i]+dat.stsw_qtls[i])/(double)Nqtls;
+		ii += Nqtls;
+		for(i=0;i<Nqtls;i++)
+			err_vec[ii+i] = (st.EEns_qtls[i]-dat.EEns_qtls[i])*2/(st.EEns_qtls[i]+dat.EEns_qtls[i])/(double)Nqtls;
+		ii += Nqtls;
+		for(i=0;i<Nqtls;i++)
+			err_vec[ii+i] = (st.EEsw_qtls[i]-dat.EEsw_qtls[i])*2/(st.EEsw_qtls[i]+dat.EEsw_qtls[i])/(double)Nqtls;
+		ii += Nqtls;
+		for(i=0;i<Nqtls;i++)
+			err_vec[ii+i] = (st.EUns_qtls[i]-dat.EUns_qtls[i])*2/(st.EUns_qtls[i]+dat.EUns_qtls[i])/(double)Nqtls;
+		ii += Nqtls;
+		for(i=0;i<Nqtls;i++)
+			err_vec[ii+i] = (st.EUsw_qtls[i]-dat.EUsw_qtls[i])*2/(st.EUsw_qtls[i]+dat.EUsw_qtls[i])/(double)Nqtls;
+		ii += Nqtls;
+		for(i=0;i<Nqtls;i++)
+			err_vec[ii+i] = (st.UEns_qtls[i]-dat.UEns_qtls[i])*2/(st.UEns_qtls[i]+dat.UEns_qtls[i])/(double)Nqtls;
+		ii += Nqtls;
+		for(i=0;i<Nqtls;i++)
+			err_vec[ii+i] = (st.UEsw_qtls[i]-dat.UEsw_qtls[i])*2/(st.UEsw_qtls[i]+dat.UEsw_qtls[i])/(double)Nqtls;
+		ii += Nqtls;
+	}
+	if(print_lev>=2){
+		printarray( "stns_qtls.csv", st.stns_qtls , Nqtls,0 );
+		printarray( "stsw_qtls.csv", st.stsw_qtls , Nqtls,0 );
+		printarray( "EEns_qtls.csv", st.EEns_qtls , Nqtls,0 );
+		printarray( "EEsw_qtls.csv", st.EEsw_qtls , Nqtls,0 );
+		printarray( "EUns_qtls.csv", st.EUns_qtls , Nqtls,0 );
+		printarray( "EUsw_qtls.csv", st.EUsw_qtls , Nqtls,0 );
+		printarray( "UEns_qtls.csv", st.UEns_qtls , Nqtls,0 );
+		printarray( "UEsw_qtls.csv", st.UEsw_qtls , Nqtls,0 );
+	}
 
 	double quad_dist =0;
 	for(i=0;i<Nerr;i++)
@@ -1721,7 +1795,7 @@ double f_wrapper_nlopt(unsigned n, const double * x, double * grad, void * par){
 	int verbose_old,print_lev_old;
 	struct cal_params*   cpar = (struct cal_params*)par;
 	double dist;
-	double * errvec = malloc(sizeof(double)*Ntgts);
+	double * errvec = malloc(sizeof(double)*Ntgt_cluster[cpar->cluster_hr] );
 
 	if(verbose>1) printf("Entering Nelder-Meade evaluation\n");
 	verbose_old = verbose;
@@ -1740,7 +1814,7 @@ double f_wrapper_nlopt(unsigned n, const double * x, double * grad, void * par){
 		printf("%f\n",x0[n-1]);
 	}
 
-	dist = param_dist( x0, cpar, (int) n ,  errvec, Ntgts );
+	dist = param_dist( x0, cpar, (int) n ,  errvec, Ntgt_cluster[cpar->cluster_hr] );
 
 	verbose=verbose_old;
 	print_lev = print_lev_old;
@@ -1748,7 +1822,7 @@ double f_wrapper_nlopt(unsigned n, const double * x, double * grad, void * par){
 	if(print_lev>1){
 		calhist = fopen(calhi_f,"a+");
 		fprintf(calhist,"%f,",dist);
-		for(i=0;i<Ntgts;i++)
+		for(i=0;i<Ntgt_cluster[cpar->cluster_hr] ;i++)
 			fprintf(calhist,"%f,",errvec[i]);
 		for(i=0;i<n-1;i++)
 			fprintf(calhist,"%f,",x0[i]);
@@ -1769,7 +1843,7 @@ void dfovec_iface_(double * f, double * x, int * n, int* m){
 	// this is going to interface with dfovec.f and call param_dist using the global params
 	int nv = *n;
 	int mv = *m;
-	int i;
+	int i,ci;
 	int verbose_old,print_lev_old;
 	double dist;
 
@@ -1779,9 +1853,10 @@ void dfovec_iface_(double * f, double * x, int * n, int* m){
 
 	verbose=0;
 	print_lev=0;
+	ci = glb_par->cluster_hr;
 	double * x0 = malloc(sizeof(double)*nv);
 	for(i=0;i<nv;i++) // convert from [0,1] domain to parameter space
-		x0[i] = x[i] * (glb_par->param_lbub[i+nv]-glb_par->param_lbub[i])+glb_par->param_lbub[i];
+		x0[i] = x[i] * (glb_par->cluster_lbub[ci][i+nv]-glb_par->cluster_lbub[ci][i])+glb_par->param_lbub[i];
 
 
 	dist = param_dist( x0, glb_par, nv ,f, mv );
@@ -1790,10 +1865,16 @@ void dfovec_iface_(double * f, double * x, int * n, int* m){
 	print_lev = print_lev_old;
 
 	if(print_lev>1){
+		int chr =0;for(i=0;i<ci;i++)chr += Ntgt_cluster[i];
 		calhist = fopen(calhi_f,"a+");
 		fprintf(calhist,"%f,",dist);
+		for(i=0;i<chr;i++) fprintf(calhist," , ");
 		for(i=0;i<mv;i++)
 			fprintf(calhist,"%f,",f[i]);
+		for(i=(mv+chr);i<Ntargets;i++) fprintf(calhist," , ");
+
+		chr = 0; for(i=0;i<ci;i++) chr += Npar_cluster[i];
+		for(i=0;i<chr;i++) fprintf(calhist," , ");
 		for(i=0;i<nv-1;i++)
 			fprintf(calhist,"%f,",x0[i]);
 		fprintf(calhist,"%f\n",x0[nv-1]);
