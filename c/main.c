@@ -272,7 +272,7 @@ int main(int argc,char *argv[] ) {
 
 
 	// actually take this from argc
-	cal_now = 0;
+	cal_now = 1;
 
 
 	Npar_cluster[1] = Nparams-Npar_cluster[0];
@@ -1387,8 +1387,6 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 				double w_EEsw_wi =0., w_EEns_wi=0., w_stsw_wi=0.,w_stns_wi=0.,w_UEsw_wi=0.,w_UEns_wi=0.,w_EUsw_wi=0.,w_EUns_wi=0.;
 				int    I_EEsw_wi =0,  I_EEns_wi=0 , I_stsw_wi=0 ,I_stns_wi=0 ,I_UEsw_wi=0 ,I_UEns_wi=0 ,I_EUsw_wi=0 ,I_EUns_wi=0 ;
 				int    sep=0;
-
-				sw_spell =-1;
 				wlast=0;wnext=0;
 				ti = wi*4;
 				if( ti>3 && ti< TT-Npwave && Anan==0 ){
