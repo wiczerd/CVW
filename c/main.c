@@ -1703,13 +1703,35 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 		gsl_vector_set(par->epsprob,i,
 				gsl_cdf_ugaussian_P(epsH/sd_eps ) -
 				leps_frac*exp(-par->rshape_eps*epsH + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfH+
-		        reps_frac*exp(-par->lshape_eps*epsH + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfH
+		        reps_frac*exp(par->lshape_eps*epsH + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfH
 			-(	gsl_cdf_ugaussian_P(epsL/sd_eps ) -
 				leps_frac*exp(-par->rshape_eps*epsL + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfL+
-				reps_frac*exp(-par->lshape_eps*epsL + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfL
+				reps_frac*exp(par->lshape_eps*epsL + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfL
 			)
 		);
 	}
+	i=0;
+	double epsH = gsl_vector_get(par->epslev,i+1)/2+gsl_vector_get(par->epslev,i)/2;
+	double RcdfH = gsl_cdf_ugaussian_P( epsH/sd_eps  - par->rshape_eps*sd_eps );
+	double LcdfH = gsl_cdf_ugaussian_P(-epsH/sd_eps  - par->lshape_eps*sd_eps );
+	gsl_vector_set(par->epsprob,i,
+	               gsl_cdf_ugaussian_P(epsH/sd_eps ) -
+	               leps_frac*exp(-par->rshape_eps*epsH + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfH+
+	               reps_frac*exp(par->lshape_eps*epsH + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfH
+
+	);
+	i=NE-1;
+	double epsL = gsl_vector_get(par->epslev,i-1)/2+gsl_vector_get(par->epslev,i)/2;
+	double RcdfL = gsl_cdf_ugaussian_P( epsL/sd_eps  - par->rshape_eps*sd_eps );
+	double LcdfL = gsl_cdf_ugaussian_P(-epsL/sd_eps  - par->lshape_eps*sd_eps );
+	gsl_vector_set(par->epsprob,i,
+	               gsl_cdf_ugaussian_P(epsH/sd_eps ) -
+	               1.
+	               -(	gsl_cdf_ugaussian_P(epsL/sd_eps ) -
+	                     leps_frac*exp(-par->rshape_eps*epsL + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfL+
+	                     reps_frac*exp(par->lshape_eps*epsL + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfL
+	               )
+	);
 
 
 	for(i=0;i<NG;i++) gsl_vector_set(par->xGlev,i,-0.2  + .4* (double)i/(double) (NG-1));
