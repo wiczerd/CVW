@@ -31,7 +31,7 @@ int static JJ = 3;     // number of occupations
 int static NG = 2;     //number of human capital types
 int static NS = 2;     //number of occ tenure types
 int static NZ = 7;     //number of occ match-quality types
-int static NE = 3;     //number of firm theta match-quality types
+int static NE = 5;     //number of firm theta match-quality types
 int static NP = 5;     //number of occupation-specific productivies
 int static NA = 5;     //number of aggregate productivities
 
@@ -47,7 +47,7 @@ int static Npwave  = 4;
 int static Anan    = 1;
 int static Nqtls   = 5; // number of quantiles that will use to compare distributions
 double     qtlgrid[] = {0.1,0.25,0.5,0.75,0.9};
-int        Nparams = 15;
+int        Nparams = 16;
 int        Ntargets= 7;
 
 int        Ncluster = 3;
@@ -96,6 +96,8 @@ struct cal_params{
 	double var_ze;		// innovations to match-quality shock
 	double var_eps;     // variance of epsilon
 	double skew_eps;    // skewness of epsilon
+	double lshape_eps;  // left-tail skewness of epsilon (exponential parameter)
+	double rshape_eps;  // right-tail skewness of epsilon
 	double wage_curve;  // curviness of wage function
     double delta_Acoef;
 	double delta_avg;     // average separation rate
@@ -363,6 +365,7 @@ int main(int argc,char *argv[] ) {
 	par.lambdaEM_Acoef = 0.0;
 
 	par.var_eps = 0.1;par.skew_eps = 0.;
+	par.lshape_eps = 0.01;par.rshape_eps = 0.01;
 
 
 
@@ -376,16 +379,17 @@ int main(int argc,char *argv[] ) {
 	par.param_lbub[5] = 0.001; par.param_lbub[5+Nparams] = 0.05;
 	par.param_lbub[6] = 0.001; par.param_lbub[6+Nparams] = 0.1;
 	if(Nparams>Npar_cluster[0]){
-		// var_ze, autooz, var_eps, skew_eps
+		// var_ze, autooz, var_eps, lshape_eps, rshape_eps
 		par.param_lbub[7] = 0.010; par.param_lbub[7+Nparams] = 0.5*0.5;
 		par.param_lbub[8] = 0.500; par.param_lbub[8+Nparams] = 0.999;
 		par.param_lbub[9] = 0.010; par.param_lbub[9+Nparams] = 0.5*0.5; //std of 0.5 as upper limit
-		par.param_lbub[10]=-2.000; par.param_lbub[10+Nparams]= 5.000;
+		par.param_lbub[10]= 0.001; par.param_lbub[10+Nparams]= 4.000;
+		par.param_lbub[11]= 0.001; par.param_lbub[11+Nparams]= 4.000;
 		//var_pe, autop, var_ae,autoa
-		par.param_lbub[11]= 0.010; par.param_lbub[11+Nparams]= 0.5*0.5;
-		par.param_lbub[12]= 0.500; par.param_lbub[12+Nparams]= 0.999;
-		par.param_lbub[13]= 0.010; par.param_lbub[13+Nparams]= 0.25;
-		par.param_lbub[14]= 0.500; par.param_lbub[14+Nparams]= 0.999;
+		par.param_lbub[12]= 0.010; par.param_lbub[12+Nparams]= 0.5*0.5;
+		par.param_lbub[13]= 0.500; par.param_lbub[13+Nparams]= 0.999;
+		par.param_lbub[14]= 0.010; par.param_lbub[14+Nparams]= 0.25;
+		par.param_lbub[15]= 0.500; par.param_lbub[15+Nparams]= 0.999;
 
 	}
 
@@ -1627,11 +1631,12 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
         par->var_ze = x[0];
         par->autoz = x[1];
         par->var_eps = x[2];
-        par->skew_eps = x[3];
-        par->var_pe = x[4];
-        par->autop = x[5];
-        par->var_ae = x[6];
-        par->autoa = x[7];
+        par->lshape_eps = x[3];
+	    par->rshape_eps = x[4];
+        par->var_pe = x[5];
+        par->autop = x[6];
+        par->var_ae = x[7];
+        par->autoa = x[8];
     }
 
 	st.EEns_qtls = malloc(Nqtls*sizeof(double));st.EEsw_qtls = malloc(Nqtls*sizeof(double));
@@ -1670,12 +1675,42 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 			gsl_vector_scale(  & (zrow.vector) ,1./zrowsum);
 		}
 	}
-	gsl_vector_set_all(par->epsprob, 1./(double) NE);
+	// heuristic for placement of points
 	for(i=0;i<NE;i++){
-		gsl_vector_set( par->epslev,i,
-				gsl_cdf_gaussian_P( (double) i/( (double)NE-1.), par->var_eps ) -
-				tfn( (double) i/( (double)NE-1.)/pow(par->var_eps,0.5),par->skew_eps )  );// skew-normal
+		if(i>=NE/2-1 && i<=NE/2+1){
+			gsl_vector_set( par->epslev,i,
+			                gsl_cdf_gaussian_Pinv( (double) (i+1)/( (double)NE+2.), pow(par->var_eps,0.5) ) );
+		}else if( i<NE/2-1){
+			gsl_vector_set( par->epslev,i,
+					gsl_cdf_gaussian_Pinv( (double) (NE/2)/( (double)NE+2.), pow(par->var_eps,0.5) ) -
+					gsl_cdf_exponential_Pinv( (double) (i+1)/( (double)NE+2.), par->lshape_eps ) );
+		}else if( i>NE/2+1){
+			gsl_vector_set( par->epslev,i,
+					gsl_cdf_gaussian_Pinv( (double) (NE/2+2)/( (double)NE+2.), pow(par->var_eps,0.5) ) +
+			        gsl_cdf_exponential_Pinv( (double) (i+1)/( (double)NE+2.), par->rshape_eps ) );
+		}
 	}
+	double leps_frac = par->lshape_eps/(par->lshape_eps+par->rshape_eps);
+	double reps_frac = par->rshape_eps/(par->lshape_eps+par->rshape_eps);
+	double sd_eps = pow(par->var_eps,0.5);
+	for(i=1;i<NE-1;i++){
+		double epsL = gsl_vector_get(par->epslev,i-1)/2+gsl_vector_get(par->epslev,i)/2;
+		double epsH = gsl_vector_get(par->epslev,i+1)/2+gsl_vector_get(par->epslev,i)/2;
+		double RcdfH = gsl_cdf_ugaussian_P( epsH/sd_eps  - par->rshape_eps*sd_eps );
+		double LcdfH = gsl_cdf_ugaussian_P(-epsH/sd_eps  - par->lshape_eps*sd_eps );
+		double RcdfL = gsl_cdf_ugaussian_P( epsL/sd_eps  - par->rshape_eps*sd_eps );
+		double LcdfL = gsl_cdf_ugaussian_P(-epsL/sd_eps  - par->lshape_eps*sd_eps );
+		gsl_vector_set(par->epsprob,i,
+				gsl_cdf_ugaussian_P(epsH/sd_eps ) -
+				leps_frac*exp(-par->rshape_eps*epsH + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfH+
+		        reps_frac*exp(-par->lshape_eps*epsH + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfH
+			-(	gsl_cdf_ugaussian_P(epsL/sd_eps ) -
+				leps_frac*exp(-par->rshape_eps*epsL + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfL+
+				reps_frac*exp(-par->lshape_eps*epsL + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfL
+			)
+		);
+	}
+
 
 	for(i=0;i<NG;i++) gsl_vector_set(par->xGlev,i,-0.2  + .4* (double)i/(double) (NG-1));
 	for(i=0;i<NS;i++) gsl_vector_set(par->xSlev,i,-0.2  + .4* (double)i/(double) (NS-1));
