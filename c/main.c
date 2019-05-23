@@ -31,7 +31,7 @@ int static JJ = 3;     // number of occupations
 int static NG = 2;     //number of human capital types
 int static NS = 2;     //number of occ tenure types
 int static NZ = 7;     //number of occ match-quality types
-int static NE = 5;     //number of firm theta match-quality types
+int static NE = 7;     //number of firm theta match-quality types
 int static NP = 5;     //number of occupation-specific productivies
 int static NA = 5;     //number of aggregate productivities
 
@@ -365,7 +365,7 @@ int main(int argc,char *argv[] ) {
 	par.lambdaEM_Acoef = 0.0;
 
 	par.var_eps = 0.1;par.skew_eps = 0.;
-	par.lshape_eps = 0.01;par.rshape_eps = 0.01;
+	par.lshape_eps = 1.0;par.rshape_eps = 1.0;
 
 
 
@@ -1083,10 +1083,23 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 			}
 
 			for(i=0;i<Nsim;i++){
+				// save wages using values carried from last period
+				if(ti>=burnin) {
+					double wagehr = pow(exp(par->Alev->data[At]) + exp(par->Plev->data[Pt[jt[i]]]) *
+					                                               exp(par->xGlev->data[xt[i][0]]) *
+					                                               exp(par->xSlev->data[xt[i][1]]) *
+					                                               exp(par->zlev->data[xt[i][2]]) *
+					                                               exp(par->epslev->data[xt[i][3]]), 1. - par->wage_curve) /
+					                (1. - par->wage_curve) + wage_lev;
+					gg_set(ht->whist[ll], i, ti-burnin,wagehr);
+				}
+
+				// save this guy's state
 				jtm1[i] = jt[i];
 				utm1[i] = ut[i];
-				// increment individual specific shocks:
 				for(xi=0;xi<4;xi++) xtm1[i][xi] = xt[i][xi];
+
+				// increment individual specific shocks:
 				xt[i][0] = 0;
 				for (gi = 0; gi < NG; gi++) if (gg_get(sk->xGsel[ll], i, 0) > cmxGtrans[xtm1[i][0]][gi]) ++ xt[i][0] ;
 				xt[i][1] = 0;
@@ -1113,15 +1126,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 				//evaluate decision rules for the worker:
 				if(utm1[i]==0){
 
-					if(ti>=burnin) {
-						double wagehr = pow(exp(par->Alev->data[At]) + exp(par->Plev->data[Pt[jt[i]]]) *
-						                    exp(par->xGlev->data[xt[i][0]]) *
-						                    exp(par->xSlev->data[xt[i][1]]) *
-						                    exp(par->zlev->data[xt[i][2]]) *
-						                    exp(par->epslev->data[xt[i][3]]), 1. - par->wage_curve) /
-						                (1. - par->wage_curve) + wage_lev;
-						gg_set(ht->whist[ll], i, ti-burnin,wagehr);
-					}
+
 					// employed workers' choices
 					double delta_hr =par->delta_avg + par->delta_Acoef * par->Alev->data[At];
 					// separate if zi =0 or unemployment shock or want to separate
@@ -1148,17 +1153,28 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 								}
 							}
 							if( jt[i] != jtm1[i] ){ // switchers
-								xt[i][1] = 0; // lose specific skill
-								// draw a new z:
-								xt[i][2] =0;
-								for(zi=0;zi<NZ;zi++){
-									if( gg_get(sk->zsel[ll],i,ti) > cmzprob[zi] ) ++ xt[i][2] ;
-								}
 								if( gg_get(sk->lambdaMsel[ll],i,ti)<  lambdaEMhr[jt[i]] ) {
-									if(ti>=burnin) ggi_set(ht->J2Jhist[ll], i, ti-burnin, 1);
+									xt[i][1] = 0; // lose specific skill
+									// draw a new z:
+									xt[i][2] =0;
+									for(zi=0;zi<NZ;zi++){
+										if( gg_get(sk->zsel[ll],i,ti) > cmzprob[zi] ) ++ xt[i][2] ;
+									}
+
 									// draw a new epsilon
-									for(thi =xtm1[i][3];thi<NE;thi++) if( gg_get( sk->epssel[ll],i,ti ) > cmepsprob[thi] ) ++xt[i][3];
+									xt[i][3] =0;
+									for(thi =0; thi<NE;thi++){ if( gg_get( sk->epssel[ll],i,ti ) > cmepsprob[thi] ) ++xt[i][3];}
 									xt[i][3] = xt[i][3]>NE-1 ? NE-1: xt[i][3];
+									int ip =At*NP*NG*NS*NZ*NE + Pt[jt[i]]*NG*NS*NZ*NE + xt[i][0]*NS*NZ*NE+xt[i][1]*NZ*NE+xt[i][2]*NE+xt[i][3];
+
+									if( gg_get(vf->WE, ip , jt[i]) >= gg_get(vf->WE, ii,jtm1[i] ) ){
+										if(ti>=burnin) ggi_set(ht->J2Jhist[ll], i, ti-burnin, 1);
+									}else{//don't switch
+										xt[i][1] = xtm1[i][1];
+										xt[i][2] = xtm1[i][2];
+										xt[i][3] = xtm1[i][3];
+										jt[i] = jtm1[i];
+									}
 								}
 							}// else nothing happens (except paid kappa)
 
@@ -1169,12 +1185,14 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 								if(ti>=burnin) ggi_set(ht->J2Jhist[ll], i, ti-burnin, 1);
 								if (gg_get(sk->lambdaUsel[ll], i, ti) < par->gdfthr) { //godfather (gamma) shock?
 									xt[i][3] = 0;
-									for (thi = 0; thi < NE; thi++)
+									for (thi = 0; thi < NE; thi++){
 										if (gg_get(sk->epssel[ll], i, ti) > cmepsprob[thi])++xt[i][3];
+									}
 									xt[i][3] = xt[i][3] > NE - 1 ? NE - 1 : xt[i][3];
 								}else {
-									for (thi = xtm1[i][3]; thi < NE; thi++)
+									for (thi = xtm1[i][3]; thi < NE; thi++){
 										if (gg_get(sk->epssel[ll], i, ti) > cmepsprob[thi])++xt[i][3];
+									}
 									xt[i][3] = xt[i][3] > NE - 1 ? NE - 1 : xt[i][3];
 								}
 							}
@@ -1675,24 +1693,24 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 			gsl_vector_scale(  & (zrow.vector) ,1./zrowsum);
 		}
 	}
-	// heuristic for placement of points
+	double sd_eps = pow(par->var_eps,0.5);
+	// heuristic for placement of points 0 1 2 3 4 5 6
 	for(i=0;i<NE;i++){
-		if(i>=NE/2-1 && i<=NE/2+1){
-			gsl_vector_set( par->epslev,i,
-			                gsl_cdf_gaussian_Pinv( (double) (i+1)/( (double)NE+2.), pow(par->var_eps,0.5) ) );
+		if(i>=NE/2-1 && i<=NE/2+1 ){
+			gsl_vector_set( par->epslev,i,gsl_cdf_gaussian_Pinv( (double) (i+1)/( (double)NE+1.), sd_eps ) );
 		}else if( i<NE/2-1){
 			gsl_vector_set( par->epslev,i,
-					gsl_cdf_gaussian_Pinv( (double) (NE/2)/( (double)NE+2.), pow(par->var_eps,0.5) ) -
-					gsl_cdf_exponential_Pinv( (double) (i+1)/( (double)NE+2.), par->lshape_eps ) );
+					gsl_cdf_gaussian_Pinv( (double) (NE/2)/( (double)NE+1.), sd_eps  ) -
+					gsl_cdf_exponential_Pinv( 1.- (double) (i+1)/( (double)NE+1.), par->lshape_eps ) );
 		}else if( i>NE/2+1){
 			gsl_vector_set( par->epslev,i,
-					gsl_cdf_gaussian_Pinv( (double) (NE/2+2)/( (double)NE+2.), pow(par->var_eps,0.5) ) +
-			        gsl_cdf_exponential_Pinv( (double) (i+1)/( (double)NE+2.), par->rshape_eps ) );
+					gsl_cdf_gaussian_Pinv( (double) (NE/2+2)/( (double)NE+1.), sd_eps  ) +
+			        gsl_cdf_exponential_Pinv( (double) (i+1)/( (double)NE+1.), par->rshape_eps ) );
 		}
 	}
 	double leps_frac = par->lshape_eps/(par->lshape_eps+par->rshape_eps);
 	double reps_frac = par->rshape_eps/(par->lshape_eps+par->rshape_eps);
-	double sd_eps = pow(par->var_eps,0.5);
+	double sumprobs =0.;
 	for(i=1;i<NE-1;i++){
 		double epsL = gsl_vector_get(par->epslev,i-1)/2+gsl_vector_get(par->epslev,i)/2;
 		double epsH = gsl_vector_get(par->epslev,i+1)/2+gsl_vector_get(par->epslev,i)/2;
@@ -1700,39 +1718,37 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 		double LcdfH = gsl_cdf_ugaussian_P(-epsH/sd_eps  - par->lshape_eps*sd_eps );
 		double RcdfL = gsl_cdf_ugaussian_P( epsL/sd_eps  - par->rshape_eps*sd_eps );
 		double LcdfL = gsl_cdf_ugaussian_P(-epsL/sd_eps  - par->lshape_eps*sd_eps );
-		gsl_vector_set(par->epsprob,i,
-				gsl_cdf_ugaussian_P(epsH/sd_eps ) -
-				leps_frac*exp(-par->rshape_eps*epsH + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfH+
-		        reps_frac*exp(par->lshape_eps*epsH + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfH
-			-(	gsl_cdf_ugaussian_P(epsL/sd_eps ) -
-				leps_frac*exp(-par->rshape_eps*epsL + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfL+
-				reps_frac*exp(par->lshape_eps*epsL + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfL
-			)
-		);
+		double Pr_hr = gsl_cdf_ugaussian_P(epsH/sd_eps ) -
+		               leps_frac*exp(-par->rshape_eps*epsH + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfH+
+		               reps_frac*exp(par->lshape_eps*epsH + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfH
+		               -(	gsl_cdf_ugaussian_P(epsL/sd_eps ) -
+		                     leps_frac*exp(-par->rshape_eps*epsL + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfL+
+		                     reps_frac*exp(par->lshape_eps*epsL + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfL
+		               );
+		gsl_vector_set(par->epsprob,i,Pr_hr);
+		sumprobs += Pr_hr;
 	}
 	i=0;
 	double epsH = gsl_vector_get(par->epslev,i+1)/2+gsl_vector_get(par->epslev,i)/2;
 	double RcdfH = gsl_cdf_ugaussian_P( epsH/sd_eps  - par->rshape_eps*sd_eps );
 	double LcdfH = gsl_cdf_ugaussian_P(-epsH/sd_eps  - par->lshape_eps*sd_eps );
-	gsl_vector_set(par->epsprob,i,
-	               gsl_cdf_ugaussian_P(epsH/sd_eps ) -
+	double Pr_hr = gsl_cdf_ugaussian_P(epsH/sd_eps ) -
 	               leps_frac*exp(-par->rshape_eps*epsH + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfH+
-	               reps_frac*exp(par->lshape_eps*epsH + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfH
-
-	);
+	               reps_frac*exp(par->lshape_eps*epsH + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfH;
+	gsl_vector_set(par->epsprob,i,Pr_hr);
+	sumprobs += Pr_hr;
 	i=NE-1;
 	double epsL = gsl_vector_get(par->epslev,i-1)/2+gsl_vector_get(par->epslev,i)/2;
 	double RcdfL = gsl_cdf_ugaussian_P( epsL/sd_eps  - par->rshape_eps*sd_eps );
 	double LcdfL = gsl_cdf_ugaussian_P(-epsL/sd_eps  - par->lshape_eps*sd_eps );
-	gsl_vector_set(par->epsprob,i,
-	               gsl_cdf_ugaussian_P(epsH/sd_eps ) -
-	               1.
-	               -(	gsl_cdf_ugaussian_P(epsL/sd_eps ) -
-	                     leps_frac*exp(-par->rshape_eps*epsL + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfL+
-	                     reps_frac*exp(par->lshape_eps*epsL + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfL
-	               )
-	);
-
+	Pr_hr = 1.
+	        -(	gsl_cdf_ugaussian_P(epsL/sd_eps ) -
+	              leps_frac*exp(-par->rshape_eps*epsL + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfL+
+	              reps_frac*exp(par->lshape_eps*epsL + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfL
+	        );
+	gsl_vector_set(par->epsprob,i,Pr_hr);
+	sumprobs += Pr_hr;
+	gsl_vector_scale(par->epsprob, 1./sumprobs );
 
 	for(i=0;i<NG;i++) gsl_vector_set(par->xGlev,i,-0.2  + .4* (double)i/(double) (NG-1));
 	for(i=0;i<NS;i++) gsl_vector_set(par->xSlev,i,-0.2  + .4* (double)i/(double) (NS-1));
@@ -1756,7 +1772,9 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 		printvec("Alev.csv", par->Alev,0);printvec("zlev.csv", par->zlev,0);
 		printmat("Atrans.csv",par->Atrans,0);printmat("Ptrans.csv",par->Ptrans[0],0);
 		printmat("ztrans.csv",par->ztrans,0);
-		printvec("epslev.csv", par->epslev,0);printvec("Plev.csv", par->Plev,0);
+		printvec("epslev.csv", par->epslev,0);
+		printvec("epsprob.csv", par->epsprob,0);
+		printvec("Plev.csv", par->Plev,0);
 	}
 
 	success = draw_shocks(&sk);
