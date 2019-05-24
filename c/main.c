@@ -40,8 +40,8 @@ int NN ,NUN;
 int static TT      = 12*15;    // periods per simulation path
 int static burnin  = 48;       // number of periods to throw away each time
 int static TTT ;
-int static Npaths  = 60;      // number of simulation paths to draw
-int static Nsim    = 4000;
+int static Npaths  = 10;      // number of simulation paths to draw
+int static Nsim    = 1000;
 
 int static Npwave  = 4;
 int static Anan    = 1;
@@ -690,12 +690,12 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 			int ti = ii - ai * NP * NG * NS * NZ * NE - pi * NG * NS * NZ * NE - gi * NS * NZ * NE - si * NZ * NE -
 			         zi * NE;
 
-			wagevec[ii][ji] = pow(exp(par->AloadP->data[ji] * par->Alev->data[ai]) *
-			                  exp(par->Plev->data[pi]) *
-			                  exp(par->epslev->data[ti]) *
-			                  exp(par->zlev->data[zi]) *
-			                  exp(par->xSlev->data[si]) *
-			                  exp(par->xGlev->data[gi]), 1.-par->wage_curve) / (1. - par->wage_curve) + wage_lev;
+			wagevec[ii][ji] = pow(exp(par->AloadP->data[ji] * par->Alev->data[ai] +
+			                  par->Plev->data[pi] +
+			                  par->epslev->data[ti] +
+			                  par->zlev->data[zi] +
+			                  par->xSlev->data[si] +
+			                  par->xGlev->data[gi]), 1.-par->wage_curve) / (1. - par->wage_curve) + wage_lev;
 		}
 	}
 
@@ -1765,7 +1765,7 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	                       exp(par->zlev->data[zi]) *
 	                       exp(par->xSlev->data[si]) *
 	                       exp(par->xGlev->data[gi]), 1.-par->wage_curve) / (1. - par->wage_curve);
-	wage_lev = wage_lev - wage_lev0 ;
+	wage_lev = 1. - wage_lev0 ;
 
 // print out the grids
 	if(print_lev>1){
