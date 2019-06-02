@@ -13,6 +13,7 @@
 #include <math.h>
 #include <time.h>
 #include <nlopt.h>
+
 #include <gsl/gsl_multiroots.h>
 #include <gsl/gsl_min.h>
 #include <gsl/gsl_roots.h>
@@ -39,8 +40,8 @@ int NN ,NUN;
 
 int static TT      = 12*15;    // periods per simulation path
 int static burnin  = 48;       // number of periods to throw away each time
-int static TTT ;
-int static Npaths  = 10;      // number of simulation paths to draw
+int        TTT ;
+int static Npaths  = 120;      // number of simulation paths to draw
 int static Nsim    = 1000;
 
 int static Npwave  = 4;
@@ -50,7 +51,7 @@ double     qtlgrid[] = {0.1,0.25,0.5,0.75,0.9};
 int        Nparams = 16;
 int        Ntargets= 7;
 
-int        Ncluster = 3;
+int        Ncluster = 2;
 int        Npar_cluster[4] ={7,0,0,0}; // first the flows parameters, then the dist params then the cyclcical parameters
 int        Ntgt_cluster[4] ={7,0,0,0};
 
@@ -181,6 +182,7 @@ struct stats{
 	double seprate;
 	double udur_nosw;
 	double udur_sw;
+	double corr_wgocc;
 
 	double *UEsw_qtls; // will be Nqtls long
 	double *UEns_qtls;
@@ -328,7 +330,8 @@ int main(int argc,char *argv[] ) {
 		gsl_vector_view zrow = gsl_matrix_row(par.ztrans,ii);
 		if(ii>0){
 			double zrowsum = 0;
-			for( int ci=0;ci<NZ;ci++ ) zrowsum += gsl_vector_get( &(zrow.vector),ci );
+			int ci;
+			for( ci=0;ci<NZ;ci++ ) zrowsum += gsl_vector_get( &(zrow.vector),ci );
 			gsl_vector_scale(  & (zrow.vector) ,1./zrowsum);
 		}
 	}
@@ -346,7 +349,17 @@ int main(int argc,char *argv[] ) {
 		gsl_matrix_memcpy(par.Ptrans[i],par.Ptrans[0]);
 	}
 
-//	for(i=0;i<NP;i++) gsl_vector_set(par.Plev ,i,-0.05 + .1* (double)i/(double) (NP-1));
+	int ai = 0;int pi = 0;int gi = 0;int si = 0;int zi = 1;	int thi = 0; ji=0;
+
+	double wage_lev0 = pow(exp(par.AloadP->data[ji] * par.Alev->data[ai] +
+			                           par.Plev->data[pi] +
+			                           par.epslev->data[thi] +
+			                           par.zlev->data[zi] +
+			                           par.xSlev->data[si] +
+			                           par.xGlev->data[gi]), 1.-par.wage_curve) / (1. - par.wage_curve);
+	wage_lev = 1. - wage_lev0 ;
+
+
 
 	par.alphaE1 = 0.5;
 	par.alphaE0 = 0.05*pow((double)(JJ-1),-par.alphaE1);
@@ -412,7 +425,7 @@ int main(int argc,char *argv[] ) {
 
 	// branch for MPI here
 #ifdef _MPI_USE
-	MPI_Init(&argc, &argv);
+	MPI_Init(NULL, NULL);
 	MPI_Comm_size(MPI_COMM_WORLD, &nnodes);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Status mpistatus;
@@ -464,7 +477,7 @@ int main(int argc,char *argv[] ) {
 
 	fprintf(calhist,"alphaE0,alphaU0, lambdaU0,lambdaES,lambdaEM,delta,zloss,");
 	if(Nparams>7){
-		fprintf(calhist,"var_ze,autoz,var_eps,skew_eps,var_pe,autop,var_a,autoa");
+		fprintf(calhist,"var_ze,autoz,var_eps,ltail_eps,rtail_eps,var_pe,autop,var_a,autoa");
 	}
 	fprintf(calhist,"\n");
 	fclose(calhist);
@@ -491,7 +504,7 @@ int main(int argc,char *argv[] ) {
 		double dist;
 
 
-		if(i%2 ==0 ){ //free(wspace);free(dfbols_lb);free(dfbols_ub);
+		if(i%2 == rank%2 ){ //free(wspace);free(dfbols_lb);free(dfbols_ub);
 
 			if(verbose>0)
 				printf("Beginning to evaluate a DFBOLS start point \n");
@@ -521,7 +534,7 @@ int main(int argc,char *argv[] ) {
 				par.cluster_lbub[ci] = malloc(2*Npar_cluster[ci]*sizeof(double));
 				for(ii=0;ii<Npar_cluster[ci];ii++){ dfbols_lb[ii]=0.;dfbols_ub[ii]=1.; }
 				int par_hr =0;
-				for(ii=0;ii<ci;ii++ ) par_hr += Npar_cluster[ii];
+				for(ii=0;ii<ci;ii++ ){ par_hr += Npar_cluster[ii];}
 				for(ii=0;ii<Npar_cluster[ci];ii++){
 					par.cluster_lbub[ci][ii] = par.param_lbub[ par_hr + ii];
 					par.cluster_lbub[ci][ Npar_cluster[ci] +ii] = par.param_lbub[ Nparams+par_hr + ii];
@@ -567,48 +580,58 @@ int main(int argc,char *argv[] ) {
 
 			if(verbose>0)
 				printf("Beginning to evaluate a NM start point \n");
-			solver_state = malloc(sizeof(double)*(Npar_cluster[ci] +1));
-			solver_state[0] = 1e4;
-			nlopt_opt opt  = nlopt_create(NLOPT_LN_SBPLX,(unsigned)Nparams);
+			for(ci=0;ci<Ncluster;ci++){
+				par.cluster_hr = ci;
 
-			double*nlopt_lb,*nlopt_ub;
-			nlopt_lb = calloc(Nparams,sizeof(double));
-			nlopt_ub = calloc(Nparams,sizeof(double));
-			for(ii=0;ii<Nparams;ii++){ nlopt_lb[ii]=0.;nlopt_ub[ii]=1.; }
-			nlopt_set_lower_bounds(opt,nlopt_lb);
-			nlopt_set_upper_bounds(opt,nlopt_ub);
-			double tol= 1e-4;
-			nlopt_set_xtol_rel(opt,tol);
-			nlopt_set_ftol_abs(opt,tol);
-			nlopt_set_ftol_rel(opt,tol);
-			nlopt_set_initial_step1(opt, 0.5/(double)(nnodes*nstarts) );
-			nlopt_set_maxeval(opt,100*(Nparams+1));
-			struct cal_params * par_pt = &par;
-			//glb_par = &par;
-			nlopt_set_min_objective(opt,f_wrapper_nlopt, (void*) par_pt);
-			nlopt_optimize(opt,x0,&dist);
+				solver_state = malloc(sizeof(double)*(Npar_cluster[ci] +1));
+				solver_state[0] = 1e4;
+				nlopt_opt opt  = nlopt_create(NLOPT_LN_SBPLX,(unsigned)Npar_cluster[ci] );
 
-			//for(ii=0;ii<Nparams;ii++)
-			//		x0[ii] = solver_state[ii+1];
-			for(ii=0;ii<Nparams;ii++) x0[ii] = x0starts_j[i*Nparams+ii] ;
-			dist = param_dist(x0, & par ,Nparams,err,Ntargets);
+				double*nlopt_lb,*nlopt_ub;
+				nlopt_lb = calloc(Npar_cluster[ci],sizeof(double));
+				nlopt_ub = calloc(Npar_cluster[ci],sizeof(double));
+				par.cluster_lbub[ci] = malloc(2*Npar_cluster[ci]*sizeof(double));
 
-			if(verbose>1){
-				printf("error is %f at vector:  (", dist);
-				for(ii=0;ii<Ntargets-1;ii++)
-					printf("%f,", err[ii]);
-				printf("%f)\n", err[Ntargets-1]);
-				printf("evaluated at (");
-				for(ii=0;ii<Nparams-1;ii++)
-					printf("%f,", x0[ii]);
-				printf("%f)\n", x0[Nparams-1]);
+				for(ii=0;ii<Npar_cluster[ci];ii++){ nlopt_lb[ii]=0.;nlopt_ub[ii]=1.; }
+				nlopt_set_lower_bounds(opt,nlopt_lb);
+				nlopt_set_upper_bounds(opt,nlopt_ub);
+				int par_hr =0;
+				for(ii=0;ii<ci;ii++ ){ par_hr += Npar_cluster[ii];}
+				for(ii=0;ii<Npar_cluster[ci];ii++){
+					par.cluster_lbub[ci][ii] = par.param_lbub[ par_hr + ii];
+					par.cluster_lbub[ci][ Npar_cluster[ci] +ii] = par.param_lbub[ Nparams+par_hr + ii];
+				}
+				double tol= 1e-4;
+				nlopt_set_xtol_rel(opt,tol);
+				nlopt_set_ftol_abs(opt,tol);
+				nlopt_set_ftol_rel(opt,tol);
+				nlopt_set_initial_step1(opt, .4);//0.5*pow((double)(nnodes*nstarts),-1./(double)Npar_cluster[ci]) );
+				nlopt_set_maxeval(opt,100*(Npar_cluster[ci] +1));
+				struct cal_params * par_pt = &par;
+				//glb_par = &par;
+				nlopt_set_min_objective(opt,f_wrapper_nlopt, (void*) par_pt);
+				nlopt_optimize(opt,x0,&dist);
+
+				dist = param_dist(x0, & par ,Nparams,err,Ntargets);
+
+				if(verbose>1){
+					printf("error is %f at vector:  (", dist);
+					for(ii=0;ii<Ntargets-1;ii++)
+						printf("%f,", err[ii]);
+					printf("%f)\n", err[Ntargets-1]);
+					printf("evaluated at (");
+					for(ii=0;ii<Nparams-1;ii++)
+						printf("%f,", x0[ii]);
+					printf("%f)\n", x0[Nparams-1]);
+				}
+
+				free(solver_state);
+				nlopt_destroy(opt);
+				free(nlopt_lb);free(nlopt_ub);
+				free(par.cluster_lbub[ci]);
+				if(verbose>0)
+					printf("Evaluated a NM start point \n");
 			}
-
-			free(solver_state);
-			nlopt_destroy(opt);
-			free(nlopt_lb);free(nlopt_ub);
-			if(verbose>0)
-				printf("Evaluated a NM start point \n");
 		}
 		caldist_j[i] = dist;
 		for(ii=0;ii<Nparams;ii++) calx_j[i*Nparams + ii] = x0[ii];
@@ -616,7 +639,7 @@ int main(int argc,char *argv[] ) {
 #ifdef _MPI_USE
 		int ngather = nstarts*Nparams;
 		MPI_Barrier(MPI_COMM_WORLD);
-		MPI_Gather(caldist_j,nstarts,MPI_DOUBLE,caldist,nstarts,MPI_DOUBLE,MPI_COMM_WORLD);
+		MPI_Gather(caldist_j,nstarts,MPI_DOUBLE,caldist,nstarts,MPI_DOUBLE,0,MPI_COMM_WORLD);
 		MPI_Gather(calx_j,ngather ,MPI_DOUBLE,calx,ngather ,MPI_DOUBLE,0,MPI_COMM_WORLD);
 #else
 		for(ii=0;ii<nstarts;ii++) caldist[ii] = caldist_j[ii];
@@ -636,7 +659,7 @@ int main(int argc,char *argv[] ) {
 		}
 		//check if less than tolerance and then broadcast a stop of the nstarts loop
 #ifdef _MPI_USE
-		MPI_Bcast(mindist,1,MPI_DOUBLE,0,MPI_COMM_WORLD);
+		MPI_Bcast(&mindist,1,MPI_DOUBLE,0,MPI_COMM_WORLD);
 #endif
 		if(dist<caltol)
 			i=nstarts;
@@ -1299,12 +1322,14 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 
 int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk, struct stats *st  ){
 
-	int ll, i,ti,wi,si;
+	int ll, i,ti,wi,si,ji;
 
 	int Nemp=0, Nunemp = 0, Nnosep=0, Nfnd =0, NswU = 0, NswE=0, NJ2J=0, Nspell=0, NswSt=0,Ndur_sw=0,Ndur_nosw=0;
 
+	double * occwg = calloc(JJ*TT*Npaths,sizeof(double));
+	int    * occsz = calloc(JJ*TT*Npaths,sizeof(int)   );
 
-#pragma parallel for private(ll,ti,i,wi,si) reduction( +: Nemp ) reduction( +:Nunemp) reduction( +:Nnosep) reduction( +: Nfnd) reduction( +: NswU) reduction( +: NswE) reduction( +: Nspell) reduction( +: NswSt) reduction( +: Ndur_sw) reduction( +: Ndur_nosw)
+	#pragma omp parallel for private(ll,ti,i,wi,si) reduction( +: Nemp ) reduction( +:Nunemp) reduction( +:Nnosep) reduction( +: Nfnd) reduction( +: NswU) reduction( +: NswE) reduction( +: Nspell) reduction( +: NswSt) reduction( +: Ndur_sw) reduction( +: Ndur_nosw)
 	for(ll=0;ll<Npaths;ll++){
 
 		int Nemp_ll = 0, Nunemp_ll = 0,Nnosep_ll=0, Nfnd_ll =0, NswU_ll = 0, NswE_ll=0, NJ2J_ll=0,Nspell_ll=0, NswSt_ll =0, Ndur_sw_ll=0, Ndur_nosw_ll=0;
@@ -1318,6 +1343,8 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
                     if(ti<TT-1 && ti>0){
                         if( ggi_get(ht->uhist[ll],i,ti) ==0 ){
                             Nemp_wi=1;
+                            occwg[ ll*JJ*TT + ti*JJ + ggi_get(ht->jhist[ll],i,ti)] += gg_get(ht->whist[ll],i ,ti);
+	                        occsz[ ll*JJ*TT + ti*JJ + ggi_get(ht->jhist[ll],i,ti)] ++;
                             if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
                                 sw_spell = ggi_get(ht->jhist[ll],i,ti-1);
 	                            tsep = ti;
@@ -1387,47 +1414,62 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
     st->udur_nosw = Nspell - NswU>0 ? (double) Ndur_nosw/ (double)(Nspell - NswU): 0.;
 	st->udur_sw = (double) Ndur_sw/ (double)NswU;
 
+	for(ll=0;ll<Npaths;ll++){
+		for( ti=0;ti<TT;ti++ ){
+			for(ji=0;ji<JJ;ji++)
+				occwg[ll*TT*JJ +ti*JJ + ji ] /= (double)occsz[ll*TT*JJ +ti*JJ + ji ];
+		}
+	}
 
-    double * w_stns = Nemp>0   ? malloc(sizeof(double) * Nemp  ): malloc(sizeof(double) * Nsim *TT/Npwave );
-	double * w_stsw = NswSt>0  ? malloc(sizeof(double) * NswSt ): malloc(sizeof(double) * Nsim *TT/Npwave  );
-	double * w_EEsw = NswE>0   ? malloc(sizeof(double) * NswE  ): malloc(sizeof(double) * Nsim *TT/Npwave  );
-	double * w_EEns = NJ2J>0   ? malloc(sizeof(double) * NJ2J  ): malloc(sizeof(double) * Nsim *TT/Npwave  );
-	double * w_EUsw = NswU>0   ? malloc(sizeof(double) * NswU  ): malloc(sizeof(double) * Nsim *TT/Npwave  );
-	double * w_EUns = Nspell>0 ? malloc(sizeof(double) * Nspell): malloc(sizeof(double) * Nsim *TT/Npwave  );
-	double * w_UEsw = NswU>0   ? malloc(sizeof(double) * NswU  ): malloc(sizeof(double) * Nsim *TT/Npwave  );
-	double * w_UEns = Nspell>0 ? malloc(sizeof(double) * Nspell): malloc(sizeof(double) * Nsim *TT/Npwave  );
+    double * w_stns = Nemp>0   ? malloc(sizeof(double) * Nemp  ): malloc(sizeof(double) * Npaths*Nsim *TT/Npwave );
+	double * w_stsw = NswSt>0  ? malloc(sizeof(double) * NswSt ): malloc(sizeof(double) * Npaths*Nsim *TT/Npwave  );
+	double * w_EEsw = NswE>0   ? malloc(sizeof(double) * NswE  ): malloc(sizeof(double) * Npaths*Nsim *TT/Npwave  );
 
+	double * w_EEns = NJ2J>0   ? malloc(sizeof(double) * NJ2J  ): malloc(sizeof(double) * Npaths*Nsim *TT/Npwave  );
+	double * w_EUsw = NswU>0   ? malloc(sizeof(double) * NswU  ): malloc(sizeof(double) * Npaths*Nsim *TT/Npwave  );
+	double * w_EUns = Nspell>0 ? malloc(sizeof(double) * Nspell): malloc(sizeof(double) * Npaths*Nsim *TT/Npwave  );
+	double * w_UEsw = NswU>0   ? malloc(sizeof(double) * NswU  ): malloc(sizeof(double) * Npaths*Nsim *TT/Npwave  );
+	double * w_UEns = Nspell>0 ? malloc(sizeof(double) * Nspell): malloc(sizeof(double) * Npaths*Nsim *TT/Npwave  );
+
+	double * wwv_EEsw = NswE>0   ? malloc(sizeof(double) * NswE  ): malloc(sizeof(double) * Npaths*Nsim *TT/Npwave  );
+	double * wwv_occsw = NswE>0   ? malloc(sizeof(double) * NswE  ): malloc(sizeof(double) * Npaths*Nsim *TT/Npwave  );
 
 	int idx_EUns =0, idx_UEns =0, idx_EEns=0, idx_EUsw=0,idx_UEsw=0,idx_EEsw=0;
-	int idx_stns =0, idx_stsw =0;
+	int idx_stns =0, idx_stsw =0;int valid_w =0;
 	for(ll=0;ll<Npaths;ll++){
 
 		int sw_spell=-1;
-		double wlast =-1., wnext=-1.;double w_EU=0.;
+		double wlast =-1e6, wnext=-1e6, w_EU=0., wlast_wave=-1e6, wnext_wave=-1e6;
 		for(i=0;i<Nsim;i++){
 			for(wi=0;wi<TT/Npwave;wi++){
 				double w_EEsw_wi =0., w_EEns_wi=0., w_stsw_wi=0.,w_stns_wi=0.,w_UEsw_wi=0.,w_UEns_wi=0.,w_EUsw_wi=0.,w_EUns_wi=0.;
+				double  wwv_EEsw_wi=0.,wwv_occsw_wi =0.;
 				int    I_EEsw_wi =0,  I_EEns_wi=0 , I_stsw_wi=0 ,I_stns_wi=0 ,I_UEsw_wi=0 ,I_UEns_wi=0 ,I_EUsw_wi=0 ,I_EUns_wi=0 ;
 				int    sep=0;
 				wlast=0;wnext=0;
-				ti = wi*4;
+				ti = wi*Npwave;
 				if( ti>3 && ti< TT-Npwave && Anan==0 ){
 					wlast = gg_get( ht->whist[ll] ,i,ti-1) + gg_get( ht->whist[ll] ,i,ti-2)+ gg_get( ht->whist[ll] ,i,ti-3);
 					wnext = gg_get( ht->whist[ll] ,i,ti+Npwave) + gg_get( ht->whist[ll] ,i,ti+Npwave+1)+ gg_get( ht->whist[ll] ,i,ti+Npwave+2);
+					wnext_wave = wnext;wlast_wave=wlast;
 				}else if( wi>3 && wi< TT/Npwave-3 && Anan==1  ){
 					int ri=0;
 					for(ri=1;ri<Npwave*3+1;ri++)
 						wlast += gg_get(ht->whist[ll], i, ti - ri) ;
 					for(ri=0;ri<Npwave*3;ri++)
 						wnext += gg_get( ht->whist[ll] ,i,ti+ri) ;
+					wlast_wave = gg_get( ht->whist[ll] ,i,ti-1) + gg_get( ht->whist[ll] ,i,ti-2)+ gg_get( ht->whist[ll] ,i,ti-3);
+					wnext_wave = gg_get( ht->whist[ll] ,i,ti+Npwave) + gg_get( ht->whist[ll] ,i,ti+Npwave+1)+ gg_get( ht->whist[ll] ,i,ti+Npwave+2);
+
 				}else{
-					wlast=-1;wnext=-1;
+					wlast=-1e6;wnext=-1e6;wlast_wave=-1e6; wnext_wave=-1e6;
 				}
 				for(si=0;si<Npwave;si++){
-					ti = si + wi * 4;
+					ti = si + wi * Npwave;
                     if(ti<TT-1 && ti>0){ //can't get transitions unless ti+1 defined
+						if( wlast>= -1e3 && wnext>=-1e3 ) valid_w ++;
 
-                        if( ggi_get(ht->uhist[ll],i,ti) ==0 && wlast>=0 && wnext >=0  ){
+                        if( ggi_get(ht->uhist[ll],i,ti) == 0 && wlast>=-1e3 && wnext >=-1e3  ){
 
                         	if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
                         		int sep = 1;
@@ -1438,6 +1480,9 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
                                     if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti-1) ){
                                         w_EEsw_wi = (wnext- wlast)/(wnext + wlast)*2;
+	                                    wwv_EEsw_wi  = (wnext_wave - wlast_wave )/(wnext+wlast)*2 ;
+	                                    wwv_occsw_wi = (occwg[ll*JJ*TT+ti*JJ+ggi_get(ht->jhist[ll],i,ti+1)] -occwg[ll*JJ*TT+ti*JJ+ggi_get(ht->jhist[ll],i,ti-1)])/
+			                                    (occwg[ll*JJ*TT+ti*JJ+ggi_get(ht->jhist[ll],i,ti+1)] +occwg[ll*JJ*TT+ti*JJ+ggi_get(ht->jhist[ll],i,ti-1)])*2;
                                         I_EEsw_wi = 1;
                                     }else{
                                         w_EEns_wi = (wnext- wlast)/(wnext + wlast)*2;
@@ -1480,6 +1525,8 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
 				if(I_EEsw_wi ==1 && idx_EEsw < NswE){
 					w_EEsw[idx_EEsw] =w_EEsw_wi;
+					wwv_EEsw[idx_EEsw] = wwv_EEsw_wi;
+					wwv_occsw[idx_EEsw]= wwv_occsw_wi;
 					idx_EEsw ++;
 				}
 				if(I_EEns_wi==1 && idx_EEns < NJ2J){
@@ -1510,7 +1557,8 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		}
 	}
 
-	if(verbose>1){
+//	if(verbose>1){
+		printf("Uneployment rate is %f\n",st->unrate);
 		printf("w_stns is allocated %d, needs %d\n",Nemp,idx_stns);
 		printf("w_stsw is allocated %d, needs %d\n",NswSt,idx_stsw);
 		printf("w_EEsw is allocated %d, needs %d\n",NswE,idx_EEsw);
@@ -1519,23 +1567,10 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		printf("w_EUns is allocated %d, needs %d\n", Nspell,idx_EUns);
 		printf("w_UEsw is allocated %d, needs %d\n",NswU,idx_UEsw);
 		printf("w_UEns is allocated %d, needs %d\n",Nspell,idx_UEns);
-	}
+//	}
 
 
-	/*
-	qsort(w_EUns, (size_t)idx_EUns,sizeof(double), comp_dble_asc);
-	qsort(w_EUsw, (size_t)idx_EUsw,sizeof(double), comp_dble_asc);
-
-	qsort(w_stns, (size_t)idx_stns,sizeof(double), comp_dble_asc);
-	qsort(w_stsw, (size_t)idx_stsw,sizeof(double), comp_dble_asc);
-
-	qsort(w_UEns, (size_t)idx_UEns,sizeof(double), comp_dble_asc);
-	qsort(w_UEsw, (size_t)idx_UEsw,sizeof(double), comp_dble_asc);
-
-	qsort(w_EEns, (size_t)idx_EEns,sizeof(double), comp_dble_asc);
-	qsort(w_EEsw, (size_t)idx_EEsw,sizeof(double), comp_dble_asc);
-	*/
-	gsl_sort(w_EUns,1, idx_EUns);
+	gsl_sort(w_EUns, 1,idx_EUns);
 	gsl_sort(w_EUsw, 1,idx_EUsw);
 
 	gsl_sort(w_stns, 1,idx_stns);
@@ -1546,6 +1581,12 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
 	gsl_sort(w_EEns, 1,idx_EEns);
 	gsl_sort(w_EEsw, 1,idx_EEsw);
+
+	st->corr_wgocc= idx_EEsw>0 ? gsl_stats_correlation( wwv_EEsw,1,wwv_occsw ,1,(size_t)idx_EEsw) : 0.;
+//	if(verbose>1){
+		printf("The valid w observations are %d \n",valid_w);
+		printf("slope of hamburger (corr of wage and occwg) is %f \n", st->corr_wgocc);
+//	}
 
 	w_qtls(w_stns,1,idx_stns,st->stns_qtls);
 	w_qtls(w_stsw,1,idx_stsw,st->stsw_qtls);
@@ -1689,83 +1730,49 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 		gsl_vector_view zrow = gsl_matrix_row(par->ztrans,ii);
 		if(ii>0){
 			double zrowsum = 0;
-			for( int ci=0;ci<NZ;ci++ ) zrowsum += gsl_vector_get( &(zrow.vector),ci );
+			int ci;
+			for( ci=0;ci<NZ;ci++ ) zrowsum += gsl_vector_get( &(zrow.vector),ci );
 			gsl_vector_scale(  & (zrow.vector) ,1./zrowsum);
 		}
 	}
-	double sd_eps = pow(par->var_eps,0.5);
-	// heuristic for placement of points 0 1 2 3 4 5 6
-	for(i=0;i<NE;i++){
-		if(i>=NE/2-1 && i<=NE/2+1 ){
-			gsl_vector_set( par->epslev,i,gsl_cdf_gaussian_Pinv( (double) (i+1)/( (double)NE+1.), sd_eps ) );
-		}else if( i<NE/2-1){
-			gsl_vector_set( par->epslev,i,
-					gsl_cdf_gaussian_Pinv( (double) (NE/2)/( (double)NE+1.), sd_eps  ) -
-					gsl_cdf_exponential_Pinv( 1.- (double) (i+1)/( (double)NE+1.), par->lshape_eps ) );
-		}else if( i>NE/2+1){
-			gsl_vector_set( par->epslev,i,
-					gsl_cdf_gaussian_Pinv( (double) (NE/2+2)/( (double)NE+1.), sd_eps  ) +
-			        gsl_cdf_exponential_Pinv( (double) (i+1)/( (double)NE+1.), par->rshape_eps ) );
-		}
-	}
-	double leps_frac = par->lshape_eps/(par->lshape_eps+par->rshape_eps);
-	double reps_frac = par->rshape_eps/(par->lshape_eps+par->rshape_eps);
-	double sumprobs =0.;
-	for(i=1;i<NE-1;i++){
-		double epsL = gsl_vector_get(par->epslev,i-1)/2+gsl_vector_get(par->epslev,i)/2;
-		double epsH = gsl_vector_get(par->epslev,i+1)/2+gsl_vector_get(par->epslev,i)/2;
-		double RcdfH = gsl_cdf_ugaussian_P( epsH/sd_eps  - par->rshape_eps*sd_eps );
-		double LcdfH = gsl_cdf_ugaussian_P(-epsH/sd_eps  - par->lshape_eps*sd_eps );
-		double RcdfL = gsl_cdf_ugaussian_P( epsL/sd_eps  - par->rshape_eps*sd_eps );
-		double LcdfL = gsl_cdf_ugaussian_P(-epsL/sd_eps  - par->lshape_eps*sd_eps );
-		double Pr_hr = gsl_cdf_ugaussian_P(epsH/sd_eps ) -
-		               leps_frac*exp(-par->rshape_eps*epsH + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfH+
-		               reps_frac*exp(par->lshape_eps*epsH + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfH
-		               -(	gsl_cdf_ugaussian_P(epsL/sd_eps ) -
-		                     leps_frac*exp(-par->rshape_eps*epsL + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfL+
-		                     reps_frac*exp(par->lshape_eps*epsL + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfL
-		               );
-		gsl_vector_set(par->epsprob,i,Pr_hr);
-		sumprobs += Pr_hr;
-	}
-	i=0;
-	double epsH = gsl_vector_get(par->epslev,i+1)/2+gsl_vector_get(par->epslev,i)/2;
-	double RcdfH = gsl_cdf_ugaussian_P( epsH/sd_eps  - par->rshape_eps*sd_eps );
-	double LcdfH = gsl_cdf_ugaussian_P(-epsH/sd_eps  - par->lshape_eps*sd_eps );
-	double Pr_hr = gsl_cdf_ugaussian_P(epsH/sd_eps ) -
-	               leps_frac*exp(-par->rshape_eps*epsH + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfH+
-	               reps_frac*exp(par->lshape_eps*epsH + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfH;
-	gsl_vector_set(par->epsprob,i,Pr_hr);
-	sumprobs += Pr_hr;
-	i=NE-1;
-	double epsL = gsl_vector_get(par->epslev,i-1)/2+gsl_vector_get(par->epslev,i)/2;
-	double RcdfL = gsl_cdf_ugaussian_P( epsL/sd_eps  - par->rshape_eps*sd_eps );
-	double LcdfL = gsl_cdf_ugaussian_P(-epsL/sd_eps  - par->lshape_eps*sd_eps );
-	Pr_hr = 1.
-	        -(	gsl_cdf_ugaussian_P(epsL/sd_eps ) -
-	              leps_frac*exp(-par->rshape_eps*epsL + par->var_eps/2*par->rshape_eps*par->rshape_eps )*RcdfL+
-	              reps_frac*exp(par->lshape_eps*epsL + par->var_eps/2*par->lshape_eps*par->lshape_eps )*LcdfL
-	        );
-	gsl_vector_set(par->epsprob,i,Pr_hr);
-	sumprobs += Pr_hr;
-	gsl_vector_scale(par->epsprob, 1./sumprobs );
 
+	disc_2emg(par->epsprob->data,par->epslev->data,(int)par->epsprob->size,
+			0.,par->var_eps,par->lshape_eps,par->rshape_eps);
+
+	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	// come back and figure out how to do xS and xG !!!!
 	for(i=0;i<NG;i++) gsl_vector_set(par->xGlev,i,-0.2  + .4* (double)i/(double) (NG-1));
 	for(i=0;i<NS;i++) gsl_vector_set(par->xSlev,i,-0.2  + .4* (double)i/(double) (NS-1));
 	for(ji=0;ji<JJ;ji++) gsl_vector_set(par->jprob,ji,1./(double)JJ);
 
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	// come back and figure out how to do xS and xG !!!!
 
-	int ai = 0;int pi = 0;int gi = 0;int si = 0;int zi = 1;	int thi = 0; ji=0;
+	// ensure don't voluntarily quit, except for when z is the lowest value
+	double w_hr;
+	for(ji=0;ji<JJ;ji++){
+		for (ii = 0; ii < NN; ii++) {
+			int ai = ii / (NP * NG * NS * NZ * NE);
+			int pi = (ii - ai * NP * NG * NS * NZ * NE) / (NG * NS * NZ * NE);
+			int gi = (ii - ai * NP * NG * NS * NZ * NE - pi * NG * NS * NZ * NE) / (NS * NZ * NE);
+			int si = (ii - ai * NP * NG * NS * NZ * NE - pi * NG * NS * NZ * NE - gi * NS * NZ * NE) / (NZ * NE);
+			int zi =
+					(ii - ai * NP * NG * NS * NZ * NE - pi * NG * NS * NZ * NE - gi * NS * NZ * NE - si * NZ * NE) / NE;
+			int ti = ii - ai * NP * NG * NS * NZ * NE - pi * NG * NS * NZ * NE - gi * NS * NZ * NE - si * NZ * NE -
+			         zi * NE;
 
-	double wage_lev0 = pow(exp(par->AloadP->data[ji] * par->Alev->data[ai]) *
-	                       exp(par->Plev->data[pi]) *
-	                       exp(par->epslev->data[thi]) *
-	                       exp(par->zlev->data[zi]) *
-	                       exp(par->xSlev->data[si]) *
-	                       exp(par->xGlev->data[gi]), 1.-par->wage_curve) / (1. - par->wage_curve);
-	wage_lev = 1. - wage_lev0 ;
+			w_hr = pow(exp(par->AloadP->data[ji] * par->Alev->data[ai] +
+			                          par->Plev->data[pi] +
+			                          par->epslev->data[ti] +
+			                          par->zlev->data[zi] +
+			                          par->xSlev->data[si] +
+			                          par->xGlev->data[gi]), 1.-par->wage_curve) / (1. - par->wage_curve) + wage_lev;
+			if( w_hr< b && zi>0) b = w_hr;
+		}
+	}
+	//if(verbose>0){
+		printf("Lowest wage (and b) is:%f \n", b);
+	//}
+
+
 
 // print out the grids
 	if(print_lev>1){
@@ -1869,7 +1876,7 @@ double f_wrapper_nlopt(unsigned n, const double * x, double * grad, void * par){
 	struct cal_params*   cpar = (struct cal_params*)par;
 	double dist;
 	double * errvec = malloc(sizeof(double)*Ntgt_cluster[cpar->cluster_hr] );
-
+	int ci = cpar->cluster_hr;
 	if(verbose>1) printf("Entering Nelder-Meade evaluation\n");
 	verbose_old = verbose;
 	print_lev_old = print_lev;
@@ -1878,7 +1885,7 @@ double f_wrapper_nlopt(unsigned n, const double * x, double * grad, void * par){
 	print_lev=0;
 	double * x0 = malloc(sizeof(double)*n);
 	for(i=0;i<n;i++) // convert from [0,1] domain to parameter space
-		x0[i] = x[i] * (cpar->param_lbub[i+n]-cpar->param_lbub[i])+cpar->param_lbub[i];
+		x0[i] = x[i] * (cpar->cluster_lbub[ci][i+n]-cpar->cluster_lbub[ci][i])+cpar->cluster_lbub[ci][i];
 
 	if(verbose_old>1){
 		printf("eval at: ");
@@ -1966,7 +1973,7 @@ int draw_shocks(struct shocks * sk){
 
 	int seed;
 
-#pragma parallel for private(ll, ti,i,ji)
+	#pragma omp parallel for private(ll, ti,i,ji)
 	for(ll=0;ll<Npaths;ll++){
 		gsl_rng * rng0 = gsl_rng_alloc( gsl_rng_default );
 		seed = 12281951 + 10*omp_get_thread_num();
