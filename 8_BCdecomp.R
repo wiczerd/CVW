@@ -670,6 +670,7 @@ DTseam[ UE_anan& changer_anan & is.na(matched_EUUE_anan),changer_anan:= NA]
 DTseam[ EU_anan& changer_anan & is.na(matched_EUUE_anan),EU_anan:= NA]
 DTseam[ UE_anan& changer_anan & is.na(matched_EUUE_anan),UE_anan:= NA]
 
+DTseam[ , nextann.wavewage:=NULL]
 DTseam[ , nextann.wavewage := levwage + shift(levwage,type="lead") + shift(levwage,2,type="lead")  , by=id]
 DTseam[ wave+1!=shift(wave,type = "lead") | wave+2!=shift(wave,2,type = "lead") , nextann.wavewage := NA]
 DTseam[ , nextann.wavewage := log(nextann.wavewage + (1+nextann.wavewage^2)^.5) ]
@@ -779,7 +780,7 @@ if( freq == "wave"){
 #J2J
 DTseam[ lfstat_wave ==1 , wtd.mean(EE_wave,na.rm = T, weights = truncweight )]
 #find rate
-DTseam[ lfstat_wave >1 & changer_anan , wtd.mean(UE_wave,na.rm = T, weights = truncweight )]
+DTseam[ lfstat_wave >1 , wtd.mean(UE_wave,na.rm = T, weights = truncweight )]
 #sep rate
 DTseam[ lfstat_wave ==1 , wtd.mean(EU_wave,na.rm = T, weights = truncweight )]
 #sw_U rate
@@ -805,6 +806,12 @@ DTseam[ changer_anan==T & UE_wave==T & switched_wave==F, wtd.quantile(wagechange
 
 DTseam[ changer_anan==T & EE_wave==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
 DTseam[ changer_anan==T & EE_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+
+#cyclicality of flows
+DTseam[ lfstat_wave == 1 & recIndic_wave==T, wtd.mean(EE_wave, na.rm=T, weights=truncweight)]
+DTseam[ lfstat_wave > 1  & recIndic_wave==F, wtd.mean(UE_wave, na.rm=T, weights=truncweight)]
+
+DTseam[ lfstat_wave == 1 & recIndic_wave==T, wtd.mean(EU_wave, na.rm=T, weights=truncweight)]
 
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

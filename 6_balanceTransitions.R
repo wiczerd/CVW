@@ -166,12 +166,17 @@ DTall[changer==T, stayer:= F]
 DTall[stayer ==T, changer:=F]
 
 #now subset everyone on annual-annual :
+DTall[ , lastann.worked := lastann.wavewage>0 & is.finite(lastann.wavewage)]
+DTall[ , nextann.worked := nextann.wavewage>0 & is.finite(nextann.wavewage)]
+
 DTall[  wagechange_notrbad_anan==F & #wagechange_ENbad_anan ==F &
 	  	!(EU_anan==T|UE_anan==T|EE_anan==T) & 
 	  	lfstat_wave==1 & next.stable_emp==T, stayer_anan:= T]
 
 DTall[  #wagechange_ENbad_anan ==F &
-	  	(EU_anan==T|UE_anan==T|EE_anan==T)  , changer_anan:= T]
+	  	(EU_anan==T|UE_anan==T|EE_anan==T) |
+	  	(lastann.worked==T & nextann.worked )
+	  	, changer_anan:= T]
 
 DTall[changer_anan==T, stayer_anan := F]
 DTall[stayer_anan ==T, changer_anan:=F]
