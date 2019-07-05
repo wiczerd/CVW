@@ -16,6 +16,7 @@
 #include <gsl/gsl_eigen.h>
 #include <gsl/gsl_cdf.h>
 
+void printarray(char* name, double* vec, int rows, int append);
 
 int comp_dble_asc( const void * a, const void * b ){
 	double x = *(double *)a;
@@ -625,27 +626,12 @@ rshape_eps : Input. Right-side exponential parameter
 	int const Nevalpts=500;
 	double epslev0[NE];
 	double sd_eps = pow(var_eps,0.5);
-	// heuristic for placement of points 0 1 2 3 4 5 6
-	for(ii=0;ii < NE;ii++){
-		if(ii>=NE/2-1 && ii<=NE/2+1 ){
-			epslev[ii] =gsl_cdf_gaussian_Pinv( (double) (ii+1)/( (double)NE+1.), sd_eps*1.5 ) +mean_eps;
-		}else if( ii<NE/2-1){
-			epslev[ii]=
-			                gsl_cdf_gaussian_Pinv( (double) (NE/2)/( (double)NE+1.), sd_eps*1.5  ) -
-			                gsl_cdf_exponential_Pinv( 1.- (double) (ii+1)/( (double)NE+1.), lshape_eps ) +mean_eps;
-		}else if( ii>NE/2+1){
-			epslev[ii] =
-			                gsl_cdf_gaussian_Pinv( (double) (NE/2+2)/( (double)NE+1.), sd_eps*1.5  ) +
-			                gsl_cdf_exponential_Pinv( (double) (ii+1)/( (double)NE+1.), rshape_eps ) +mean_eps;
-		}
-	}
-	for(ii=0;ii<NE;ii++) epslev0[ii] = epslev[ii];
 
 	// heuristic for placement of endpoints: where there's very little mass even on the exponential:
 	double epsUB = gsl_cdf_gaussian_Pinv( 1./3., sd_eps  ) +
-	               gsl_cdf_exponential_Pinv( 0.995, rshape_eps ) +mean_eps;
+	               gsl_cdf_exponential_Pinv( 0.995, 1./rshape_eps ) +mean_eps;
 	double epsLB = -gsl_cdf_gaussian_Pinv( 1./3., sd_eps  ) -
-	               gsl_cdf_exponential_Pinv( 0.995, rshape_eps ) +mean_eps;
+	               gsl_cdf_exponential_Pinv( 0.995, 1./lshape_eps ) +mean_eps;
 
 	double leps_frac = lshape_eps/(lshape_eps+rshape_eps);
 	double reps_frac = rshape_eps/(lshape_eps+rshape_eps);
@@ -678,19 +664,20 @@ rshape_eps : Input. Right-side exponential parameter
 	double Pr_hr = gsl_cdf_ugaussian_P(epsH/sd_eps ) -
 	               leps_frac*exp(-rshape_eps*epsH + var_eps/2 * rshape_eps * rshape_eps )*RcdfH+
 	               reps_frac*exp( lshape_eps*epsH + var_eps/2 * lshape_eps * lshape_eps )*LcdfH;
-	epsprob[ii]=Pr_hr;
+	epsPrGrid[ii]=Pr_hr;
 	sumprobs += Pr_hr;
 	ii=Nevalpts-1;
 	double epsL  = evalgrid[ii-1]/2+ evalgrid[ii]/2;
 	double RcdfL = gsl_cdf_ugaussian_P( epsL/sd_eps  - rshape_eps*sd_eps );
 	double LcdfL = gsl_cdf_ugaussian_P(-epsL/sd_eps  - lshape_eps*sd_eps );
-	Pr_hr = 1.
-	        -(	gsl_cdf_ugaussian_P(epsL/sd_eps ) -
+	Pr_hr = 1.-
+	        (	gsl_cdf_ugaussian_P(epsL/sd_eps ) -
 	              leps_frac*exp(- rshape_eps*epsL + var_eps/2 * rshape_eps * rshape_eps )*RcdfL+
 	              reps_frac*exp(  lshape_eps*epsL + var_eps/2 * lshape_eps * lshape_eps )*LcdfL
 	        );
 	epsPrGrid[ii] = Pr_hr;
 	sumprobs += Pr_hr;
+
 	for(ii=0;ii<NE;ii++) epsprob[ii]  *= 1./sumprobs ;
 	if(sumprobs>.999999 && sumprobs<1.000001) success=0;
 	// pick points by inverting the distribution:
@@ -709,22 +696,37 @@ rshape_eps : Input. Right-side exponential parameter
 		epsub[ii] = (wtL * evalgrid[iL] + (1.-wtL)*evalgrid[iL+1]);
 		epsprob[ii] = 1./(double)NE;
 	}
+	// take midpoints:
 	for(ii=1;ii<NE-1;ii++){
 		epslev[ii] = (epsub[ii-1]+epsub[ii])/2;
 	}
 	// (epslev[0]+epslev[1])/2 = epsub[0]
-	epslev[0] = 2*epsub[0]-epslev[1];
+	epslev[0]  = 2*epsub[0]-epslev[1];
+	epsprob[0] = 1./(double)NE;
 	// (epslev[NE-1] + epslev[NE-2])/2 = epsub[NE-1]
 	epslev[NE-1] = 2*epsub[NE-2]-epslev[NE-2];
+	epsprob[NE-1]= 1./(double)NE;
 
 	// check for weirdness (non-monotone, etc and if so, go back to epslev0
 	success =0;
 	for(ii=0;ii<NE-1;ii++){
 		if(epslev[ii]-epslev[ii+1]>0){
-//			for(ri=0;ri<NE;ri++){
-//				epslev[ri] = epslev0[ri];
-//			}
-			// redo the probabilities:
+				/* heuristic for placement of points
+				for(ii=0;ii < NE;ii++){
+					if(ii>=NE/2-1 && ii<=NE/2+1 ){
+						epslev[ii] =gsl_cdf_gaussian_Pinv( (double) (ii+1)/( (double)NE+1.), sd_eps*1.5 ) +mean_eps;
+					}else if( ii<NE/2-1){
+						epslev[ii]=
+									    gsl_cdf_gaussian_Pinv( (double) (NE/2)/( (double)NE+1.), sd_eps*1.5  ) -
+									    gsl_cdf_exponential_Pinv( 1.- (double) (ii+1)/( (double)NE+1.), 1./lshape_eps ) +mean_eps;
+					}else if( ii>NE/2+1){
+						epslev[ii] =
+									    gsl_cdf_gaussian_Pinv( (double) (NE/2+2)/( (double)NE+1.), sd_eps*1.5  ) +
+									    gsl_cdf_exponential_Pinv( (double) (ii+1)/( (double)NE+1.), 1./rshape_eps ) +mean_eps;
+					}
+				}
+
+			*/ // redo the probabilities:
 
 			success =100;
 			break;
