@@ -166,15 +166,31 @@ double cov(gsl_vector* x1, gsl_vector * x2){
 	}
 	len = (double)x1->size;
 	m1=0.0; m2=0.0;cov=0.0;
-	for(ri =0;ri<x1->size;ri++)
-		m1 += x1->data[ri] / len;
+	for(ri =0;ri<x1->size;ri++){
+		if(gsl_finite(x1->data[ri])==1 ) m1 += x1->data[ri];
+		else len -= 1.;
+	}
+	m1 /= len;
+
+	len = (double)x2->size;
+	for(ri =0;ri<x2->size;ri++){
+		if(gsl_finite(x2->data[ri])==1 ) m2 += x2->data[ri];
+		else len -= 1.;
+	}
+	m2 /= len;
+
+	len = (double)x1->size;
 	for(ri =0;ri<x2->size;ri++)
-		m2 += x2->data[ri] / len;
-	for(ri =0;ri<x2->size;ri++)
-		cov +=(x2->data[ri] -m2)*(x1->data[ri] -m1);
+		if(gsl_finite(x1->data[ri])==1 && gsl_finite(x2->data[ri])==1)
+			cov +=(x2->data[ri] -m2)*(x1->data[ri] -m1);
+		else
+			len -= 1.;
 	cov /= len;
 	return cov;
 }
+
+
+
 
 int WOLS(const gsl_vector* y, const gsl_matrix* x,const gsl_matrix* w, gsl_vector * coef, gsl_vector * e){
 	int status =0;
