@@ -115,7 +115,7 @@ struct cal_params{
 	double var_eps;     // variance of epsilon
 	double lshape_eps;  // left-tail skewness of epsilon (exponential parameter)
 	double rshape_eps;  // right-tail skewness of epsilon
-	double wage_curve;  // curviness of wage function
+	double wage_curve;  // curviness of utility function over wages
     double delta_Acoef;
 	double delta_avg;     // average separation rate
 	double lambdaU_Acoef,lambdaES_Acoef,lambdaEM_Acoef;
@@ -367,6 +367,7 @@ int main(int argc,char *argv[] ) {
 			gsl_vector_scale(& Pr.vector,1./rsum);
 		}
 	}
+	// will over-write this
 	gsl_matrix_set_all(par.Atrans, 0.025/( (double)NA-1. ));
 	for(ii=0;ii<NA;ii++) gg_set(par.Atrans,ii,ii,0.975);
 	gsl_matrix_set_all(par.xGtrans, 0.025/( (double)NG-1. ));
@@ -444,7 +445,7 @@ int main(int argc,char *argv[] ) {
 	// alphaE , alphaU, alphaU_1, lambdaU,lambdaES, lambdaEM, delta_avg, zloss_prob
 	par.param_lb[0] = 0.010; par.param_ub[0] = 0.75;
 	par.param_lb[1] = 0.010; par.param_ub[1] = 1.00;
-	par.param_lb[2] = 0.350; par.param_ub[2] = 0.75;
+	par.param_lb[2] = 0.150; par.param_ub[2] = 0.85;
 
 	par.param_lb[3] = 0.002; par.param_ub[3] = 0.50;
 	par.param_lb[4] = 0.002; par.param_ub[4] = 0.15;
@@ -609,7 +610,7 @@ int main(int argc,char *argv[] ) {
 		double dist;
 
 
-		if(i%2 == rank%2 ){
+		if( i< 400 || rank<400 ){ //I'm just always going to do DFBOLS for now. was i%2 == rank%2, which made the nodes alternate between DFBOLS and subplex
 
 			if(verbose>0)
 				printf("Beginning to evaluate a DFBOLS start point \n");
@@ -879,12 +880,23 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 	for(ji=0;ji<JJ;ji++) {
 		for (ii = 0; ii < NN; ii++) {
-			gg_set(vf0.WE, ii, ji,
+			if( par->wage_curve<0.0001 && par->wage_curve>-0.0001 )
+				gg_set(vf0.WE, ii, ji,
+				       wagevec[ii][ji] / (1. - beta));
+			else
+				gg_set(vf0.WE, ii, ji,
 			               pow(wagevec[ii][ji], 1.-par->wage_curve) / (1. - par->wage_curve) / (1. - beta));
 		}
 	}
 	for(ii=0;ii<NUN;ii++){
-		gg_set(vf0.WU,ii,0,
+		if( par->wage_curve< 0.0001 && par->wage_curve> -0.0001 )
+			gg_set(vf0.WU,ii,0,
+			       (1.-par->lambdaU0)*b
+			       /(1.-beta) +
+			       par->lambdaU0*(wagevec[ii*NE+NE/2][0])
+			       /(1.-beta));
+		else
+			gg_set(vf0.WU,ii,0,
 		               (1.-par->lambdaU0)*pow(b, 1.-par->wage_curve) / (1. - par->wage_curve)
 		               /(1.-beta) +
 		               par->lambdaU0*pow(wagevec[ii*NE+NE/2][0], 1.-par->wage_curve)/(1.-par->wage_curve)
@@ -905,7 +917,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				int zi = (ii - ai*NP*NG*NS*NZ*NE - pi*NG*NS*NZ*NE - gi*NS*NZ*NE -  si*NZ*NE)/NE ;
 				int ti = ii -  ai*NP*NG*NS*NZ*NE - pi*NG*NS*NZ*NE - gi*NS*NZ*NE - si*NZ*NE - zi*NE;
 
-				int iU = ai*NP*NG*NS*NZ + pi*NG*NS*NZ + gi*NS*NZ + si*NZ +zi;
+				int iU = ai*NP*NG*NS*NZ + pi*NG*NS*NZ + gi*NS*NZ + 0*NZ +zi;
 
                 double lambdaEMhr = par->lambdaEM0 * (1. + par->lambdaEM_Acoef*gsl_vector_get(par->Alev,ai));
                 double lambdaEShr = par->lambdaES0 * (1. + par->lambdaES_Acoef*gsl_vector_get(par->Alev,ai));
@@ -914,38 +926,51 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				//compute expectations over A, Pt
 				double EAPWE = 0.;
 				int aai, ppi;
+				int ssi, ggi;
+				for(ssi=0;ssi<NS;ssi++){
+				for(ggi=0;ggi<NG;ggi++){
 				for(aai=0;aai<NA;aai++){
-					for(ppi=0;ppi<NP;ppi++)  EAPWE += gsl_max(gg_get( vf0.WE,  aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE+ gi*NS*NZ*NE + si*NZ*NE +zi*NE+ ti ,ji),
-					                                          gg_get( vf0.WU,  aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + si*NZ    +zi        ,ji))*
-							gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
+					for(ppi=0;ppi<NP;ppi++)  EAPWE += gsl_max(gg_get( vf0.WE,  aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE+ ggi*NS*NZ*NE + ssi*NZ*NE +zi*NE+ ti ,ji),
+					                                          gg_get( vf0.WU,  aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + ggi*NS*NZ    + ssi*NZ    +zi        ,ji))*
+							gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi)*gg_get(par->xGtrans,gi,ggi)*gg_get(par->xStrans,si,ssi);
 				}
+				}
+				}
+				EAPWE = gsl_max(EAPWE, gg_get(vf0.WU,iU,ji));
 
 				double EtTWE = 0.;
 				int tti,zzi;
 				double ttiprod = 0.;
+				ssi =0;
 				for(tti=ti;tti<NE;tti++) ttiprod+=gsl_vector_get(par->epsprob,tti); //make sure tpobs sum to 1
 				for(aai=0;aai<NA;aai++){
 					for(ppi=0;ppi<NP;ppi++){
 						for(tti=ti;tti<NE;tti++)
-							EtTWE +=  gsl_max(gg_get(vf0.WE, aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE+ gi*NS*NZ*NE + si*NZ*NE +zi*NE+ tti ,ji) ,
-							                  gg_get(vf0.WU, aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + si*NZ    +zi         ,ji))*
+							EtTWE +=  gsl_max(gg_get(vf0.WE, aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE+ gi*NS*NZ*NE + ssi*NZ*NE +zi*NE+ tti ,ji) ,
+							                  gg_get(vf0.WU, aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + ssi*NZ    +zi         ,ji))*
 									gsl_vector_get(par->epsprob,tti)/ttiprod *gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
 					}
 				}
+				EtTWE = gsl_max(EtTWE,gg_get(vf0.WU,iU,ji));
+
 				double EtWE = 0.;
+				ssi =0; //if drawing new epsilon, then also getting ssi=0
 				for(aai=0;aai<NA;aai++) {
 					for (ppi = 0; ppi < NP; ppi++) {
-
 						for (tti = 0; tti < NE; tti++)
-							EtWE += gsl_max(gg_get(vf0.WE, aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE + gi*NS*NZ*NE + si*NZ*NE + zi*NE + tti, ji) ,
-									        gg_get(vf0.WU, aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ    + gi*NS*NZ    + si*NZ    + zi         , ji))*
+							EtWE += gsl_max(gg_get(vf0.WE, aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE + gi*NS*NZ*NE + ssi*NZ*NE + zi*NE + tti, ji) ,
+									        gg_get(vf0.WU, aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ    + gi*NS*NZ    + ssi*NZ    + zi         , ji))*
 							        par->epsprob->data[tti]*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
 					}
 				}
+				EtWE = gsl_max(EtWE,gg_get(vf0.WU,iU,ji));
+
 				int jji;
 				double REhr = -par->kappa;
 				double *EzWE =malloc(JJ*sizeof(double));
 				double *EztWE=malloc(JJ*sizeof(double));
+
+				ssi =0; //if drawing new occupation, then also getting ssi=0
 				for(jji=0;jji<JJ;jji++){
 					EzWE[jji]  = 0.;
 					EztWE[jji] = 0.;
@@ -982,7 +1007,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				}
 				REhr +=   (1. - gsl_min( totalphaS,1. ))* EAPWE;
 				if(gsl_finite(REhr)==0){
-					printf("Uhoh. Bad REhr");
+					//printf("Uhoh. Bad REhr");
 				}
 
 				gg_set( vf->RE,ii,ji,REhr);
@@ -1021,7 +1046,16 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 
 				// update the value function
-				double WEhr = pow(wagevec[ii][ji], 1.-par->wage_curve)/(1.-par->wage_curve)+
+				double WEhr = 0.;
+				if(par->wage_curve<0.0001 && par->wage_curve>-0.0001)
+					WEhr = (wagevec[ii][ji])+
+					              beta*delta_hr*gg_get(vf0.WU,iU,ji) +
+					              beta*(1.- delta_hr )*(
+							              gg_get(pf->mE,ii,ji)*gg_get( vf->RE,ii,ji) +
+							              (1.-gg_get(pf->mE,ii,ji))*(par->gdfthr*lambdaEShr*EtWE + (1.-par->gdfthr)*lambdaEShr*EtTWE+
+							                                         (1.-lambdaEShr)*EAPWE )  );
+				else
+					WEhr = pow(wagevec[ii][ji], 1.-par->wage_curve)/(1.-par->wage_curve)+
 							  beta*delta_hr*gg_get(vf0.WU,iU,ji) +
 				              beta*(1.- delta_hr )*(
 				              		gg_get(pf->mE,ii,ji)*gg_get( vf->RE,ii,ji) +
@@ -1132,10 +1166,14 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 							gg_set(pf->sU[jji],ii,ji,0.);
 					}
 				}
-
-				gg_set( vf->WU, ii, ji, pow(b,1.-par->wage_curve)/(1.-par->wage_curve) +
-						beta*( pf->mU->data[ii*pf->mU->tda + ji]*vf->RU->data[ii*vf->RU->tda+ji] +
-						(1.-pf->mU->data[ii*pf->mU->tda + ji])*( (1.-lambdaUhr)*EAPWU + lambdaUhr*EtWE ) ) );
+				if( par->wage_curve<0.00001 & par->wage_curve>-0.0001 )
+					gg_set( vf->WU, ii, ji, b +
+					                        beta*( pf->mU->data[ii*pf->mU->tda + ji]*vf->RU->data[ii*vf->RU->tda+ji] +
+					                               (1.-pf->mU->data[ii*pf->mU->tda + ji])*( (1.-lambdaUhr)*EAPWU + lambdaUhr*EtWE ) ) );
+				else
+					gg_set( vf->WU, ii, ji, pow(b,1.-par->wage_curve)/(1.-par->wage_curve) +
+											beta*( pf->mU->data[ii*pf->mU->tda + ji]*vf->RU->data[ii*vf->RU->tda+ji] +
+											(1.-pf->mU->data[ii*pf->mU->tda + ji])*( (1.-lambdaUhr)*EAPWU + lambdaUhr*EtWE ) ) );
 
 			}
 		}
