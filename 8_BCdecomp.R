@@ -654,7 +654,7 @@ toKeep <- c("switchedOcc_wave","switched_wave","switched_anan","esr_max",
 				 "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint","levwage","max.unempdur_wave",
 				 "wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave","wagechange_anan",
 				 "wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad","pctmaxmis",
-				 "EE_wave","EU_wave","UE_wave","changer","stayer","EE_anan","EU_anan","UE_anan","changer_anan","stayer_anan",
+				 "EE_wave","EU_wave","UE_wave","changer","stayer","EE_anan","EU_anan","UE_anan","changer_anan","stayer_anan","valid_anan",
 				 "unrt","wpfinwgt","perwt","truncweight","cleaningtruncweight","lastann.wavewage","matched_EUUE_anan",
 				 "lfstat_wave","next.lfstat_wave","wave","id","date","panel")
 # select toKeep columns only
@@ -743,6 +743,7 @@ if(freq == "wave"){
 	DTseam[, EUfrq := EU_wave]
 	DTseam[, EEfrq := EE_wave]
 	DTseam[, UEfrq := UE_wave]
+	DTseam <- DTseam[ (sw|!sw) & (ch|st), ]
 }else{
 	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),ch := changer_anan]
 	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0),st := stayer_anan]
@@ -751,10 +752,11 @@ if(freq == "wave"){
 	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), EEfrq := EE_wave]
 	DTseam[lastann.wavewage>minLEarn & is.finite(lastann.wavewage) & (EU_wave==T|nextann.wavewage>0), UEfrq := UE_wave]
 	DTseam[!(EUfrq|EEfrq|UEfrq) & ch==T, ch := NA]
+	DTseam <- DTseam[ valid_anan==T, ]
 }
 DTseam[ EUfrq==T|UEfrq==T, dur := max.unempdur_wave]
 DTseam[ !(EUfrq==T|UEfrq==T) | !is.finite(dur), dur := 0.]
-DTseam <- DTseam[ (sw|!sw) & (ch|st), ]
+
 
 if( freq == "wave"){
 	if(wdur ==T){
@@ -778,11 +780,11 @@ if( freq == "wave"){
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # The calibration targets ------------------------------------------------
 #J2J
-DTseam[ lfstat_wave ==1 , wtd.mean(EE_wave,na.rm = T, weights = truncweight )]
+DTseam[ lfstat_wave ==1  & (st|ch) , wtd.mean(EE_wave,na.rm = T, weights = truncweight )]
 #find rate
-DTseam[ lfstat_wave >1 , wtd.mean(UE_wave,na.rm = T, weights = truncweight )]
+DTseam[ lfstat_wave >1  , wtd.mean(UE_wave,na.rm = T, weights = truncweight )]
 #sep rate
-DTseam[ lfstat_wave ==1 , wtd.mean(EU_wave,na.rm = T, weights = truncweight )]
+DTseam[ lfstat_wave ==1  & (st|ch), wtd.mean(EU_wave,na.rm = T, weights = truncweight )]
 #sw_U rate
 DTseam[ changer_anan & EU_wave==T , wtd.mean(switched_wave,na.rm = T, weights = truncweight )]
 #sw_E rate
@@ -808,10 +810,34 @@ DTseam[ changer_anan==T & EE_wave==T & switched_wave==T, wtd.quantile(wagechange
 DTseam[ changer_anan==T & EE_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
 
 #cyclicality of flows
-DTseam[ lfstat_wave == 1 & recIndic_wave==T, wtd.mean(EE_wave, na.rm=T, weights=truncweight)]
-DTseam[ lfstat_wave > 1  & recIndic_wave==F, wtd.mean(UE_wave, na.rm=T, weights=truncweight)]
+DTseam[ lfstat_wave == 1 & recIndic_wave==F & (st|ch), wtd.mean(EE_wave, na.rm=T, weights=truncweight)]/
+DTseam[ lfstat_wave == 1 & recIndic_wave==T & (st|ch), wtd.mean(EE_wave, na.rm=T, weights=truncweight)]
 
-DTseam[ lfstat_wave == 1 & recIndic_wave==T, wtd.mean(EU_wave, na.rm=T, weights=truncweight)]
+DTseam[ lfstat_wave > 1  & recIndic_wave==F , wtd.mean(UE_wave, na.rm=T, weights=truncweight)]/
+DTseam[ lfstat_wave > 1  & recIndic_wave==T , wtd.mean(UE_wave, na.rm=T, weights=truncweight)]
+
+DTseam[ lfstat_wave == 1 & recIndic_wave==F & (st|ch), wtd.mean(EU_wave, na.rm=T, weights=truncweight)]/
+DTseam[ lfstat_wave == 1 & recIndic_wave==T & (st|ch), wtd.mean(EU_wave, na.rm=T, weights=truncweight)]
+
+DTseam[ EE_wave == 1 & recIndic_wave==F & (st|ch), wtd.mean(switched_anan, na.rm=T, weights=truncweight)]/
+	DTseam[ EE_wave == 1 & recIndic_wave==T & (st|ch), wtd.mean(switched_anan, na.rm=T, weights=truncweight)]
+
+DTseam[ UE_wave== 1  & recIndic_wave==F, wtd.mean(switched_anan, na.rm=T, weights=truncweight)]/
+	DTseam[ UE_wave== 1  & recIndic_wave==T, wtd.mean(switched_anan, na.rm=T, weights=truncweight)]
+
+DTseam[ EU_wave == 1 & recIndic_wave==F & (st|ch), wtd.mean(switched_anan, na.rm=T, weights=truncweight)]/
+	DTseam[ EU_wave == 1 & recIndic_wave==T & (st|ch), wtd.mean(switched_anan, na.rm=T, weights=truncweight)]
+
+#cyclicality of returns
+MVswrec1_qtls =  DTseam[ switched_wave==T & ch==T & recIndic_wave==T, wtd.quantile(wagechange_anan, probs=c(0.1,0.25,0.5,0.75,0.9), na.rm=T,weights=truncweight) ]
+MVswrec0_qtls =  DTseam[ switched_wave==T & ch==T & recIndic_wave==F, wtd.quantile(wagechange_anan, probs=c(0.1,0.25,0.5,0.75,0.9), na.rm=T,weights=truncweight) ]
+
+MVnsrec1_qtls =  DTseam[ switched_wave==F & ch==T & recIndic_wave==T, wtd.quantile(wagechange_anan, probs=c(0.1,0.25,0.5,0.75,0.9), na.rm=T,weights=truncweight) ]
+MVnsrec0_qtls =  DTseam[ switched_wave==F & ch==T & recIndic_wave==F, wtd.quantile(wagechange_anan, probs=c(0.1,0.25,0.5,0.75,0.9), na.rm=T,weights=truncweight) ]
+
+MVswrec1_qtls/MVswrec0_qtls
+
+MVnsrec1_qtls/MVnsrec0_qtls
 
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

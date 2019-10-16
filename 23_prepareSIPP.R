@@ -126,7 +126,20 @@ sipp[, next.lfstat := shift(lfstat, 1, type = "lead"), by = id]
 
 # replace occ with soc2d (occ will now refer to soc2d)
 setnames(sipp, "occ", "occ90")
-setnames(sipp, "soc2d", "occ")
+sipp[ occ90 >= 004 & occ90<=199, occ_1d := 1]
+sipp[ occ90 >= 203 & occ90<=389, occ_1d := 2]
+sipp[ occ90 >= 405 & occ90<=472, occ_1d := 3]
+sipp[ occ90 >= 473 & occ90<=498, occ_1d := 4]
+sipp[ occ90 >= 503 & occ90<=699, occ_1d := 5]
+sipp[ occ90 >= 703 & occ90<=889, occ_1d := 6]
+
+nlsy[ occ_1d==1, occ:= 1 ] # non-routine cognitive
+nlsy[ occ_1d==2, occ:= 2 ] # routine cognitive
+nlsy[ occ_1d==3, occ:= 3 ] # non-routine manual
+nlsy[ occ_1d>=4 & occ_1d<=6, occ:= 2 ] # routine manual
+
+
+#setnames(sipp, "soc2d", "occ")
 #sipp[, occ   := soc2d]
 #sipp[ajbocc>0, occ := NA ]
 #sipp[ajbocc>0, coc := NA ]
