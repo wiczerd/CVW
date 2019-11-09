@@ -32,8 +32,8 @@ int nosolve = 0;
 
 // declare some parameters that will be global scope
 int const JJ = 4;     // number of occupations
-int const NG = 2;     // number of human capital types
-int const NS = 2;     // number of occ tenure types
+int const NG = 2;     // number of general (occupation) skill types
+int const NS = 2;     // number of specific skill types
 int const NZ = 7;     // 7 number of occ match-quality types
 int const NE = 7;     // 7 number of firm epsilon match-quality types
 int const NP = 5;     // number of occupation-specific productivies
@@ -45,8 +45,8 @@ int NN ,NUN;
 int const TT      = 12*15;    // periods per simulation path
 int const burnin  = 12;       // number of periods to throw away each time
 int        TTT ;
-int const Npaths  = 32;//128      // number of simulation paths to draw
-int const Nsim    = 1000;
+int const Npaths  = 64;//128      // number of simulation paths to draw
+int const Nsim    = 500;
 
 int const Npwave  = 4;
 int const Anan    = 1;
@@ -69,11 +69,11 @@ int print_lev = 3;
 
 int maxiter = 4000; //2000
 double vftol = 1e-4;
-double rhotightening = .5;
+double rhotightening = 10;
 double caltol = 1e-3;
 
 double beta	= 0.997;		// discount factor
-double b 	= 0.10; 		// unemployment benefit
+double b 	= 0.; 		// unemployment benefit
 double wage_lev = 1;        // will be a shifter so the average wage is >0
 double occ_wlevs[4] = {0.,-0.2657589,-0.4975667,-0.2189076}; // wage levels for each occupation
 
@@ -338,7 +338,7 @@ int main(int argc,char *argv[] ) {
 	for(ci=0;ci<Ncluster;ci++) Ntgt_cluster[Ncluster] +=Ntgt_cluster[ci];
 
 	if(verbose>1){
-		printf("Program version Oct 28, 2019\n");
+		printf("Program version Nov 5, 2019\n");
 
 		printf("Solving for 3 clusters, sized %d,%d,%d\n", Npar_cluster[0],Npar_cluster[1],Npar_cluster[2]);
 		printf("Targeting 3 clusters, sized %d,%d,%d\n", Ntgt_cluster[0],Ntgt_cluster[1],Ntgt_cluster[2]);
@@ -375,11 +375,24 @@ int main(int argc,char *argv[] ) {
 			gsl_vector_scale(& Pr.vector,1./rsum);
 		}
 	}
+
+
+	// calibrate general and specific human capital growth for 1 year of employer tenure and 2 years of occupational tenure
+	gsl_matrix_set_zero(par.xGtrans);
+	for(ii=0;ii<NG;ii++) gg_set(par.xGtrans,ii,ii,1. - 1./24.);//two years to get tenured
+	for(ii=0;ii<NG-1;ii++) gg_set(par.xGtrans,ii,ii+1, 1./24.);//two years to get tenured
+	gg_set(par.xGtrans,NG-1,NG-1,1.);
+
+	gsl_matrix_set_zero(par.xStrans);
+	for(ii=0;ii<NS;ii++) gg_set(par.xStrans,ii,ii,1. - 1./12.);//two years to get tenured
+	for(ii=0;ii<NS-1;ii++) gg_set(par.xStrans,ii,ii+1, 1./12.);//two years to get tenured
+	gg_set(par.xStrans,NS-1,NS-1,1.);
+
+
+	// just to initialize
 	// will over-write this
 	gsl_matrix_set_all(par.Atrans, 0.025/( (double)NA-1. ));
 	for(ii=0;ii<NA;ii++) gg_set(par.Atrans,ii,ii,0.975);
-	gsl_matrix_set_all(par.xGtrans, 0.025/( (double)NG-1. ));
-	for(ii=0;ii<NG;ii++) gg_set(par.xGtrans,ii,ii,0.975);
 
 	par.var_ze = 0.025*0.025; par.autoz = 0.975;
 	par.zloss  = 0.025;
@@ -403,8 +416,7 @@ int main(int argc,char *argv[] ) {
 		}
 	}
 
-	gsl_matrix_set_all(par.xStrans,.025/( (double)NS-1.) );
-	for(ii=0;ii<NS;ii++) gg_set(par.xStrans,ii,ii,.975);
+
 	gsl_vector_set_all(par.epsprob, 1./(double) NE);
 	gsl_vector_set_all(par.AloadP,1.0);
 	par.autoa = 0.95;par.var_ae = 0.01*0.01;
@@ -451,16 +463,16 @@ int main(int argc,char *argv[] ) {
 
 	// parameter space:
 	// alphaE , alphaU, alphaE_1, alphaU_1, lambdaU,lambdaES, lambdaEM, delta_avg, zloss_prob
-	par.param_lb[0] = 0.010; par.param_ub[0] = 0.75;
+	par.param_lb[0] = 0.010; par.param_ub[0] = 0.50;
 	par.param_lb[1] = 0.010; par.param_ub[1] = 0.95;
-	par.param_lb[2] = 0.150; par.param_ub[2] = 0.65;
-	par.param_lb[3] = 0.150; par.param_ub[3] = 0.65;
+	par.param_lb[2] = 0.010; par.param_ub[2] = 0.99;
+	par.param_lb[3] = 0.010; par.param_ub[3] = 0.99;
 
 	par.param_lb[4] = 0.002; par.param_ub[4] = 0.50;
 	par.param_lb[5] = 0.002; par.param_ub[5] = 0.15;
 	par.param_lb[6] = 0.002; par.param_ub[6] = 1.00;
-	par.param_lb[7] = 0.001; par.param_ub[7] = 0.05;
-	par.param_lb[8] = 0.001; par.param_ub[8] = 0.10;
+	par.param_lb[7] = 0.001; par.param_ub[7] = 0.03;
+	par.param_lb[8] = 0.001; par.param_ub[8] = 0.03;
 
 	if(Ncluster>1){
 		ii = Npar_cluster[0];
@@ -491,16 +503,12 @@ int main(int argc,char *argv[] ) {
 		par.param_lb[3+ii]=0.001;   par.param_ub[3+ii] = 0.999;
 		ii +=4;
 		for(ji=0;ji<JJ;ji++){
-			if(ji%3==1){
+			if(ji%3>0){
 				par.param_lb[ii]=0.001;
 				par.param_ub[ii] = 1.999;
 				ii++;
 			}
-			if(ji%3==1){
-				par.param_lb[ii]=0.001;
-				par.param_ub[ii] = 0.999;
-				ii++;
-			}
+
 		}
 	}
 
@@ -563,7 +571,7 @@ int main(int argc,char *argv[] ) {
 
 	sprintf(calhi_f,"calhist%d.csv",rank);
 	calhist = fopen(calhi_f,"w+");
-	fprintf(calhist,"dist,J2J_err,fnd_err,sep_err,swEE_err,swU_err,swSt_err,dur_ratio,corrEE_wgocc, corrEUE_wgocc");
+	fprintf(calhist,"dist,J2J_err,fnd_err,sep_err,swEE_err,swU_err,swSt_err,dur_ratio,corrEE_wgocc, corrEUE_wgocc,");
 	if(Ntargets>Ntgt_cluster[0]){
 		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," stns%f, ",qtlgrid[ii]); //for(ii=0;ii<Nqtls;ii++) fprintf(calhist," stns%f, ",qtlgrid[ii]);
 		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," stsw%f, ",qtlgrid[ii]);
@@ -950,25 +958,25 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				double EtTWE = 0.;
 				int tti,zzi;
 				double ttiprod = 0.;
-				//ssi =0;
+				ssi =0; //if drawing new epsilon, then also getting ssi=0
 				for(tti=ti;tti<NE;tti++) ttiprod+=gsl_vector_get(par->epsprob,tti); //make sure tpobs sum to 1
 				for(aai=0;aai<NA;aai++){
 					for(ppi=0;ppi<NP;ppi++){
 						for(tti=ti;tti<NE;tti++)
-							EtTWE +=  gsl_max(gg_get(vf0.WE, aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE+ gi*NS*NZ*NE + si*NZ*NE +zi*NE+ tti ,ji) ,
-							                  gg_get(vf0.WU, aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + si*NZ    +zi         ,ji))*
+							EtTWE +=  gsl_max(gg_get(vf0.WE, aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE+ gi*NS*NZ*NE + ssi*NZ*NE +zi*NE+ tti ,ji) ,
+							                  gg_get(vf0.WU, aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + ssi*NZ    +zi         ,ji))*
 									gsl_vector_get(par->epsprob,tti)/ttiprod *gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
 					}
 				}
 				EtTWE = gsl_max(EtTWE,gg_get(vf0.WU,iU,ji));
 
 				double EtWE = 0.;
-				//ssi =0; //if drawing new epsilon, then also getting ssi=0
+				ssi =0; //if drawing new epsilon, then also getting ssi=0
 				for(aai=0;aai<NA;aai++) {
 					for (ppi = 0; ppi < NP; ppi++) {
 						for (tti = 0; tti < NE; tti++)
-							EtWE += gsl_max(gg_get(vf0.WE, aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE + gi*NS*NZ*NE + si*NZ*NE + zi*NE + tti, ji) ,
-									        gg_get(vf0.WU, aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ    + gi*NS*NZ    + si*NZ    + zi         , ji))*
+							EtWE += gsl_max(gg_get(vf0.WE, aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE + gi*NS*NZ*NE + ssi*NZ*NE + zi*NE + tti, ji) ,
+									        gg_get(vf0.WU, aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ    + gi*NS*NZ    + ssi*NZ    + zi         , ji))*
 							        par->epsprob->data[tti]*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
 					}
 				}
@@ -979,40 +987,44 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				double *EzWE =malloc(JJ*sizeof(double));
 				double *EztWE=malloc(JJ*sizeof(double));
 
-				ssi =0; //if drawing new occupation, then also getting ssi=0
+				ssi =0; //if drawing new occupation, then also getting ssi=0 and ggi=0
+				ggi =0;
 				for(jji=0;jji<JJ;jji++){
 					EzWE[jji]  = 0.;
 					EztWE[jji] = 0.;
+
+					for(aai=0;aai<NA;aai++){
+						for(ppi=0;ppi<NP;ppi++) {
+							for (zzi = 0; zzi < NZ; zzi++)
+								EzWE[jji] += gsl_max(gg_get(vf0.WE,
+								                            aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE +ggi*NS*NZ*NE + zzi*NE + ti, jji) ,
+								                     gg_get(vf0.WU,
+								                            aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ    +ggi*NS*NZ    + zzi        , jji)  )*
+								             gsl_vector_get(par->zprob, zzi)*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
+
+						}
+					}
+					for(aai=0;aai<NA;aai++){
+						for(ppi=0;ppi<NP;ppi++) {
+							for(tti=0;tti<NE;tti++){
+								for(zzi=0;zzi<NZ;zzi++)
+									EztWE[jji] += gsl_max(gg_get(vf0.WE,aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE+ ggi*NS*NZ*NE + zzi*NE + tti,jji) ,
+											              gg_get(vf0.WU,aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + ggi*NS*NZ    + zzi         ,jji))*
+											gsl_vector_get(par->zprob, zzi)*(par->epsprob->data[tti])*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
+							}
+						}
+					}
 					if(jji!=ji){
-
-						for(aai=0;aai<NA;aai++){
-							for(ppi=0;ppi<NP;ppi++) {
-								for (zzi = 0; zzi < NZ; zzi++)
-									EzWE[jji] += gsl_max(gg_get(vf0.WE,
-									                            aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE +gi*NS*NZ*NE + zzi*NE + ti, jji) ,
-									                     gg_get(vf0.WU,
-									                            aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ    +gi*NS*NZ    + zzi        , jji)  )*
-									             gsl_vector_get(par->zprob, zzi)*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
-
-							}
-						}
-						for(aai=0;aai<NA;aai++){
-							for(ppi=0;ppi<NP;ppi++) {
-								for(tti=0;tti<NE;tti++){
-									for(zzi=0;zzi<NZ;zzi++)
-										EztWE[jji] += gsl_max(gg_get(vf0.WE,aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE+ gi*NS*NZ*NE + zzi*NE + tti,jji) ,
-												              gg_get(vf0.WU,aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ   + gi*NS*NZ    + zzi         ,jji))*
-												gsl_vector_get(par->zprob, zzi)*(par->epsprob->data[tti])*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
-								}
-							}
-						}
 						// constructing RE
-						REhr += par->alphaE0* pow( gg_get( pf->sE[jji],ii,ji),1.-par->alphaE1)*(lambdaEMhr*EztWE[jji] +(1.- lambdaEMhr)*EzWE[jji] ) ;
+						REhr += gsl_min(par->alphaE0/(1.-par->alphaE1),1. )*
+								pow( gg_get( pf->sE[jji],ii,ji),1.-par->alphaE1)*
+								(lambdaEMhr*EztWE[jji] +(1.- lambdaEMhr)*EzWE[jji] ) ;
 					}
 				}
 				double totalphaS = 0;
 				for(jji=0;jji<JJ;jji++){
-					if(jji!=ji) totalphaS += par->alphaE0*pow(gg_get(pf->sE[jji],ii,ji),1.-par->alphaE1);
+					if(jji!=ji) totalphaS += gsl_min(par->alphaE0/(1.-par->alphaE1),1.)*
+							pow(gg_get(pf->sE[jji],ii,ji),1.-par->alphaE1);
 				}
 				REhr +=   (1. - gsl_min( totalphaS,1. ))* EAPWE;
 				if(gsl_finite(REhr)==0){
@@ -1020,8 +1032,8 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				}
 
 				gg_set( vf->RE,ii,ji,REhr);
-                double mhr = exp((REhr-EAPWE)/rhotightening)/
-                             ( exp((REhr-EAPWE)/rhotightening)+ 1.);
+                double mhr = ((REhr/EAPWE)/rhotightening)/
+                             ( ((REhr/EAPWE)/rhotightening)+ 1.);
 				if( isinf(mhr) | isnan(mhr) ){
 					mhr = REhr >= EAPWE ? 1. : 0. ;
 				}
@@ -1030,17 +1042,19 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 				//set search direction for next iteration:
 				double sEjiDenom = 0.;
+				double sEnorm = pow(-par->kappa+ lambdaEMhr*EztWE[ji] + (1.-lambdaEMhr)*EzWE[ji]- EAPWE,1./par->alphaE1);
+				sEnorm = sEnorm>0 && gsl_finite(sEnorm)==1 ? sEnorm : 1.;
 				for(jji=0;jji<JJ;jji++){
 					double dirreturn = -par->kappa+ lambdaEMhr*EztWE[jji] + (1.-lambdaEMhr)*EzWE[jji]- EAPWE;
 					dirreturn = dirreturn < 0. ? 0. : dirreturn;
-					if(jji!=ji) sEjiDenom += pow(dirreturn , 1./par->alphaE1);
+					if(jji!=ji) sEjiDenom += pow(dirreturn , 1./par->alphaE1)/sEnorm;
 				}
 				if(sEjiDenom >0){
 					for(jji=0;jji<JJ;jji++){
 						if(jji!=ji){
 							double dirreturn =-par->kappa+ lambdaEMhr*EztWE[jji] + (1.-lambdaEMhr)*EzWE[jji]- EAPWE;
 							dirreturn = dirreturn< 0 ? 0. : dirreturn;
-							gg_set(pf->sE[jji] ,ii,ji, pow(dirreturn , 1./par->alphaE1)/sEjiDenom);
+							gg_set(pf->sE[jji] ,ii,ji, (pow(dirreturn , 1./par->alphaE1)/sEnorm) /sEjiDenom);
 						}else{ // this is kind of redundant because it should have initialized to 0
 							gg_set(pf->sE[jji] ,ii,ji, 0.);
 						}
@@ -1052,6 +1066,12 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 							gg_set(pf->sE[jji],ii,ji,0. );
 					}
 				}
+				// make sure it adds to 1
+				sEnorm = 0.;
+				for(jji=0;jji<JJ;jji++)
+					sEnorm += gg_get(pf->sE[jji],ii,ji);
+				for(jji=0;jji<JJ;jji++)
+					gg_set(pf->sE[jji],ii,ji, gg_get(pf->sE[jji],ii,ji)/sEnorm);
 
 
 				// update the value function
@@ -1091,8 +1111,8 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				int zi =  ii - ai*NP*NG*NS*NZ - pi*NG*NS*NZ - gi*NS*NZ -  si*NZ ;
 
 				int jji,zzi,tti,aai,ppi;
-				int ssi = 0; //switchers lose specific skills
-
+				int ssi = 0; // everyone loses specific skills
+				int ggi = 0; // occupation switchers lose general skills
 				double lambdaUhr = par->lambdaU0*(1 + par->lambdaU_Acoef*par->Alev->data[ai]);
 
 				// staying in the same occupation through U
@@ -1100,7 +1120,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				double EAPWU = 0.;
 				for(aai=0;aai<NA;aai++){
 					for(ppi=0;ppi<NP;ppi++) {
-						EAPWU += gg_get(vf0.WU, aai*NP*NG*NS*NZ+ppi*NG*NS*NZ+gi*NS*NZ + si*NZ + zzi,ji)*
+						EAPWU += gg_get(vf0.WU, aai*NP*NG*NS*NZ+ppi*NG*NS*NZ+gi*NS*NZ + ssi*NZ + zzi,ji)*
 								gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
 					}
 				}
@@ -1110,34 +1130,37 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				for(jji=0;jji<JJ;jji++){
 					EzWU[jji]=0;
 					double EtWE_jji=0;
+
+					for(aai=0;aai<NA;aai++){
+						for(ppi=0;ppi<NP;ppi++) {
+							for(zzi=0;zzi<NZ;zzi++){
+								for(tti=0;tti<NE;tti++){
+									// new draws on A,P, epsilon. have si=0
+									int iihr = aai*NP*NG*NS*NZ*NE+ppi*NG*NS*NZ*NE+ggi*NS*NZ*NE+ssi*NZ*NE+zzi*NE+tti;
+									int iUhr = aai*NP*NG*NS*NZ   +ppi*NG*NS*NZ   +ggi*NS*NZ   +ssi*NZ   +zzi ;
+									EtWE_jji += gsl_max(gg_get(vf0.WE, iihr, jji), gg_get(vf0.WU,iUhr,jji) )*
+											gsl_vector_get(par->zprob,zzi)*gsl_vector_get(par->epsprob,tti)*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[jji], pi, ppi);}
+							}
+						}
+					}
+					for(aai=0;aai<NA;aai++){
+						for(ppi=0;ppi<NP;ppi++) {
+							for( zzi=0;zzi<NZ;zzi++ )
+								EzWU[jji] += gg_get(vf0.WU, aai*NP*NG*NS*NZ+ppi*NG*NS*NZ+ggi*NS*NZ +ssi*NZ + zzi,jji)*
+										gsl_vector_get(par->zprob,zzi)*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[jji],pi,ppi);
+						}
+					}
 					if(jji!=ji){
-						// switchers might find a job right away:
-						for(aai=0;aai<NA;aai++){
-							for(ppi=0;ppi<NP;ppi++) {
-								for(zzi=0;zzi<NZ;zzi++){
-									for(tti=0;tti<NE;tti++){
-										// new draws on A,P, epsilon. have si=0
-										int iihr = aai*NP*NG*NS*NZ*NE+ppi*NG*NS*NZ*NE+gi*NS*NZ*NE+ssi*NZ*NE+zzi*NE+tti;
-										int iUhr = aai*NP*NG*NS*NZ   +ppi*NG*NS*NZ   +gi*NS*NZ   +ssi*NZ   +zzi ;
-										EtWE_jji += gsl_max(gg_get(vf0.WE, iihr, jji), gg_get(vf0.WU,iUhr,jji) )*
-												gsl_vector_get(par->zprob,zzi)*gsl_vector_get(par->epsprob,tti)*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[jji], pi, ppi);}
-								}
-							}
-						}
-						for(aai=0;aai<NA;aai++){
-							for(ppi=0;ppi<NP;ppi++) {
-								for( zzi=0;zzi<NZ;zzi++ )
-									EzWU[jji] += gg_get(vf0.WU, aai*NP*NG*NS*NZ+ppi*NG*NS*NZ+gi*NS*NZ +ssi*NZ + zzi,jji)*
-											gsl_vector_get(par->zprob,zzi)*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[jji],pi,ppi);
-							}
-						}
-						RUhr += par-> alphaU0*pow(gg_get(pf->sU[jji],ii,ji),1.-par->alphaU1 )*(EzWU[jji]*(1.-lambdaUhr)+
+						RUhr += gsl_min(par-> alphaU0/(1.-par->alphaU1),1.)*
+								pow(gg_get(pf->sU[jji],ii,ji),1.-par->alphaU1 )*
+								(EzWU[jji]*(1.-lambdaUhr)+
 						                                                                       lambdaUhr*EtWE_jji);
 					}
 				}
 				double totalalphaS = 0;
 				for(jji=0;jji<JJ;jji++)
-					totalalphaS += par-> alphaU0*pow(gg_get(pf->sU[jji],ii,ji),1.-par->alphaU1 );
+					totalalphaS += gsl_min(par-> alphaU0/(1.-par->alphaU1),1.)
+							*pow(gg_get(pf->sU[jji],ii,ji),1.-par->alphaU1 );
 				RUhr += (1.-totalalphaS )*EAPWU;
 				gg_set(vf->RU, ii,ji, RUhr);
 
@@ -1145,14 +1168,14 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				for(aai=0;aai<NA;aai++){
 					for(ppi=0;ppi<NP;ppi++) {
 						for(tti=0;tti<NE;tti++){
-							int iihr = aai*NP*NG*NS*NZ*NE+ppi*NG*NS*NZ*NE+gi*NS*NZ*NE+si*NZ*NE+zi*NE+tti;
+							int iihr = aai*NP*NG*NS*NZ*NE+ppi*NG*NS*NZ*NE+gi*NS*NZ*NE+ssi*NZ*NE+zi*NE+tti;
 							EtWE += gsl_max(gg_get(vf0.WE, iihr, ji), vf0.WU->data[ii*vf0.WU->tda+ji] )*
 							        gsl_vector_get(par->epsprob,tti)*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji], pi, ppi);}
 					}
 				}
-				double mhr = exp(RUhr/rhotightening-((1.-lambdaUhr)*EAPWU+
+				double mhr = (RUhr/((1.-lambdaUhr)*EAPWU+
                         lambdaUhr*gsl_max(EtWE,EAPWU)  )/rhotightening)/
-				               (exp(RUhr/rhotightening-((1.-lambdaUhr)*EAPWU+
+				               ((RUhr/((1.-lambdaUhr)*EAPWU+
                                        lambdaUhr*gsl_max(EtWE,EAPWU)  )/rhotightening)+1.);
 				if( isinf(mhr) | isnan(mhr) ){
 					mhr = RUhr > (1.-lambdaUhr)*EAPWU+ lambdaUhr*gsl_max(EtWE,EAPWU) ?
@@ -1161,17 +1184,19 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				gg_set(pf->mU,ii,ji, mhr );
 				//search dir for next iterations
 				double sUdenom = 0.;
+				double sUnorm = pow(-par->kappa + EzWU[ji]- EAPWU,1./par->alphaU1);
+				sUnorm = sUnorm >0 && gsl_finite(sUnorm)==1 ? sUnorm : 1.;
 				for(jji=0;jji<JJ;jji++){
 					double dirreturn = -par->kappa + EzWU[jji]- EAPWU;
 					dirreturn =dirreturn<0 ? 0. : dirreturn;
-					if(jji!=ji) sUdenom += pow(dirreturn ,1./par->alphaU1);
+					if(jji!=ji) sUdenom += pow(dirreturn ,1./par->alphaU1)/sUnorm;
 				}
 				if(sUdenom > 0 ) {
 					for (jji = 0; jji < JJ; jji++) {
 						if (jji != ji) {
 							double dirreturn = -par->kappa + EzWU[jji] - EAPWU;
 							dirreturn = dirreturn < 0 ? 0. : dirreturn;
-							gg_set(pf->sU[jji], ii, ji, pow(dirreturn, 1. / par->alphaU1) / sUdenom);
+							gg_set(pf->sU[jji], ii, ji, (pow(dirreturn, 1. / par->alphaU1)/sUnorm) / sUdenom);
 						} else {//this is kind of redundant, because it should have initialized to 0
 							gg_set(pf->sU[jji], ii, ji, 0.);
 						}
@@ -1183,6 +1208,12 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 							gg_set(pf->sU[jji],ii,ji,0.);
 					}
 				}
+				sUnorm = 0.;
+				for(jji=0;jji<JJ;jji++)
+					sUnorm += gg_get(pf->sU[jji],ii,ji);
+				for(jji=0;jji<JJ;jji++)
+					gg_set(pf->sU[jji],ii,ji,gg_get(pf->sU[jji],ii,ji)/sUnorm);
+
 				if( par->wage_curve<0.00001 & par->wage_curve>-0.0001 )
 					gg_set( vf->WU, ii, ji, b +
 					                        beta*( pf->mU->data[ii*pf->mU->tda + ji]*vf->RU->data[ii*vf->RU->tda+ji] +
@@ -1297,8 +1328,9 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 	for(i=0;i<NS;i++){
 		for(ti=0;ti<NS;ti++) cmxStrans[i][ti] = ti>0 ? gg_get(par->xStrans,i,ti) + cmxStrans[i][ti-1] : gg_get(par->xStrans,i,ti);
 	}
+	double topepsprob;
 	//for(distiter = 0;distiter<maxiter;distiter++){
-	for(distiter = 0;distiter<1;distiter++){
+	for(distiter = 0;distiter<4;distiter++){
 		#pragma omp parallel for private(i,ti,ll,ji) firstprivate(cmzprob,cmepsprob,cmjprob,cmAtrans,cmPtrans,cmxGtrans,cmxStrans,cmztrans)
 		for(ll=0;ll<Npaths;ll++){
 			int ** xt,**xtm1; //xG.xS.z.eps
@@ -1311,7 +1343,6 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 			quitWE[ll]=0.;quitWU[ll]=0.;noquitWE[ll]=0.;noquitWU[ll]=0.;
 			for(i=0;i<NE;i++)quitepsval[ll][i]=0;for(i=0;i<NZ;i++)quitzval[ll][i]=0;for(i=0;i<NZ;i++)noquitzval[ll][i]=0;
 			for(i=0;i<NP;i++)quitPval[ll][i]=0;
-
 
 			xt = malloc(sizeof(int*)*Nsim);
 			for(i=0;i<Nsim;i++) xt[i] = malloc(sizeof(int)*4);
@@ -1367,11 +1398,12 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 
 				for(i=0;i<Nsim;i++){
 					// save wages using values carried from last period
-					double wagehr = exp(par->Alev->data[At]) + exp(par->Plev->data[Pt[jt[i]]]) *
-					                                           exp(par->xGlev->data[xt[i][0]]) *
-					                                           exp(par->xSlev->data[xt[i][1]]) *
-					                                           exp(par->zlev->data[xt[i][2]]) *
-					                                           exp(par->epslev->data[xt[i][3]]) + wage_lev;
+					double wagehr =exp(par->AloadP->data[jt[i]] * par->Alev->data[At] +
+					                   par->Plev->data[Pt[jt[i]]] +
+					                   par->epslev->data[xt[i][3]] +
+					                   par->zlev->data[xt[i][2]] +
+					                   par->xSlev->data[xt[i][1]] +
+					                   par->xGlev->data[xt[i][0]] + occ_wlevs[jt[i]]) + wage_lev;
 					if(ti>=burnin)
 						gg_set(ht->whist[ll], i, ti-burnin,wagehr);
 
@@ -1440,8 +1472,11 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 								//RE
 								double sij[JJ]; sij[0] =0.;
 
-								for(jji=0;jji<JJ;jji++) sij[jji] = jji > 0 ? sij[jji-1] + par->alphaE0*pow(gg_get(pf->sE[jji],ii,jt[i]),1.-par->alphaE1):
-										par->alphaE0*pow(gg_get(pf->sE[jji],ii,jt[i]),1.-par->alphaE1);
+								for(jji=0;jji<JJ;jji++) sij[jji] = jji > 0 ? sij[jji-1] +
+										gsl_min(par->alphaE0/(1.-par->alphaE1),1.)*
+										pow(gg_get(pf->sE[jji],ii,jt[i]),1.-par->alphaE1):
+										gsl_min(par->alphaE0/par->alphaE1,1.)
+										*pow(gg_get(pf->sE[jji],ii,jt[i]),1.-par->alphaE1);
 								if(gg_get(sk->jsel[ll], i, ti) > sij[JJ-1] ){
 									jt[i] = jtm1[i];
 								}else{
@@ -1521,8 +1556,11 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 						if( ti>=burnin ) gg_set(swprob_hist[ll],i,ti-burnin,  gg_get(pf->mU,ii,jt[i]) );
 						if( gg_get(pf->mU,ii,jt[i])>gg_get(sk->msel[ll],i,ti) ){
 							//RU
-							double sij[JJ]; sij[0]=par->alphaU0*pow(gg_get(pf->sU[0],ii,jt[i]), 1.-par->alphaU1);
-							for(jji=1;jji<JJ;jji++) sij[jji] = sij[jji-1] + par->alphaU0*pow(gg_get(pf->sU[jji],ii,jt[i]),1.-par->alphaU1);
+							double sij[JJ]; sij[0]= gsl_min( par->alphaU0/(1.-par->alphaU1),1. )*
+									pow(gg_get(pf->sU[0],ii,jt[i]), 1.-par->alphaU1);
+							for(jji=1;jji<JJ;jji++) sij[jji] = sij[jji-1] +
+									gsl_min(par->alphaU0/(1.-par->alphaU1),1.)*
+									pow(gg_get(pf->sU[jji],ii,jt[i]),1.-par->alphaU1);
 
 							if(gg_get(sk->jsel[ll],i,ti) > sij[JJ-1]){
 								jt[i] = jtm1[i];
@@ -1585,7 +1623,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 			free(xt);free(xtm1);free(jt);free(jtm1);free(ut);free(utm1);
 		} // end omp loop over ll
 		double nemp =0.;
-		double topepsprob = cmepsprob0[NE-1] - cmepsprob0[NE-2];
+		topepsprob = cmepsprob0[NE-1] - cmepsprob0[NE-2];
 		for(i=0;i<NE;i++)cmepsprob0[i]=0.;
 		for(i=0;i<NZ;i++)cmzprob[i]=0.;
 		for(ll=0;ll<Npaths;ll++){
@@ -1613,7 +1651,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 	}
 
 
-	if(verbose>2){
+//	if(verbose>2){
 		double quitwage_pr=0, noquitwage_pr=0,Nquit_pr=0,Nnoquit_pr=0,quitVFdiff_pr=0;
 		double noquitWE_pr=0.,noquitWU_pr=0.,quitWE_pr=0.,quitWU_pr=0.;
 		long quitepsval_pr[NE],quitzval_pr[NZ],noquitzval_pr[NZ],quitPval_pr[NP];
@@ -1643,9 +1681,10 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 		printf(" Location is (");for(i=0;i<NP;i++) printf(" %ld,", quitPval_pr[i]); printf(") in P \n");
 		printf("WE in quit is %f and no quit %f \n", quitWE_pr/Nquit_pr, noquitWE_pr/Nnoquit_pr );
 		printf("WU in quit is %f and no quit %f \n", quitWU_pr/Nquit_pr, noquitWU_pr/Nnoquit_pr );
-		printf("Number of distribution iterations is %d \n",distiter);
+		printf("Number of distribution iterations is %d, distance %f \n",distiter,
+		       gsl_max(topepsprob,-topepsprob) );
 		// put in the WE and the WU for the levels of z Is WE coming down with z, or WU going up too fast?
-	}
+//	}
 
 
 
@@ -1693,6 +1732,8 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	double * occwg = calloc(JJ*Npaths,sizeof(double));
 	int    * occsz = calloc(JJ*Npaths,sizeof(int)   );
 
+	int Nfndmo =0, Nfndmo_denom=0, Nsepmo =0,Nsepmo_denom=0,NJ2Jmo=0;
+
 	double invlaid_wval = -1e6;
 	gsl_vector * Atrans_ergod = gsl_vector_calloc(NA);
 	int recIndic[NA];double cumAtrans_ergod[NA];
@@ -1735,8 +1776,10 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		                        NErisksep_wi=1;
 	                            occwg[ ll*JJ + ggi_get(ht->jhist[ll],i,ti)] += gg_get(ht->whist[ll],i ,ti);
 		                        occsz[ ll*JJ + ggi_get(ht->jhist[ll],i,ti)] ++;
-	                            if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
-	                                sw_spell = ggi_get(ht->jhist[ll],i,ti-1);
+	                            if(ri==2) Nsepmo_denom ++;
+		                        if( ggi_get(ht->uhist[ll],i,ti+1) ==1 ){
+			                        if(ri==2) Nsepmo ++;
+	                            	sw_spell = ggi_get(ht->jhist[ll],i,ti-1);
 		                            tsep = ti;
 		                            Nnosep_wi =0;
 		                            Nsep_wi = 1;
@@ -1744,17 +1787,21 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	                                Nnosep_wi =1;
 		                            if( ggi_get(ht->J2Jhist[ll],i,ti) ==1 ){
 		                                NJ2J_wi = 1;
+			                            if(ri==2) NJ2Jmo ++;
 		                                if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti-1) ) NswE_wi =1;
 		                            }else{  // not EE
 		                                if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti-1) ) NswSt_wi = 1;
 		                            }
 	                            }
 	                        }else{
-	                            if(sw_spell>-1 && tsep>-1) Nunemp_wi =1;
-
+	                            if(sw_spell>-1 && tsep>-1){
+	                            	Nunemp_wi =1;
+		                            if(ri==2) Nfndmo_denom ++;
+	                            }
 	                            if( ggi_get(ht->uhist[ll],i,ti+1) ==0 && sw_spell>-1 && tsep>-1 ){
 	                                Nfnd_wi =1;
 	                                Nspell_wi = 1;
+		                            if(ri==2) Nfndmo ++;
 		                            if( ggi_get(ht->jhist[ll],i,ti+1) != sw_spell ){
 	                                    NswU_wi = 1; //only count switches at the end of the spell.
 	                                    Ndur_sw_wi = ti - tsep+1;
@@ -1847,6 +1894,11 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	double EErt_rec1 = Nnosep_rec[1] >0 ? (double) NJ2J_rec[1] / (double) Nnosep_rec[1] : 1.;
 	st->EE_ratio = EErt_rec1 > 0 ? EErt_rec0/EErt_rec1 : 0.;
 
+	//if(verbose > 1){
+		printf( "Wave UE rate, %f, Mo UE rate %f \n" , st->findrate , (double)Nfndmo/(double)Nfndmo_denom);
+		printf( "Wave EU rate, %f, Mo EU rate %f \n" , st->seprate  , (double) Nsepmo/Nsepmo_denom);
+		printf( "Wave EE rate, %f, Mo EE rate %f \n" , st->J2Jprob  , (double) NJ2Jmo/Nsepmo_denom);
+	//}
 
 
 	for(ll=0;ll<Npaths;ll++){
@@ -1885,6 +1937,8 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
 	int idx_MVswrec[2]; idx_MVswrec[0]=0; idx_MVswrec[1]=0;
 	int idx_MVnsrec[2]; idx_MVnsrec[0]=0; idx_MVnsrec[1]=0;
+
+
 	for(ll=0;ll<Npaths;ll++){
 
 		int sw_spell=-1;
@@ -2188,15 +2242,10 @@ void print_params(double *x, int n, struct cal_params * par){
 	fprintf(parhist,"%8.3f,", par->lambdaU_Acoef);
 
 	for(ji=0;ji<JJ;ji++){
-		if(ji%3==1){
+		if(ji>=1){
 			fprintf(parhist,"%8.3f,", par->AloadP->data[ji]);
-
 		}
-		if(ji%3==2){
-			fprintf(parhist,"%8.3f", par->AloadP->data[ji]);
-			if(ji<JJ-1) fprintf(parhist,",");
 
-		}
 	}
 	fprintf(parhist,"\n");
 
@@ -2252,16 +2301,10 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 		par->lambdaU_Acoef  = x[3+ii];
 		i=4;
 		for(ji=0;ji<JJ;ji++){
-			if(ji%3==0)
+			if(ji ==0) // norm the first occupation
 				par->AloadP->data[ji]= 0.;
-			if(ji%3==1){
-				par->AloadP->data[ji] = x[i+ii];
-				i++;
-			}
-			if(ji%3==2){
-				par->AloadP->data[ji] = x[i+ii-1]*x[i+ii];
-				i++;
-			}
+			par->AloadP->data[ji] = x[i+ii];
+			if(ji>0) i++;
 		}
 		ii += i;
 	}
@@ -2423,8 +2466,8 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	}
 	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	// come back and figure out how to do xS and xG !!!!
-	for(i=0;i<NG;i++) gsl_vector_set(par->xGlev,i,-0.2  + .4* (double)i/(double) (NG-1));
-	for(i=0;i<NS;i++) gsl_vector_set(par->xSlev,i,-0.2  + .4* (double)i/(double) (NS-1));
+	for(i=0;i<NG;i++) gsl_vector_set(par->xGlev,i, 0.042268* (double)i/(double) (NG-1)); // again, occupational tenure or not to match the returns to occupational tenure in KM2009
+	for(i=0;i<NS;i++) gsl_vector_set(par->xSlev,i, .010984* (double)i/(double) (NS-1)); // really just 0 or 1--- matches 1% increase due to employer tenure in KM2009
 	for(ji=0;ji<JJ;ji++) gsl_vector_set(par->jprob,ji,1./(double)JJ);
 
 
@@ -2446,7 +2489,7 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 			                          par->epslev->data[ti] +
 			                          par->zlev->data[zi] +
 			                          par->xSlev->data[si] +
-			                          par->xGlev->data[gi]) + wage_lev;
+			                          par->xGlev->data[gi] + occ_wlevs[ji]) + wage_lev;
 			if( w_hr< b && w_hr>0 && zi>0) b = w_hr;
 		}
 	}
@@ -2481,7 +2524,8 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 		//form error vector
 		ii = 0;
 		double dat_dur = dat.udur_sw / dat.udur_nosw;
-		double mod_dur = st.udur_sw / st.udur_nosw;
+		double mod_dur = gsl_finite(st.udur_nosw) && gsl_finite(st.udur_sw) && st.udur_nosw>0 ?
+				st.udur_sw / st.udur_nosw : 0.;
 		if (par->cluster_hr == 0 || par->cluster_hr == Ncluster) {
 			err_vec[0] = (st.J2Jprob - dat.J2Jprob) * 2 / (st.J2Jprob + dat.J2Jprob);
 			err_vec[1] = (st.findrate - dat.findrate) * 2 / (st.findrate + dat.findrate);
