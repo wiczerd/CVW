@@ -7,14 +7,14 @@ CDIR	= /home/david/workspace/CVW/c/
 FDIR	= /home/david/workspace/CVW/fortran/
 MKLROOT = /opt/intel/mkl/
 
-CLIBS	= -lgsl -lgslcblas -lm -lgfortran -lgomp
+CLIBS	= -lgsl -lgslcblas -lnlopt -lm -lgfortran -lgomp
 IADV	= -Wl,--start-group  $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a $(MKLROOT)/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread 
 ILOC	= -L/usr/local/lib/ -L/home/david/Computation/NLopt/lib -L/opt/intel/lib/intel64/
 IINC	= -I/home/david/Computation/DFBOLS
 
 
 ICFLAGS = -O3 -fopenmp -D_DFBOLS_USE=1
-ICGFLAGS= -g -D_DFBOLS_USE=1
+ICGFLAGS= -g -fopenmp -D_DFBOLS_USE=1
 FCFLAGS = -c
 F77FLAGS= -c
 
