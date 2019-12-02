@@ -1040,9 +1040,9 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 					}
 					if(jji!=ji){
 						// constructing RE
-						REhr += gsl_max(gsl_min(exp(par->alpha_nf[ji][jji]) * par->alphaE0/(1.-par->alphaE1)*
-								pow( gg_get( pf->sE[jji],ii,ji),1.-par->alphaE1)*
-								(lambdaEMhr*EztWE[jji] +(1.- lambdaEMhr)*EzWE[jji] ) ,1. ),0.);
+						REhr += gsl_min(exp(par->alpha_nf[ji][jji]) * par->alphaE0/(1.-par->alphaE1)*
+								pow( gg_get( pf->sE[jji],ii,ji),1.-par->alphaE1) ,1. )*
+								(lambdaEMhr*EztWE[jji] +(1.- lambdaEMhr)*EzWE[jji] );
 					}
 				}
 				double totalphaS = 0;
@@ -1175,10 +1175,9 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 						}
 					}
 					if(jji!=ji){
-						RUhr += gsl_min(exp(par->alpha_nf[ji][jji]) *par-> alphaU0/(1.-par->alphaU1),1.)*
-								pow(gg_get(pf->sU[jji],ii,ji),1.-par->alphaU1 )*
-								(EzWU[jji]*(1.-lambdaUhr)+
-						                                                                       lambdaUhr*EtWE_jji);
+						RUhr += gsl_min(exp(par->alpha_nf[ji][jji]) *par-> alphaU0/(1.-par->alphaU1)*
+								pow(gg_get(pf->sU[jji],ii,ji),1.-par->alphaU1 ),1.)*
+								(EzWU[jji]*(1.-lambdaUhr)+lambdaUhr*EtWE_jji);
 					}
 				}
 				double totalalphaS = 0;
@@ -1304,7 +1303,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 		WE_hist[ll] = gsl_matrix_calloc(Nsim,TT);
 		WU_hist[ll] = gsl_matrix_calloc(Nsim,TT);
 		epssel_hist[ll] = gsl_matrix_calloc(Nsim,TTT);
-		gsl_matrix_int_set_all(ht->jhist,-1);
+		gsl_matrix_int_set_all(ht->jhist[ll],-1);
 	}
 
 	cmjprob[0] = par->jprob->data[0];
@@ -1495,25 +1494,25 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 							if( ti>=burnin ) gg_set(swprob_hist[ll],i,ti-burnin,  gg_get(pf->mE,ii,jt[i]) );
 							if( gg_get(sk->msel[ll],i,ti) < gg_get(pf->mE,ii,jt[i])  ){
 								//RE
-								double sij[JJ];
+								double cumsij[JJ];
 								jji =0;
-								sij[jji] =gsl_max(gsl_min(
+								cumsij[jji] =gsl_min(
 										exp(par->alpha_nf[jt[i]][jji]) *par->alphaE0/par->alphaE1
 										*pow(gg_get(pf->sE[jji],ii,jt[i]),1.-par->alphaE1)
-										,1.),0.);
-								for(jji=1;jji<JJ;jji++) sij[jji] = sij[jji-1] +
-										gsl_max(gsl_min(
+										,1.);
+								for(jji=1;jji<JJ;jji++) cumsij[jji] = cumsij[jji-1] +
+										gsl_min(
 												exp(par->alpha_nf[jt[i]][jji]) *par->alphaE0/(1.-par->alphaE1)*
 										pow(gg_get(pf->sE[jji],ii,jt[i]),1.-par->alphaE1)
-										,1.) , 0.);
+										,1.) ;
 
-								if(gg_get(sk->jsel[ll], i, ti) > sij[JJ-1] ){
+								if(gg_get(sk->jsel[ll], i, ti) > cumsij[JJ-1] ){
 									jt[i] = jtm1[i];
 								}else{
 									// successfully switched: if( gg_get(sk->jsel[ll],i,ti) <  alpha(sij[JJ]))
 									jt[i] = 0;
 									for(jji=0;jji<JJ;jji++){
-										if (gg_get(sk->jsel[ll], i, ti) > sij[jji]){
+										if (gg_get(sk->jsel[ll], i, ti) > cumsij[jji]){
 											jt[i] ++;
 										}
 									}
@@ -1522,10 +1521,10 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 								if( ti>=burnin ){
 									for(jji=0;jji<JJ;jji++)
 										gg_set( ht->sijhist[ll][jji],i,ti - burnin,
-									gsl_max(gsl_min(
+									gsl_min(
 											exp(par->alpha_nf[jt[i]][jji]) *par->alphaE0/par->alphaE1
 											*pow(gg_get(pf->sE[jji],ii,jt[i]),1.-par->alphaE1)
-											,1.),0.)
+											,1.)
 									);
 								}
 								if( jt[i] != jtm1[i] ){ // switchers
@@ -1600,31 +1599,31 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 						if( ti>=burnin ) gg_set(swprob_hist[ll],i,ti-burnin,  gg_get(pf->mU,ii,jt[i]) );
 						if( gg_get(pf->mU,ii,jt[i])>gg_get(sk->msel[ll],i,ti) ){
 							//RU
-							double sij[JJ];
+							double cumsij[JJ]; //cumul match prob for occupational placement
 							jji =0;
-							sij[0]= gsl_max(gsl_min( exp(par->alpha_nf[jt[i]][jji]) *par->alphaU0/(1.-par->alphaU1)*
-									pow(gg_get(pf->sU[0],ii,jt[i]), 1.-par->alphaU1) ,1. ),0.);
-							for(jji=1;jji<JJ;jji++) sij[jji] = sij[jji-1] +
-									gsl_max(gsl_min(exp(par->alpha_nf[jt[i]][jji]) *par->alphaU0/(1.-par->alphaU1)*
-									pow(gg_get(pf->sU[jji],ii,jt[i]),1.-par->alphaU1), 1.),0.);
+							cumsij[0]= gsl_min( exp(par->alpha_nf[jt[i]][jji]) *par->alphaU0/(1.-par->alphaU1)*
+									pow(gg_get(pf->sU[0],ii,jt[i]), 1.-par->alphaU1) ,1. );
+							for(jji=1;jji<JJ;jji++) cumsij[jji] = cumsij[jji-1] +
+									gsl_min(exp(par->alpha_nf[jt[i]][jji]) *par->alphaU0/(1.-par->alphaU1)*
+									pow(gg_get(pf->sU[jji],ii,jt[i]),1.-par->alphaU1), 1.);
 							//record sij
 							if( ti>=burnin ){
 								for(jji=0;jji<JJ;jji++)
 									gg_set( ht->sijhist[ll][jji],i,ti - burnin,
-									        gsl_max(gsl_min(
+									        gsl_min(
 											        exp(par->alpha_nf[jt[i]][jji]) *par->alphaE0/par->alphaE1
 											        *pow(gg_get(pf->sU[jji],ii,jt[i]),1.-par->alphaE1)
-											        ,1.),0.)
+											        ,1.)
 											);
 							}
-							if(gg_get(sk->jsel[ll],i,ti) > sij[JJ-1]){
+							if(gg_get(sk->jsel[ll],i,ti) > cumsij[JJ-1]){
 								jt[i] = jtm1[i];
 								ut[i] = 1;
 							}else{
 								// successfully switched: if( gg_get(sk->jsel[ll],i,ti) <  sij[JJ])
 								jt[i] = 0;
 								for(jji=0;jji<JJ;jji++)
-									if (gg_get(sk->jsel[ll], i, ti) > sij[jji]) jt[i]++;
+									if (gg_get(sk->jsel[ll], i, ti) > cumsij[jji]) jt[i]++;
 							}
 							if( jt[i] != jtm1[i] ){ // switchers
 								xt[i][1] = 0; // lose specific skill
