@@ -1063,7 +1063,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 				gg_set( vf->RE,ii,ji,REhr);
                 double mhr = ((REhr/EAPWE)/rhotightening)/
-                             ( ((REhr/EAPWE)/rhotightening)+ 1.);
+                             ( ((REhr/EAPWE)/rhotightening)+ 1./rhotightening);
 				if( isinf(mhr) | isnan(mhr) ){
 					mhr = REhr >= EAPWE ? 1. : 0. ;
 				}
@@ -1207,7 +1207,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				double mhr = (RUhr/((1.-lambdaUhr)*EAPWU+
                         lambdaUhr*gsl_max(EtWE,EAPWU)  )/rhotightening)/
 				               ((RUhr/((1.-lambdaUhr)*EAPWU+
-                                       lambdaUhr*gsl_max(EtWE,EAPWU)  )/rhotightening)+1.);
+                                       lambdaUhr*gsl_max(EtWE,EAPWU)  )/rhotightening)+1./rhotightening);
 				if( isinf(mhr) | isnan(mhr) ){
 					mhr = RUhr > (1.-lambdaUhr)*EAPWU+ lambdaUhr*gsl_max(EtWE,EAPWU) ?
 							1. : 0. ;
@@ -1601,8 +1601,8 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 								}
 							}
 						}
-					// ut ==1 unemployed
-					}else{
+
+					}else{  // ut ==1 unemployed
 						ii = At*NP*NG*NS*NZ + Pt[jt[i]]*NG*NS*NZ + xt[i][0]*NS*NZ +xt[i][1]*NZ +xt[i][2];
 						//ji = jt[i];
 						if( ti>=burnin){ gg_set(ht->whist[ll],i,ti-burnin,0.);}
