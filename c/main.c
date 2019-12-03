@@ -74,6 +74,10 @@ double rhotightening = 10;
 double caltol = 1e-3;
 double smth_flows = 0.25;
 
+double alphaU1scl = 1.; //whatever is the value of alphaU1, choose this to scale it to be below 1 total finding rate
+double alphaE1scl = 1.; //whatever is the value of alphaE1, choose this to scale it to be below 1 total finding rate
+
+
 double beta	= 0.997;		// discount factor
 double b 	= 0.; 		// unemployment benefit
 double wage_lev = 1;        // will be a shifter so the average wage is >0
@@ -480,12 +484,12 @@ int main(int argc,char *argv[] ) {
 	par.param_lb[5] = 0.001; par.param_ub[5] = 0.03;
 	par.param_lb[6] = 0.001; par.param_ub[6] = 0.03;
 	// alpha12, alpha13, alpha14, alpha23, alpha 24, alpha 34
-	par.param_lb[7] = -0.5; par.param_ub[7] = 0.5;
-	par.param_lb[8] = -0.5; par.param_ub[8] = 0.5;
-	par.param_lb[9] = -0.5; par.param_ub[9] = 0.5;
-	par.param_lb[10]= -0.5; par.param_ub[10]= 0.5;
-	par.param_lb[11]= -0.5; par.param_ub[11]= 0.5;
-	par.param_lb[12]= -0.5; par.param_ub[12]= 0.5;
+	par.param_lb[7] = -0.25; par.param_ub[7] = 0.25;
+	par.param_lb[8] = -0.25; par.param_ub[8] = 0.25;
+	par.param_lb[9] = -0.25; par.param_ub[9] = 0.25;
+	par.param_lb[10]= -0.25; par.param_ub[10]= 0.25;
+	par.param_lb[11]= -0.25; par.param_ub[11]= 0.25;
+	par.param_lb[12]= -0.25; par.param_ub[12]= 0.25;
 
 	if(Ncluster>1){
 		ii = Npar_cluster[0];
@@ -1040,17 +1044,19 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 					}
 					if(jji!=ji){
 						// constructing RE
-						REhr += gsl_min(exp(par->alpha_nf[ji][jji]) * par->alphaE0/(1.-par->alphaE1)*
+						REhr += gsl_min(exp(par->alpha_nf[ji][jji]) *
+								par->alphaE0*alphaE1scl/(1.-par->alphaE1)*
 								pow( gg_get( pf->sE[jji],ii,ji),1.-par->alphaE1) ,1. )*
 								(lambdaEMhr*EztWE[jji] +(1.- lambdaEMhr)*EzWE[jji] );
 					}
 				}
 				double totalphaS = 0;
 				for(jji=0;jji<JJ;jji++){
-					if(jji!=ji) totalphaS += gsl_min(exp(par->alpha_nf[ji][jji]) * par->alphaE0/(1.-par->alphaE1),1.)*
-							pow(gg_get(pf->sE[jji],ii,ji),1.-par->alphaE1);
+					if(jji!=ji) totalphaS += gsl_min(exp(par->alpha_nf[ji][jji]) *
+							par->alphaE0*alphaE1scl/(1.-par->alphaE1)*
+							pow(gg_get(pf->sE[jji],ii,ji),1.-par->alphaE1),1.);
 				}
-				REhr +=   (1. - gsl_min( totalphaS,1. ))* EAPWE;
+				REhr +=   gsl_max(1. - totalphaS,0. )* EAPWE;
 				if(gsl_finite(REhr)==0){
 					//printf("Uhoh. Bad REhr");
 				}
@@ -1175,16 +1181,18 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 						}
 					}
 					if(jji!=ji){
-						RUhr += gsl_min(exp(par->alpha_nf[ji][jji]) *par-> alphaU0/(1.-par->alphaU1)*
+						RUhr += gsl_min(exp(par->alpha_nf[ji][jji]) *
+								par-> alphaU0*alphaU1scl/(1.-par->alphaU1)*
 								pow(gg_get(pf->sU[jji],ii,ji),1.-par->alphaU1 ),1.)*
 								(EzWU[jji]*(1.-lambdaUhr)+lambdaUhr*EtWE_jji);
 					}
 				}
 				double totalalphaS = 0;
 				for(jji=0;jji<JJ;jji++)
-					totalalphaS += gsl_min(exp(par->alpha_nf[ji][jji]) *par-> alphaU0/(1.-par->alphaU1),1.)
-							*pow(gg_get(pf->sU[jji],ii,ji),1.-par->alphaU1 );
-				RUhr += (1.-totalalphaS )*EAPWU;
+					totalalphaS += gsl_min(exp(par->alpha_nf[ji][jji]) *
+							par-> alphaU0*alphaU1scl/(1.-par->alphaU1)
+							*pow(gg_get(pf->sU[jji],ii,ji),1.-par->alphaU1),1.);
+				RUhr += gsl_max(1.-totalalphaS,0. )*EAPWU;
 				gg_set(vf->RU, ii,ji, RUhr);
 
 				double EtWE=0;
@@ -1497,12 +1505,14 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 								double cumsij[JJ];
 								jji =0;
 								cumsij[jji] =gsl_min(
-										exp(par->alpha_nf[jt[i]][jji]) *par->alphaE0/par->alphaE1
+										exp(par->alpha_nf[jt[i]][jji]) *
+										par->alphaE0*alphaE1scl/par->alphaE1
 										*pow(gg_get(pf->sE[jji],ii,jt[i]),1.-par->alphaE1)
 										,1.);
 								for(jji=1;jji<JJ;jji++) cumsij[jji] = cumsij[jji-1] +
 										gsl_min(
-												exp(par->alpha_nf[jt[i]][jji]) *par->alphaE0/(1.-par->alphaE1)*
+												exp(par->alpha_nf[jt[i]][jji]) *
+												par->alphaE0*alphaE1scl/(1.-par->alphaE1)*
 										pow(gg_get(pf->sE[jji],ii,jt[i]),1.-par->alphaE1)
 										,1.) ;
 
@@ -1522,7 +1532,8 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 									for(jji=0;jji<JJ;jji++)
 										gg_set( ht->sijhist[ll][jji],i,ti - burnin,
 									gsl_min(
-											exp(par->alpha_nf[jt[i]][jji]) *par->alphaE0/par->alphaE1
+											exp(par->alpha_nf[jt[i]][jji]) *
+											par->alphaE0*alphaE1scl/par->alphaE1
 											*pow(gg_get(pf->sE[jji],ii,jt[i]),1.-par->alphaE1)
 											,1.)
 									);
@@ -1601,17 +1612,20 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 							//RU
 							double cumsij[JJ]; //cumul match prob for occupational placement
 							jji =0;
-							cumsij[0]= gsl_min( exp(par->alpha_nf[jt[i]][jji]) *par->alphaU0/(1.-par->alphaU1)*
+							cumsij[0]= gsl_min( exp(par->alpha_nf[jt[i]][jji]) *
+									par->alphaU0*alphaU1scl/(1.-par->alphaU1)*
 									pow(gg_get(pf->sU[0],ii,jt[i]), 1.-par->alphaU1) ,1. );
 							for(jji=1;jji<JJ;jji++) cumsij[jji] = cumsij[jji-1] +
-									gsl_min(exp(par->alpha_nf[jt[i]][jji]) *par->alphaU0/(1.-par->alphaU1)*
+									gsl_min(exp(par->alpha_nf[jt[i]][jji]) *
+									par->alphaU0*alphaU1scl/(1.-par->alphaU1)*
 									pow(gg_get(pf->sU[jji],ii,jt[i]),1.-par->alphaU1), 1.);
 							//record sij
 							if( ti>=burnin ){
 								for(jji=0;jji<JJ;jji++)
 									gg_set( ht->sijhist[ll][jji],i,ti - burnin,
 									        gsl_min(
-											        exp(par->alpha_nf[jt[i]][jji]) *par->alphaE0/par->alphaE1
+											        exp(par->alpha_nf[jt[i]][jji]) *
+											        par->alphaE0*alphaE1scl/par->alphaE1
 											        *pow(gg_get(pf->sU[jji],ii,jt[i]),1.-par->alphaE1)
 											        ,1.)
 											);
@@ -1814,6 +1828,19 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	}
 
 	for(ri=0;ri<3;ri++){
+		Nemp     = 0.;
+		Nunemp   = 0.;
+		Nnosep   = 0.;
+		Nfnd     = 0.;
+		NswU     = 0.;
+		NswE     = 0.;
+		NJ2J     = 0.;
+		Nspell   = 0.;
+		NswSt    = 0.;
+		Ndur_sw  = 0.;
+		Ndur_nosw= 0.;
+		Nsep     = 0.;
+		NErisksep= 0.;
 		#pragma omp parallel for private(ll,ti,i,wi,si,ji,jji) reduction( +: Nemp ) reduction( +:Nunemp) reduction( +:Nnosep) reduction( +: Nfnd) reduction( +: NswU) reduction( +: NswE) reduction( +: Nspell) reduction( +: NswSt) reduction( +: Ndur_sw) reduction( +: Ndur_nosw) reduction(+: Nsep) reduction(+:NErisksep)
 		for(ll=0;ll<Npaths;ll++){
 
@@ -2386,6 +2413,7 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 				par->alpha_nf[ji][ii] = -par->alpha_nf[ii][ji];
 		}
 		ii = Npar_cluster[0] ;
+
 	}
 	if(ci==1 || ci == Ncluster){
 
@@ -2436,6 +2464,8 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 		i = Npar_cluster[ci]-1;
 		printf("%8.3f)\n", x[i]);
 	}
+	alphaU1scl = (double)(JJ-1)*pow((1.-par->alphaU1)/(double)(JJ-1),1./(1-par->alphaU1)) ;
+	alphaE1scl = (double)(JJ-1)*pow((1.-par->alphaE1)/(double)(JJ-1),1./(1-par->alphaE1)) ;
 }
 
 
