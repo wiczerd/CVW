@@ -611,69 +611,68 @@ int main(int argc,char *argv[] ) {
 		}
 	}
 
-	sprintf(calhi_f,"calhist%d.csv",rank);
-	calhist = fopen(calhi_f,"w+");
-	fprintf(calhist,"dist,J2J_err,fnd_err,sep_err,swEE_err,swU_err,swSt_err,dur_ratio,occ_ten,");
-	fprintf(calhist, "DoubleswE, DoubleswU,");
-	fprintf(calhist,"flow01,flow02,flow03,flow12,flow13,flow23,");
-	if(Ntargets>Ntgt_cluster[0]){
+	if(cal_now==1){
+		sprintf(calhi_f,"calhist%d.csv",rank);
+		calhist = fopen(calhi_f,"w+");
+		fprintf(calhist,"dist,J2J_err,fnd_err,sep_err,swEE_err,swU_err,swSt_err,dur_ratio,");
+		fprintf(calhist, "DoubleswE, DoubleswU,");
+		fprintf(calhist,"flow01,flow02,flow03,flow12,flow13,flow23,");
+		if(Ntargets>Ntgt_cluster[0]){
 
-		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," stns%f, ",qtlgrid[ii]); //for(ii=0;ii<Nqtls;ii++) fprintf(calhist," stns%f, ",qtlgrid[ii]);
-		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," stsw%f, ",qtlgrid[ii]);
-		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," EEns%f, ",qtlgrid[ii]);
-		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," EEsw%f, ",qtlgrid[ii]);
-		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," EUns%f, ",qtlgrid[ii]);
-		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," EUsw%f, ",qtlgrid[ii]);
-		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," UEns%f, ",qtlgrid[ii]);
-		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," UEsw%f, ",qtlgrid[ii]);
-	}
-	if(Ncluster>2){
-		fprintf(calhist,"swPrUratio,swPrEEratio,frtratio,seprtratio,EEratio,");
-		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," MVsw%f, ",qtlgrid[ii] );
-		for(ii=0;ii<Nqtls;ii++) fprintf(calhist," MVns%f, ",qtlgrid[ii] );
-	}
-	for(i=0;i<Nparams;i++){
-		fprintf(calhist,"%s,",parnames_cluall[i]);
-	}
+			for(ii=0;ii<Nqtls;ii++) fprintf(calhist," stns%f, ",qtlgrid[ii]); //for(ii=0;ii<Nqtls;ii++) fprintf(calhist," stns%f, ",qtlgrid[ii]);
+			for(ii=0;ii<Nqtls;ii++) fprintf(calhist," stsw%f, ",qtlgrid[ii]);
+			for(ii=0;ii<Nqtls;ii++) fprintf(calhist," EEns%f, ",qtlgrid[ii]);
+			for(ii=0;ii<Nqtls;ii++) fprintf(calhist," EEsw%f, ",qtlgrid[ii]);
+			for(ii=0;ii<Nqtls;ii++) fprintf(calhist," EUns%f, ",qtlgrid[ii]);
+			for(ii=0;ii<Nqtls;ii++) fprintf(calhist," EUsw%f, ",qtlgrid[ii]);
+			for(ii=0;ii<Nqtls;ii++) fprintf(calhist," UEns%f, ",qtlgrid[ii]);
+			for(ii=0;ii<Nqtls;ii++) fprintf(calhist," UEsw%f, ",qtlgrid[ii]);
+		}
+		if(Ncluster>2){
+			fprintf(calhist,"swPrUratio,swPrEEratio,frtratio,seprtratio,EEratio,");
+			for(ii=0;ii<Nqtls;ii++) fprintf(calhist," MVsw%f, ",qtlgrid[ii] );
+			for(ii=0;ii<Nqtls;ii++) fprintf(calhist," MVns%f, ",qtlgrid[ii] );
+		}
+		for(i=0;i<Nparams;i++){
+			fprintf(calhist,"%s,",parnames_cluall[i]);
+		}
 
-	fprintf(calhist,"\n");
-	fclose(calhist);
-
-	sprintf(parhi_f,"paramhist%d.csv",rank);
-	parhist = fopen(parhi_f,"w+");
-	for(i=0;i<Nparams;i++){
-		fprintf(parhist,"%s,",parnames_cluall[i]);
-	}
-	fprintf(parhist,"\n");
-	fclose(parhist);
-#ifdef _MPI_USE
-	int nsend = Nparams*nstarts;
-	if(rank==0){
-		MPI_Scatter( x0starts , nsend,MPI_DOUBLE,x0starts_j,nsend,MPI_DOUBLE,0,MPI_COMM_WORLD);
-	}
-#else
-	for(i=0;i<nstarts*Nparams;i++){
-		x0starts_j[i] = x0starts[i];
-	}
-#endif
+		fprintf(calhist,"\n");
+		fclose(calhist);
 
 
-	double mindist = 1e6;
 
-	i=0;
-	while(i<nstarts){
+		sprintf(parhi_f,"paramhist%d.csv",rank);
+		parhist = fopen(parhi_f,"w+");
+		for(i=0;i<Nparams;i++){
+			fprintf(parhist,"%s,",parnames_cluall[i]);
+		}
+		fprintf(parhist,"\n");
+		fclose(parhist);
+	#ifdef _MPI_USE
+		int nsend = Nparams*nstarts;
+		if(rank==0){
+			MPI_Scatter( x0starts , nsend,MPI_DOUBLE,x0starts_j,nsend,MPI_DOUBLE,0,MPI_COMM_WORLD);
+		}
+	#else
+		for(i=0;i<nstarts*Nparams;i++){
+			x0starts_j[i] = x0starts[i];
+		}
+	#endif
 
-		for(ii=0;ii<Nparams;ii++) x0[ii] = x0starts_j[i*Nparams+ii] ;
-		for(ii=0;ii<Nparams;ii++)
-			par.xparopt[ii] = x0[ii] * (par.param_ub[ii]-par.param_lb[ii])
-		        +par.param_lb[ii];
-		set_params(par.xparopt,Nparams,&par,Ncluster); //sets all of the parameters to the initial guess
 
-		double dist;
+		double mindist = 1e6;
 
+		i=0;
+		while(i<nstarts){
 
-		if( i< 400 || rank<400 ){ //I'm just always going to do DFBOLS for now. was i%2 == rank%2, which made the nodes alternate between DFBOLS and subplex
+			for(ii=0;ii<Nparams;ii++) x0[ii] = x0starts_j[i*Nparams+ii] ;
+			for(ii=0;ii<Nparams;ii++)
+				par.xparopt[ii] = x0[ii] * (par.param_ub[ii]-par.param_lb[ii])
+			        +par.param_lb[ii];
+			set_params(par.xparopt,Nparams,&par,Ncluster); //sets all of the parameters to the initial guess
 
+			double dist;
 			if(verbose>0)
 				printf("Beginning to evaluate a DFBOLS start point \n");
 
@@ -776,122 +775,42 @@ int main(int argc,char *argv[] ) {
 			free(solver_state);
 			if(verbose>0)
 				printf("Evaluated a DFBOLS start point \n");
-		}else{ //calibrate with nlopt
-			// NOTE!!!!!!!!!!!!!!!!!!!!!!!!!!
-			// THIS SECTION HAS NOT BEEN UPDATED IN A WHILE!
-			if(verbose>0)
-				printf("Beginning to evaluate a NM start point \n");
-			for(ci=0;ci<Ncluster+1;ci++){
-				par.cluster_hr = ci;
 
-				x0_clu = malloc(Npar_cluster[ci]*sizeof(double));
-				solver_state = malloc(sizeof(double)*(Npar_cluster[ci] +1));
-				solver_state[0] = 1e4;
-				nlopt_opt opt  = nlopt_create(NLOPT_LN_SBPLX,(unsigned)Npar_cluster[ci] );
+			caldist_j[i] = dist;
+			for(ii=0;ii<Nparams;ii++) calx_j[i*Nparams + ii] = x0[ii];
 
-				double*nlopt_lb,*nlopt_ub;
-				nlopt_lb = calloc(Npar_cluster[ci],sizeof(double));
-				nlopt_ub = calloc(Npar_cluster[ci],sizeof(double));
-				par.cluster_ub[ci] = malloc(Npar_cluster[ci]*sizeof(double));
-				par.cluster_lb[ci] = malloc(Npar_cluster[ci]*sizeof(double));
-
-				for(ii=0;ii<Npar_cluster[ci];ii++){ nlopt_lb[ii]=0.;nlopt_ub[ii]=1.; }
-				nlopt_set_lower_bounds(opt,nlopt_lb);
-				nlopt_set_upper_bounds(opt,nlopt_ub);
-
-				// set up the bounds as a subset of the whole set of bounds
-				int par_hr =0;
-				if(ci< Ncluster){
-					for(ii=0;ii<ci;ii++ ){ par_hr += Npar_cluster[ii];} // offset if we're not using all of the parameters
-				}
-				for(ii=0;ii<Npar_cluster[ci];ii++){
-					x0_clu[ii] = x0[ii+par_hr];
-					par.cluster_lb[ci][ii] = par.param_lb[ par_hr + ii];
-					par.cluster_ub[ci][ ii] = par.param_ub[ par_hr + ii];
-				}
-				if(verbose>1){
-					printf("Bounds are: \n    ");
-					for(ii=0;ii<Npar_cluster[ci];ii++){ printf("%8s,",parnames[ci][ii]); }
-					printf("\n");
-					printf("lb: "); for(ii=0;ii<Npar_cluster[ci];ii++){ printf("%f,",par.cluster_lb[ci][ii]); }
-					printf("\n");
-					printf("ub: "); for(ii=0;ii<Npar_cluster[ci];ii++){ printf("%f,",par.cluster_ub[ci][ii] ); }
-					printf("\n");
-				}
-
-				double tol= 1e-4;
-				nlopt_set_xtol_rel(opt,tol);
-				nlopt_set_ftol_abs(opt,tol);
-				nlopt_set_ftol_rel(opt,tol);
-			//	nlopt_set_initial_step(opt, .4);//0.5*pow((double)(nnodes*nstarts),-1./(double)Npar_cluster[ci]) );
-				nlopt_set_maxeval(opt,100*(Npar_cluster[ci] +1));
-
-				struct cal_params * par_pt = &par;
-				//glb_par = &par;
-				nlopt_set_min_objective(opt,f_wrapper_nlopt, (void*) par_pt);
-				nlopt_optimize(opt,x0_clu,&dist);
-
-				for(ii=0;ii<Npar_cluster[ci];ii++) par.xparopt[ii+par_hr] = solver_state[ii+1];
-				for(ii=0;ii<Npar_cluster[ci];ii++){
-					x0[ii+par_hr] = (par.xparopt[ii] - par.cluster_lb[ci][ii])/(par.cluster_ub[ci][ii]-par.cluster_lb[ci][ii]);
-				}
-				dist = param_dist(par.xparopt, & par ,Nparams,err,Ntargets);
-
-				if(verbose>1){
-					printf("error is %f at vector:  (", dist);
-					for(ii=0;ii<Ntgt_cluster[ci]-1;ii++)
-						printf("%f,", err[ii]);
-					printf("%f)\n", err[Ntgt_cluster[ci]-1]);
-					printf("evaluated at (");
-					for(ii=0;ii<Npar_cluster[ci]-1;ii++)
-						printf("%f,", par.xparopt[ii]);
-					printf("%f)\n", par.xparopt[Npar_cluster[ci]-1]);
-				}
-
-				free(solver_state);
-				nlopt_destroy(opt);
-				free(nlopt_lb);free(nlopt_ub);
-				free(x0_clu);
-				free(par.cluster_ub[ci]);free(par.cluster_lb[ci]);
+	#ifdef _MPI_USE
+			int ngather = nstarts*Nparams;
+			MPI_Barrier(MPI_COMM_WORLD);
+			MPI_Gather(caldist_j,nstarts,MPI_DOUBLE,caldist,nstarts,MPI_DOUBLE,0,MPI_COMM_WORLD);
+			MPI_Gather(calx_j,ngather ,MPI_DOUBLE,calx,ngather ,MPI_DOUBLE,0,MPI_COMM_WORLD);
+	#else
+			for(ii=0;ii<nstarts;ii++) caldist[ii] = caldist_j[ii];
+			for(ii=0;ii<nstarts*Nparams;ii++) calx[ii] = calx_j[ii];
+	#endif
+			if(rank==0){
 				if(verbose>0)
-					printf("Evaluated a NM start point \n");
-			}
-		} //calibrate with dfbols or nlopt
-		caldist_j[i] = dist;
-		for(ii=0;ii<Nparams;ii++) calx_j[i*Nparams + ii] = x0[ii];
+					printf("Looking for best point \n");
+				for(j=0;j<nnodes;j++){
+					dist = caldist[j+i*nnodes];
 
-#ifdef _MPI_USE
-		int ngather = nstarts*Nparams;
-		MPI_Barrier(MPI_COMM_WORLD);
-		MPI_Gather(caldist_j,nstarts,MPI_DOUBLE,caldist,nstarts,MPI_DOUBLE,0,MPI_COMM_WORLD);
-		MPI_Gather(calx_j,ngather ,MPI_DOUBLE,calx,ngather ,MPI_DOUBLE,0,MPI_COMM_WORLD);
-#else
-		for(ii=0;ii<nstarts;ii++) caldist[ii] = caldist_j[ii];
-		for(ii=0;ii<nstarts*Nparams;ii++) calx[ii] = calx_j[ii];
-#endif
-		if(rank==0){
-			if(verbose>0)
-				printf("Looking for best point \n");
-			for(j=0;j<nnodes;j++){
-				dist = caldist[j+i*nnodes];
-
-				if (dist<mindist){
-					mindist = dist;
-					for(ii=0;ii<Nparams;ii++) par.xparopt[ii] = calx[j*Nparams+ ii];
+					if (dist<mindist){
+						mindist = dist;
+						for(ii=0;ii<Nparams;ii++) par.xparopt[ii] = calx[j*Nparams+ ii];
+					}
 				}
 			}
+			//check if less than tolerance and then broadcast a stop of the nstarts loop
+	#ifdef _MPI_USE
+			MPI_Bcast(&mindist,1,MPI_DOUBLE,0,MPI_COMM_WORLD);
+	#endif
+			if(dist<caltol)
+				i=nstarts;
+			else
+				i++;
 		}
-		//check if less than tolerance and then broadcast a stop of the nstarts loop
-#ifdef _MPI_USE
-		MPI_Bcast(&mindist,1,MPI_DOUBLE,0,MPI_COMM_WORLD);
-#endif
-		if(dist<caltol)
-			i=nstarts;
-		else
-			i++;
+
 	}
-
-
 	// gather all of the mindist back to node 1
 
 	free(x0starts_j);
@@ -1352,9 +1271,67 @@ int shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, st
 
 	free_hists(&ht_noz); free_shocks(&sk_noz);
 
+	// set eps shocks to 0
+	sprintf(exper_f,"noe");
+	alloc_hists(&ht_noeps);
+	alloc_shocks(&sk_noeps);
 
+	memcpy_shocks(&sk_noeps,sk);
 
+	double cumepsprob[NE+1];
+	cumepsprob[0] =0;
+	for(i=0;i<NZ;i++) cumepsprob[i+1] = par->epsprob->data[i] + cumepsprob[i];
+	int iepsL,iepsH;
+	double wtepsL;
+	iepsL = gsl_interp_bsearch( cumepsprob, 0.5,0,NE);
+	iepsH = iepsL < NE-1 ? iepsL+1 : iepsL;
+	wtepsL = cumzprob[izH]>cumzprob[iepsL] ? 1. - (0.5-cumepsprob[iepsL])/(cumepsprob[iepsH]-cumepsprob[iepsL]) : 1.;
+	for(ll=0;ll<Npaths;ll++){
+		for(i=0;i<Nsim;i++){
+			if(gg_get(sk->epssel[ll],i,0) < wtzL){
+				for(it=0;it<TTT;it++) gg_set(sk_noeps.epssel[ll],i,it,cumepsprob[izL]+1.e-5);
+			}
+			else{
+				for(it=0;it<TTT;it++) gg_set(sk_noeps.epssel[ll],i,it,cumepsprob[izH]+1.e-5);}
+		}
+	}
 
+	// will simulate and print stuff with the "noe" line tagged in
+	sim( par, vf, pf, &ht_noeps, &sk_noeps );
+	sum_stats( par, vf,pf,&ht_noeps,&sk_noeps, &st_noeps);
+	free_hists(&ht_noeps); free_shocks(&sk_noeps);
+
+	// set P shocks to 0
+	sprintf(exper_f,"noP");
+	alloc_hists(&ht_noP);
+	alloc_shocks(&sk_noP);
+
+	memcpy_shocks(&sk_noP,sk);
+	for(ll=0;ll<Npaths;ll++){
+		for(i=0;i<Nsim;i++){
+			for(it=0;it<TTT;it++) gg_set(sk_noP.Psel,i,it,0.5);
+		}
+	}
+	// will simulate and print stuff with the "noe" line tagged in
+	sim( par, vf, pf, &ht_noP, &sk_noP );
+	sum_stats( par, vf,pf,&ht_noP,&sk_noP, &st_noP);
+	free_hists(&ht_noP); free_shocks(&sk_noP);
+
+	// set P shocks to 0
+	sprintf(exper_f,"noA");
+	alloc_hists(&ht_noA);
+	alloc_shocks(&sk_noA);
+
+	memcpy_shocks(&sk_noA,sk);
+	for(ll=0;ll<Npaths;ll++){
+		for(i=0;i<Nsim;i++){
+			for(it=0;it<TTT;it++) gg_set(sk_noA.Asel,i,it,0.5);
+		}
+	}
+	// will simulate and print stuff with the "noe" line tagged in
+	sim( par, vf, pf, &ht_noA, &sk_noA );
+	sum_stats( par, vf,pf,&ht_noA,&sk_noA, &st_noA);
+	free_hists(&ht_noA); free_shocks(&sk_noA);
 
 }
 
@@ -2483,51 +2460,135 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	free(w_UEsw);
 	free(wwv_EEoccsw);free(wwv_UEoccsw); free(wwv_EEsw); free(wwv_UEsw);
 }
+
+void read_params(char* name, struct cal_params *par){
+	int ii, i, ji;
+	int rstatus;
+	FILE * parfile;
+	parfile = fopen(name,"r");
+	double dd;char sd[20];
+
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->alphaE0 = dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->alphaU0 = dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	 par->lambdaU0  = dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->lambdaES0 = dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->lambdaEM0 = dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->delta_avg= dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->zloss=     dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->alphaE1=   dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->alphaU1=   dd;
+	for(ii=0;ii<JJ;ii++){
+		for(ji=ii+1;ji<JJ;ji++){
+			rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+			par->alpha_nf[ii][ji]= dd;
+		}
+	}
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->update_z = dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->scale_z  = dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->shape_z  = dd;
+
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->var_pe = dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->autop  = dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->var_ae = dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->autoa  = dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->gdfthr = dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->stwupdate= dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->var_eps= dd;
+
+	if(eps_2emg==1){
+		rstatus fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+		par->lshape_eps= (double)dd;
+		rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+		par->rshape_eps= (double)dd;
+	}
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->delta_Acoef   = (double)dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->lambdaEM_Acoef= (double)dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->lambdaES_Acoef= (double)dd;
+	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->lambdaU_Acoef = (double)dd;
+
+	for(ji=0;ji<JJ;ji++){
+		if(ji>=1){
+			rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+			if(rstatus ==0 )
+				rstatus = fscanf(parfile,"%s,\n",&sd);dd = strtod(sd,NULL);
+			par->AloadP->data[ji] = (double)dd;
+		}
+
+	}
+
+
+
+	fclose(parfile);
+}
+
 void print_params(double *x, int n, struct cal_params * par){
 	int ii, i,ji;
 
 	ii =0;
 	parhist = fopen(parhi_f,"a+");
 
-	fprintf(parhist,"%8.3f,", par->alphaE0);
-	fprintf(parhist,"%8.3f,", par->alphaU0);
+	fprintf(parhist,"%8.6f,", par->alphaE0);
+	fprintf(parhist,"%8.6f,", par->alphaU0);
 
-	fprintf(parhist,"%8.3f,", par->lambdaU0  );
-	fprintf(parhist,"%8.3f,", par->lambdaES0);
-	fprintf(parhist,"%8.3f,", par->lambdaEM0);
-	fprintf(parhist,"%8.3f,", par->delta_avg);
-	fprintf(parhist,"%8.3f,", par->zloss);
-	fprintf(parhist,"%8.3f,", par->alphaE1);
-	fprintf(parhist,"%8.3f,", par->alphaU1);
+	fprintf(parhist,"%8.6f,", par->lambdaU0  );
+	fprintf(parhist,"%8.6f,", par->lambdaES0);
+	fprintf(parhist,"%8.6f,", par->lambdaEM0);
+	fprintf(parhist,"%8.6f,", par->delta_avg);
+	fprintf(parhist,"%8.6f,", par->zloss);
+	fprintf(parhist,"%8.6f,", par->alphaE1);
+	fprintf(parhist,"%8.6f,", par->alphaU1);
 	for(ii=0;ii<JJ;ii++){
 		for(ji=ii+1;ji<JJ;ji++)
-			fprintf(parhist,"%8.3f,", par->alpha_nf[ii][ji]);
+			fprintf(parhist,"%8.6f,", par->alpha_nf[ii][ji]);
 	}
-	fprintf(parhist,"%8.3f,", par->update_z);
-	fprintf(parhist,"%8.3f,", par->scale_z);
-	fprintf(parhist,"%8.3f,", par->shape_z);
+	fprintf(parhist,"%8.6f,", par->update_z);
+	fprintf(parhist,"%8.6f,", par->scale_z);
+	fprintf(parhist,"%8.6f,", par->shape_z);
 
-	fprintf(parhist,"%8.3f,", par->var_pe);
-	fprintf(parhist,"%8.3f,", par->autop);
-	fprintf(parhist,"%8.3f,", par->var_ae);
-	fprintf(parhist,"%8.3f,", par->autoa);
-	fprintf(parhist,"%8.3f,", par->gdfthr);
-	fprintf(parhist,"%8.3f,", par->stwupdate);
-	fprintf(parhist,"%8.3f,", par->var_eps);
+	fprintf(parhist,"%8.6f,", par->var_pe);
+	fprintf(parhist,"%8.6f,", par->autop);
+	fprintf(parhist,"%8.6f,", par->var_ae);
+	fprintf(parhist,"%8.6f,", par->autoa);
+	fprintf(parhist,"%8.6f,", par->gdfthr);
+	fprintf(parhist,"%8.6f,", par->stwupdate);
+	fprintf(parhist,"%8.6f,", par->var_eps);
 
 	if(eps_2emg==1){
-		fprintf(parhist,"%8.3f,", par->lshape_eps);
-		fprintf(parhist,"%8.3f,", par->rshape_eps);
+		fprintf(parhist,"%8.6f,", par->lshape_eps);
+		fprintf(parhist,"%8.6f,", par->rshape_eps);
 	}
 
-	fprintf(parhist,"%8.3f,", par->delta_Acoef);
-	fprintf(parhist,"%8.3f,", par->lambdaEM_Acoef);
-	fprintf(parhist,"%8.3f,", par->lambdaES_Acoef);
-	fprintf(parhist,"%8.3f,", par->lambdaU_Acoef);
+	fprintf(parhist,"%8.6f,", par->delta_Acoef);
+	fprintf(parhist,"%8.6f,", par->lambdaEM_Acoef);
+	fprintf(parhist,"%8.6f,", par->lambdaES_Acoef);
+	fprintf(parhist,"%8.6f,", par->lambdaU_Acoef);
 
 	for(ji=0;ji<JJ;ji++){
 		if(ji>=1){
-			fprintf(parhist,"%8.3f,", par->AloadP->data[ji]);
+			fprintf(parhist,"%8.6f,", par->AloadP->data[ji]);
 		}
 
 	}
