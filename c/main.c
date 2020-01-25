@@ -36,16 +36,16 @@ int nosolve = 0;
 int const JJ = 4;     // number of occupations
 int const NG = 2;     // number of general (occupation) skill types
 int const NS = 2;     // number of specific skill types
-int const NZ = 7;     // 7 number of occ match-quality types
+int const NZ = 8;     // 7 number of occ match-quality types
 int const NE = 7;     // 7 number of firm epsilon match-quality types
-int const NP = 5;     // 5 number of occupation-specific productivies
+int const NP = 4;     // 5 number of occupation-specific productivies
 int const NA = 5;     // 5 number of aggregate productivities
 
 int NN ,NUN;
 
 
 int const TT      = 12*15;    // periods per simulation path
-int const burnin  = 12;       // number of periods to throw away each time
+int const burnin  = 12*3;     // number of periods to throw away each time
 int        TTT ;
 int const Npaths  = 76;//76      // number of simulation paths to draw
 int const Nsim    = 500;
@@ -266,10 +266,11 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk, struct stats *st  );
 
 double param_dist( double * x, struct cal_params *par, int Npar, double * err_vec , int Nerr);
-
+void shock_cf(  struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk );
 void set_dat( struct stats * );
 void set_params( double * x, int n, struct cal_params * par,int ci);
 void print_params(double *x, int n, struct cal_params * par);
+void read_params(char* name, struct cal_params *par);
 // wrapper for nlopt algorithms
 double f_wrapper_nlopt(unsigned n, const double * x, double * grad, void * par);
 
@@ -811,6 +812,80 @@ int main(int argc,char *argv[] ) {
 		}
 
 	}
+	if( cf_now == 1 ){
+		read_params("param_opt.csv", &par);
+		int print_lev_old = print_lev;
+		print_lev = 2;
+		par.cluster_hr= Ncluster;
+		set_params(par.xparopt,Nparams,&par,Ncluster );
+		// solve once at the normal set of points
+		init_pf(&pf,&par);
+		init_vf(&vf,&par);
+		//set the markov transition matrix for P
+		rouwenhorst(par.autop,pow(par.var_pe,0.5),par.Ptrans[0],par.Plev);
+		for(i=0;i<JJ;i++){
+			gsl_matrix_memcpy(par.Ptrans[i],par.Ptrans[i]);
+		}
+		// set the markov transition matrix for A
+		rouwenhorst(par.autoa,pow(par.var_ae,0.5),par.Atrans,par.Alev);
+
+		// setup the z matrix
+		double zlev1[NZ-1]; double zprob1[NZ-1];
+		success = disc_Weibull( zprob1,zlev1,NZ-1, 0., par.scale_z, par.shape_z );
+		for(ii=1;ii<NZ;ii++){
+			gsl_vector_set( par.zlev,ii,zlev1[ii-1] );
+			gsl_vector_set( par.zprob,ii,zprob1[ii-1]*(1.-par.zloss) );
+		}
+		gsl_vector_set(par.zlev,0,5*par.zlev->data[1]);
+		gsl_vector_set(par.zprob,0,par.zloss);
+		success = disc_2emg(par.epsprob->data,par.epslev->data,(int)par.epsprob->size,
+					0.,par.var_eps,par.lshape_eps,par.rshape_eps);
+		if(success > 0){
+			printf(" Did not compute the distribution properly");
+		}
+		// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		for(i=0;i<NG;i++) gsl_vector_set(par.xGlev,i, 0.042268* (double)i/(double) (NG-1)); // again, occupational tenure or not to match the returns to occupational tenure in KM2009
+		for(i=0;i<NS;i++) gsl_vector_set(par.xSlev,i, .010984* (double)i/(double) (NS-1)); // really just 0 or 1--- matches 1% increase due to employer tenure in KM2009
+		double occ_size_dat[] = {0.2636133, 0.3117827, 0.1493095, 0.2752945};
+		memcpy( par.jprob->data, occ_size_dat,sizeof(occ_size_dat));
+
+
+		// ensure don't voluntarily quit, except for when z is the lowest value
+		double w_hr;
+		for(ji=0;ji<JJ;ji++){
+			for (ii = 0; ii < NN; ii++) {
+				int ai = ii / (NP * NG * NS * NZ * NE);
+				int pi = (ii - ai * NP * NG * NS * NZ * NE) / (NG * NS * NZ * NE);
+				int gi = (ii - ai * NP * NG * NS * NZ * NE - pi * NG * NS * NZ * NE) / (NS * NZ * NE);
+				int si = (ii - ai * NP * NG * NS * NZ * NE - pi * NG * NS * NZ * NE - gi * NS * NZ * NE) / (NZ * NE);
+				int zi =
+						(ii - ai * NP * NG * NS * NZ * NE - pi * NG * NS * NZ * NE - gi * NS * NZ * NE - si * NZ * NE) / NE;
+				int ti = ii - ai * NP * NG * NS * NZ * NE - pi * NG * NS * NZ * NE - gi * NS * NZ * NE - si * NZ * NE -
+				         zi * NE;
+				w_hr = exp(par.AloadP->data[ji] * par.Alev->data[ai] +
+						           par.Plev->data[pi] +
+						           par.epslev->data[ti] +
+						           par.zlev->data[zi] +
+						           par.xSlev->data[si] +
+						           par.xGlev->data[gi] + occ_wlevs[ji]) + wage_lev;
+				if( w_hr< b && w_hr>0 && zi>0) b = w_hr;
+			}
+		}
+
+		success = draw_shocks(&sk);
+		if(verbose>2 && success != 0) printf("Problem drawing shocks\n");
+		success = sol_dyn(&par, &vf, &pf, &sk);
+		if (verbose > 2 && success != 0) printf("Problem solving model\n");
+
+		success = sim(&par, &vf, &pf, &ht, &sk);
+		if (verbose > 2 && success != 0) printf("Problem simulating model\n");
+
+//		success = sum_stats(&par, &vf, &pf, &ht, &sk, &st);
+
+		shock_cf( &par, &vf, &pf , &ht, &sk );
+		print_lev = print_lev_old;
+
+	}
 	// gather all of the mindist back to node 1
 
 	free(x0starts_j);
@@ -1231,107 +1306,163 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 }
 
-int shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk ) {
+void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk ) {
 
 	// simulate without z shocks, epsilon shocks, A shocks and P shocks
 
-	struct shocks sk_noz,sk_noeps,sk_noP,sk_noA;
-	struct hists ht_noz,ht_noeps,ht_noP,ht_noA;
-	struct stats st_noz,st_noeps,st_noP,st_noA;
+	struct shocks sk_noz,sk_noeps,sk_noP,sk_noA,sk_noflow;
+	struct hists ht_noz,ht_noeps,ht_noP,ht_noA,ht_noflow;
+	struct valfuns vf_noz,vf_noeps,vf_noP,vf_noA,vf_noflow;
+	struct polfuns pf_noz,pf_noeps,pf_noP,pf_noA,pf_noflow;
+
+
 	int ll,i,it;
 
 	print_lev = 2; // want to print out all the histories
+	if(print_lev>1 && par->rank==0){
+		printvec("Alev.csv", par->Alev,0);
+		printvec("zlev.csv", par->zlev,0);
+		printmat("Atrans.csv",par->Atrans,0);
+		printmat("Ptrans.csv",par->Ptrans[0],0);
+		printmat("ztrans.csv",par->ztrans,0);
+		printvec("zlev.csv", par->zlev,0);
+		printvec("Plev.csv", par->Plev,0);
+		printvec("epsprob.csv", par->epsprob,0);
+		printvec("epslev.csv", par->epslev,0);
+	}
+
+
 	sprintf(exper_f,"noz");
-	alloc_hists(&ht_noz);
-	alloc_shocks(&sk_noz);
+
+	allocate_mats(&vf_noz,&pf_noz,&ht_noz,&sk_noz);
 
 	memcpy_shocks(&sk_noz,sk);
-	// set the z shocks to 0, averaging between two closest states and make permanent for an individual
-	double cumzprob[NZ+1];
-	cumzprob[0] =0;
-	for(i=0;i<NZ;i++) cumzprob[i+1] = par->zprob->data[i] + cumzprob[i];
-	int izL,izH;
-	double wtzL;
-	izL = gsl_interp_bsearch( cumzprob, 0.5,0,NZ);
-	izH = izL < NZ-1 ? izL+1 : izL;
-	wtzL = cumzprob[izH]>cumzprob[izL] ? 1. - (0.5-cumzprob[izL])/(cumzprob[izH]-cumzprob[izL]) : 1.;
+	memcpy_pf(&pf_noz,pf);
+	memcpy_vf(&vf_noz,vf);
+	printf("Setting z shocks to 0\n");
+
 	for(ll=0;ll<Npaths;ll++){
 		for(i=0;i<Nsim;i++){
-			if(gg_get(sk->zsel[ll],i,0) < wtzL){
-				for(it=0;it<TTT;it++) gsl_matrix_set(sk_noz.zsel[ll],i,it,cumzprob[izL]+1.e-5);
-			}
-			else{
-				for(it=0;it<TTT;it++) gsl_matrix_set(sk_noz.zsel[ll],i,it,cumzprob[izH]+1.e-5);}
+			double zsel_i = gg_get(sk->zsel[ll],i,1);
+			for(it=0;it<TTT;it++) gg_set(sk_noz.zsel[ll],i,it,zsel_i);
 		}
 	}
 
-	sim( par, vf, pf, &ht_noz, &sk_noz );
-	sum_stats( par, vf,pf,&ht_noz,&sk_noz, &st_noz);
-	// print out the stats somehow?
+	gsl_vector * zlev_0 = gsl_vector_calloc(NZ);
+	gsl_vector_memcpy(zlev_0,par->zlev);
+	double zmean = gsl_stats_mean(par->zlev->data,par->zlev->stride,par->zlev->size);
+	int zi;
+	for(zi=0;zi<NZ;zi++) gsl_vector_set(par->zlev,zi,zmean + 0.001*((double)zi-(double)NZ/2.)/(double)NZ);
 
-	free_hists(&ht_noz); free_shocks(&sk_noz);
+	int pl_0 = print_lev;
+	print_lev = 0;
+	sol_dyn( par, &vf_noz, &pf_noz, &sk_noz );
+	print_lev = pl_0;
+	sim( par, &vf_noz, &pf_noz, &ht_noz, &sk_noz );
+
+	//sum_stats( par, vf,pf,&ht_noz,&sk_noz, &st_noz);
+	// print out the stats somehow?
+	gsl_vector_memcpy(par->zlev,zlev_0);
+	gsl_vector_free(zlev_0);
+	free_mats(&vf_noz,&pf_noz,&ht_noz,&sk_noz);
+
 
 	// set eps shocks to 0
+	printf("Setting epsilon shocks to 0\n ");
 	sprintf(exper_f,"noe");
-	alloc_hists(&ht_noeps);
-	alloc_shocks(&sk_noeps);
+	allocate_mats(&vf_noeps,&pf_noeps,&ht_noeps,&sk_noeps);
 
 	memcpy_shocks(&sk_noeps,sk);
+	memcpy_pf(&pf_noeps,pf);
+	memcpy_vf(&vf_noeps,vf);
 
-	double cumepsprob[NE+1];
-	cumepsprob[0] =0;
-	for(i=0;i<NZ;i++) cumepsprob[i+1] = par->epsprob->data[i] + cumepsprob[i];
-	int iepsL,iepsH;
-	double wtepsL;
-	iepsL = gsl_interp_bsearch( cumepsprob, 0.5,0,NE);
-	iepsH = iepsL < NE-1 ? iepsL+1 : iepsL;
-	wtepsL = cumzprob[izH]>cumzprob[iepsL] ? 1. - (0.5-cumepsprob[iepsL])/(cumepsprob[iepsH]-cumepsprob[iepsL]) : 1.;
+	gsl_vector * eps_0 = gsl_vector_calloc(NE);
+	gsl_vector_memcpy(eps_0,par->epslev);
+	double epsmean = gsl_stats_mean(par->epslev->data,par->epslev->stride,par->epslev->size);
+	int ei;
+	for(ei=0;ei<NE;ei++)
+		gsl_vector_set(par->epslev,ei,epsmean+ 0.001*((double)ei-(double)NE/2. )/(double)NE);
+
 	for(ll=0;ll<Npaths;ll++){
 		for(i=0;i<Nsim;i++){
-			if(gg_get(sk->epssel[ll],i,0) < wtzL){
-				for(it=0;it<TTT;it++) gg_set(sk_noeps.epssel[ll],i,it,cumepsprob[izL]+1.e-5);
-			}
-			else{
-				for(it=0;it<TTT;it++) gg_set(sk_noeps.epssel[ll],i,it,cumepsprob[izH]+1.e-5);}
+			double epssel_i = gg_get(sk->zsel[ll],i,1);
+			for(it=0;it<TTT;it++) gg_set(sk_noeps.epssel[ll],i,it,epssel_i);
 		}
 	}
-
+	pl_0 = print_lev;
+	print_lev =0;
+	sol_dyn( par, &vf_noeps,&pf_noeps, &sk_noeps );
+	print_lev = pl_0;
 	// will simulate and print stuff with the "noe" line tagged in
-	sim( par, vf, pf, &ht_noeps, &sk_noeps );
-	sum_stats( par, vf,pf,&ht_noeps,&sk_noeps, &st_noeps);
-	free_hists(&ht_noeps); free_shocks(&sk_noeps);
+	sim( par, &vf_noeps,&pf_noeps, &ht_noeps, &sk_noeps );
+
+	gsl_vector_memcpy(par->epslev, eps_0);
+	gsl_vector_free(eps_0);
+	//sum_stats( par, vf,pf,&ht_noeps,&sk_noeps, &st_noeps);
+	free_mats(&vf_noeps,&pf_noeps,&ht_noeps,&sk_noeps);
 
 	// set P shocks to 0
+	printf("Setting P shocks to 0\n ");
 	sprintf(exper_f,"noP");
 	alloc_hists(&ht_noP);
 	alloc_shocks(&sk_noP);
 
 	memcpy_shocks(&sk_noP,sk);
 	for(ll=0;ll<Npaths;ll++){
-		for(i=0;i<Nsim;i++){
-			for(it=0;it<TTT;it++) gg_set(sk_noP.Psel,i,it,0.5);
+		for(i=0;i<JJ;i++){
+			for(it=0;it<TTT;it++) gg_set(sk_noP.Psel[ll],it,i,0.5);
 		}
 	}
-	// will simulate and print stuff with the "noe" line tagged in
+	// will simulate and print stuff with the "noP" line tagged in
 	sim( par, vf, pf, &ht_noP, &sk_noP );
-	sum_stats( par, vf,pf,&ht_noP,&sk_noP, &st_noP);
+	//sum_stats( par, vf,pf,&ht_noP,&sk_noP, &st_noP);
 	free_hists(&ht_noP); free_shocks(&sk_noP);
 
-	// set P shocks to 0
+	// set A shocks to 0
+	printf("Setting A shocks to 0\n ");
 	sprintf(exper_f,"noA");
 	alloc_hists(&ht_noA);
 	alloc_shocks(&sk_noA);
 
 	memcpy_shocks(&sk_noA,sk);
 	for(ll=0;ll<Npaths;ll++){
-		for(i=0;i<Nsim;i++){
-			for(it=0;it<TTT;it++) gg_set(sk_noA.Asel,i,it,0.5);
-		}
+		for(it=0;it<TTT;it++) gsl_vector_set(sk_noA.Asel[ll],it,0.5);
 	}
-	// will simulate and print stuff with the "noe" line tagged in
+	// will simulate and print stuff with the "noA" line tagged in
 	sim( par, vf, pf, &ht_noA, &sk_noA );
-	sum_stats( par, vf,pf,&ht_noA,&sk_noA, &st_noA);
+	//sum_stats( par, vf,pf,&ht_noA,&sk_noA, &st_noA);
 	free_hists(&ht_noA); free_shocks(&sk_noA);
+
+
+	sprintf(exper_f,"nof") ;
+	allocate_mats( &vf_noflow,&pf_noflow,&ht_noflow, &sk_noflow);
+
+	memcpy_pf(&pf_noflow,pf);
+	memcpy_vf(&vf_noflow, vf);
+	memcpy_shocks(&sk_noflow,sk);
+	//change some parameter values:
+	double delA0 = par->delta_Acoef;
+	par->delta_Acoef =0.;
+	double lamMA0 = par->lambdaEM_Acoef;
+	par->lambdaEM_Acoef = 0.;
+	double lamSA0 = par->lambdaES_Acoef;
+	par->lambdaES_Acoef =0.;
+	double lamUA0 = par->lambdaU_Acoef;
+	par->lambdaU_Acoef = 0.;
+
+	print_lev=0;
+	sol_dyn(par, &vf_noflow, &pf_noflow, &sk_noflow);
+	print_lev = pl_0;
+	sim( par, &vf_noflow, &pf_noflow, &ht_noflow, &sk_noflow);
+	//sum_stats( par, vf,pf,&ht_noflow,&sk_noflow, &st_noflow);
+	free_mats( &vf_noflow,&pf_noflow, &ht_noflow, &sk_noflow);
+
+	par->delta_Acoef =delA0;
+	par->lambdaEM_Acoef = lamMA0;
+	par->lambdaES_Acoef =lamSA0;
+	par->lambdaU_Acoef = lamUA0;
+
+
 
 }
 
@@ -2468,73 +2599,109 @@ void read_params(char* name, struct cal_params *par){
 	parfile = fopen(name,"r");
 	double dd;char sd[20];
 
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	int pi =0 ;
+
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->alphaE0 = dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->alphaU0 = dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	 par->lambdaU0  = dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->lambdaES0 = dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->lambdaEM0 = dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->delta_avg= dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->zloss=     dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->alphaE1=   dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->alphaU1=   dd;
+	par->xparopt[pi] = dd; pi++;
 	for(ii=0;ii<JJ;ii++){
 		for(ji=ii+1;ji<JJ;ji++){
-			rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+			rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 			par->alpha_nf[ii][ji]= dd;
+			par->xparopt[pi] = dd; pi++;
 		}
 	}
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
-	par->update_z = dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
-	par->scale_z  = dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
-	par->shape_z  = dd;
+	for(ii=0;ii<JJ;ii++){
+		for(ji=ii+1;ji<JJ;ji++)
+			par->alpha_nf[ji][ii] = -par->alpha_nf[ii][ji];
+	}
+	// alpha scales, scale on net flow of switching from l to d
+	for(ii=0;ii<JJ;ii++) par->alpha_nf[ii][ii] = 0.; //should never be adjusting the diagonal
 
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	par->update_z = dd;
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	par->scale_z  = dd;
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	par->shape_z  = dd;
+	par->xparopt[pi] = dd; pi++;
+
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->var_pe = dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->autop  = dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->var_ae = dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->autoa  = dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->gdfthr = dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->stwupdate= dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->var_eps= dd;
+	par->xparopt[pi] = dd; pi++;
 
 	if(eps_2emg==1){
-		rstatus fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
-		par->lshape_eps= (double)dd;
-		rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
-		par->rshape_eps= (double)dd;
+		rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+		par->lshape_eps= dd;
+		par->xparopt[pi] = dd; pi++;
+		rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+		par->rshape_eps= dd;
+		par->xparopt[pi] = dd; pi++;
 	}
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
-	par->delta_Acoef   = (double)dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
-	par->lambdaEM_Acoef= (double)dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
-	par->lambdaES_Acoef= (double)dd;
-	rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
-	par->lambdaU_Acoef = (double)dd;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	par->delta_Acoef   = dd;
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	par->lambdaEM_Acoef= dd;
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	par->lambdaES_Acoef= dd;
+	par->xparopt[pi] = dd; pi++;
+	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	par->lambdaU_Acoef = dd;
+	par->xparopt[pi] = dd; pi++;
 
 	for(ji=0;ji<JJ;ji++){
 		if(ji>=1){
-			rstatus = fscanf(parfile,"%s,",sd);dd = strtod(sd,NULL);
+			rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 			if(rstatus ==0 )
-				rstatus = fscanf(parfile,"%s,\n",&sd);dd = strtod(sd,NULL);
-			par->AloadP->data[ji] = (double)dd;
+				rstatus = fscanf(parfile,"%s\n",sd);dd = strtod(sd,NULL);
+			par->AloadP->data[ji] = dd;
+			par->xparopt[pi] = dd; pi++;
 		}
 
 	}
@@ -2870,6 +3037,7 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 		printvec("Alev.csv", par->Alev,0);printvec("zlev.csv", par->zlev,0);
 		printmat("Atrans.csv",par->Atrans,0);printmat("Ptrans.csv",par->Ptrans[0],0);
 		printmat("ztrans.csv",par->ztrans,0);
+		printvec("zlev.csv", par->zlev,0);
 		printvec("Plev.csv", par->Plev,0);
 		printvec("epsprob.csv", par->epsprob,0);
 		printvec("epslev.csv", par->epslev,0);
@@ -3190,7 +3358,6 @@ int draw_shocks(struct shocks * sk){
 void allocate_pars( struct cal_params * par){
 	int ji,ii;
 	TTT = TT + burnin;
-
 	par->Plev    = gsl_vector_calloc(NP) ;
 	par->Alev    = gsl_vector_calloc(NA) ;
 	par->xGlev   = gsl_vector_calloc(NG) ;
