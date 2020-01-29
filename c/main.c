@@ -127,6 +127,8 @@ struct cal_params{
 	double update_z;    // re-draw match quality shock
 	double scale_z;     // scale parameter of match-quality
 	double shape_z;     // shape parameter of match-quality
+	double scale_eps,shape_eps ; //scale and shape of firm-match quality
+
 	double var_eps;     // variance of epsilon
 	double lshape_eps;  // left-tail skewness of epsilon (exponential parameter)
 	double rshape_eps;  // right-tail skewness of epsilon
@@ -389,7 +391,7 @@ int main(int argc,char *argv[] ) {
 
 
 	if(verbose>1){
-		printf("Program version Dec 31, 2019\n");
+		printf("Program version Jan 27, 2020\n");
 
 		printf("Solving for 3 clusters, sized %d,%d,%d\n", Npar_cluster[0],Npar_cluster[1],Npar_cluster[2]);
 		printf("Targeting 3 clusters, sized %d,%d,%d\n", Ntgt_cluster[0],Ntgt_cluster[1],Ntgt_cluster[2]);
@@ -484,7 +486,7 @@ int main(int argc,char *argv[] ) {
 	par.var_eps = 0.1;
 	par.lshape_eps = 1.0;par.rshape_eps = 1.0;
 
-
+	par.scale_eps=1.; par.shape_eps = 1.;
 
     double wage_lev0 = exp(par.AloadP->data[ji] * par.Alev->data[ai] +
                                par.Plev->data[pi] +
@@ -698,7 +700,8 @@ int main(int argc,char *argv[] ) {
 				double rhoend = 1e-3;
 				if(ci==Ncluster) rhobeg /= 5;
 
-				int maxfun = 400*(Npar_cluster[ci]+1);
+				int maxfun = ci<Ncluster ? 4*Npar_cluster[ci]+3  : 50*(2*Npar_cluster[ci]+1);
+					
 			//	int	maxfun = 1;//2*Npar_cluster[ci]+2;
 
 				double *wspace = calloc( (npt+5)*(npt+Npar_cluster[ci])+3*Npar_cluster[ci]*(Npar_cluster[ci]+5)/2 ,sizeof(double) );
@@ -838,6 +841,7 @@ int main(int argc,char *argv[] ) {
 		}
 		gsl_vector_set(par.zlev,0,5*par.zlev->data[1]);
 		gsl_vector_set(par.zprob,0,par.zloss);
+		//success  = disc_Weibull(par.epsprob->data, par.epslev->data, NE,0.,par.scale_eps,par.shape_eps);
 		success = disc_2emg(par.epsprob->data,par.epslev->data,(int)par.epsprob->size,
 					0.,par.var_eps,par.lshape_eps,par.rshape_eps);
 		if(success > 0){
@@ -1315,8 +1319,20 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 	struct valfuns vf_noz,vf_noeps,vf_noP,vf_noA,vf_noflow;
 	struct polfuns pf_noz,pf_noeps,pf_noP,pf_noA,pf_noflow;
 
-
 	int ll,i,it;
+	// the number of combinations of scenarios:
+	// noz ye yp ya, noz noe yp ya, noz noe nop ya, noz noe nop na;; yz ne yp ya, yz ne np ya, yz ne np na;; yz ye np ya, yz ye np na;; yz ye yp na
+	int nshocks = 4;
+	int nscenario = nshocks;
+	for(i=1;i<nshocks;i++)
+		nscenario += i;
+	struct shocks  sk_noX[nscenario];
+	struct hists   ht_noX[nscenario];
+	struct valfuns vf_noX[nscenario];
+	struct polfuns pf_noX[nscenario];
+	struct stats   st_noX[nscenario];
+
+	char * casenames[] = {"noz","noeps","noP","noA"};
 
 	print_lev = 2; // want to print out all the histories
 	if(print_lev>1 && par->rank==0){
@@ -1330,6 +1346,69 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 		printvec("epsprob.csv", par->epsprob,0);
 		printvec("epslev.csv", par->epslev,0);
 	}
+	gsl_vector * zlev_0 = gsl_vector_calloc(NZ);
+	gsl_vector_memcpy(zlev_0,par->zlev);
+
+	gsl_vector * eps_0 = gsl_vector_calloc(NE);
+	gsl_vector_memcpy(eps_0,par->epslev);
+
+	gsl_vector * plev_0 = gsl_vector_calloc(NP);
+	gsl_vector_memcpy(plev_0,par->Plev);
+	gsl_vector * ergPprobs = gsl_vector_calloc(NP);
+	ergod_dist(par->Ptrans,ergPprobs);
+
+	gsl_vector * Alev_0 = gsl_vector_calloc(NA);
+	gsl_vector_memcpy(plev_0,par->Alev);
+
+	for(i=0;i<nscenario;i++){
+		//      0              1          2                  3             4              5          6              7              8          9
+		// noz ye yp ya, noz noe yp ya, noz noe nop ya, noz noe nop na;; yz ne yp ya, yz ne np ya, yz ne np na;; yz ye np ya, yz ye np na;; yz ye yp na
+		sprintf(exper_f, "_%d",i);
+
+		allocate_mats(&vf_noX[i],&pf_noX[i],&ht_noX[i],&sk_noX[i]);
+
+		memcpy_shocks(&sk_noX[i],sk);
+		memcpy_pf(&pf_noX[i],pf);
+		memcpy_vf(&vf_noX[i],vf);
+
+
+		if(i<nshocks){
+			// then we're turning off z
+			printf("Setting z shocks to 0\n");
+			for(ll=0;ll<Npaths;ll++){
+				for(i=0;i<Nsim;i++){
+					double zsel_i = gg_get(sk->zsel[ll],i,1);
+					for(it=0;it<TTT;it++) gg_set(sk_noz.zsel[ll],i,it,zsel_i);
+				}
+			}
+
+			double zmean = gsl_stats_mean(par->zlev->data,par->zlev->stride,par->zlev->size);
+			int zi;
+			for(zi=0;zi<NZ;zi++) gsl_vector_set(par->zlev,zi,zmean + 0.001*((double)zi-(double)NZ/2.)/(double)NZ);
+		}
+		if( i>=1  && i<(2*nshocks-1) ){
+			// turning off epsilon
+			printf("Setting epsilon shocks to 0\n");
+			double epsmean = gsl_stats_mean(par->epslev->data,par->epslev->stride,par->epslev->size);
+			int ei;
+			for(ei=0;ei<NE;ei++)
+				gsl_vector_set(par->epslev,ei,epsmean+ 0.001*((double)ei-(double)NE/2. )/(double)NE);
+		}
+		if( (i >=2 && i<nshocks) || (i>=(2*nshocks-1) && i<= (2*nshocks) )){
+			//turning off p
+			printf("setting P shocks to 0\n");
+			double Pmean = 0.; int ip;
+			for(ip=0;ip<NP;ip++)
+				Pmean += gsl_vector_get(plev_0,ip)*gsl_vector_get(ergPprobs,ip);
+
+		}
+
+
+		gsl_vector_memcpy(par->zlev,zlev_0);
+		gsl_vector_memcpy(par->epslev, eps_0);
+		free_mats(&vf_noX[i],&pf_noX[i],&ht_noX[i],&sk_noX[i]);
+	}
+
 
 
 	sprintf(exper_f,"noz");
@@ -1348,8 +1427,6 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 		}
 	}
 
-	gsl_vector * zlev_0 = gsl_vector_calloc(NZ);
-	gsl_vector_memcpy(zlev_0,par->zlev);
 	double zmean = gsl_stats_mean(par->zlev->data,par->zlev->stride,par->zlev->size);
 	int zi;
 	for(zi=0;zi<NZ;zi++) gsl_vector_set(par->zlev,zi,zmean + 0.001*((double)zi-(double)NZ/2.)/(double)NZ);
@@ -1376,16 +1453,10 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 	memcpy_pf(&pf_noeps,pf);
 	memcpy_vf(&vf_noeps,vf);
 
-	gsl_vector * eps_0 = gsl_vector_calloc(NE);
-	gsl_vector_memcpy(eps_0,par->epslev);
-	double epsmean = gsl_stats_mean(par->epslev->data,par->epslev->stride,par->epslev->size);
-	int ei;
-	for(ei=0;ei<NE;ei++)
-		gsl_vector_set(par->epslev,ei,epsmean+ 0.001*((double)ei-(double)NE/2. )/(double)NE);
 
 	for(ll=0;ll<Npaths;ll++){
 		for(i=0;i<Nsim;i++){
-			double epssel_i = gg_get(sk->zsel[ll],i,1);
+			double epssel_i = gg_get(sk->epssel[ll],i,1);
 			for(it=0;it<TTT;it++) gg_set(sk_noeps.epssel[ll],i,it,epssel_i);
 		}
 	}
@@ -2670,7 +2741,14 @@ void read_params(char* name, struct cal_params *par){
 	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
 	par->stwupdate= dd;
 	par->xparopt[pi] = dd; pi++;
+	// epsilon :
 	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	//par->scale_eps =dd;
+	//par->xparopt[pi] = dd; pi++;
+	//rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	//par->shape_eps =dd;
+	//par->xparopt[pi] = dd; pi++;
+
 	par->var_eps= dd;
 	par->xparopt[pi] = dd; pi++;
 
@@ -2747,6 +2825,9 @@ void print_params(double *x, int n, struct cal_params * par){
 		fprintf(parhist,"%8.6f,", par->lshape_eps);
 		fprintf(parhist,"%8.6f,", par->rshape_eps);
 	}
+	//fprintf(parhist,"%8.6f,", par->scale_eps);
+	//fprintf(parhist,"%8.6f,", par->shape_eps);
+
 
 	fprintf(parhist,"%8.6f,", par->delta_Acoef);
 	fprintf(parhist,"%8.6f,", par->lambdaEM_Acoef);
@@ -2813,6 +2894,8 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 		par->autoa      = x[ii];ii++;
 		par->gdfthr     = x[ii];ii++;
 		par->stwupdate  = x[ii];ii++;
+		//par->scale_eps  = x[ii];ii++;
+		//par->shape_eps  = x[ii];ii++;
 		par->var_eps    = x[ii];ii++;
 		if(eps_2emg==1){
 			par->lshape_eps = x[ii];ii++;
@@ -2977,6 +3060,7 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 
 
 	if(eps_2emg==1){
+		//success = disc_Weibull( par->epsprob->data,par->epslev->data, NE, 0.,par->scale_eps,par->shape_eps );
 		success = disc_2emg(par->epsprob->data,par->epslev->data,(int)par->epsprob->size,
 				0.,par->var_eps,par->lshape_eps,par->rshape_eps);
 	}else{
@@ -3163,13 +3247,13 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	for(i=0;i<Nerr;i++)
 		quad_dist += err_vec[i]*err_vec[i];
 
-	//if(print_lev>2){
+	if(print_lev>2){
 		char zname[20],epsname[20];
 		sprintf(zname,"zlev_%06.3f.csv",quad_dist);
 		sprintf(epsname,"epslev_%06.3f.csv",quad_dist);
 		printvec(zname, par->zlev,0);
 		printvec(epsname, par->zlev,0);
-	//}
+	}
 
 	free_mats(&vf,&pf,&ht,&sk);
 
