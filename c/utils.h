@@ -5,7 +5,9 @@
 #ifdef _MKL_USE
 #include "mkl_lapacke.h"
 #endif
-
+// is this syncing?
+// is it syncing yet?
+// now?
 
 #include <stdio.h>
 #include <gsl/gsl_math.h>
@@ -13,6 +15,7 @@
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
+#include <gsl/gsl_sf.h>
 #include <gsl/gsl_eigen.h>
 #include <gsl/gsl_cdf.h>
 
@@ -31,6 +34,13 @@ int comp_dble_desc( const void * a, const void * b ){
 	if( x<y ) return  1; //flip the sign for descending order
 	if( x>y ) return -1;
 	return 0;
+}
+
+int fact_int(int n){
+    int i;
+    int fact = n;
+    for(i=1;i<n;i++) fact *= i;
+    return( fact);
 }
 
 int set_matrix_block(gsl_matrix * dest,gsl_matrix *source,int left,int top){
@@ -620,6 +630,23 @@ int rouwenhorst(double ar1, double sig, gsl_matrix * pi_out, gsl_vector * grid_i
 	gsl_matrix_memcpy(pi_out,PP);
 	gsl_matrix_free(PP);gsl_matrix_free(PPm1);gsl_matrix_free(qPP);
 
+}
+int disc_Weibull(double * zprob, double * zlev, const int NZ, const double mean_z, const double scale_z, const double shape_z){
+	int success = 0;
+	int ii;
+
+	double zub[NZ-1];
+	for(ii=0;ii<(NZ-1);ii++)
+		zub[ii] = gsl_cdf_weibull_Pinv( ((double)ii+1.)/(double)NZ , scale_z,shape_z);
+	for(ii=1;ii<NZ;ii++)
+		zlev[ii] =(zub[ii]+zub[ii-1])/2.;
+	zlev[0]  = gsl_cdf_weibull_Pinv( 1./(double)NZ /2., scale_z,shape_z) ;
+	zlev[NZ-1] = gsl_cdf_weibull_Pinv( ((double)NZ-1.)/(double)NZ  + 1./(double)NZ /2.,  scale_z,shape_z );
+	for(ii=0;ii<NZ;ii++)  zprob[ii] = 1./(double)NZ;
+	double meanz_tmp = scale_z*gsl_sf_gamma(1.+1./shape_z);
+	for(ii=0;ii<NZ;ii++) zlev[ii] += mean_z - meanz_tmp;
+
+	return success;
 }
 
 int disc_2emg(double * epsprob, double * epslev, const int NE, const double mean_eps, const double var_eps, const double lshape_eps, double rshape_eps ){

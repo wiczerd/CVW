@@ -85,6 +85,7 @@ double beta	= 0.997;		// discount factor
 double b 	= 0.; 		// unemployment benefit
 double wage_lev = 1;        // will be a shifter so the average wage is >0
 double occ_wlevs[4] = {0.,-0.2657589,-0.4975667,-0.2189076}; // wage levels for each occupation
+double occ_size_dat[] = {0.2636133, 0.3117827, 0.1493095, 0.2752945};
 
 double urt_avg = .055;     // average separation rate
 
@@ -221,8 +222,10 @@ struct stats{
 	double seprt_ratio;
 	double fndrt_ratio;
 	double EE_ratio;
-	double swProb_EE_ratio;
+	double swProb_EE_ratio; // cyclical EE - ratio of expansion over recession
 	double swProb_U_ratio;
+
+	double var_wg; //variance of wages
 
 	double * MVsw_qtls_ratio;
 	double * MVns_qtls_ratio;
@@ -236,6 +239,8 @@ struct stats{
 	double *stsw_qtls;
 	double *stns_qtls;
 
+	double *all_qtls;
+
 	double *occ_netflow; //  will have JJ ! / (JJ-2)!2! points.
 
 
@@ -248,6 +253,9 @@ void alloc_valfuns(struct valfuns *vf );
 void alloc_hists( struct hists *ht );
 void alloc_shocks(struct shocks * sk);
 void memcpy_shocks(struct shocks * sk_dest , struct shocks * sk_orig);
+
+void alloc_qtls( struct stats *st );
+void free_qtls( struct stats *st );
 
 void free_mats(struct valfuns * vf, struct polfuns * pf, struct hists *ht, struct shocks * sk);
 void free_valfuns(struct valfuns *vf);
@@ -268,7 +276,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk, struct stats *st  );
 
 double param_dist( double * x, struct cal_params *par, int Npar, double * err_vec , int Nerr);
-void shock_cf(  struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk );
+void shock_cf(  struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk ,struct stats *st);
 void set_dat( struct stats * );
 void set_params( double * x, int n, struct cal_params * par,int ci);
 void print_params(double *x, int n, struct cal_params * par);
@@ -369,7 +377,7 @@ int main(int argc,char *argv[] ) {
 		cf_now = 1;
 	sprintf(exper_f,"");
 
-	nflows = gsl_sf_fact(JJ)/(gsl_sf_fact(2)*gsl_sf_fact(JJ-2));
+	nflows = fact_int(JJ)/(fact_int(2)*fact_int(JJ-2));
 
 	Npar_cluster[0] = ntgtavgflow + nflows;
 	Npar_cluster[1] = 10;
@@ -396,11 +404,7 @@ int main(int argc,char *argv[] ) {
 		printf("Solving for 3 clusters, sized %d,%d,%d\n", Npar_cluster[0],Npar_cluster[1],Npar_cluster[2]);
 		printf("Targeting 3 clusters, sized %d,%d,%d\n", Ntgt_cluster[0],Ntgt_cluster[1],Ntgt_cluster[2]);
 	}
-
-	st.EEns_qtls = malloc(Nqtls*sizeof(double));st.EEsw_qtls = malloc(Nqtls*sizeof(double));
-	st.EUns_qtls = malloc(Nqtls*sizeof(double));st.EUsw_qtls = malloc(Nqtls*sizeof(double));
-	st.UEns_qtls = malloc(Nqtls*sizeof(double));st.UEsw_qtls = malloc(Nqtls*sizeof(double));
-	st.stns_qtls = malloc(Nqtls*sizeof(double));st.stsw_qtls = malloc(Nqtls*sizeof(double));
+	alloc_qtls(&st);
 
 	allocate_mats(&vf,&pf,&ht,&sk);
 	allocate_pars(&par);
@@ -701,7 +705,7 @@ int main(int argc,char *argv[] ) {
 				if(ci==Ncluster) rhobeg /= 5;
 
 				int maxfun = ci<Ncluster ? 4*Npar_cluster[ci]+3  : 50*(2*Npar_cluster[ci]+1);
-					
+
 			//	int	maxfun = 1;//2*Npar_cluster[ci]+2;
 
 				double *wspace = calloc( (npt+5)*(npt+Npar_cluster[ci])+3*Npar_cluster[ci]*(Npar_cluster[ci]+5)/2 ,sizeof(double) );
@@ -826,8 +830,8 @@ int main(int argc,char *argv[] ) {
 		init_vf(&vf,&par);
 		//set the markov transition matrix for P
 		rouwenhorst(par.autop,pow(par.var_pe,0.5),par.Ptrans[0],par.Plev);
-		for(i=0;i<JJ;i++){
-			gsl_matrix_memcpy(par.Ptrans[i],par.Ptrans[i]);
+		for(i=1;i<JJ;i++){
+			gsl_matrix_memcpy(par.Ptrans[i],par.Ptrans[0]);
 		}
 		// set the markov transition matrix for A
 		rouwenhorst(par.autoa,pow(par.var_ae,0.5),par.Atrans,par.Alev);
@@ -850,7 +854,6 @@ int main(int argc,char *argv[] ) {
 		// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		for(i=0;i<NG;i++) gsl_vector_set(par.xGlev,i, 0.042268* (double)i/(double) (NG-1)); // again, occupational tenure or not to match the returns to occupational tenure in KM2009
 		for(i=0;i<NS;i++) gsl_vector_set(par.xSlev,i, .010984* (double)i/(double) (NS-1)); // really just 0 or 1--- matches 1% increase due to employer tenure in KM2009
-		double occ_size_dat[] = {0.2636133, 0.3117827, 0.1493095, 0.2752945};
 		memcpy( par.jprob->data, occ_size_dat,sizeof(occ_size_dat));
 
 
@@ -884,9 +887,9 @@ int main(int argc,char *argv[] ) {
 		success = sim(&par, &vf, &pf, &ht, &sk);
 		if (verbose > 2 && success != 0) printf("Problem simulating model\n");
 
-//		success = sum_stats(&par, &vf, &pf, &ht, &sk, &st);
+		success = sum_stats(&par, &vf, &pf, &ht, &sk, &st);
 
-		shock_cf( &par, &vf, &pf , &ht, &sk );
+		shock_cf( &par, &vf, &pf , &ht, &sk , &st);
 		print_lev = print_lev_old;
 
 	}
@@ -903,11 +906,7 @@ int main(int argc,char *argv[] ) {
 
 	free_mats(&vf,&pf,&ht,&sk);
 	free_pars(&par);
-	free(st.EEns_qtls);free(st.EEsw_qtls);
-	free(st.EUns_qtls);free(st.EUsw_qtls);
-	free(st.UEns_qtls);free(st.UEsw_qtls);
-	free(st.stns_qtls);free(st.stsw_qtls);
-
+	free_qtls(&st);
 
     return success;
 }
@@ -1310,7 +1309,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 }
 
-void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk ) {
+void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk,struct stats * st ) {
 
 	// simulate without z shocks, epsilon shocks, A shocks and P shocks
 
@@ -1323,15 +1322,21 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 	// the number of combinations of scenarios:
 	// noz ye yp ya, noz noe yp ya, noz noe nop ya, noz noe nop na;; yz ne yp ya, yz ne np ya, yz ne np na;; yz ye np ya, yz ye np na;; yz ye yp na
 	int nshocks = 4;
-	int nscenario = nshocks;
-	for(i=1;i<nshocks;i++)
-		nscenario += i;
+	int nscenario = 0;
+	for(i=1;i<nshocks;i++){
+		nscenario += fact_int(nshocks)/fact_int(i)/fact_int(nshocks - i);
+	}
 	struct shocks  sk_noX[nscenario];
 	struct hists   ht_noX[nscenario];
 	struct valfuns vf_noX[nscenario];
 	struct polfuns pf_noX[nscenario];
 	struct stats   st_noX[nscenario];
 
+	int pl_0 = print_lev;
+
+	for(i=0;i<nscenario;i++){
+		alloc_qtls( &st_noX[i] );
+	}
 	char * casenames[] = {"noz","noeps","noP","noA"};
 
 	print_lev = 2; // want to print out all the histories
@@ -1352,158 +1357,233 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 	gsl_vector * eps_0 = gsl_vector_calloc(NE);
 	gsl_vector_memcpy(eps_0,par->epslev);
 
-	gsl_vector * plev_0 = gsl_vector_calloc(NP);
-	gsl_vector_memcpy(plev_0,par->Plev);
+	gsl_vector * Plev_0 = gsl_vector_calloc(NP);
+	gsl_vector_memcpy(Plev_0,par->Plev);
 	gsl_vector * ergPprobs = gsl_vector_calloc(NP);
-	ergod_dist(par->Ptrans,ergPprobs);
+	ergod_dist(par->Ptrans[0],ergPprobs);
 
 	gsl_vector * Alev_0 = gsl_vector_calloc(NA);
-	gsl_vector_memcpy(plev_0,par->Alev);
-
-	for(i=0;i<nscenario;i++){
-		//      0              1          2                  3             4              5          6              7              8          9
-		// noz ye yp ya, noz noe yp ya, noz noe nop ya, noz noe nop na;; yz ne yp ya, yz ne np ya, yz ne np na;; yz ye np ya, yz ye np na;; yz ye yp na
-		sprintf(exper_f, "_%d",i);
-
-		allocate_mats(&vf_noX[i],&pf_noX[i],&ht_noX[i],&sk_noX[i]);
-
-		memcpy_shocks(&sk_noX[i],sk);
-		memcpy_pf(&pf_noX[i],pf);
-		memcpy_vf(&vf_noX[i],vf);
+	gsl_vector_memcpy(Alev_0,par->Alev);
+    gsl_vector * ergAprobs = gsl_vector_calloc(NA);
+    ergod_dist(par->Atrans,ergAprobs);
 
 
-		if(i<nshocks){
-			// then we're turning off z
-			printf("Setting z shocks to 0\n");
-			for(ll=0;ll<Npaths;ll++){
-				for(i=0;i<Nsim;i++){
-					double zsel_i = gg_get(sk->zsel[ll],i,1);
-					for(it=0;it<TTT;it++) gg_set(sk_noz.zsel[ll],i,it,zsel_i);
+	FILE * scenariokey = fopen( "scenariokey.csv","w+" );
+	fprintf(scenariokey,"Num, Z on, Eps on, P on, A on");
+	int ion1, ion2,idx=0; // will loop over scenarios
+	int idx_ion[nscenario][nshocks],idx_ion2[nshocks];
+
+
+    gsl_permutation * shockpermutations = gsl_permutation_alloc (nshocks);
+    gsl_permutation_init (shockpermutations);
+    int npermut = nshocks;
+    int non,permut_idx;
+    for(i=1;i<nshocks;i++) npermut *= i;
+    //int ** plist = malloc(sizeof(int*)*npermut );
+    //for(i=0;i<npermut;i++)plist[i] = malloc(sizeof(int)*nshocks);
+    int plist[npermut][nshocks];
+    permut_idx =0;
+    do{
+        for(i=0;i<nshocks;i++) plist[permut_idx][i] = (int) gsl_permutation_get(shockpermutations,i);
+        permut_idx ++;
+    }while (gsl_permutation_next(shockpermutations) == GSL_SUCCESS);
+    gsl_permutation_free (shockpermutations);
+
+    idx =0;int ionL=0;
+    for(non=1;non<nshocks;non++) {
+        int **plist_n = malloc(sizeof(int*)*npermut );
+        for (ion2 = 0; ion2 < npermut; ion2++)plist_n[ion2] = malloc(sizeof(int) * non);
+        for (ion1 = 0; ion1 < npermut; ion1++) {
+            for (ion2 = 0; ion2 < non; ion2++) plist_n[ion1][ion2] = plist[ion1][ion2];
+            gsl_sort_int(plist_n[ion1], 1, non);
+        }
+        ion1 = 0;
+        for (ion2 = 0; ion2 < nshocks; ion2++)idx_ion[idx][ion2]=0; //init to 0
+        for (ion2 = 0; ion2 < non; ion2++)
+            idx_ion[idx][plist_n[ion1][ion2]] = 1;  // set to 1 some of them
+        for (ion1 = 1; ion1 < npermut; ion1++) {
+            int pnew = 1;
+            // check if this plist_n is different from any we've already done in plist_n
+            for(ionL=0;ionL<ion1;ionL++){
+            	int psame =0;
+	            for (ion2 = 0; ion2 < non; ion2++)
+	            	psame = (plist_n[ion1][ion2] == plist_n[ionL][ion2]) ? psame+1 : psame;
+	            pnew = (psame==non) ? 0 : pnew;
+            }
+            if (pnew == 1) {
+                idx++;
+                for (ion2 = 0; ion2 < nshocks; ion2++)idx_ion[idx][ion2]=0;
+                for (ion2 = 0; ion2 < non; ion2++)
+                    idx_ion[idx][plist_n[ion1][ion2]] = 1;
+            }
+        }
+		idx++; // to setup for the next non
+        for(ion2=0;ion2<npermut;ion2++)free(plist_n[ion2]);
+        free(plist_n);
+    }
+    if(idx> nscenario ){
+        printf("TOO MANY SCENARIOS!!! ");
+    }
+
+    for(idx=0;idx<nscenario;idx++){
+
+        //
+
+
+        sprintf(exper_f, "_%d",idx);
+
+        allocate_mats(&vf_noX[idx],&pf_noX[idx],&ht_noX[idx],&sk_noX[idx]);
+
+        memcpy_shocks(&sk_noX[idx],sk);
+        memcpy_pf(&pf_noX[idx],pf);
+        memcpy_vf(&vf_noX[idx],vf);
+
+        fprintf( scenariokey, "%d, ", idx );
+
+        if(idx_ion[idx][0] ==1 ){
+            // then we're turning off z
+            printf("Setting z shocks to 0\n");
+            for(ll=0;ll<Npaths;ll++){
+                for(i=0;i<Nsim;i++){
+                    double zsel_i = gg_get(sk->zsel[ll],i,1);
+                    for(it=0;it<TTT;it++) gg_set(sk_noX[idx].zsel[ll],i,it,zsel_i);
+                }
+            }
+
+            double zmean = gsl_stats_mean(par->zlev->data,par->zlev->stride,par->zlev->size);
+            int zi;
+            for(zi=0;zi<NZ;zi++) gsl_vector_set(par->zlev,zi,zmean + 0.001*((double)zi-(double)NZ/2.)/(double)NZ);
+
+            fprintf(scenariokey," 0,");
+        }else
+            fprintf(scenariokey," 1,");
+
+        if( idx_ion[idx][1]==1 ){
+            // turning off epsilon
+            printf("Setting epsilon shocks to 0\n");
+            double epsmean = gsl_stats_mean(par->epslev->data,par->epslev->stride,par->epslev->size);
+            int ei;
+            for(ei=0;ei<NE;ei++)
+                gsl_vector_set(par->epslev,ei,epsmean+ 0.001*((double)ei-(double)NE/2. )/(double)NE);
+
+            fprintf(scenariokey," 0,");
+        } else
+            fprintf(scenariokey," 1,");
+
+        if( idx_ion[idx][2]==1){
+            //turning off P
+            printf("setting P shocks to 0\n");
+            double Pmean = 0.; int ip,ji;
+            for(ji=0;ji<JJ;ji++){
+                for(ip=0;ip<NP;ip++)
+                    Pmean += gsl_vector_get(Plev_0,ip)*gsl_vector_get(ergPprobs,ip)*occ_size_dat[ji];
+            }
+            for(ip=0;ip<NP;ip++)
+                gsl_vector_set(par->Plev,ip, Pmean + 0.0001* ( (double)ip-(double)NP/2. )/(double)NP );
+
+            fprintf(scenariokey," 0,");
+        }else
+            fprintf(scenariokey," 1,");
+        if( idx_ion[idx][3]==1 ){
+            //turning off A
+            printf("setting A shocks to 0\n");
+            double Amean = 0.; int ia;
+            for(ia=0;ia<NA;ia++)
+                Amean += gsl_vector_get(Alev_0,ia)*gsl_vector_get(ergAprobs,ia);
+            for(ia=0;ia<NA;ia++)
+                gsl_vector_set(par->Alev, ia,  Amean + 0.0001* ( (double)ia-(double)NA/2. )/(double)NA );
+            fprintf(scenariokey," 0 \n");
+        }else
+            fprintf(scenariokey," 1 \n");
+
+
+        print_lev = 0;
+        sol_dyn( par, &vf_noX[idx], &pf_noX[idx], &sk_noX[idx] );
+        print_lev = 2;
+        sim( par, &vf_noX[idx], &pf_noX[idx], &ht_noX[idx], &sk_noX[idx] );
+        sum_stats( par, &vf_noX[idx],&pf_noX[idx],&ht_noX[idx],&sk_noX[idx], &st_noX[idx]);
+        print_lev = pl_0;
+
+
+        gsl_vector_memcpy(par->Plev, Plev_0);
+        gsl_vector_memcpy(par->Alev,Alev_0);
+        gsl_vector_memcpy(par->zlev,zlev_0);
+        gsl_vector_memcpy(par->epslev, eps_0);
+    }
+	fclose(scenariokey);
+
+	double * varcontrib = malloc(nshocks*sizeof(double));
+	for(i=0;i<nshocks;i++) varcontrib[i]=0;
+	double nexpers[nshocks];
+	for(i=0;i<nshocks;i++) nexpers[i]=0;
+	//do the decomposition, avg contribution to variance:
+	for( idx=0;idx<nscenario;idx++ ){
+	// loop through each scenario, and get the variance contribution by looking at non-1 in which that one is turned off.
+		non =0;
+		for(ion1=0;ion1<nshocks;ion1++) non+= idx_ion[idx][ion1]; // the number that are on in this scenario
+		for(ion1=0;ion1<nshocks;ion1++){ // turn this one off
+			if( idx_ion[idx][ion1] ==1 ){ //only turn it off if it's on
+				nexpers[ion1] += 1.;
+				double var_off=0.;
+				double var_on = st_noX[idx].var_wg;
+				// find the buddy where it's off:
+				if(non==1){
+					var_off =0.;
+				}else{
+					int idx_ion_1off[nshocks];
+					for(ion2=0;ion2<nshocks;ion2++)	idx_ion_1off[ion2] = idx_ion[idx][ion1];
+					idx_ion_1off[ion1] = 0;
+					int matches=0; i=0;
+					do{
+					//for(i=0;i<nscenario;i++){
+						for(ion2=0;ion2<nshocks;ion2++)
+							matches= idx_ion[i][ion2] == idx_ion_1off[ion2]? matches+1 : matches;
+						if(matches == nshocks){
+							var_off = st_noX[i].var_wg;
+						}
+						if(i>=nscenario){
+							printf("couldn't find a match for the variance contribution at %d, non=%d \n",ion1,non);
+							break;
+						}
+						i++;
+					}while( matches < nshocks );
 				}
+				varcontrib[ion1] += var_on-var_off;
 			}
-
-			double zmean = gsl_stats_mean(par->zlev->data,par->zlev->stride,par->zlev->size);
-			int zi;
-			for(zi=0;zi<NZ;zi++) gsl_vector_set(par->zlev,zi,zmean + 0.001*((double)zi-(double)NZ/2.)/(double)NZ);
 		}
-		if( i>=1  && i<(2*nshocks-1) ){
-			// turning off epsilon
-			printf("Setting epsilon shocks to 0\n");
-			double epsmean = gsl_stats_mean(par->epslev->data,par->epslev->stride,par->epslev->size);
-			int ei;
-			for(ei=0;ei<NE;ei++)
-				gsl_vector_set(par->epslev,ei,epsmean+ 0.001*((double)ei-(double)NE/2. )/(double)NE);
-		}
-		if( (i >=2 && i<nshocks) || (i>=(2*nshocks-1) && i<= (2*nshocks) )){
-			//turning off p
-			printf("setting P shocks to 0\n");
-			double Pmean = 0.; int ip;
-			for(ip=0;ip<NP;ip++)
-				Pmean += gsl_vector_get(plev_0,ip)*gsl_vector_get(ergPprobs,ip);
-
+	}
+	//also do the ones where we just turn one off:
+	for( idx=0;idx<nscenario;idx++ ){
+		non =0;
+		for(ion1=0;ion1<nshocks;ion1++) non+= idx_ion[idx][ion1]; // the number that are on in this scenario
+		if(non==nshocks-1){
+			// will compare to the baseline with all on
+			for(ion2=0;ion2<nshocks;ion2++) ion1 = idx_ion[idx][ion2]==0 ? ion2 : ion1;
+			nexpers[ion1]+=1;
+			double var_off = st_noX[i].var_wg;
+			double var_on  = st->var_wg;
+			varcontrib[ion1] += var_on-var_off;
 		}
 
+	}
 
-		gsl_vector_memcpy(par->zlev,zlev_0);
-		gsl_vector_memcpy(par->epslev, eps_0);
+	for(ion1=0;ion1<nshocks;ion1++)
+		varcontrib[ion1] =varcontrib[ion1]/nexpers[ion1];
+
+	printarray("var_contrib.csv",varcontrib,nshocks,0);
+
+	free(varcontrib);
+	gsl_vector_free(Alev_0);gsl_vector_free(Plev_0);gsl_vector_free(zlev_0);gsl_vector_free(eps_0);
+    gsl_vector_free(ergPprobs);gsl_vector_free(ergAprobs);
+    
+
+    for(i=0;i<nscenario;i++){
+		free_qtls(&st_noX[i]);
 		free_mats(&vf_noX[i],&pf_noX[i],&ht_noX[i],&sk_noX[i]);
 	}
 
-
-
-	sprintf(exper_f,"noz");
-
-	allocate_mats(&vf_noz,&pf_noz,&ht_noz,&sk_noz);
-
-	memcpy_shocks(&sk_noz,sk);
-	memcpy_pf(&pf_noz,pf);
-	memcpy_vf(&vf_noz,vf);
-	printf("Setting z shocks to 0\n");
-
-	for(ll=0;ll<Npaths;ll++){
-		for(i=0;i<Nsim;i++){
-			double zsel_i = gg_get(sk->zsel[ll],i,1);
-			for(it=0;it<TTT;it++) gg_set(sk_noz.zsel[ll],i,it,zsel_i);
-		}
-	}
-
-	double zmean = gsl_stats_mean(par->zlev->data,par->zlev->stride,par->zlev->size);
-	int zi;
-	for(zi=0;zi<NZ;zi++) gsl_vector_set(par->zlev,zi,zmean + 0.001*((double)zi-(double)NZ/2.)/(double)NZ);
-
-	int pl_0 = print_lev;
-	print_lev = 0;
-	sol_dyn( par, &vf_noz, &pf_noz, &sk_noz );
-	print_lev = pl_0;
-	sim( par, &vf_noz, &pf_noz, &ht_noz, &sk_noz );
-
-	//sum_stats( par, vf,pf,&ht_noz,&sk_noz, &st_noz);
-	// print out the stats somehow?
-	gsl_vector_memcpy(par->zlev,zlev_0);
-	gsl_vector_free(zlev_0);
-	free_mats(&vf_noz,&pf_noz,&ht_noz,&sk_noz);
-
-
-	// set eps shocks to 0
-	printf("Setting epsilon shocks to 0\n ");
-	sprintf(exper_f,"noe");
-	allocate_mats(&vf_noeps,&pf_noeps,&ht_noeps,&sk_noeps);
-
-	memcpy_shocks(&sk_noeps,sk);
-	memcpy_pf(&pf_noeps,pf);
-	memcpy_vf(&vf_noeps,vf);
-
-
-	for(ll=0;ll<Npaths;ll++){
-		for(i=0;i<Nsim;i++){
-			double epssel_i = gg_get(sk->epssel[ll],i,1);
-			for(it=0;it<TTT;it++) gg_set(sk_noeps.epssel[ll],i,it,epssel_i);
-		}
-	}
-	pl_0 = print_lev;
-	print_lev =0;
-	sol_dyn( par, &vf_noeps,&pf_noeps, &sk_noeps );
-	print_lev = pl_0;
-	// will simulate and print stuff with the "noe" line tagged in
-	sim( par, &vf_noeps,&pf_noeps, &ht_noeps, &sk_noeps );
-
-	gsl_vector_memcpy(par->epslev, eps_0);
-	gsl_vector_free(eps_0);
-	//sum_stats( par, vf,pf,&ht_noeps,&sk_noeps, &st_noeps);
-	free_mats(&vf_noeps,&pf_noeps,&ht_noeps,&sk_noeps);
-
-	// set P shocks to 0
-	printf("Setting P shocks to 0\n ");
-	sprintf(exper_f,"noP");
-	alloc_hists(&ht_noP);
-	alloc_shocks(&sk_noP);
-
-	memcpy_shocks(&sk_noP,sk);
-	for(ll=0;ll<Npaths;ll++){
-		for(i=0;i<JJ;i++){
-			for(it=0;it<TTT;it++) gg_set(sk_noP.Psel[ll],it,i,0.5);
-		}
-	}
-	// will simulate and print stuff with the "noP" line tagged in
-	sim( par, vf, pf, &ht_noP, &sk_noP );
-	//sum_stats( par, vf,pf,&ht_noP,&sk_noP, &st_noP);
-	free_hists(&ht_noP); free_shocks(&sk_noP);
-
-	// set A shocks to 0
-	printf("Setting A shocks to 0\n ");
-	sprintf(exper_f,"noA");
-	alloc_hists(&ht_noA);
-	alloc_shocks(&sk_noA);
-
-	memcpy_shocks(&sk_noA,sk);
-	for(ll=0;ll<Npaths;ll++){
-		for(it=0;it<TTT;it++) gsl_vector_set(sk_noA.Asel[ll],it,0.5);
-	}
-	// will simulate and print stuff with the "noA" line tagged in
-	sim( par, vf, pf, &ht_noA, &sk_noA );
-	//sum_stats( par, vf,pf,&ht_noA,&sk_noA, &st_noA);
-	free_hists(&ht_noA); free_shocks(&sk_noA);
-
+    /////////////////////////////////////////////////////////
+    /// turnoff flows
 
 	sprintf(exper_f,"nof") ;
 	allocate_mats( &vf_noflow,&pf_noflow,&ht_noflow, &sk_noflow);
@@ -1523,7 +1603,7 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 
 	print_lev=0;
 	sol_dyn(par, &vf_noflow, &pf_noflow, &sk_noflow);
-	print_lev = pl_0;
+	print_lev = 2;
 	sim( par, &vf_noflow, &pf_noflow, &ht_noflow, &sk_noflow);
 	//sum_stats( par, vf,pf,&ht_noflow,&sk_noflow, &st_noflow);
 	free_mats( &vf_noflow,&pf_noflow, &ht_noflow, &sk_noflow);
@@ -1533,7 +1613,7 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 	par->lambdaES_Acoef =lamSA0;
 	par->lambdaU_Acoef = lamUA0;
 
-
+	print_lev = pl_0;
 
 }
 
@@ -2365,6 +2445,8 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	double * w_UEsw = NswU>0   ? malloc(sizeof(double) * NswU  ): malloc(sizeof(double) * Npaths*Nsim *TT/Npwave  );
 	double * w_UEns = Nspell>0 ? malloc(sizeof(double) * Nspell): malloc(sizeof(double) * Npaths*Nsim *TT/Npwave  );
 
+	double * w_all = malloc(sizeof(double)*Npaths*Nsim*TT/Npwave);
+
 	double * wwv_UEsw    = NswU>0   ? malloc(sizeof(double) * NswU  ): malloc(sizeof(double) * Npaths*Nsim *TT/Npwave  );
 	double * wwv_UEoccsw = NswU>0   ? malloc(sizeof(double) * NswU  ): malloc(sizeof(double) * Npaths*Nsim *TT/Npwave  );
 
@@ -2382,7 +2464,9 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
 	int idx_EUns =0, idx_UEns =0, idx_EEns=0, idx_EUsw=0,idx_UEsw=0,idx_EEsw=0;
 	int idx_UEwvsw=0,idx_EEwvsw=0;
-	int idx_stns =0, idx_stsw =0;int valid_w =0;int valid_EUE=0;
+	int idx_stns =0, idx_stsw =0;
+	int idx_all=0;
+	int valid_w =0;int valid_EUE=0;
 
 	int idx_MVswrec[2]; idx_MVswrec[0]=0; idx_MVswrec[1]=0;
 	int idx_MVnsrec[2]; idx_MVnsrec[0]=0; idx_MVnsrec[1]=0;
@@ -2415,6 +2499,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 					wnext = gg_get( ht->whist[ll] ,i,ti+Npwave) + gg_get( ht->whist[ll] ,i,ti+Npwave+1)+ gg_get( ht->whist[ll] ,i,ti+Npwave+2);
 					wnext_wave = wnext;
 					wlast_wave=wlast;
+
 				}else{
 					wlast=invlaid_wval;wnext=invlaid_wval;wlast_wave=invlaid_wval; wnext_wave=invlaid_wval;
 				}
@@ -2494,6 +2579,10 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
                             }
                         }
                     }
+				}
+				if( ti>3 && ti< TT-Npwave || Anan==0 ){
+					w_all[idx_all] = wnext - wlast;
+					idx_all ++;
 				}
 				if( I_EUns_wi==1 || I_EUsw_wi==1 || I_EEns_wi==1 || I_EEsw_wi==1 || sep==1 ){
 					// can't change a job and be a stayer
@@ -2631,6 +2720,9 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	w_qtls(w_EUsw,1,idx_EUsw,st->EUsw_qtls);
 	w_qtls(w_UEns,1,idx_UEns,st->UEns_qtls);
 	w_qtls(w_UEsw,1,idx_UEsw,st->UEsw_qtls);
+
+	w_qtls(w_all, 1, idx_all, st->all_qtls);
+	st->var_wg = gsl_stats_variance(w_all, 1, idx_all);
 
 	double MVsw_qtls[2][Nqtls];
 	double MVns_qtls[2][Nqtls];
@@ -3012,30 +3104,15 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	struct stats st;
 	struct stats dat;
 
-    dat.EEns_qtls = malloc(Nqtls*sizeof(double));
-    dat.EEsw_qtls = malloc(Nqtls*sizeof(double));
-    dat.EUns_qtls = malloc(Nqtls*sizeof(double));
-    dat.EUsw_qtls = malloc(Nqtls*sizeof(double));
-    dat.UEns_qtls = malloc(Nqtls*sizeof(double));dat.UEsw_qtls = malloc(Nqtls*sizeof(double));
-    dat.stns_qtls = malloc(Nqtls*sizeof(double));dat.stsw_qtls = malloc(Nqtls*sizeof(double));
-	dat.MVns_qtls_ratio = malloc(Nqtls*sizeof(double));
-	dat.MVsw_qtls_ratio = malloc(Nqtls*sizeof(double));
+	alloc_qtls(&dat);
 
-	nflows = gsl_sf_fact(JJ)/(gsl_sf_fact(2)*gsl_sf_fact(JJ-2));
-	dat.occ_netflow = malloc( nflows*sizeof(double) );
-    // set data moments and parameter values
+	// set data moments and parameter values
     set_dat(&dat);
 
     set_params( x, Npar, par, par->cluster_hr);
 	print_params(x, Npar, par);
 
-	st.EEns_qtls = malloc(Nqtls*sizeof(double));st.EEsw_qtls = malloc(Nqtls*sizeof(double));
-	st.EUns_qtls = malloc(Nqtls*sizeof(double));st.EUsw_qtls = malloc(Nqtls*sizeof(double));
-	st.UEns_qtls = malloc(Nqtls*sizeof(double));st.UEsw_qtls = malloc(Nqtls*sizeof(double));
-	st.stns_qtls = malloc(Nqtls*sizeof(double));st.stsw_qtls = malloc(Nqtls*sizeof(double));
-	st.MVns_qtls_ratio = malloc(Nqtls*sizeof(double));
-	st.MVsw_qtls_ratio = malloc(Nqtls*sizeof(double));
-	st.occ_netflow = malloc( nflows*sizeof(double) );
+	alloc_qtls(&st);
 	allocate_mats(&vf,&pf,&ht,&sk);
 
 	init_pf(&pf,par);
@@ -3257,19 +3334,7 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 
 	free_mats(&vf,&pf,&ht,&sk);
 
-	free(dat.EEns_qtls);free(dat.EEsw_qtls);
-	free(dat.EUns_qtls);free(dat.EUsw_qtls);
-	free(dat.UEns_qtls);free(dat.UEsw_qtls);
-	free(dat.stns_qtls);free(dat.stsw_qtls);
-	free(dat.MVns_qtls_ratio); free(dat.MVsw_qtls_ratio);
-	free(dat.occ_netflow);
-	free(st.EEns_qtls);free(st.EEsw_qtls);
-	free(st.EUns_qtls);free(st.EUsw_qtls);
-	free(st.UEns_qtls);free(st.UEsw_qtls);
-	free(st.stns_qtls);free(st.stsw_qtls);
-
-	free(st.MVns_qtls_ratio); free(st.MVsw_qtls_ratio);
-	free(st.occ_netflow);
+	free_qtls(&st); free_qtls(&dat);
 	return(quad_dist);
 
 }
@@ -3585,6 +3650,33 @@ void alloc_hists( struct hists *ht ){
 	}
 }
 
+void alloc_qtls( struct stats *st ){
+
+	st->EEns_qtls = malloc(Nqtls*sizeof(double));
+	st->EEsw_qtls = malloc(Nqtls*sizeof(double));
+	st->EUns_qtls = malloc(Nqtls*sizeof(double));
+	st->EUsw_qtls = malloc(Nqtls*sizeof(double));
+	st->UEns_qtls = malloc(Nqtls*sizeof(double));
+	st->UEsw_qtls = malloc(Nqtls*sizeof(double));
+	st->stns_qtls = malloc(Nqtls*sizeof(double));
+	st->stsw_qtls = malloc(Nqtls*sizeof(double));
+	st->all_qtls = malloc(Nqtls*sizeof(double));
+	st->MVns_qtls_ratio = malloc(Nqtls*sizeof(double));
+	st->MVsw_qtls_ratio = malloc(Nqtls*sizeof(double));
+	nflows = fact_int(JJ)/(fact_int(2)*fact_int(JJ-2));
+	st->occ_netflow = malloc( nflows*sizeof(double) );
+}
+
+void free_qtls( struct stats *st ){
+
+	free(st->EEns_qtls);free(st->EEsw_qtls);
+	free(st->EUns_qtls);free(st->EUsw_qtls);
+	free(st->UEns_qtls);free(st->UEsw_qtls);
+	free(st->stns_qtls);free(st->stsw_qtls);
+	free(st->all_qtls);
+	free(st->MVns_qtls_ratio);free(st->MVsw_qtls_ratio);
+	free(st->occ_netflow);
+}
 
 void free_mats(struct valfuns * vf, struct polfuns * pf, struct hists *ht,struct shocks * sk){
 
