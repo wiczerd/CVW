@@ -245,6 +245,8 @@ struct stats{
 	double ** all_qtls_rec, **edge_qtls_rec;
 
 	double *occ_netflow; //  will have JJ ! / (JJ-2)!2! points.
+	double *occ_netflowU; //  will have JJ ! / (JJ-2)!2! points.
+	double *occ_netflowE; //  will have JJ ! / (JJ-2)!2! points.
 
 
 };
@@ -336,19 +338,19 @@ int main(int argc,char *argv[] ) {
 	if(argc>2)
 		cf_now = atoi(argv[2]);
 	else
-		cf_now = 1;
+		cf_now =
 	sprintf(exper_f,"");
 
 	nflows = fact_int(JJ)/(fact_int(2)*fact_int(JJ-2));
 
-	Npar_cluster[0] = ntgtavgflow + nflows;
+	Npar_cluster[0] = ntgtavgflow + (nflows-1);
 	Npar_cluster[1] = 10;
 	if(eps_2emg==1) Npar_cluster[1] +=2;
 	Npar_cluster[2] = 5+JJ-1; //cyclical parameters
 	Nparams = 0;
 	for(i=0;i<Ncluster;i++)Nparams += Npar_cluster[i];
 
-	Ntgt_cluster[0] = ntgtavgflow + nflows; // flow rates
+	Ntgt_cluster[0] = ntgtavgflow + (nflows-1); // flow rates
 	Ntgt_cluster[1] = Nqtls*8; // 2 occwg and wage correlations. Plus, wage change distributions
 	Ntgt_cluster[2] = 5+Nqtls*2; // cyclicality stuff
 	Ntargets =0;
@@ -498,8 +500,8 @@ int main(int argc,char *argv[] ) {
 	par.param_lb[ii] = 0.050; par.param_ub[ii] = 0.80;ii++; //potentially these are not <1
 
 	// alpha_nf matrix
-	for(i=0;i<nflows;i++){
-		par.param_lb[i+ii] = -0.25; par.param_ub[i+ii] = 0.25;}
+	for(i=0;i<(nflows-1);i++)
+		par.param_lb[i+ii] = -0.25; par.param_ub[i+ii] = 0.25;
 
 	if(Ncluster>1){
 		ii = Npar_cluster[0];
@@ -2828,7 +2830,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	}
 	double nrmflows = 0;
 	for(i=0;i<nflows;i++) nrmflows = st->occ_netflow[i] >0 ? st->occ_netflow[i]+nrmflows : - (st->occ_netflow[i])+nrmflows;
-	for(i=0;i<nflows;i++) st->occ_netflow[i] = st->occ_netflow[i]/nrmflows;
+	//for(i=0;i<nflows;i++) st->occ_netflow[i] = st->occ_netflow[i]/nrmflows;
 
 	double fndrt_rec0 = Nunemp_rec[0] >0 ? (double) Nfnd_rec[0] / (double) Nunemp_rec[0] : 1.;
 	double fndrt_rec1 = Nunemp_rec[1] >0 ? (double) Nfnd_rec[1] / (double) Nunemp_rec[1] : 1.;
@@ -3529,6 +3531,13 @@ void set_dat( struct stats * dat){
     for(i=0;i<nflows;i++) nrmflows = netflows[i] >0 ? netflows[i]+nrmflows : -netflows[i]+nrmflows;
 	for(i=0;i<nflows;i++) netflows[i] = netflows[i]/nrmflows;
 	memcpy(dat->occ_netflow, netflows, nflows*sizeof(double));
+
+	double netflowsU = {-0.004461320, -0.003989968, 0.0009252794 , -0.008512734, 0.0044061444, 0.0055699451};
+	double netflowsE = {-0.003888313, -0.004349818, -0.001930180, -0.013183258,  0.005698791, 0.014134908};
+
+	memcpy(dat->occ_netflowU,netflowsU, sizeof(double)*nflows);
+	memcpy(dat->occ_netflowE,netflowsE, sizeof(double)*nflows);
+
 }
 
 double param_dist( double * x, struct cal_params *par , int Npar, double * err_vec , int Nerr){
@@ -4165,6 +4174,9 @@ void alloc_qtls( struct stats *st ){
 	nflows = fact_int(JJ)/(fact_int(2)*fact_int(JJ-2));
 	st->occ_netflow = malloc( nflows*sizeof(double) );
 
+	st->occ_netflowE = malloc( nflows*sizeof(double) );
+	st->occ_netflowU = malloc( nflows*sizeof(double) );
+
 	st->edge_qtls = malloc(Nqtls*sizeof(double));
 	st->edge_qtls_rec = malloc(2*sizeof(double*));
 	for(ri=0;ri<2;ri++)st->edge_qtls_rec[ri] = malloc(Nqtls*sizeof(double));
@@ -4182,6 +4194,7 @@ void free_qtls( struct stats *st ){
 	for(ri=0;ri<2;ri++)free(st->all_qtls_rec[ri]); free(st->all_qtls_rec);
 	free(st->MVns_qtls_ratio);free(st->MVsw_qtls_ratio);
 	free(st->occ_netflow);
+	free(st->occ_netflowU);free(st->occ_netflowE);
 	free(st->edge_qtls);
 	for(ri=0;ri<2;ri++)free(st->edge_qtls_rec[ri]);
 	free(st->edge_qtls_rec);

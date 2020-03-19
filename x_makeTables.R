@@ -23,7 +23,7 @@ wc <- "wagechangeEUE_wave"
 demolbl <- 0 #or choose number from categories in demotxt
 demotxt <- c("Young", "Prime","Old","HS","Col","Male","Female")
 
-bootse <- T #compute bootstrapped standard errors or no?
+bootse <- F #compute bootstrapped standard errors or no?
 seedint = 941987
 Nsim = 61
 
@@ -148,8 +148,8 @@ DTseam <- subset(DTseam, wave>1 & wave<panelmaxwave)
 
 # loop over wage measures here:
 
-for( wc in c("wagechange_anan","wagechangeEUE_wave","rawwgchangeEUE_wave","rawwgchange_anan") ){
-
+#for( wc in c("wagechange_anan","wagechangeEUE_wave","rawwgchangeEUE_wave","rawwgchange_anan") ){
+wc = "wagechange_anan"
 	# how to weights EUE's? 2x for an EUUE?
 	if(wc == "wagechangeEUE_wave"|wc == "reswgchangeEUE_wave"){
 		DTseam[ ,wtEUE:= eval(as.name(wt))]
@@ -1324,6 +1324,40 @@ for( wc in c("wagechange_anan","wagechangeEUE_wave","rawwgchangeEUE_wave","rawwg
 	print(out_wavedist,include.rownames=T, include.colnames=T,
 		  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 	
+	#rearranging for stay next to stay and sw next to switch
+	
+	dat_wavedist <- data.table(plt_stsw_staychng_rec[c(1,2,5,6),])
+	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
+	dat_wavedist[ , cat := as.factor(c("Occupation Stayers","Occupation Stayers","Occupation Movers","Occupation Movers"))]
+	dat_wavedist[ , Cycle := as.factor(c("Expansion","Recession","Expansion","Recession"))]
+	ggplot( dat_wavedist , aes(cat)) + theme_bw()+ #ylim(c(min(plt_stsw_staychng_rec[,2])*1.05,max(plt_stsw_staychng_rec[,6])*1.05))+
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ,color=Cycle),stat="identity",fill=c("maroon","maroon","darkgreen","darkgreen"),alpha=0.4)+ #
+		scale_color_manual(values=c("blue","red"))+
+		xlab("")+ylab("Log Earnings Change")#scale_x_discrete(labels=c(" ","No Switch, Rec","Switchers, Exp","Switchers, Rec"))+
+	nametab = "plt_sty_staychng_rec"
+	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10,device = cairo_ps)
+	out_wavedist <- xtable(dat_wavedist, digits=3, 
+						   caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+	print(out_wavedist,include.rownames=T, include.colnames=T,
+		  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
+	
+	
+	
+	dat_wavedist <- data.table(plt_stsw_staychng_rec[c(3,4,7,8),])
+	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
+	dat_wavedist[ , cat := as.factor(c("Occupation Stayers","Occupation Stayers","Occupation Movers","Occupation Movers"))]
+	dat_wavedist[ , Cycle := as.factor(c("Expansion","Recession","Expansion","Recession"))]
+	ggplot( dat_wavedist , aes(cat)) + theme_bw()  + # ylim(c(min(plt_stsw_EEEU_rec[,2])*1.05,max(plt_stsw_EEEU_rec[,6])*1.05))+
+		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 ,color=Cycle),stat="identity", fill= c("maroon","maroon","darkgreen","darkgreen"),alpha=0.4)+ #
+		scale_color_manual(values=c("blue","red"))+
+		xlab("")+ylab("Log Earnings Change")#scale_x_discrete(labels=c(" ","No Switch, Rec","Switchers, Exp","Switchers, Rec"))+
+	nametab = "plt_mv_staychng_rec"
+	ggsave(file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".eps"),height=5,width=10,device = cairo_ps)
+	out_wavedist <- xtable(dat_wavedist, digits=3, 
+						   caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
+	print(out_wavedist,include.rownames=T, include.colnames=T,
+		  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
+	
 	
 	
 	# Other tables we're not using
@@ -1680,5 +1714,5 @@ for( wc in c("wagechange_anan","wagechangeEUE_wave","rawwgchangeEUE_wave","rawwg
 	if(wc == "wagechangeEUE_wave"|wc == "reswgchangeEUE_wave"){
 		wt = origwt
 	}
-} #wage measures
+#} #wage measures
 

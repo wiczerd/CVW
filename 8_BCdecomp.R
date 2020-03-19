@@ -648,14 +648,21 @@ moments_compute_qtls <- function(qtlpts, distpts){
 ## Seams version -------------------------------
 
 DTseam <- readRDS(paste0(datadir,"/DTseam.RData"))
+#create some vars to handle net flows
+DTseam[ , last.occ :=shift(occ), by=id]
+DTseam[ !is.finite(occL), occL := occ]
+DTseam[ EE_wave==T , occL := last.occ]
+DTseam[ , next.occ :=shift(occ,type="lead"), by=id]
+DTseam[ !is.finite(occD), occD := next.occ]
 
 toKeep <- c("switchedOcc_wave","switched_wave","switched_anan","esr_max",
-				 "ageGrp","HSCol","next.stable_emp","last.stable_emp",
+				 "ageGrp","HSCol","next.stable_emp","last.stable_emp","wavewage",
 				 "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint","levwage","max.unempdur_wave",
 				 "wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave","wagechange_anan",
 				 "wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad","pctmaxmis",
 				 "EE_wave","EU_wave","UE_wave","changer","stayer","EE_anan","EU_anan","UE_anan","changer_anan","stayer_anan","valid_anan",
 				 "unrt","wpfinwgt","perwt","truncweight","cleaningtruncweight","lastann.wavewage","matched_EUUE_anan",
+				 "occwage_wave","occwagechange_wave","occwagechangeEUE_wave","occ_wave","occL", "occD",
 				 "lfstat_wave","next.lfstat_wave","wave","id","date","panel")
 # select toKeep columns only
 DTseam <- DTseam[, toKeep, with = FALSE]
@@ -757,7 +764,7 @@ if(freq == "wave"){
 DTseam[ EUfrq==T|UEfrq==T, dur := max.unempdur_wave]
 DTseam[ !(EUfrq==T|UEfrq==T) | !is.finite(dur), dur := 0.]
 
-
+# 
 if( freq == "wave"){
 	if(wdur ==T){
 		MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
@@ -796,6 +803,8 @@ DTseam[ switched_wave==T & changer_anan & UE_wave==T, wtd.mean(max.unempdur_wave
 
 DTseam[ switched_wave==F & changer_anan & UE_wave==T, wtd.mean(max.unempdur_wave, na.rm=T, weights=truncweight)]
 
+DTseam[ lfstat_wave ==1 & is.finite(occ_wave), wtd.mean(occwage_wave,na.rm=T, weights=truncweight)/2 , by=occ_wave] - max(DTseam[ lfstat_wave ==1  & is.finite(occ_wave), wtd.mean(occwage_wave,na.rm=T, weights=truncweight)/2 , by=occ_wave])
+
 #earnings change distributions:
 DTseam[ stayer_anan==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
 DTseam[ stayer_anan==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
@@ -828,7 +837,7 @@ DTseam[ UE_wave== 1  & recIndic_wave==F, wtd.mean(switched_anan, na.rm=T, weight
 DTseam[ EU_wave == 1 & recIndic_wave==F & (st|ch), wtd.mean(switched_anan, na.rm=T, weights=truncweight)]/
 	DTseam[ EU_wave == 1 & recIndic_wave==T & (st|ch), wtd.mean(switched_anan, na.rm=T, weights=truncweight)]
 
-#cyclicality of returns
+#cyclicality of returns (old measure)
 MVswrec1_qtls =  DTseam[ switched_wave==T & ch==T & recIndic_wave==T, wtd.quantile(wagechange_anan, probs=c(0.1,0.25,0.5,0.75,0.9), na.rm=T,weights=truncweight) ]
 MVswrec0_qtls =  DTseam[ switched_wave==T & ch==T & recIndic_wave==F, wtd.quantile(wagechange_anan, probs=c(0.1,0.25,0.5,0.75,0.9), na.rm=T,weights=truncweight) ]
 
@@ -839,7 +848,59 @@ MVswrec1_qtls/MVswrec0_qtls
 
 MVnsrec1_qtls/MVnsrec0_qtls
 
+#cyclicality of returns (new measure)
+MVswrec1_qtls =  DTseam[ switched_wave==T & ch==T & recIndic_wave==T, wtd.quantile(wagechange_anan, probs=c(0.025,0.05,0.5,0.95,0.975), na.rm=T,weights=truncweight) ]
+MVswrec0_qtls =  DTseam[ switched_wave==T & ch==T & recIndic_wave==F, wtd.quantile(wagechange_anan, probs=c(0.025,0.05,0.5,0.95,0.975), na.rm=T,weights=truncweight) ]
 
+MVnsrec1_qtls =  DTseam[ switched_wave==F & ch==T & recIndic_wave==T, wtd.quantile(wagechange_anan, probs=c(0.025,0.05,0.5,0.95,0.975), na.rm=T,weights=truncweight) ]
+MVnsrec0_qtls =  DTseam[ switched_wave==F & ch==T & recIndic_wave==F, wtd.quantile(wagechange_anan, probs=c(0.025,0.05,0.5,0.95,0.975), na.rm=T,weights=truncweight) ]
+
+MVswrec1_qtls- MVswrec0_qtls
+
+MVnsrec1_qtls- MVnsrec0_qtls
+
+
+# overall net flow matrix
+DTseam[ sw==T & ch==T & occL ==occD, occLDNA := T ]
+DTseam[ sw==T & ch==T & occLDNA ==T , occL := NA ]
+DTseam[ sw==T & ch==T & occLDNA ==T , occD := NA ]
+DTseam[ , occLDNA := NULL ]
+
+grossL <- array(0,dim = c(4,4)) 
+noccsw <- array(0,dim = c(4)) 
+noccsw <- DTseam[ sw==T & ch==T , ftable(occL)/sum(is.finite(occL)& is.finite(occD))]
+grossL[1,c(2,3,4)] <- DTseam[ occL==1 & sw==T & ch==T , ftable(occD)/sum(is.finite(occD))]*noccsw[1]
+grossL[2,c(1,3,4)] <- DTseam[ occL==2 & sw==T & ch==T , ftable(occD)/sum(is.finite(occD))]*noccsw[2]
+grossL[3,c(1,2,4)] <- DTseam[ occL==3 & sw==T & ch==T , ftable(occD)/sum(is.finite(occD))]*noccsw[3]
+grossL[4,c(1,2,3)] <- DTseam[ occL==4 & sw==T & ch==T , ftable(occD)/sum(is.finite(occD))]*noccsw[4]
+
+netL <- array(0, dim=c(4,4))
+netLUi <- array(0, dim=c(4,4,2))
+for( li in seq(1,4)){
+	for( di in seq(1,4)){
+		netL[li,di] = grossL[li,di] - grossL[di,li]
+	}
+}
+
+for(Ui in c(T,F)){
+	grossL <- array(0,dim = c(4,4)) 
+	noccsw <- array(0,dim = c(4)) 
+	noccsw <- DTseam[ sw==T & ch==T & EUfrq==Ui, ftable(occL)/sum(is.finite(occL)& is.finite(occD))]
+	grossL[1,c(2,3,4)] <- DTseam[ occL==1 & sw==T & ch==T & EUfrq==Ui , ftable(occD)/sum(is.finite(occD))]*noccsw[1]
+	grossL[2,c(1,3,4)] <- DTseam[ occL==2 & sw==T & ch==T & EUfrq==Ui , ftable(occD)/sum(is.finite(occD))]*noccsw[2]
+	grossL[3,c(1,2,4)] <- DTseam[ occL==3 & sw==T & ch==T & EUfrq==Ui , ftable(occD)/sum(is.finite(occD))]*noccsw[3]
+	grossL[4,c(1,2,3)] <- DTseam[ occL==4 & sw==T & ch==T & EUfrq==Ui , ftable(occD)/sum(is.finite(occD))]*noccsw[4]
+	
+	netL <- array(0, dim=c(4,4))
+	for( li in seq(1,4)){
+		for( di in seq(1,4)){
+			ii = ifelse(Ui, 1,2)
+			netLUi[li,di,ii] = grossL[li,di] - grossL[di,li]
+		}
+	}
+}
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# End moments
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #Extracting the dist and moments -----------------------------------
  # wcExp <- subset(DTseam,eval(as.name(recDef))==F)

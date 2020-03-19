@@ -246,7 +246,7 @@ pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,p
 
 names(pct_w_tm1) <- c("pct","mn_w_chng","P10_w_chng","P50_w_chng","P90_w_chng")
 pct_w_tm1 <- melt(pct_w_tm1,id.vars="pct")
-ggplot(pct_w_tm1, aes( x=pct,y=value, color=variable ))+theme_bw()+geom_smooth(span=.1,se=F)+
+ggplot(pct_w_tm1, aes( x=pct,y=value, color=variable ))+theme_bw()+geom_smooth(span=.1,se=F)+ylab("Log Earnings Change") + xlab("Percentile")+
 	scale_color_manual(labels=c("Mean Wage Change","10pct Wage Change","50pct Wage Change","90pct Wage Change"),
 					   values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]))+ #ggtitle("Only 6-wave stable")+
 	theme(legend.title = element_blank(),
@@ -289,7 +289,7 @@ pct_w_tm1 <- merge(pct_w_tm1,data.table(DTseam[ , wtd.quantile(wagechange_anan,p
 
 names(pct_w_tm1) <- c("pct","mn_w_chng","P10_w_chng","P50_w_chng","P90_w_chng")
 pct_w_tm1 <- melt(pct_w_tm1,id.vars="pct")
-ggplot(pct_w_tm1, aes( x=pct,y=value, color=variable ))+theme_bw()+geom_smooth(span=.1,se=F)+
+ggplot(pct_w_tm1, aes( x=pct,y=value, color=variable ))+theme_bw()+geom_smooth(span=.1,se=F)+ylab("Log Earnings Change") + xlab("Percentile")+
 	scale_color_manual(labels=c("Mean Wage Change","10pct Wage Change","50pct Wage Change","90pct Wage Change"),
 					   values=c(hcl(h=seq(15, 375, length=5), l=50, c=100)[c(1:4)]))+#ggtitle("With earnings high enough")+
 	theme(legend.title = element_blank(),
