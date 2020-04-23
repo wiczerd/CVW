@@ -74,7 +74,7 @@ int print_lev = 3;
 
 int maxiter = 1000; //2000
 double vftol = 1e-4;
-double rhotightening = 10;
+double rhotightening = .10;
 double caltol = 1e-3;
 double smth_flows = 0.25;
 
@@ -390,8 +390,7 @@ int main(int argc,char *argv[] ) {
 	init_pf(&pf,&par);
 	init_vf(&vf,&par);
 
-
-	for(i=0;i<JJ;i++){
+    for(i=0;i<JJ;i++){
 		gsl_matrix_set_all(par.Ptrans[i], 0.05/( (double)NP-1. ));
 		for(ii=0;ii<NP;ii++)gg_set(par.Ptrans[i],ii,ii, 0.95);
 		gg_set(par.Ptrans[i],0,NP-1, 0.);gg_set(par.Ptrans[i],NP-1,0, 0.);
@@ -497,7 +496,7 @@ int main(int argc,char *argv[] ) {
     wage_lev = 0.;
 
 
-	// parameter space:
+    // parameter space:
 	// alphaE0 , alphaU0, lambdaU,lambdaES, lambdaEM, delta_avg, zloss_prob
 	ii =0;
 	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.25;ii++;
@@ -567,7 +566,6 @@ int main(int argc,char *argv[] ) {
 	double * err = malloc(sizeof(double)*Ntargets);
 	double *x0 = malloc(sizeof(double)*Nparams);
 	double *x0_clu;double *err_clu;
-
 
 	int DFBOLS_ALG;
 #ifdef _DFBOLS_USE
@@ -815,8 +813,10 @@ int main(int argc,char *argv[] ) {
 			else
 				i++;
 		}
+		char parhi_old[15]; strcpy(parhi_old,parhi_f);
+		strcpy(parhi_f , "param_opt.csv");
 		print_params(calx, Nparams, &par);
-
+        strcpy(parhi_f,parhi_old);
 	}
 	printf("calculating derivatives\n");
 	int xi;
@@ -1057,24 +1057,11 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				int jji;
 				double REhr = -par->kappa;
 				double *EzWE =malloc(JJ*sizeof(double)); //value if switch occ
-                double *EWE  =malloc(JJ*sizeof(double)); // value if stay
-				double *EztWE=malloc(JJ*sizeof(double)); //value if switch occ and job
-				double Rdirj[JJ];
+                double *EztWE=malloc(JJ*sizeof(double)); //value if switch occ and job
+				double dirjE[JJ],dirjU[JJ];
 				ssi =0; //if drawing new occupation, then also getting ssi=0 and ggi=0
 				ggi =0;
-				for(jji=0;jji<JJ;jji++){
-                    EWE[jji]   = 0.;
-                    for(aai=0;aai<NA;aai++){
-                        for(ppi=0;ppi<NP;ppi++) {
-                            EWE[jji] += gsl_max(gg_get(vf0.WE,
-                                                       aai*NP*NG*NS*NZ*NE + ppi*NG*NS*NZ*NE +ggi*NS*NZ*NE + zi*NE + ti, jji) ,
-                                                gg_get(vf0.WU,
-                                                       aai*NP*NG*NS*NZ    + ppi*NG*NS*NZ    +ggi*NS*NZ    + zi        , jji)  )*
-                                        gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji],pi,ppi);
 
-                        }
-                    }
-				}
 				for(jji=0;jji<JJ;jji++){
 					EzWE[jji]  = 0.;
 					EztWE[jji] = 0.;
@@ -1103,12 +1090,12 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 					}
 					if(jji!=ji){
 						// constructing RE
-						double EWstay = EzWE[jji]*par->update_z +(1.-par->update_z)*EWE[ji];
-                        Rdirj[jji] =gsl_min(pow(exp(par->alpha_nf[ji][jji]) *
+                        dirjE[jji] =gsl_min(pow(exp(par->alpha_nf[ji][jji]) *
 								par->alphaE0*alphaE1scl,par->alphaE1)/(1.-par->alphaE1),1. )*
-								(lambdaEMhr*EztWE[jji] +(1.- lambdaEMhr)*(EWstay) );
-						REhr += Rdirj[jji]*gsl_min(pow( gg_get( pf->sE[jji],ii,ji),1.-par->alphaE1),1.);
-					}else{ Rdirj[jji] = 0.; }
+								(lambdaEMhr*EztWE[jji] +(1.- lambdaEMhr)*EzWE[jji] );
+                        // REhr is needed for whether we want to switch or not. That should have optimal search directions in it
+						REhr += dirjE[jji]*gsl_min(pow( gg_get( pf->sE[jji],ii,ji),1.-par->alphaE1),1.);
+					}else{ dirjE[jji] = 0.; }
 				}
 				double totalphaS = 0;
 				for(jji=0;jji<JJ;jji++){
@@ -1133,17 +1120,17 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				//set search direction for next iteration:
 				double sEjiDenom = 0.;
 				double sEnorm = 0.;//-par->kappa+ lambdaEMhr*EztWE[ji] + (1.-lambdaEMhr)*EzWE[ji]- EAPWE;
-				for(jji=0;jji<JJ;jji++) sEnorm = jji != ji ? sEnorm + (Rdirj[jji]-par->kappa)/( (double)JJ -1) : sEnorm;
+				for(jji=0;jji<JJ;jji++) sEnorm = jji != ji ? sEnorm + (dirjE[jji]-par->kappa)/( (double)JJ -1) : sEnorm;
 				sEnorm = sEnorm>0 && gsl_finite(sEnorm)==1 ? sEnorm : 1.;
 				for(jji=0;jji<JJ;jji++){
-					double dirreturn = Rdirj[jji]-par->kappa; //-par->kappa+ lambdaEMhr*EztWE[jji] + (1.-lambdaEMhr)*EzWE[jji]- EAPWE;
+					double dirreturn = dirjE[jji]-par->kappa; //-par->kappa+ lambdaEMhr*EztWE[jji] + (1.-lambdaEMhr)*EzWE[jji]- EAPWE;
 					dirreturn = dirreturn < 0. ? 0. : dirreturn;
 					if(jji!=ji) sEjiDenom += pow(dirreturn/sEnorm , 1./par->alphaE1);
 				}
 				if(sEjiDenom >0){
 					for(jji=0;jji<JJ;jji++){
 						if(jji!=ji){
-							double dirreturn =  Rdirj[jji] -par->kappa ; //-par->kappa+ lambdaEMhr*EztWE[jji] + (1.-lambdaEMhr)*EzWE[jji]- EAPWE;
+							double dirreturn =  dirjE[jji] -par->kappa ; //-par->kappa+ lambdaEMhr*EztWE[jji] + (1.-lambdaEMhr)*EzWE[jji]- EAPWE;
 							dirreturn = dirreturn< 0 ? 0. : dirreturn;
 							gg_set(pf->sE[jji] ,ii,ji, pow(dirreturn /sEnorm, 1./par->alphaE1)/sEjiDenom);
 						}else{ // this is kind of redundant because it should have initialized to 0
@@ -1191,7 +1178,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 				gg_set( vf-> WEdist, ii,ji, gg_get(vf->WE,ii,ji) - gg_get(vf0.WE,ii,ji) );
 
-				free(EztWE);free(EzWE);free(EWE);
+				free(EztWE);free(EzWE);
 			} // OMP loop over state ii
 		}
 		gsl_matrix_memcpy(vf0.WE,vf->WE);
@@ -1222,7 +1209,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				}
 				double EzWU[JJ];
 				double RUhr = -par->kappa;
-				double Rdirj[JJ];
+				double dirjU[JJ];
 				// if one changes occupation through U
 				for(jji=0;jji<JJ;jji++){
 					EzWU[jji]=0;
@@ -1248,11 +1235,11 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 						}
 					}
 					if(jji!=ji){
-						Rdirj[jji] = gsl_min(pow(exp(par->alpha_nf[ji][jji]) *
+						dirjU[jji] = gsl_min(pow(exp(par->alpha_nf[ji][jji]) *
 								par-> alphaU0*alphaU1scl,par->alphaU1),1.)/(1.-par->alphaU1)*
 								(EzWU[jji]*(1.-lambdaUhr)+lambdaUhr*EtWE_jji);
-						RUhr += Rdirj[jji]*gsl_min(pow(gg_get(pf->sU[jji],ii,ji),1.-par->alphaU1 ),1.);
-					}else{Rdirj[jji] =0;} //just to not have uninitialized stuff
+						RUhr += dirjU[jji]*gsl_min(pow(gg_get(pf->sU[jji],ii,ji),1.-par->alphaU1 ),1.);
+					}else{dirjU[jji] =0;} //just to not have uninitialized stuff
 				}
 				double totalalphaS = 0;
 				for(jji=0;jji<JJ;jji++)
@@ -1283,17 +1270,17 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				//search dir for next iterations
 				double sUdenom = 0.;
 				double sUnorm = 0.; //-par->kappa + EzWU[ji]- EAPWU;
-				for(jji=0;jji<JJ;jji++) sUnorm = jji != ji ? sUnorm + (Rdirj[jji]-par->kappa)/( (double)JJ -1) : sUnorm;
+				for(jji=0;jji<JJ;jji++) sUnorm = jji != ji ? sUnorm + (dirjU[jji]-par->kappa)/( (double)JJ -1) : sUnorm;
 				sUnorm = sUnorm >0 && gsl_finite(sUnorm)==1 ? sUnorm : 1.;
 				for(jji=0;jji<JJ;jji++){
-					double dirreturn = Rdirj[jji]-par->kappa; //-par->kappa + EzWU[jji]- EAPWU;
+					double dirreturn = dirjU[jji]-par->kappa; //-par->kappa + EzWU[jji]- EAPWU;
 					dirreturn =dirreturn<0 ? 0. : dirreturn;
 					if(jji!=ji) sUdenom += pow(dirreturn/sUnorm ,1./par->alphaU1);
 				}
 				if(sUdenom > 0 ) {
 					for (jji = 0; jji < JJ; jji++) {
 						if (jji != ji) {
-							double dirreturn = Rdirj[jji]-par->kappa; //-par->kappa + EzWU[jji] - EAPWU;
+							double dirreturn = dirjU[jji]-par->kappa; //-par->kappa + EzWU[jji] - EAPWU;
 							dirreturn = dirreturn < 0 ? 0. : dirreturn;
 							gg_set(pf->sU[jji], ii, ji, pow(dirreturn/sUnorm, 1. / par->alphaU1) / sUdenom);
 						} else {//this is kind of redundant, because it should have initialized to 0
@@ -2369,17 +2356,16 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 											xt[i][2] = xti2;
 											xt[i][3] = xti3;
 										}else{//don't switch
+                                            if(ti>=burnin) ggi_set(ht->J2Jhist[ll], i, ti-burnin, 0);
 											jt[i] = jtm1[i];
 										}
 									}
 								}// else nothing happens (except paid kappa)
-
-
 							}else{
 								//WEs
 								if( gg_get(sk->lambdaSsel[ll],i,ti) < lambdaEShr[jt[i]] ) {
 									gg_set(epssel_hist[ll],i,ti,gg_get(sk->epssel[ll],i,ti));
-									if (gg_get(sk->lambdaUsel[ll], i, ti) < par->gdfthr) { //godfather (gamma) shock?
+									if (gg_get(sk->lambdaMsel[ll], i, ti) < par->gdfthr) { //godfather (gamma) shock? lambdaMsel hasn't been used for this guy
 										if(ti>=burnin) ggi_set(ht->J2Jhist[ll], i, ti-burnin, 1);
 
 										xt[i][3] = 0;
@@ -2770,7 +2756,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 			                                Noccs_i ++;
 		                                }
 		                            }else{  // not EE
-		                                if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti-1) ) NswSt_wi = 1;
+		                                if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ) NswSt_wi = 1;
 		                            }
 	                            }
 	                        }else{ //uhist = 1
@@ -2874,12 +2860,13 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	st->doubleswE = NswE>0 ? (double)NdoubleswE / (double)NswE : 0.;
 	st->doubleswU = NswU>0 ? (double)NdoubleswU / (double)NswU : 0.;
 
-//	if(verbose>3){
-		printf("Conditional prob double switch, U: %f \n", st->doubleswU);
-		printf("Conditional prob double switch, E: %f \n", st->doubleswE);
-		printf("Average number of occupations per person: %f and occupational tenure %f \n",
-				(double)Nocc_ten/ (double)Npaths / (double)Nsim, st->occ_ten);
-//	}
+	if(verbose>3) {
+        printf("Conditional prob double switch, U: %f \n", st->doubleswU);
+        printf("Conditional prob double switch, E: %f \n", st->doubleswE);
+    }
+    printf("swProb_st : %f, swProb_EE: %f,  swProb_U: %f \n", st->swProb_st , st->swProb_EE, st->swProb_U );
+    printf("Average number of occupations per person: %f and occupational tenure %f \n",
+            (double)Nocc_ten/ (double)Npaths / (double)Nsim, st->occ_ten);
 
 	double occ_gtot = 0.; double occ_stot = 0.; double varGflow=0.;
 	double occ_Ltot[JJ]; for(jji=0;jji<JJ;jji++) occ_Ltot[jji]=0.;
@@ -3500,36 +3487,36 @@ void read_params(char* name, struct cal_params *par){
 
 	int pi =0 ;
 
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->alphaE0 = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->alphaU0 = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	 par->lambdaU0  = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->lambdaES0 = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->lambdaEM0 = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->delta_avg= dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->zloss=     dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->alphaE1=   dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->alphaU1=   dd;
 	par->xparopt[pi] = dd; pi++;
 	for(ii=0;ii<JJ;ii++){
 		for(ji=ii+1;ji<JJ;ji++){
-			rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+			rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 			par->alpha_nf[ii][ji]= dd;
 			par->xparopt[pi] = dd; pi++;
 		}
@@ -3541,39 +3528,39 @@ void read_params(char* name, struct cal_params *par){
 	// alpha scales, scale on net flow of switching from l to d
 	for(ii=0;ii<JJ;ii++) par->alpha_nf[ii][ii] = 0.; //should never be adjusting the diagonal
 
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->update_z = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->scale_z  = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->shape_z  = dd;
 	par->xparopt[pi] = dd; pi++;
 
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->var_pe = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->autop  = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->var_ae = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->autoa  = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->gdfthr = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->stwupdate= dd;
 	par->xparopt[pi] = dd; pi++;
 	// epsilon :
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	//par->scale_eps =dd;
 	//par->xparopt[pi] = dd; pi++;
-	//rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	//rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	//par->shape_eps =dd;
 	//par->xparopt[pi] = dd; pi++;
 
@@ -3581,32 +3568,32 @@ void read_params(char* name, struct cal_params *par){
 	par->xparopt[pi] = dd; pi++;
 
 	if(eps_2emg==1){
-		rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+		rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 		par->lshape_eps= dd;
 		par->xparopt[pi] = dd; pi++;
-		rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+		rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 		par->rshape_eps= dd;
 		par->xparopt[pi] = dd; pi++;
 	}
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->delta_Acoef   = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->lambdaEM_Acoef= dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->lambdaES_Acoef= dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->lambdaU_Acoef = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 	par->zloss_Acoef = dd;
 	par->xparopt[pi] = dd; pi++;
 
 	for(ji=0;ji<JJ;ji++){
 		if(ji>=1){
-			rstatus = fscanf(parfile,"%s",sd);dd = strtod(sd,NULL);
+			rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
 			if(rstatus ==0 )
 				rstatus = fscanf(parfile,"%s\n",sd);dd = strtod(sd,NULL);
 			par->AloadP->data[ji] = dd;
@@ -3626,49 +3613,49 @@ void print_params(double *x, int n, struct cal_params * par){
 	ii =0;
 	parhist = fopen(parhi_f,"a+");
 
-	fprintf(parhist,"%8.6f,", par->alphaE0);
-	fprintf(parhist,"%8.6f,", par->alphaU0);
+	fprintf(parhist,"%8.6f, ", par->alphaE0);
+	fprintf(parhist,"%8.6f, ", par->alphaU0);
 
-	fprintf(parhist,"%8.6f,", par->lambdaU0  );
-	fprintf(parhist,"%8.6f,", par->lambdaES0);
-	fprintf(parhist,"%8.6f,", par->lambdaEM0);
-	fprintf(parhist,"%8.6f,", par->delta_avg);
-	fprintf(parhist,"%8.6f,", par->zloss);
-	fprintf(parhist,"%8.6f,", par->alphaE1);
-	fprintf(parhist,"%8.6f,", par->alphaU1);
+	fprintf(parhist,"%8.6f, ", par->lambdaU0  );
+	fprintf(parhist,"%8.6f, ", par->lambdaES0);
+	fprintf(parhist,"%8.6f, ", par->lambdaEM0);
+	fprintf(parhist,"%8.6f, ", par->delta_avg);
+	fprintf(parhist,"%8.6f, ", par->zloss);
+	fprintf(parhist,"%8.6f, ", par->alphaE1);
+	fprintf(parhist,"%8.6f, ", par->alphaU1);
 	for(ii=0;ii<JJ;ii++){
 		for(ji=ii+1;ji<JJ;ji++)
-			fprintf(parhist,"%8.6f,", par->alpha_nf[ii][ji]);
+			fprintf(parhist,"%8.6f, ", par->alpha_nf[ii][ji]);
 	}
-	fprintf(parhist,"%8.6f,", par->update_z);
-	fprintf(parhist,"%8.6f,", par->scale_z);
-	fprintf(parhist,"%8.6f,", par->shape_z);
+	fprintf(parhist,"%8.6f, ", par->update_z);
+	fprintf(parhist,"%8.6f, ", par->scale_z);
+	fprintf(parhist,"%8.6f, ", par->shape_z);
 
-	fprintf(parhist,"%8.6f,", par->var_pe);
-	fprintf(parhist,"%8.6f,", par->autop);
-	fprintf(parhist,"%8.6f,", par->var_ae);
-	fprintf(parhist,"%8.6f,", par->autoa);
-	fprintf(parhist,"%8.6f,", par->gdfthr);
-	fprintf(parhist,"%8.6f,", par->stwupdate);
-	fprintf(parhist,"%8.6f,", par->var_eps);
+	fprintf(parhist,"%8.6f, ", par->var_pe);
+	fprintf(parhist,"%8.6f, ", par->autop);
+	fprintf(parhist,"%8.6f, ", par->var_ae);
+	fprintf(parhist,"%8.6f, ", par->autoa);
+	fprintf(parhist,"%8.6f, ", par->gdfthr);
+	fprintf(parhist,"%8.6f, ", par->stwupdate);
+	fprintf(parhist,"%8.6f, ", par->var_eps);
 
 	if(eps_2emg==1){
-		fprintf(parhist,"%8.6f,", par->lshape_eps);
-		fprintf(parhist,"%8.6f,", par->rshape_eps);
+		fprintf(parhist,"%8.6f, ", par->lshape_eps);
+		fprintf(parhist,"%8.6f, ", par->rshape_eps);
 	}
-	//fprintf(parhist,"%8.6f,", par->scale_eps);
-	//fprintf(parhist,"%8.6f,", par->shape_eps);
+	//fprintf(parhist,"%8.6f, ", par->scale_eps);
+	//fprintf(parhist,"%8.6f, ", par->shape_eps);
 
 
-	fprintf(parhist,"%8.6f,", par->delta_Acoef);
-	fprintf(parhist,"%8.6f,", par->lambdaEM_Acoef);
-	fprintf(parhist,"%8.6f,", par->lambdaES_Acoef);
-	fprintf(parhist,"%8.6f,", par->lambdaU_Acoef);
-	fprintf(parhist,"%8.6f,", par->zloss_Acoef);
+	fprintf(parhist,"%8.6f, ", par->delta_Acoef);
+	fprintf(parhist,"%8.6f, ", par->lambdaEM_Acoef);
+	fprintf(parhist,"%8.6f, ", par->lambdaES_Acoef);
+	fprintf(parhist,"%8.6f, ", par->lambdaU_Acoef);
+	fprintf(parhist,"%8.6f, ", par->zloss_Acoef);
 
 	for(ji=0;ji<JJ;ji++){
 		if(ji>=1){
-			fprintf(parhist,"%8.6f,", par->AloadP->data[ji]);
+			fprintf(parhist,"%8.6f, ", par->AloadP->data[ji]);
 		}
 
 	}
@@ -4334,6 +4321,12 @@ void dfovec_iface_(double * errvec, double * x, int * n, int* m){
 			fprintf(calhist,"%f,",x_pspace[i]);
 		fprintf(calhist,"%f\n",x_pspace[nv-1]);
 		fclose(calhist);
+	}
+	if(verbose>1){
+	    printf(" Error is: \n ");
+	    for(i=0;i<mv;i++)
+            printf("%f,",errvec[i]);
+
 	}
 	if(  dist <solver_state[0]){
 		solver_state[0] = dist;
