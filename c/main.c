@@ -302,7 +302,7 @@ void set_params( double * x, int n, struct cal_params * par,int ci);
 void set_xpspace( double *x, struct cal_params *par );
 void print_params(double *x, int n, struct cal_params * par);
 void read_params(char* name, struct cal_params *par);
-void w_qtls( double* vec, int stride, int len, double * qtlgrid, double * qtls_out );
+int w_qtls( double* vec, int stride, int len, double * qtlgrid, double * qtls_out );
 
 
 // wrapper for nlopt algorithms
@@ -353,7 +353,7 @@ int main(int argc,char *argv[] ) {
 		cf_now = atoi(argv[2]);
 	else
 		cf_now =
-	sprintf(exper_f,"");
+	sprintf(exper_f,"X");
 
 	nflows = fact_int(JJ)/(fact_int(2)*fact_int(JJ-2));
 
@@ -815,6 +815,7 @@ int main(int argc,char *argv[] ) {
 		}
 		char parhi_old[15]; strcpy(parhi_old,parhi_f);
 		strcpy(parhi_f , "param_opt.csv");
+        remove(parhi_f);
 		print_params(calx, Nparams, &par);
         strcpy(parhi_f,parhi_old);
 	}
@@ -1831,7 +1832,7 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 	ion_permute( ncycflows, idx_ion );
 
 	for(idx=0;idx<nscenario;idx++){
-		sprintf(exper_f, "_flow_%d",idx);
+		sprintf(exper_f, "fl%d",idx);
 		fprintf( scenariokey, "%d, ", idx );
 
 		allocate_mats(&vf_nofX[idx],&pf_nofX[idx],&ht_nofX[idx],&sk_nofX[idx]);
@@ -2338,12 +2339,13 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 									);
 								}
 								if( jt[i] != jtm1[i] ){ // switchers
+                                    // draw a new z:
+                                    int xti2 =0;
+                                    for(zi=0;zi<NZ;zi++)
+                                        if( gg_get(sk->zsel[ll],i,ti) > cmzprob[At][zi] ) ++ xti2 ;
+                                    // also switch employers?
 									if( gg_get(sk->lambdaMsel[ll],i,ti)<  lambdaEMhr[jt[i]] ) {
 										int xti1 = 0; // lose specific skill
-										// draw a new z:
-										int xti2 =0;
-										for(zi=0;zi<NZ;zi++)
-											if( gg_get(sk->zsel[ll],i,ti) > cmzprob[At][zi] ) ++ xti2 ;
 										// draw a new epsilon
 										gg_set(epssel_hist[ll],i,ti,gg_get(sk->epssel[ll],i,ti));
 										int xti3 =0;
@@ -3299,6 +3301,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	}
 
 
+	/* Doing this sorting in w_qtls
 	gsl_sort(w_EUns, 1,idx_EUns);
 	gsl_sort(w_EUsw, 1,idx_EUsw);
 
@@ -3314,7 +3317,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	for(ri=0;ri<2;ri++){
 		gsl_sort(w_MVswrec[ri],1,idx_MVswrec[ri]);
 		gsl_sort(w_MVnsrec[ri],1,idx_MVnsrec[ri]);
-	}
+	}*/
 	int nonnum=0;
 	for(ri=0;ri<idx_EEwvsw;ri++){
 		if(!gsl_finite(wwv_EEsw[ri]) ) nonnum ++;
@@ -3483,40 +3486,40 @@ void read_params(char* name, struct cal_params *par){
 	int rstatus;
 	FILE * parfile;
 	parfile = fopen(name,"r");
-	double dd;char sd[20];
+	double dd;char sd[32];char*endptr;
 
 	int pi =0 ;
-
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+    strcpy(sd,"\000");
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->alphaE0 = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->alphaU0 = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	 par->lambdaU0  = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->lambdaES0 = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->lambdaEM0 = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->delta_avg= dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->zloss=     dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->alphaE1=   dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->alphaU1=   dd;
 	par->xparopt[pi] = dd; pi++;
 	for(ii=0;ii<JJ;ii++){
 		for(ji=ii+1;ji<JJ;ji++){
-			rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+			rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 			par->alpha_nf[ii][ji]= dd;
 			par->xparopt[pi] = dd; pi++;
 		}
@@ -3528,36 +3531,36 @@ void read_params(char* name, struct cal_params *par){
 	// alpha scales, scale on net flow of switching from l to d
 	for(ii=0;ii<JJ;ii++) par->alpha_nf[ii][ii] = 0.; //should never be adjusting the diagonal
 
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->update_z = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->scale_z  = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->shape_z  = dd;
 	par->xparopt[pi] = dd; pi++;
 
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->var_pe = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->autop  = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->var_ae = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->autoa  = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->gdfthr = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->stwupdate= dd;
 	par->xparopt[pi] = dd; pi++;
 	// epsilon :
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	//par->scale_eps =dd;
 	//par->xparopt[pi] = dd; pi++;
 	//rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
@@ -3568,34 +3571,34 @@ void read_params(char* name, struct cal_params *par){
 	par->xparopt[pi] = dd; pi++;
 
 	if(eps_2emg==1){
-		rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+		rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 		par->lshape_eps= dd;
 		par->xparopt[pi] = dd; pi++;
-		rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+		rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 		par->rshape_eps= dd;
 		par->xparopt[pi] = dd; pi++;
 	}
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->delta_Acoef   = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->lambdaEM_Acoef= dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->lambdaES_Acoef= dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->lambdaU_Acoef = dd;
 	par->xparopt[pi] = dd; pi++;
-	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->zloss_Acoef = dd;
 	par->xparopt[pi] = dd; pi++;
 
 	for(ji=0;ji<JJ;ji++){
 		if(ji>=1){
-			rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
+			rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 			if(rstatus ==0 )
-				rstatus = fscanf(parfile,"%s\n",sd);dd = strtod(sd,NULL);
+				rstatus = fscanf(parfile,"%s\n",sd);dd = strtod(sd,&endptr);
 			par->AloadP->data[ji] = dd;
 			par->xparopt[pi] = dd; pi++;
 		}
@@ -4371,42 +4374,62 @@ int draw_shocks(struct shocks * sk){
 	return 0;
 }
 
-void w_qtls( double* vec, int stride, int len, double * qtlgrid, double * qtls_out){
+int w_qtls( double* vec, int stride, int len, double * qtlgrid, double * qtls_out){
     int qi ,ii,li;
+    int status;
+    status =0;
+    gsl_sort(vec,(size_t)stride, (size_t)len);
+    if(len<=Nqtls){
+        status++;
+        if(len>2){
+            double obsgrid[len];for(qi=0;qi<len;qi++)obsgrid[qi] = (double)qi/((double)len-1);
+            gsl_interp * qtlinterp = gsl_interp_alloc(gsl_interp_linear,len);
+            gsl_interp_accel* qtlaccl = gsl_interp_accel_alloc();
+            gsl_interp_init(qtlinterp,obsgrid, vec,len);
+            for(qi=0;qi<Nqtls;qi++)
+                qtls_out[qi] = gsl_interp_eval(qtlinterp, obsgrid,vec,qtlgrid[qi],qtlaccl);
+            gsl_interp_free(qtlinterp);gsl_interp_accel_free(qtlaccl);
 
-    for(qi=0;qi<Nqtls;qi++){
-        qtls_out[qi] = gsl_stats_quantile_from_sorted_data(vec,(size_t)stride,(size_t)len, qtlgrid[qi] );
-    }
-    //check the order (i.e. must be increasing):
-    gsl_sort( qtls_out, 1, Nqtls );
-    // check for NaNs:
-    for( qi = 0 ; qi<Nqtls;qi++){
-        if(!gsl_finite(qtls_out[qi])){
-            if(verbose>0) printf(" NaN qtl! ");
-            if(qi==0)
-                qtls_out[qi] = gsl_finite(qtls_out[qi+1])? qtls_out[qi+1] : vec[0];
-            else if(qi==Nqtls-1)
-                qtls_out[qi] = gsl_finite(qtls_out[qi-1])? qtls_out[qi-1] : vec[len-1];
-            if(qi>0 && qi<Nqtls-1){
-                if( gsl_finite(qtls_out[qi+1]) && gsl_finite(qtls_out[qi-1]))
-                    qtls_out[qi] = (qtls_out[qi+1]-qtls_out[qi-1])/(qtlgrid[qi+1]-qtlgrid[qi-1])*(qtlgrid[qi]-qtlgrid[qi-1]) + qtls_out[qi-1];
-                else{
-                    for(ii=1;ii<Nqtls;ii++) {
-                        if (qi + ii < Nqtls - 1) {
-                            if (gsl_finite(qtls_out[qi + ii])) {
-                                for (li = 1; li < Nqtls; li++) {
-                                    if (gsl_finite(qtls_out[qi - li])) {
-                                        qtls_out[qi] = (qtls_out[qi + ii] - qtls_out[qi - li]) /
-                                                       (qtlgrid[qi + ii] - qtlgrid[qi - li]) *
-                                                       (qtlgrid[qi] - qtlgrid[qi - li]) + qtls_out[qi - li];
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+        }
+        else{ //nothing do to
+            for(qi=0;qi<Nqtls;qi++)
+                qtls_out[qi]=0.;
+        }
+        return status;
+    }else {
+        for (qi = 0; qi < Nqtls; qi++) {
+            qtls_out[qi] = gsl_stats_quantile_from_sorted_data(vec, (size_t) stride, (size_t) len, qtlgrid[qi]);
+        }
+
+        //check the order (i.e. must be increasing):
+        gsl_sort(qtls_out, 1, Nqtls);
+        // check for NaNs:
+        for (qi = 0; qi < Nqtls; qi++) {
+            if (!gsl_finite(qtls_out[qi])) {
+                if (verbose > 0) printf(" NaN qtl! ");
+                status++;
+                if (qi == 0)
+                    qtls_out[qi] = gsl_finite(qtls_out[qi + 1]) ? qtls_out[qi + 1] : vec[0];
+                else if (qi == Nqtls - 1)
+                    qtls_out[qi] = gsl_finite(qtls_out[qi - 1]) ? qtls_out[qi - 1] : vec[len - 1];
             }
         }
+        //first pass over. Now do it again, just in case:
+        for (qi = 0; qi < Nqtls; qi++) {
+            if (gsl_finite(qtls_out[qi]) == 0) {
+                status++;
+                double obsgrid[len];for(qi=0;qi<len;qi++)obsgrid[qi] = (double)qi/((double)len-1);
+                gsl_interp * qtlinterp = gsl_interp_alloc(gsl_interp_linear,len);
+                gsl_interp_accel* qtlaccl = gsl_interp_accel_alloc();
+                gsl_interp_init(qtlinterp,obsgrid, vec,len);
+                for(qi=0;qi<Nqtls;qi++)
+                    qtls_out[qi] = gsl_interp_eval(qtlinterp, obsgrid,vec,qtlgrid[qi],qtlaccl);
+                gsl_interp_free(qtlinterp);gsl_interp_accel_free(qtlaccl);
+                break;
+            }
+        }
+
+        return status;
     }
 }
 
