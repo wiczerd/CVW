@@ -36,12 +36,22 @@ int nosolve = 0;
 int const JJ = 4;     // number of occupations
 int const NG = 2;     // number of general (occupation) skill types
 int const NS = 2;     // number of specific skill types
-int const NZ = 9;     // 7 number of occ match-quality types
-int const NE = 8;     // 7 number of firm epsilon match-quality types
+int const NZ = 9;     // 9 number of occ match-quality types
+int const NE = 8;     // 8 number of firm epsilon match-quality types
 int const NP = 5;     // 5 number of occupation-specific productivies
-int const NA = 2;     // 5 number of aggregate productivities
+int const NA = 2;     // 2 number of aggregate productivities
 
 int NN ,NUN;
+
+int verbose = 3;
+int print_lev = 3;
+int opt_print = 0;
+
+int maxiter = 1000; //2000
+double vftol = 1e-4;
+double rhotightening = .10;
+double caltol = 1e-3;
+double smth_flows = 0.25;
 
 
 int const TT      = 12*15;    // periods per simulation path
@@ -68,15 +78,6 @@ int ntgtavgflow = 9; //overall flows, like J2J rate, finding rate, separation ra
 
 int eps_2emg = 1; //should we use a double-exponentially modified gaussian, or just normal
 int const nstarts = 1;  // how many starts per node
-
-int verbose = 3;
-int print_lev = 3;
-
-int maxiter = 1000; //2000
-double vftol = 1e-4;
-double rhotightening = .10;
-double caltol = 1e-3;
-double smth_flows = 0.25;
 
 double alphaU1scl = 1.; //whatever is the value of alphaU1, choose this to scale it to be below 1 total finding rate
 double alphaE1scl = 1.; //whatever is the value of alphaE1, choose this to scale it to be below 1 total finding rate
@@ -333,7 +334,7 @@ int main(int argc,char *argv[] ) {
 	int i,ii,ji,j, ci,ai;
 	int success, rank,nnodes;
 
-	int cal_now, cf_now;
+	int cal_now, cf_now,jac_now;
 
 	struct cal_params par;
 	struct valfuns vf;
@@ -352,8 +353,11 @@ int main(int argc,char *argv[] ) {
 	if(argc>2)
 		cf_now = atoi(argv[2]);
 	else
-		cf_now =
-	sprintf(exper_f,"X");
+		cf_now = sprintf(exper_f,"X");
+	if(argc>3)
+	    jac_now = atoi(argv[3]);
+	else
+	    jac_now =0;
 
 	nflows = fact_int(JJ)/(fact_int(2)*fact_int(JJ-2));
 
@@ -617,6 +621,7 @@ int main(int argc,char *argv[] ) {
 	    printf(" In the calibration \n");
 		sprintf(calhi_f,"calhist%d.csv",rank);
 		calhist = fopen(calhi_f,"w+");
+		fprintf(calhist,"Value,");
 		for(i=0;i<Ntgt_cluster[0];i++){
 		    fprintf(calhist,"%s,",tgtnames_clu0[i]);
 		}
@@ -702,7 +707,7 @@ int main(int argc,char *argv[] ) {
 
 				//iterations choice in DFBOLS
 				int maxfun = ci<Ncluster ? 4*Npar_cluster[ci]+3  : 50*(2*Npar_cluster[ci]+1);
-
+                //int maxfun = 2;
 
 				double *wspace = calloc( (npt+5)*(npt+Npar_cluster[ci])+3*Npar_cluster[ci]*(Npar_cluster[ci]+5)/2 ,sizeof(double) );
 
@@ -756,6 +761,7 @@ int main(int argc,char *argv[] ) {
 				}
 				int print_lev_old = print_lev;
 				print_lev = 2;
+				opt_print = 1;
 				par.cluster_hr= Ncluster;
 				dist = param_dist(par.xparopt, & par ,Nparams,err,Ntargets);
 				print_lev = print_lev_old;
@@ -770,7 +776,7 @@ int main(int argc,char *argv[] ) {
 						printf("%f,", par.xparopt[par_hr+ii]);
 					printf("%f)\n", par.xparopt[par_hr+Npar_cluster[ci]-1]);
 				}
-
+                opt_print =0;
 				free(wspace);free(dfbols_lb);free(dfbols_ub);
 				free(par.cluster_ub[ci]);free(par.cluster_lb[ci]);
 				free(x0_clu);
@@ -819,17 +825,19 @@ int main(int argc,char *argv[] ) {
 		print_params(calx, Nparams, &par);
         strcpy(parhi_f,parhi_old);
 	}
-	printf("calculating derivatives\n");
-	int xi;
-    read_params("param_opt.csv", &par);
-    double ** cal_Jacobian = malloc(sizeof(double*)*Nparams);
-    for(xi=0;xi<Nparams;xi++)
-        cal_Jacobian[xi] = malloc(sizeof(double)*Ntargets);
+	if(jac_now==1) {
+        printf("calculating derivatives\n");
+        int xi;
+        read_params("param_opt.csv", &par);
+        double **cal_Jacobian = malloc(sizeof(double *) * Nparams);
+        for (xi = 0; xi < Nparams; xi++)
+            cal_Jacobian[xi] = malloc(sizeof(double) * Ntargets);
 
-    compute_derivs(cal_Jacobian, &par,1);xi=0;
+        compute_derivs(cal_Jacobian, &par, 1);
+        xi = 0;
 
-    free(cal_Jacobian);
-
+        free(cal_Jacobian);
+    }
 
     if( cf_now == 1 ){
 		read_params("param_opt.csv", &par);
@@ -918,7 +926,6 @@ int main(int argc,char *argv[] ) {
 		print_lev = print_lev_old;
 
 	}
-	// gather all of the mindist back to node 1
 
 	free(x0starts_j);
 	free(caldist_j);free(calx_j);
@@ -1431,6 +1438,7 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 
 	int pl_0 = print_lev;
 	int vbs_0 = verbose;
+    int noff,ri,qi;
 
 	print_lev = 2; // want to print out all the histories
 	if(print_lev>1 && par->rank==0){
@@ -1513,11 +1521,11 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 	int **idx_ion;
 	idx_ion = malloc(sizeof(int*)*nscenario);
 	for(idx=0;idx<nscenario;idx++)
-		idx_ion = malloc(sizeof(int)*nshocks);
+		idx_ion[idx] = malloc(sizeof(int)*nshocks);
 
     ion_permute( nshocks, idx_ion );
 	// ++++++++++++++++++++++++++++++++++++++++++++++++++
-    //cycle through scenarios turning on and off:
+    /*cycle through scenarios turning on and off:
     for(idx=0;idx<nscenario;idx++){
 
         sprintf(exper_f, "_%d",idx);
@@ -1615,7 +1623,6 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 	double qtlcontrib_rec[Nqtls*2][nshocks*(nscenario+1)];
 
 
-	int noff,ri,qi;
 
 	double qtl_avg_rec[Nqtls*2][nshocks];
 	for(qi=0;qi<2*Nqtls;qi++){
@@ -1737,7 +1744,7 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 	}
 	free(idx_ion);
 
-    /////////////////////////////////////////////////////////
+    *////////////////////////////////////////////////////////
     /// turn off flows
 
 	sprintf(exper_f,"nof") ;
@@ -1827,7 +1834,7 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 	fprintf(scenariokey,"Num, delta off, zloss off, lamEM off, lamES off, lamU off \n");
 	idx_ion = malloc(sizeof(int*)*nscenario);
 	for(idx=0;idx<nscenario;idx++)
-		idx_ion = malloc(sizeof(int)*ncycflows);
+		idx_ion[idx] = malloc(sizeof(int)*ncycflows);
 
 	ion_permute( ncycflows, idx_ion );
 
@@ -2038,9 +2045,9 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
             for(qi=0;qi<Nqtls;qi++)  qtl_on[qi]= st_nofX[idx].all_qtls[qi];
 
             double var_on_rec[2] = {st_nofX[idx].var_wg_rec[0],st_nofX[idx].var_wg_rec[1]};
-            for(ri=0;ri<2;ri++) varcontrib_rec[ri][(nscenario)*ncycflows+ion1] = var_on_rec[ri];
+            for(ri=0;ri<2;ri++) flow_vcontrib_rec[ri][(nscenario)*ncycflows+ion1] = var_on_rec[ri];
 
-            qtlcontrib[qi][nscenario*ncycflows+ion1] = qtl_on[qi]- 0.;
+            flow_qtlcontrib[qi][nscenario*ncycflows+ion1] = qtl_on[qi]- 0.;
 	        for(qi=0;qi<Nqtls;qi++) flow_qtl_avg[ion1][qi] += flow_qtlcontrib[nscenario*ncycflows+ion1][qi];
 
         }
@@ -3216,50 +3223,52 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
                     }
 				}
 				if( wi>3 && wi< TT/Npwave-3 && Anan==1 && wnext>0. && wlast>0. && ggi_get(ht->uhist[ll],i,ti) ==0  ){
-					w_all[idx_all] = (wnext - wlast)/(wnext + wlast)*2;
-					idx_all ++;
-					w_all_rec[ri_wv][idx_all_rec[ri_wv]] =(wnext - wlast)/(wnext + wlast)*2;
-					idx_all_rec[ri_wv] ++;
+					double wchng = (wnext - wlast)/(wnext + wlast)*2;
+					if(isfinite(wchng)){
+                        w_all[idx_all] = wchng;
+                        idx_all++;
+                        w_all_rec[ri_wv][idx_all_rec[ri_wv]] = wchng;
+                        idx_all_rec[ri_wv]++;
+                    }
 				}
 				if( I_EUns_wi==1 || I_EUsw_wi==1 || I_EEns_wi==1 || I_EEsw_wi==1 || sep==1 ){
 					// can't change a job and be a stayer
 					I_stsw_wi=0;I_stns_wi=0;
 				}
-				if( I_EEwvsw_wi ==1 && idx_EEwvsw < NswE ){
+				if( I_EEwvsw_wi ==1 && idx_EEwvsw < NswE && isfinite(wwv_EEsw_wi) && isfinite(wwv_EEoccsw_wi) ){
 					wwv_EEsw[idx_EEwvsw] = wwv_EEsw_wi;
 					wwv_EEoccsw[idx_EEwvsw]= wwv_EEoccsw_wi;
 					idx_EEwvsw ++;
 				}
-				if(I_EEsw_wi ==1 && idx_EEsw < NswE){
+				if(I_EEsw_wi ==1 && idx_EEsw < NswE && isfinite(w_EEsw_wi)){
 					w_EEsw[idx_EEsw] =w_EEsw_wi;
 					idx_EEsw ++;
-
 					//now the cycle-specific dist
 					w_MVswrec[ri_wv][idx_MVswrec[ri_wv]] = w_EEsw_wi;
 					idx_MVswrec[ri_wv]++;
 				}
-				if(I_EEns_wi==1 && idx_EEns < NJ2J){
+				if(I_EEns_wi==1 && idx_EEns < NJ2J && isfinite(w_EEns_wi)){
 					w_EEns[idx_EEns] = w_EEns_wi;
 					idx_EEns ++;
 					//now the cylce-specific dist
 					w_MVnsrec[ri_wv][idx_MVnsrec[ri_wv]] = w_EEns_wi;
 					idx_MVnsrec[ri_wv]++;
 				}
-				if(I_stsw_wi==1 && idx_stsw < NswSt){
+				if(I_stsw_wi==1 && idx_stsw < NswSt && isfinite(w_stsw_wi)){
 					w_stsw[idx_stsw] = w_stsw_wi;
 					idx_stsw ++;
 				}
-				if(I_stns_wi==1 && idx_stns < Nemp ){
+				if(I_stns_wi==1 && idx_stns < Nemp && isfinite(w_stns_wi) ){
 					w_stns[idx_stns] = w_stns_wi;
 					idx_stns ++;
 				}
-				if( I_UEwvsw_wi==1 && idx_UEwvsw < NswU && isfinite(wwv_UEsw_wi)){
+				if( I_UEwvsw_wi==1 && idx_UEwvsw < NswU &&
+				    isfinite(wwv_UEsw_wi) && isfinite(wwv_UEoccsw_wi)){
 					wwv_UEsw[idx_UEwvsw] = wwv_UEsw_wi;
 					wwv_UEoccsw[idx_UEwvsw] = wwv_UEoccsw_wi;
-
 					idx_UEwvsw ++;
 				}
-				if(I_UEsw_wi==1 && idx_EUsw < NswU && isfinite(w_UEsw_wi)){
+				if(I_UEsw_wi==1 && idx_EUsw < NswU && isfinite(w_UEsw_wi) && isfinite(w_EUsw_wi)){
 					w_UEsw[idx_UEsw] = w_UEsw_wi;
 					w_EUsw[idx_EUsw] = w_EUsw_wi;
 
@@ -3271,7 +3280,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 					w_MVswrec[ri_wv][idx_MVswrec[ri_wv]] = w_EUsw_wi;
 					idx_MVswrec[ri_wv]++;
 				}
-				if(I_UEns_wi==1 && idx_EUns < Nspell && !isnan(w_UEns_wi)){
+				if(I_UEns_wi==1 && idx_EUns < Nspell && isfinite(w_UEns_wi) && isfinite(w_EUns_wi)){
 					w_UEns[idx_UEns] = w_UEns_wi;
 					w_EUns[idx_EUns] = w_EUns_wi;
 					idx_UEns ++;
@@ -4083,7 +4092,22 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 			printarray("EUsw_qtls.csv", st.EUsw_qtls, Nqtls, 0);
 			printarray("UEns_qtls.csv", st.UEns_qtls, Nqtls, 0);
 			printarray("UEsw_qtls.csv", st.UEsw_qtls, Nqtls, 0);
+
 		}
+        if(opt_print==1) {
+            //put them all in one file if we're at the optimal
+            printarray("qtls_stEEEUUEMV_nssw", st.stns_qtls, Nqtls, 0);
+            printarray("qtls_stEEEUUEMV_nssw", st.EEns_qtls, Nqtls, 1);
+            printarray("qtls_stEEEUUEMV_nssw", st.EUns_qtls, Nqtls, 1);
+            printarray("qtls_stEEEUUEMV_nssw", st.UEns_qtls, Nqtls, 1);
+            printarray("qtls_stEEEUUEMV_nssw", st.MVns_qtls_ratio, Nqtls, 1);
+
+            printarray("qtls_stEEEUUEMV_nssw", st.stsw_qtls, Nqtls, 1);
+            printarray("qtls_stEEEUUEMV_nssw", st.EEsw_qtls, Nqtls, 1);
+            printarray("qtls_stEEEUUEMV_nssw", st.EUsw_qtls, Nqtls, 1);
+            printarray("qtls_stEEEUUEMV_nssw", st.UEsw_qtls, Nqtls, 1);
+            printarray("qtls_stEEEUUEMV_nssw", st.MVsw_qtls_ratio, Nqtls, 1);
+        }
 
 	}else{
 		gsl_rng * RNG = gsl_rng_alloc(gsl_rng_default);
@@ -4170,10 +4194,10 @@ void compute_derivs(double**cal_Jacobian, struct cal_params * par0, int printJac
         }
 
         xp_pspace[xi] = gsl_min( x_pspace[xi] +
-                0.025*( par0->param_ub[xi]- par0->param_lb[xi]),
+                0.005*( par0->param_ub[xi]- par0->param_lb[xi]),
                 par0->param_ub[xi]);
         xm_pspace[xi] = gsl_max( x_pspace[xi] -
-                                 0.025*( par0->param_ub[xi]- par0->param_lb[xi]),
+                                 0.005*( par0->param_ub[xi]- par0->param_lb[xi]),
                                  par0->param_lb[xi]);
         x_del[xi] = xp_pspace[xi] - xm_pspace[xi];
         double err_p[Ntargets];double err_m[Ntargets];
