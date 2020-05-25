@@ -3966,8 +3966,8 @@ void set_dat( struct stats * dat){
     dat->fndrt_ratio =  1.087637;
     dat->EE_ratio =  1.184628;
 
-    dat->swProb_EE_ratio = 0.9337642;
-    dat->swProb_U_ratio  =  0.9035369;
+    dat->swProb_EE_ratio = 1./0.9337642; // these were computed backwards: needs to be higher in expansion and we are computing ratio as expansion/recession
+    dat->swProb_U_ratio  =  1./0.9035369;
 
 	dat->doubleswU = 0.2968578;
 	dat->doubleswE = 0.2771865;
@@ -4168,18 +4168,18 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 			ii ++;
 			// -------------------------------------
 			// Should this go in 1st cluster or second?
-            err_vec[ii]   = 0.1*(st.varGflowsE - dat.varGflowsE)/(st.varGflowsE + dat.varGflowsE);
+            err_vec[ii]   = 0.5*(st.varGflowsE - dat.varGflowsE)/(st.varGflowsE + dat.varGflowsE);
 			//err_vec[ii] = .5*(st.corrEE_wgocc  - dat.corrEE_wgocc); //*2 / (st.corr_wgocc + dat.corr_wgocc);
 			//err_vec[ii] = (st.doubleswE - dat.doubleswE) /(st.doubleswE + dat.doubleswE);
 			ii++;
-            err_vec[ii]   = 0.1*(st.varGflowsU - dat.varGflowsU)/(st.varGflowsU + dat.varGflowsU);
+            err_vec[ii]   = 0.5*(st.varGflowsU - dat.varGflowsU)/(st.varGflowsU + dat.varGflowsU);
 			//err_vec[ii] = (st.doubleswU - dat.doubleswU) /(st.doubleswU + dat.doubleswU);
 			//err_vec[ii] = .5*(st.corrEUE_wgocc - dat.corrEUE_wgocc); //*2 / (st.corr_wgocc + dat.corr_wgocc);
 			ii++;
 			// -------------------------------------
 			for(i=0;i<nflows;i++)
-				err_vec[ii+i] = atan(st.occ_netflow[i] - dat.occ_netflow[i])
-						/(double)nflows; //weight all the net flows as one target
+				err_vec[ii+i] = (st.occ_netflow[i] - dat.occ_netflow[i])
+						/(double)nflows; // was atan weight all the net flows as one target
 			ii = Ntgt_cluster[0];
 		}
 
