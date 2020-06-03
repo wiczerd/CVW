@@ -500,8 +500,8 @@ int main(int argc,char *argv[] ) {
 
 	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.80;ii++;
     par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.80;ii++;
-	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.40;ii++;
-	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.10;ii++;
+	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.05;ii++;
+	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.99;ii++;
 	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.02;ii++;
 	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.02;ii++;
 
@@ -880,7 +880,6 @@ int main(int argc,char *argv[] ) {
 			}
 		}
 
-
 		//success  = disc_Weibull(par.epsprob->data, par.epslev->data, NE,0.,par.scale_eps,par.shape_eps);
 		success = disc_2emg(par.epsprob->data,par.epslev->data,(int)par.epsprob->size,
 					0.,par.var_eps,par.lshape_eps,par.rshape_eps);
@@ -1117,7 +1116,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 							}
 						}
 					}
-                    EztWE[jji] = zloss_hr*EzWU + (1. - zloss_hr)*EztWE[jji];
+                 //   EztWE[jji] = zloss_hr*EzWU + (1. - zloss_hr)*EztWE[jji];
 					if(jji!=ji){
 						// constructing RE
                         dirjE[jji] =gsl_min(par->alpha0*
@@ -1138,11 +1137,14 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				if(gsl_finite(REhr)==0){
 					//printf("Uhoh. Bad REhr");
 				}
-
 				gg_set( vf->RE,ii,ji,REhr);
+				double EWnom=(lambdaEShr * (par->gdfthr * EtWE + (1. - par->gdfthr) * EtTWE) +
+                              (1. - lambdaEShr) *// potentially update z:
+                              ((1.-par->update_z)*EAPWE + par->update_z*EzWE[ji]));
+
 				double mhr;
-                mhr = exp((REhr-EAPWE)/rhotightening)/
-                             ( exp((REhr-EAPWE)/rhotightening)+ 1.);
+                mhr = exp((REhr-EWnom)/rhotightening)/
+                             ( exp((REhr-EWnom)/rhotightening)+ 1.);
 				if( isinf(mhr) | isnan(mhr) ){
 		    		mhr = REhr >= EAPWE ? 1. : 0. ;
 				}
@@ -1191,19 +1193,13 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
                            beta * delta_hr * gg_get(vf0.WU, iU, ji) + beta * zloss_hr * EzWU +
                            beta * (1. - delta_hr - zloss_hr) * (
                                    gg_get(pf->mE, ii, ji) * gg_get(vf->RE, ii, ji) +
-                                   (1. - gg_get(pf->mE, ii, ji)) *
-                                   (lambdaEShr * (par->gdfthr * EtWE + (1. - par->gdfthr) * EtTWE) +
-                                   (1. - lambdaEShr) *// potentially update z:
-                                   ((1.-par->update_z)*EAPWE + par->update_z*EzWE[ji])));
+                                   (1. - gg_get(pf->mE, ii, ji)) *EWnom );
                 }else {
                     WEhr = pow(wagevec[ii][ji], 1. - par->wage_curve) / (1. - par->wage_curve) +
                            beta * delta_hr * gg_get(vf0.WU, iU, ji) + beta * zloss_hr * EzWU +
                            beta * (1. - delta_hr - zloss_hr) * (
                                    gg_get(pf->mE, ii, ji) * gg_get(vf->RE, ii, ji) +
-                                   (1. - gg_get(pf->mE, ii, ji)) *
-                                   (par->gdfthr * lambdaEShr * EtWE + (1. - par->gdfthr) * lambdaEShr * EtTWE +
-                                   (1. - lambdaEShr) *
-                                   ((1.-par->update_z)*EAPWE + par->update_z *EzWE[ji] )  ));
+                                   (1. - gg_get(pf->mE, ii, ji)) * EWnom);
 				}
 				gg_set( vf->WE, ii,ji,WEhr);
 
@@ -1225,9 +1221,9 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 				int jji,zzi,tti,aai,ppi;
 
-				double lambdaUShr = par->lambdaUS0*exp( par->lambdaUS_Acoef*(double)ai);
-                double lambdaUMhr = par->lambdaUM0*exp( par->lambdaUM_Acoef*(double)ai);
-                double zloss_hr = par->zloss     * exp( par->zloss_Acoef * (double)ai ); //relevant because might get a really bad z draw
+				double lambdaUShr = par->lambdaUS0*exp( par->lambdaUS_Acoef* (double)ai);
+                double lambdaUMhr = par->lambdaUM0*exp( par->lambdaUM_Acoef* (double)ai);
+                double zloss_hr   = par->zloss    *exp( par->zloss_Acoef   * (double)ai); //relevant because might get a really bad z draw
 
                 double EzDelWU = 0.; //value if in the forced-switch position
                 for(jji=0;jji<JJ;jji++) {
@@ -1303,10 +1299,9 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 							        gsl_vector_get(par->epsprob,tti)*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji], pi, ppi);}
 					}
 				}
-				double mhr = exp((RUhr-((1.-lambdaUShr)*EAPWU+
-                        lambdaUShr*gsl_max(EtWE,EAPWU)  ))/rhotightening)/
-				               (exp((RUhr-((1.-lambdaUShr)*EAPWU+
-                                       lambdaUShr*gsl_max(EtWE,EAPWU)  ))/rhotightening)+1.);
+				double EWnom = (1.-lambdaUShr)*EAPWU+ lambdaUShr*gsl_max(EtWE,EAPWU)  ;
+				double mhr = exp((RUhr-EWnom)/rhotightening)/
+				               (exp((RUhr-EWnom)/rhotightening)+1.);
 				if( isinf(mhr) | isnan(mhr) ){
 					mhr = RUhr > (1.-lambdaUShr)*EAPWU+ lambdaUShr*gsl_max(EtWE,EAPWU) ?
 							1. : 0. ;
@@ -1363,7 +1358,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 		gsl_matrix_memcpy(vf0.WU,vf->WU);
 		maxdist = gsl_max( gsl_matrix_max(vf->WEdist),-gsl_matrix_min(vf->WEdist));
-		if(viter % 200 == 0 && verbose >1 )  printf("Max distance is %f on iteration %d \n", maxdist,viter);
+ 		if(viter % 200 == 0 && verbose >1 )  printf("Max distance is %f on iteration %d \n", maxdist,viter);
 		double tolhr = pow(viter+1,-1)*1e-2+vftol;
 		if( maxdist < tolhr ){
 			success = 0;
@@ -2391,16 +2386,6 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                     // no need to redraw epsilon unless later there's a job switch
                     epst[i] = epstm1[i];
                     ut[i] = utm1[i]; // this is not strictly necessary except in the first period?
-                    // save wages
-                    double wagehr = exp(par->AloadP->data[jt[i]] * par->Alev->data[At] +
-                                        par->Plev->data[Pt[jt[i]]] +
-                                        par->epslev->data[epst[i]] +
-                                        par->zlev->data[zt[i]] +
-                                        par->xSlev->data[xSt[i]] +
-                                        occ_wlevs[jt[i]]) + wage_lev;
-                    if (ti >= burnin)
-                        gg_set(ht->whist[ll], i, ti - burnin, wagehr);
-
 
                     ii = At * NP * NS * NZ * NE + Pt[jt[i]] * NS * NZ * NE + xSt[i] * NZ * NE + zt[i] * NE + epst[i];
                     iU = At * NP * NS * NZ + Pt[jt[i]] * NS * NZ + xSt[i] * NZ + zt[i];
@@ -2419,7 +2404,6 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                             // record some stuff about whether voluntary or not
                             if (gg_get(vf->WU, iU, jt[i]) > gg_get(vf->WE, ii, jt[i]) &&
                                 delta_hr <= gg_get(sk->dsel[ll], i, ti) && gg_get(sk->xGsel[ll], i, ti) >= zloss_hr) {
-                                quitwage[ll] += wagehr;
                                 Nquit[ll] += 1.;
                                 quitVFdiff[ll] += gg_get(vf->WU, iU, jt[i]) - gg_get(vf->WE, ii, jt[i]);
                                 quitepsval[ll][epst[i]]++;
@@ -2429,7 +2413,6 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                                 quitWU[ll] += gg_get(vf->WU, iU, jt[i]);
                             } else {
                                 noquitzval[ll][zt[i]]++;
-                                noquitwage[ll] += wagehr;
                                 Nnoquit[ll] += 1;
                                 noquitWE[ll] += gg_get(vf->WE, ii, jt[i]);
                                 noquitWU[ll] += gg_get(vf->WU, iU, jt[i]);
@@ -2492,17 +2475,18 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                                         int ipp = At * NP * NS * NZ * NE + Pt[jt[i]] * NS * NZ * NE + xti1 * NZ * NE +
                                                   zipp * NE + epst[i]; //oldepsilon
                                         // either you want to or get godfather shock (using lambdaESsel b/c wasn't relevant here, so that's an uncorrelated draw)
-                                        if (gg_get(vf->WE, ip, jt[i]) >= gg_get(vf->WE, ipp, jt[i]) ||
-                                            gg_get(sk->lambdaESsel[ll], i, ti) < par->gdfthr) {
+                                        //if (gg_get(vf->WE, ip, jt[i]) >= gg_get(vf->WE, ipp, jt[i]) ||
+                                        //    gg_get(sk->lambdaESsel[ll], i, ti) < par->gdfthr) {
                                             if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 1);
                                             xSt[i] = xti1;
                                             zt[i] = zipp;
                                             epst[i] = epspp;
-                                        } else {//don't switch employer
-                                            if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 0);
-                                            xSt[i] = xti1;
-                                            zt[i] = zipp;
-                                        }
+                                        //} else {//don't switch employer
+                                        //    if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 0);
+                                        //    xSt[i] = xti1;
+                                        //    zt[i] = zipp;
+                                        //
+                                        //}
                                     } else if (gg_get(sk->lambdaUMsel[ll], i, ti) < par->stwupdate) {
                                         // occ switch and no job switch
                                         zt[i] = zipp;
@@ -2518,13 +2502,22 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                                     gg_set(epssel_hist[ll], i, ti, gg_get(sk->epssel[ll], i, ti));
                                     if (gg_get(sk->lambdaEMsel[ll], i, ti) <
                                         par->gdfthr) { //godfather (gamma) shock? lambdaEMsel hasn't been used for this guy
-                                        if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 1);
-
-                                        epst[i] = 0;
+                                        int epspp = 0;
                                         for (thi = 0; thi < NE; thi++) {
-                                            if (gg_get(sk->epssel[ll], i, ti) > cmepsprob[thi])++epst[i];
+                                            if (gg_get(sk->epssel[ll], i, ti) > cmepsprob[thi])++epspp;
                                         }
-                                        epst[i] = epst[i] > NE - 1 ? NE - 1 : epst[i];
+                                        epspp = epspp > NE - 1 ? NE - 1 : epspp;
+                                        // want to quit?
+                                        iU = At * NP * NS * NZ + Pt[jt[i]] * NS * NZ + xSt[i] * NZ + zt[i];
+                                        int ipp = At * NP * NS * NZ * NE + Pt[jt[i]] * NS * NZ * NE + xSt[i] * NZ * NE +
+                                                  zt[i] * NE + epst[i];
+                                        if(gg_get(vf->WE, ipp, jt[i]) >= gg_get(vf->WU, iU, jt[i])) {
+                                            epst[i] = epspp;
+                                            if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 1);
+                                        }else{
+                                            ut[i] =1;
+                                        }
+
                                     } else { //climbing the ladder!
                                         if ((gg_get(sk->epssel[ll], i, ti) > cmepsprob[epst[i]])) {
                                             if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 1);
@@ -2654,14 +2647,20 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                     xStm1[i] = xSt[i];
                     ztm1[i] = zt[i];
                     epstm1[i] = epst[i];
-
+                    // save wages
+                    double wagehr = exp(par->AloadP->data[jt[i]] * par->Alev->data[At] +
+                                        par->Plev->data[Pt[jt[i]]] +
+                                        par->epslev->data[epst[i]] +
+                                        par->zlev->data[zt[i]] +
+                                        par->xSlev->data[xSt[i]] +
+                                        occ_wlevs[jt[i]]) + wage_lev;
+                    if (ti >= burnin)
+                        gg_set(ht->whist[ll], i, ti - burnin, wagehr);
 
                 }// t=1:TTT
             } // i=1:NSim
 
 
-			quitwage[ll] /= Nquit[ll];
-			noquitwage[ll] /= Nquit[ll];
 			quitVFdiff[ll] /= Nquit[ll];
 
 
@@ -2714,7 +2713,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 
 
 	//if(verbose>2){
-		double quitwage_pr=0, noquitwage_pr=0,Nquit_pr=0,Nnoquit_pr=0,quitVFdiff_pr=0;
+		double Nquit_pr=0,Nnoquit_pr=0,quitVFdiff_pr=0;
 		double noquitWE_pr=0.,noquitWU_pr=0.,quitWE_pr=0.,quitWU_pr=0.;
 		long quitepsval_pr[NE],quitzval_pr[NZ],noquitzval_pr[NZ],quitPval_pr[NP];
 		for(i=0;i<NE;i++)quitepsval_pr[i] =0;
@@ -2722,11 +2721,9 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 		for(i=0;i<NZ;i++)noquitzval_pr[i] =0;
 		for(i=0;i<NP;i++)quitPval_pr[i] =0;
 		for(ll=0;ll<Npaths;ll++){
-			quitwage_pr += quitwage[ll];
 			quitVFdiff_pr += quitVFdiff[ll];
 			Nquit_pr +=Nquit[ll];
 			Nnoquit_pr += Nnoquit[ll];
-			noquitwage_pr+=noquitwage[ll];
 			noquitWE_pr+= noquitWE[ll];
 			noquitWU_pr+= noquitWU[ll];
 			quitWE_pr+= quitWE[ll];
@@ -2736,7 +2733,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 			for(i=0;i<NZ;i++)noquitzval_pr[i] += noquitzval[ll][i];
 			for(i=0;i<NP;i++)quitPval_pr[i] += quitPval[ll][i];
 		}
-		printf(" The fraction of quits out of separations was %f. wage of quits was %f of nonquits. The VF difference was %f \n", Nquit_pr/(Nquit_pr+Nnoquit_pr),  quitwage_pr/noquitwage_pr*Nnoquit_pr/Nquit_pr,quitVFdiff_pr);
+		printf(" The fraction of quits out of separations was %f. The VF difference was %f \n", Nquit_pr/(Nquit_pr+Nnoquit_pr), quitVFdiff_pr);
 		printf(" Location is (");for(i=0;i<NE;i++) printf(" %ld,", quitepsval_pr[i]); printf(") in epsilon \n");
 		printf(" Location is (");for(i=0;i<NZ;i++) printf(" %ld,", quitzval_pr[i]); printf(") in z \n");
 		printf(" No quits location is (");for(i=0;i<NZ;i++) printf(" %ld,", noquitzval_pr[i]); printf(") in z \n");
@@ -2870,11 +2867,11 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		NErisksep= 0;
 		Nocc_ten = 0.;
 		NdoubleswU =0 ; NdoubleswE=0;
-		#pragma omp parallel for private(ll,ti,i,wi,si,ji,jji) \
-		reduction( +: Nemp ) reduction( +:Nunemp) reduction( +:Nnosep) \
-		reduction( +: Nfnd) reduction( +: NswU) reduction( +: NswE) reduction( +: Nspell) \
-		reduction( +: NswSt) reduction( +: Ndur_sw) reduction( +: Ndur_nosw) reduction(+: Nsep) \
-		reduction(+:NErisksep) reduction(+:Nocc_ten) reduction(+:NdoubleswU) reduction(+:NdoubleswE)
+	//	#pragma omp parallel for private(ll,ti,i,wi,si,ji,jji) \
+	//	reduction( +: Nemp ) reduction( +:Nunemp) reduction( +:Nnosep) \
+	//	reduction( +: Nfnd) reduction( +: NswU) reduction( +: NswE) reduction( +: Nspell) \
+	//	reduction( +: NswSt) reduction( +: Ndur_sw) reduction( +: Ndur_nosw) reduction(+: Nsep) \
+	//	reduction(+:NErisksep) reduction(+:Nocc_ten) reduction(+:NdoubleswU) reduction(+:NdoubleswE)
 		for(ll=0;ll<Npaths;ll++){
 
 			int count_wi;
@@ -2919,12 +2916,12 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 		                            if( ggi_get(ht->J2Jhist[ll],i,ti) ==1 ){
 		                                NJ2J_wi = 1;
 			                            if(ri==2) NJ2Jmo ++;
-		                                if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ){
-		                                	occ_gflow[ggi_get(ht->jhist[ll],i,ti)][ggi_get(ht->jhist[ll],i,ti+1)]++;
-                                            occ_gflowE[ggi_get(ht->jhist[ll],i,ti)][ggi_get(ht->jhist[ll],i,ti+1)]++;
+		                                if( ggi_get(ht->jhist[ll],i,ti-1) !=ggi_get(ht->jhist[ll],i,ti) ){
+		                                	occ_gflow[ggi_get(ht->jhist[ll],i,ti-1)][ggi_get(ht->jhist[ll],i,ti)]++;
+                                            occ_gflowE[ggi_get(ht->jhist[ll],i,ti-1)][ggi_get(ht->jhist[ll],i,ti)]++;
 		                                	for(jji=0;jji<JJ;jji++){
-				                                occ_sijflow[ggi_get(ht->jhist[ll],i,ti)][jji] += gg_get(ht->sijhist[ll][jji],i,ti);
-                                                occ_sijflowE[ggi_get(ht->jhist[ll],i,ti)][jji] += gg_get(ht->sijhist[ll][jji],i,ti);
+				                                occ_sijflow[ggi_get(ht->jhist[ll],i,ti-1)][jji] += gg_get(ht->sijhist[ll][jji],i,ti);
+                                                occ_sijflowE[ggi_get(ht->jhist[ll],i,ti-1)][jji] += gg_get(ht->sijhist[ll][jji],i,ti);
 		                                	}
 		                                	NswE_wi =1;
 		                                	if( lastswE_wi ==1 ) NdoubleswE_wi = 1;
@@ -2933,7 +2930,7 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 			                                Noccs_i ++;
 		                                }
 		                            }else{  // not EE
-		                                if( ggi_get(ht->jhist[ll],i,ti+1) !=ggi_get(ht->jhist[ll],i,ti) ) NswSt_wi = 1;
+		                                if( ggi_get(ht->jhist[ll],i,ti-1) !=ggi_get(ht->jhist[ll],i,ti) ) NswSt_wi = 1;
 		                            }
 	                            }
 	                        }else{ //uhist = 1
@@ -4244,11 +4241,11 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 			ii ++;
 			// -------------------------------------
 			// Should this go in 1st cluster or second?
-            err_vec[ii]   = 0.5*(st.varGflowsE - dat.varGflowsE)/(st.varGflowsE + dat.varGflowsE);
+            err_vec[ii]   = 0.25*(st.varGflowsE - dat.varGflowsE)/(st.varGflowsE + dat.varGflowsE);
 			//err_vec[ii] = .5*(st.corrEE_wgocc  - dat.corrEE_wgocc); //*2 / (st.corr_wgocc + dat.corr_wgocc);
 			//err_vec[ii] = (st.doubleswE - dat.doubleswE) /(st.doubleswE + dat.doubleswE);
 			ii++;
-            err_vec[ii]   = 0.5*(st.varGflowsU - dat.varGflowsU)/(st.varGflowsU + dat.varGflowsU);
+            err_vec[ii]   = 0.25*(st.varGflowsU - dat.varGflowsU)/(st.varGflowsU + dat.varGflowsU);
 			//err_vec[ii] = (st.doubleswU - dat.doubleswU) /(st.doubleswU + dat.doubleswU);
 			//err_vec[ii] = .5*(st.corrEUE_wgocc - dat.corrEUE_wgocc); //*2 / (st.corr_wgocc + dat.corr_wgocc);
 			ii++;
