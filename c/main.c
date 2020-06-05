@@ -100,20 +100,21 @@ double * solver_state;
 int solX =0;
 
 char * parnames_clu0[] = {"alpha0","lambdaUS0","lambdaUM0","lambdaES","lambdaEM","delta","zloss","alphaE1","alphaU1",
-                          //            "alpha02","alpha03","alpha12","alpha13","alpha23"};
-                          "alpha01","alpha02","alpha03","alpha12","alpha13","alpha23"};
+                                      "alphaf0","alphaf1","alphaf2","alphaf3"};
+                          //"alpha01","alpha02","alpha03","alpha12","alpha13","alpha23"};
 char * parnames_clu1[] = {"update_z","scale_z","shape_z","var_pe","autop","var_a","autoa","gdfather",
 						  "stwupdt","var_eps","ltl_eps","rtl_eps"};
 char * parnames_clu2[] = {"Delta_A","lamEM_A","lamES_A","lamUS_A","lamUM_A","zloss_A","occ1","occ2","occ3"};
 char * parnames_cluall[] = {"alpha0","lambdaUS0","lambdaUM0","lambdaES","lambdaEM","delta","zloss","alphaE1","alphaU1",
-                            //            "alpha02","alpha03","alpha12","alpha13","alpha23",
-                            "alpha01","alpha02","alpha03","alpha12","alpha13","alpha23",
+                                        "alphaf0","alphaf1","alphaf2","alphaf3",
+                            //"alpha01","alpha02","alpha03","alpha12","alpha13","alpha23",
                             "update_z","scale_z","shape_z","var_pe","autop","var_a","autoa","gdfather","stwupdt","var_eps","ltl_eps","rtl_eps",
                             "Delta_A","lamEM_A","lamES_A","lamUS_A","lamUM_A","zloss_A","occ1","occ2","occ3"};
 char ** parnames[] = {parnames_clu0,parnames_clu1,parnames_clu2,parnames_cluall};
 
 char * tgtnames_clu0[]   = {"J2J_err","fnd_err","sep_err","swEE_err","swU_err","swSt_err","dur_ratio","nrmflowE","nrmflowU",
-                            "flow01","flow02","flow03","flow12","flow13","flow23"};
+                            "flow0","flow1","flow2","flow3"};
+                            //"flow01","flow02","flow03","flow12","flow13","flow23"};
 
 char * tgtnames_clu1;
 char * tgtnames_clu2;
@@ -259,6 +260,8 @@ struct stats{
 	double *occ_netflowU; //  will have JJ ! / (JJ-2)!2! points.
 	double *occ_netflowE; //  will have JJ ! / (JJ-2)!2! points.
 
+	double *occ_margflow; //will have JJ points
+
 	double nrmflows,nrmflowsE,nrmflowsU;
 	double varGflowsE,varGflowsU;
 
@@ -361,14 +364,14 @@ int main(int argc,char *argv[] ) {
 	sprintf(exper_f,"%s","");
 	nflows = fact_int(JJ)/(fact_int(2)*fact_int(JJ-2));
 
-	Npar_cluster[0] = ntgtavgflow + nflows;
+	Npar_cluster[0] = ntgtavgflow + JJ; // was +nflows
 	Npar_cluster[1] = 10;
 	if(eps_2emg==1) Npar_cluster[1] +=2;
 	Npar_cluster[2] = 6+JJ-1; //cyclical parameters
 	Nparams = 0;
 	for(i=0;i<Ncluster;i++)Nparams += Npar_cluster[i];
 
-	Ntgt_cluster[0] = ntgtavgflow + (nflows); // flow rates
+	Ntgt_cluster[0] = ntgtavgflow + JJ; // was + nflows
 	Ntgt_cluster[1] = Nqtls*8; // 2 occwg and wage correlations. Plus, wage change distributions
 	Ntgt_cluster[2] = 5+Nqtls*2; // cyclicality stuff
 	Ntargets =0;
@@ -510,8 +513,8 @@ int main(int argc,char *argv[] ) {
 	par.param_lb[ii] = 0.010; par.param_ub[ii] = 0.90;ii++; //potentially these are not <1
 
 	// alpha_nf matrix
-	for(i=0;i<nflows;i++){
-		par.param_lb[i+ii] = -0.25; par.param_ub[i+ii] = 0.25;}
+	for(i=0;i<JJ;i++){ //was for(i=0;i<nflows;i++)
+		par.param_lb[i+ii] = -0.50; par.param_ub[i+ii] = 0.50;}
 
 	if(Ncluster>1){
 		ii = Npar_cluster[0];
@@ -539,10 +542,10 @@ int main(int argc,char *argv[] ) {
 		ii = Npar_cluster[1]+Npar_cluster[0];
 		//delta_Acoef, lambdaEM, lambdaES, lambdaUS, lambdaUM, zloss (can up-to double)
 		par.param_lb[ii]=-1.999;   par.param_ub[ii] = 0.999; ii++;
+		par.param_lb[ii]=-0.999;   par.param_ub[ii] = 1.999; ii++;
 		par.param_lb[ii]=-0.999;   par.param_ub[ii] = 0.999; ii++;
 		par.param_lb[ii]=-0.999;   par.param_ub[ii] = 0.999; ii++;
-		par.param_lb[ii]=-0.999;   par.param_ub[ii] = 0.999; ii++;
-        par.param_lb[ii]=-0.999;   par.param_ub[ii] = 0.999; ii++;
+        par.param_lb[ii]=-1.999;   par.param_ub[ii] = 1.999; ii++;
 		par.param_lb[ii]=-1.999;   par.param_ub[ii] = 0.999; ii++;
 
 		for(ji=0;ji<JJ;ji++){
@@ -2475,18 +2478,17 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                                         int ipp = At * NP * NS * NZ * NE + Pt[jt[i]] * NS * NZ * NE + xti1 * NZ * NE +
                                                   zipp * NE + epst[i]; //oldepsilon
                                         // either you want to or get godfather shock (using lambdaESsel b/c wasn't relevant here, so that's an uncorrelated draw)
-                                        //if (gg_get(vf->WE, ip, jt[i]) >= gg_get(vf->WE, ipp, jt[i]) ||
-                                        //    gg_get(sk->lambdaESsel[ll], i, ti) < par->gdfthr) {
+                                        if (gg_get(vf->WE, ip, jt[i]) >= gg_get(vf->WE, ipp, jt[i]) ||
+                                            gg_get(sk->lambdaESsel[ll], i, ti) < par->gdfthr) {
                                             if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 1);
                                             xSt[i] = xti1;
                                             zt[i] = zipp;
                                             epst[i] = epspp;
-                                        //} else {//don't switch employer
-                                        //    if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 0);
-                                        //    xSt[i] = xti1;
-                                        //    zt[i] = zipp;
-                                        //
-                                        //}
+                                        } else {//don't switch employer
+                                            if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 0);
+                                            xSt[i] = xti1;
+                                            zt[i] = zipp;
+                                        }
                                     } else if (gg_get(sk->lambdaUMsel[ll], i, ti) < par->stwupdate) {
                                         // occ switch and no job switch
                                         zt[i] = zipp;
@@ -3044,6 +3046,8 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 
 	double occ_gtot = 0.; double occ_stot = 0.; double varGflow=0.;
 	double occ_Ltot[JJ]; for(jji=0;jji<JJ;jji++) occ_Ltot[jji]=0.;
+    double occ_marg[JJ]; for(jji=0;jji<JJ;jji++) occ_marg[jji]=0.;
+    double occ_smarg[JJ]; for(jji=0;jji<JJ;jji++) occ_smarg[jji]=0.;
 	for(jji=0;jji<JJ;jji++){
 		for(ji=0;ji<JJ;ji++){
 			occ_gtot+= occ_gflow[jji][ji];
@@ -3053,14 +3057,18 @@ int sum_stats(   struct cal_params * par, struct valfuns *vf, struct polfuns *pf
 	}
 	for(jji=0;jji<JJ;jji++){
 	    for(ji=0;ji<JJ;ji++){
+            occ_marg[ji]        += occ_gflow[jji][ji];
+            occ_smarg[ji]       += occ_sijflow[jji][ji];
             occ_gflow[jji][ji]   =  occ_gtot>0 ? occ_gflow[jji][ji]/occ_gtot  : 0.;
 			occ_sijflow[jji][ji] =  occ_stot>0 ? occ_sijflow[jji][ji]/occ_stot: 0.;
 		}
         occ_Ltot[jji] = occ_gtot>0 ? occ_Ltot[jji]/occ_gtot : 0.;
     }
+    for(jji=0;jji<JJ;jji++) occ_marg[jji]  = occ_marg[jji]/occ_gtot;
+    for(jji=0;jji<JJ;jji++) occ_smarg[jji] = occ_smarg[jji]/occ_stot;
+    for(jji=0;jji<JJ;jji++) st->occ_margflow[jji] = (1.-smth_flows)*occ_marg[jji] + smth_flows*occ_smarg[jji];
 
-
-    for(jji=0;jji<JJ;jji++) {
+        for(jji=0;jji<JJ;jji++){
         si =0;
         double gflow_hr[JJ - 1];
         for (ji = 0; ji < JJ; ji++) {
@@ -3615,12 +3623,16 @@ void set_xpspace( double *x, struct cal_params *par ){
         x[ii] = par->alphaU1    ;ii++;
 
         // pair-wise flow rate adjustments
-        x[ii] = par->alpha_nf[0][1] ;ii++;; //normalization of the first one? 0.;
-        x[ii] = par->alpha_nf[0][2] ;ii++;
-        x[ii] = par->alpha_nf[0][3] ;ii++;
-        x[ii] = par->alpha_nf[1][2] ;ii++;
-        x[ii] = par->alpha_nf[1][3] ;ii++;
-        x[ii] = par->alpha_nf[2][3] ;ii++;
+        x[ii] = par->alpha_nf[1][0]; ii++;
+        x[ii] = par->alpha_nf[0][1]; ii++;
+        x[ii] = par->alpha_nf[0][2]; ii++;
+        x[ii] = par->alpha_nf[0][3]; ii++;
+        //x[ii] = par->alpha_nf[0][1] ;ii++;; //normalization of the first one? 0.;
+        //x[ii] = par->alpha_nf[0][2] ;ii++;
+        //x[ii] = par->alpha_nf[0][3] ;ii++;
+        //x[ii] = par->alpha_nf[1][2] ;ii++;
+        //x[ii] = par->alpha_nf[1][3] ;ii++;
+        //x[ii] = par->alpha_nf[2][3] ;ii++;
 
         ii = Npar_cluster[0] ;
 
@@ -3700,13 +3712,23 @@ void read_params(char* name, struct cal_params *par){
 	rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
 	par->alphaU1=   dd;
 	par->xparopt[pi] = dd; pi++;
+	for(ii=0;ii<JJ;ii++) {
+        rstatus = fscanf(parfile, "%s, ", sd);
+        dd = strtod(sd, &endptr);
+        par->alpha_nf[0][ii] = dd;
+        par->xparopt[pi] = dd;
+        pi++;
+    }
 	for(ii=0;ii<JJ;ii++){
-		for(ji=ii+1;ji<JJ;ji++){
-			rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
-			par->alpha_nf[ii][ji]= dd;
-			par->xparopt[pi] = dd; pi++;
-		}
+	    for(ji=1;ji<JJ;ji++) par->alpha_nf[ji][ii] = ii!=ji? par->alpha_nf[0][ii] : 0.;
 	}
+    par->alpha_nf[0][0] =0.;
+//		for(ji=ii+1;ji<JJ;ji++){
+//			rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
+//			par->alpha_nf[ii][ji]= dd;
+//			par->xparopt[pi] = dd; pi++;
+//		}
+//	}
 	for(ii=0;ii<JJ;ii++){
 		for(ji=ii+1;ji<JJ;ji++)
 			par->alpha_nf[ji][ii] = -par->alpha_nf[ii][ji];
@@ -3817,9 +3839,12 @@ void print_targets(char *name, struct stats * st, struct stats * dat){
     fprintf(tgtfile,"var flows U,%f,%f \n",st->varGflowsU , dat->varGflowsU);
 
     // -------------------------------------
-    for(i=0;i<nflows;i++)
-        fprintf(tgtfile,"net flow %d,%f,%f \n",i,
-        st->occ_netflow[i] , dat->occ_netflow[i]);
+    for(i=0;i<JJ;i++)
+        fprintf(tgtfile,"net flow to %d,%f,%f \n",i,
+                st->occ_margflow[i],dat->occ_margflow[i]);
+    //for(i=0;i<nflows;i++)
+    //    fprintf(tgtfile,"net flow %d,%f,%f \n",i,
+    //    st->occ_netflow[i] , dat->occ_netflow[i]);
 
     fprintf(tgtfile,"swProb U ratio,%f,%f \n",st->swProb_U_ratio , dat->swProb_U_ratio);
     fprintf(tgtfile,"swProb E ratio,%f,%f \n",st->swProb_EE_ratio , dat->swProb_EE_ratio) ;
@@ -3871,8 +3896,7 @@ void print_params(double *x, int n, struct cal_params * par){
 	fprintf(parhist,"%8.6f, ", par->alphaE1  );
 	fprintf(parhist,"%8.6f, ", par->alphaU1  );
 	for(ii=0;ii<JJ;ii++){
-		for(ji=ii+1;ji<JJ;ji++)
-			fprintf(parhist,"%8.6f, ", par->alpha_nf[ii][ji]);
+		fprintf(parhist,"%8.6f, ", par->alpha_nf[0][ji]);
 	}
 	fprintf(parhist,"%8.6f, ", par->update_z );
 	fprintf(parhist,"%8.6f, ", par->scale_z  );
@@ -3904,8 +3928,8 @@ void print_params(double *x, int n, struct cal_params * par){
 	for(ji=0;ji<JJ;ji++){
 		if(ji>=1){
 			fprintf(parhist,"%8.6f", par->AloadP->data[ji]);
+            if(ji<JJ-1) fprintf(parhist,",");
 		}
-		if(ji<JJ-1) fprintf(parhist,",");
 	}
 	fprintf(parhist,"\n");
 
@@ -3931,7 +3955,16 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 		par->alphaE1    = x[ii];ii++;
 		par->alphaU1    = x[ii];ii++;
 
-		// pair-wise flow rate adjustments
+        // regardless of origin, get this as the destination bonus
+        for(i=0;i<JJ;i++) par->alpha_nf[i][0] = x[ii];
+        ii++;
+        for(i=0;i<JJ;i++) par->alpha_nf[i][1] = x[ii];
+        ii++;
+        for(i=0;i<JJ;i++) par->alpha_nf[i][2] = x[ii];
+        ii++;
+        for(i=0;i<JJ;i++) par->alpha_nf[i][3] = x[ii];
+        ii++;
+		/* pair-wise flow rate adjustments
 		par->alpha_nf[0][1]   = x[ii];ii++;; //normalization of the first one? 0.;
 		par->alpha_nf[0][2]   = x[ii];ii++;
 		par->alpha_nf[0][3]   = x[ii];ii++;
@@ -3943,9 +3976,9 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 			for(ji=ii+1;ji<JJ;ji++)
 				par->alpha_nf[ji][ii] = -par->alpha_nf[ii][ji];
 		}
-
+        */
 		// alpha scales, scale on net flow of switching from l to d
-		for(ii=0;ii<JJ;ii++) par->alpha_nf[ii][ii] = 0.; //should never be adjusting the diagonal
+		for(i=0;i<JJ;i++) par->alpha_nf[i][i] = 0.; //should never be adjusting the diagonal
 		ii = Npar_cluster[0] ;
 
 	}
@@ -4075,6 +4108,9 @@ void set_dat( struct stats * dat){
 	double varnetflowsE = gsl_stats_variance(netflowsE,1,nflows);
     dat->varGflowsE = 0.0223444648;
     dat->varGflowsU = 0.021788583;
+
+    double datoccmarg[] = { 0.1790146, 0.3378744, 0.2322478, 0.2508631};
+    memcpy(dat->occ_margflow,datoccmarg,sizeof(double )*JJ);
     if(verbose>=2) {
         printf(" \n +++++++++++++++ \n data varnetflowsU: %f  data varnetflowsE: %f \n",
                varnetflowsU, varnetflowsE);
@@ -4250,9 +4286,12 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 			//err_vec[ii] = .5*(st.corrEUE_wgocc - dat.corrEUE_wgocc); //*2 / (st.corr_wgocc + dat.corr_wgocc);
 			ii++;
 			// -------------------------------------
-			for(i=0;i<nflows;i++)
-				err_vec[ii+i] = (st.occ_netflow[i] - dat.occ_netflow[i])
-						/(double)nflows; // was atan weight all the net flows as one target
+			//for(i=0;i<nflows;i++)
+			//	err_vec[ii+i] = (st.occ_netflow[i] - dat.occ_netflow[i])
+			//			/(double)nflows; // was atan weight all the net flows as one target
+		    for(i=0;i<JJ;i++)
+		        err_vec[ii+i] = (st.occ_margflow[i]-dat.occ_margflow[i])/(double)JJ  ;
+
 			ii = Ntgt_cluster[0];
 		}
 
@@ -4337,6 +4376,9 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
             printarray("qtls_stEEEUUEMV_nssw.csv", st.UEsw_qtls, Nqtls, 1);
             printarray("qtls_stEEEUUEMV_nssw.csv", st.MVsw_qtls_ratio, Nqtls, 1);
             print_targets("targetfit.csv",&st,&dat);
+            printarray("alpha_nf.csv",glb_par->alpha_nf[0],JJ,0);
+            for(i=1;i<JJ;i++)printarray("alpha_nf.csv",glb_par->alpha_nf[i],JJ,1);
+
         }
 
 	}else{
@@ -4861,6 +4903,7 @@ void alloc_qtls( struct stats *st ){
 
 	st->occ_netflowE = malloc( nflows*sizeof(double) );
 	st->occ_netflowU = malloc( nflows*sizeof(double) );
+    st->occ_margflow = malloc( JJ*sizeof(double));
 
 	st->edge_qtls = malloc(Nqtls*sizeof(double));
 	st->edge_qtls_rec = malloc(2*sizeof(double*));
@@ -4880,6 +4923,7 @@ void free_qtls( struct stats *st ){
 	free(st->MVns_qtls_ratio);free(st->MVsw_qtls_ratio);
 	free(st->occ_netflow);
 	free(st->occ_netflowU);free(st->occ_netflowE);
+	free(st->occ_margflow);
 	free(st->edge_qtls);
 	for(ri=0;ri<2;ri++)free(st->edge_qtls_rec[ri]);
 	free(st->edge_qtls_rec);
