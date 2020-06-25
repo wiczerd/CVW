@@ -634,7 +634,6 @@ int rouwenhorst(double ar1, double sig, gsl_matrix * pi_out, gsl_vector * grid_i
 int disc_Weibull(double * zprob, double * zlev, const int NZ, const double mean_z, const double scale_z, const double shape_z){
 	int success = 0;
 	int ii;
-
 	double zub[NZ-1];
 	for(ii=0;ii<(NZ-1);ii++)
 		zub[ii] = gsl_cdf_weibull_Pinv( ((double)ii+1.)/(double)NZ , scale_z,shape_z);
@@ -658,8 +657,8 @@ epslev     : Output. Center point of cells (unweighted by the probability). The 
 NE         : Input. Number of points
 mean_eps   : Input. Mean of normal
 var_eps    : Input. Variance of normal
-lshape_eps : Input. Left-side exponential parameter
-rshape_eps : Input. Right-side exponential parameter
+lshape_eps : Input. Left-side exponential parameter (larger numbers mean shorter tails)
+rshape_eps : Input. Right-side exponential parameter (larger numbers mean shorter tails)
 
  Returns success = 0 if all good
 */
@@ -754,22 +753,6 @@ rshape_eps : Input. Right-side exponential parameter
 	success =0;
 	for(ii=0;ii<NE-1;ii++){
 		if(epslev[ii]-epslev[ii+1]>0){
-				/* heuristic for placement of points
-				for(ii=0;ii < NE;ii++){
-					if(ii>=NE/2-1 && ii<=NE/2+1 ){
-						epslev[ii] =gsl_cdf_gaussian_Pinv( (double) (ii+1)/( (double)NE+1.), sd_eps*1.5 ) +mean_eps;
-					}else if( ii<NE/2-1){
-						epslev[ii]=
-									    gsl_cdf_gaussian_Pinv( (double) (NE/2)/( (double)NE+1.), sd_eps*1.5  ) -
-									    gsl_cdf_exponential_Pinv( 1.- (double) (ii+1)/( (double)NE+1.), 1./lshape_eps ) +mean_eps;
-					}else if( ii>NE/2+1){
-						epslev[ii] =
-									    gsl_cdf_gaussian_Pinv( (double) (NE/2+2)/( (double)NE+1.), sd_eps*1.5  ) +
-									    gsl_cdf_exponential_Pinv( (double) (ii+1)/( (double)NE+1.), 1./rshape_eps ) +mean_eps;
-					}
-				}
-
-			*/ // redo the probabilities:
 
 			success =100;
 			break;

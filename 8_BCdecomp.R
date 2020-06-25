@@ -6,6 +6,7 @@ library(xtable)
 library(Hmisc)
 library(quantreg)
 library(ggplot2)
+library(foreign)
 
 #setwd("G:/Research_Analyst/Eubanks/Occupation Switching")
 wd0 = "~/workspace/CVW/R"
@@ -654,7 +655,15 @@ DTseam[ !is.finite(occL), occL := occ]
 DTseam[ EE_wave==T , occL := last.occ]
 DTseam[ , next.occ :=shift(occ,type="lead"), by=id]
 DTseam[ !is.finite(occD), occD := next.occ]
-
+#++++++++++++++++++++
+# export to stata:
+#++++++++++++++++++++
+export_loc = "~/Dropbox/Carrillo_Visschers_Wiczer/SIPP/sipp_wavefreq.dta"
+write.dta(subset(DTseam,select=c("ageGrp","date","EE_wave","EU_wave","HSCol","id","lfstat_wave","max.unempdur_wave",
+ 	"occ_1d","occ_wave","occ90","occD","occL","rawwgchange_wave","recIndic_wave","recIndic2_wave","switched_wave",
+ 	"UE_wave","unrt","wagechange_anan","wagechange_wave","wave","wavewage","wpfinwgt","perwt","truncweight")),
+ 	export_loc)
+#
 toKeep <- c("switchedOcc_wave","switched_wave","switched_anan","esr_max",
 				 "ageGrp","HSCol","next.stable_emp","last.stable_emp","wavewage",
 				 "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint","levwage","max.unempdur_wave",
@@ -763,8 +772,9 @@ if(freq == "wave"){
 }
 DTseam[ EUfrq==T|UEfrq==T, dur := max.unempdur_wave]
 DTseam[ !(EUfrq==T|UEfrq==T) | !is.finite(dur), dur := 0.]
-
-# 
+#++++++++++++++++++++++++++++++++++++++++++++++++++++
+# ------- The Decomposition ----------------
+#++++++++++++++++++++++++++++++++++++++++++++++++++++
 if( freq == "wave"){
 	if(wdur ==T){
 		MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
@@ -876,13 +886,18 @@ grossL[4,c(1,2,3)] <- DTseam[ occL==4 & sw==T & ch==T , ftable(occD)/sum(is.fini
 
 netL <- array(0, dim=c(4,4))
 netLUi <- array(0, dim=c(4,4,2))
+grossVar <- array(dim=c(5,2))
 for( li in seq(1,4)){
 	for( di in seq(1,4)){
 		netL[li,di] = grossL[li,di] - grossL[di,li]
 	}
 }
 
+gross_marg             <- DTseam[ sw==T & ch==T , ftable(occD)/sum(is.finite(occD))]
+
+
 for(Ui in c(T,F)){
+	ii = ifelse(Ui, 1,2)
 	grossL <- array(0,dim = c(4,4)) 
 	noccsw <- array(0,dim = c(4)) 
 	noccsw <- DTseam[ sw==T & ch==T & EUfrq==Ui, ftable(occL)/sum(is.finite(occL)& is.finite(occD))]
@@ -890,11 +905,16 @@ for(Ui in c(T,F)){
 	grossL[2,c(1,3,4)] <- DTseam[ occL==2 & sw==T & ch==T & EUfrq==Ui , ftable(occD)/sum(is.finite(occD))]*noccsw[2]
 	grossL[3,c(1,2,4)] <- DTseam[ occL==3 & sw==T & ch==T & EUfrq==Ui , ftable(occD)/sum(is.finite(occD))]*noccsw[3]
 	grossL[4,c(1,2,3)] <- DTseam[ occL==4 & sw==T & ch==T & EUfrq==Ui , ftable(occD)/sum(is.finite(occD))]*noccsw[4]
+	grossVar[1,ii] = var(grossL[1,c(2,3,4)]/noccsw[1])
+	grossVar[2,ii] = var(grossL[2,c(1,3,4)]/noccsw[2])
+	grossVar[3,ii] = var(grossL[3,c(1,2,4)]/noccsw[3])
+	grossVar[4,ii] = var(grossL[4,c(1,2,3)]/noccsw[4])
+	# weighted average across these, the calibration target!
+	grossVar[5,ii] = grossVar[1,ii]*noccsw[1]+grossVar[2,ii]*noccsw[2]+grossVar[3,ii]*noccsw[3]+grossVar[4,ii]*noccsw[4]
 	
 	netL <- array(0, dim=c(4,4))
 	for( li in seq(1,4)){
 		for( di in seq(1,4)){
-			ii = ifelse(Ui, 1,2)
 			netLUi[li,di,ii] = grossL[li,di] - grossL[di,li]
 		}
 	}

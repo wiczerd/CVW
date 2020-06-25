@@ -442,7 +442,7 @@ sipp <- subset(sipp, age >=16 & age<=65)
 sipp[, Young := age <= 30]
 sipp[age < 31, ageGrp := 1]
 sipp[age >= 31 & age < 56, ageGrp := 2]
-sipp[age >= 56, ageGrp := 3]
+sipp[age >= 56 & age<=65, ageGrp := 3]
 sipp[, HSCol := (educ >= 4) + (educ >= 2)]
 sipp[ , maxmis:= max(mis), by=id]
 
@@ -980,8 +980,7 @@ sipp[ date>= (date0+365*5) & date<(date0+365*6), yri := 6]
 
 ########## save prepared data--------------
 #a bit of cleanup
-sipp[ , c("PCEPI","last.earnm","last.job",
-		  "smonth","syear","epppnum","ui_r"):=NULL]
+sipp[ , c("PCEPI","last.earnm","last.job","epppnum"):=NULL]
 
 sipp[ , date0:=NULL]
 #saveRDS(sipp, "./preparedSipp.RData")
