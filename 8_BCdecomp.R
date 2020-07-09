@@ -287,10 +287,12 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			wcRec <- wcRec[datsampR,]
 			wcExp <- wcExp[datsampE,]
 		}
-		
-		if(durEU==T){
+		# here is where the quantile regression happens
+		if(durEU==T){ 
+			#do we include duration in the regression?
 			regform <- formula(paste(c("wc~factor(s)","dur","0"),collapse=" + ") )
 		}else{
+			#this form is just the dummies:
 			regform <- formula(paste(c("wc~factor(s)","0"),collapse=" + ") )
 		}
 		rhere <- rq( regform ,tau= qtlgridEst, data=wcRec, weights = wt, method="sfn")
@@ -329,7 +331,9 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		  betaE <- array(0.,dim=c(NS,length(qtlgridSamp)) )
 		  betaR <- array(0.,dim=c(NS,length(qtlgridSamp)) )
 		}
+		#we interpolate over the coefficients so that we have the quatile regresison coefficeients defined over the whole space, not just where we estimated
 		for(si in seq(1,ncol(betaptsE))){
+			#first make sure that coefficients on dummies are monotone in quantile (this might not be a needed check):
 			if(si<=NS){
 				gpE <- c(T,betaptsE[2:length(qtlgridEst),si]>=betaptsE[1:length(qtlgridEst)-1,si]) #ensure monotonicity
 				gpR <- c(T,betaptsR[2:length(qtlgridEst),si]>=betaptsR[1:length(qtlgridEst)-1,si]) #ensure monotonicity
@@ -340,6 +344,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 				gpR <- gpR==gpR #just setting them all to true
 				methodhr = "natural"
 			}
+			
+			#interpolate the coefficients
 			if(min(qtlgridSamp)<min(qtlgridEst[gpR]) | max(qtlgridSamp)>max(qtlgridEst[gpR])){
 				betaE[si,] <- spline(x=c(min(qtlgridSamp) ,qtlgridEst[gpE], max(qtlgridSamp)), 
 									 y=c(min(betaptsE[gpE,si]), betaptsE[gpE,si],max(betaptsE[gpE,si])), method=methodhr, xout=qtlgridSamp)$y
@@ -361,10 +367,11 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		wc_BR <- matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution
 		
 		qi = 1
+		#sets up to create distributions of earnings change (wc) based on coefficients:
 		for(q in qtlgridSamp){
 			sumBetaE <- ""
 			sumBetaR <- ""
-			for(si in seq(1,NS) ){
+			for(si in seq(1,NS) ){ #loop over the coefficients and create a string that says to sum them:
 				sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
 				sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
 			}
@@ -376,6 +383,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 				sumBetaR <- paste(sumBetaR,"0" )
 			}
 			
+			#creates the simulation-based distribution:      sample group       evaluate command that sums estimated coefficients
 			wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[ sampR[,qi] , eval(parse(text=sumBetaE))]
 			wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaR))]
 
@@ -666,7 +674,7 @@ write.dta(subset(DTseam,select=c("ageGrp","date","EE_wave","EU_wave","HSCol","id
 #
 toKeep <- c("switchedOcc_wave","switched_wave","switched_anan","esr_max",
 				 "ageGrp","HSCol","next.stable_emp","last.stable_emp","wavewage",
-				 "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint","levwage","max.unempdur_wave",
+				 "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint","levwage","max.unempdur_wave","max.unempdur",
 				 "wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave","wagechange_anan",
 				 "wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad","pctmaxmis",
 				 "EE_wave","EU_wave","UE_wave","changer","stayer","EE_anan","EU_anan","UE_anan","changer_anan","stayer_anan","valid_anan",

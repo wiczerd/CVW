@@ -76,8 +76,10 @@ sipp <- sipp[!is.na(month) & !is.na(year),]
 sipp[, date := as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")]
 
 # create unique ID across all panels
-sipp[, id := paste(id, panel, sep = "")]
-sipp[, id := as.integer(factor(id)) ]
+sipp[, uid := paste(id, panel, sep = "")]
+sipp[, uid := as.integer(factor(uid)) ]
+
+save.dta13(subset(sipp, select = c("uid","id","panel")), file="~/Dropbox/Carrillo_Visschers_Wiczer/SIPP/idkey.dta")
 
 # sort by id and date
 setkey(sipp, id, date)
