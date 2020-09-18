@@ -1151,7 +1151,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 		for(ji=0;ji<JJ;ji++){
 		    int oldE; //index of whether this is a new job or not
 		    for(oldE=0;oldE<2;oldE++) {
-                #pragma omp parallel for private(ii) firstprivate(ji)
+//                #pragma omp parallel for private(ii) firstprivate(ji)
                 for (ii = 0; ii < NN; ii++) {
                     int ai = ii / (NP * NS * NZ * NE);
                     int pi = (ii - ai * NP * NS * NZ * NE) / (NS * NZ * NE);
@@ -1313,7 +1313,8 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
                                                  exp(par->alpha_nf[ji][jji] * par->alphaE1) *
                                                  pow(gg_get(pf->sE[jji], ii, ji), 1. - par->alphaE1), 1.);
                     }
-                    REhr += gsl_max(1. - totalphaS, 0.) * EAPWE;
+                    REhr += gsl_max(1. - totalphaS, 0.) * // potentially update z:
+                            ((1. - par->update_z) * EAPWE + par->update_z * EzWE[ji]);
                     if (gsl_finite(REhr) == 0) {
                         //printf("Uhoh. Bad REhr");
                     }
@@ -1322,7 +1323,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 
                     double EWnom = (lambdaEShr * (par->gdfthr * EtWE + (1. - par->gdfthr) * EtTWE) +
-                                    (1. - lambdaEShr) *// potentially update z:
+                                    (1. - lambdaEShr) *  // potentially update z:
                                     ((1. - par->update_z) * EAPWE + par->update_z * EzWE[ji]));
 
                     double mhr;
@@ -1385,7 +1386,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
                     if(oldE == 0){
                         period1prob = 1./(double)Tnew;
                         double EWnom1 = (lambdaESold * (par->gdfthr * EtWE + (1. - par->gdfthr) * EtTWE) +
-                                         (1. - lambdaESold) *// potentially update z:
+                                         (1. - lambdaESold) *  // potentially update z:
                                          ((1. - par->update_z) * EAPWE + par->update_z * EzWE[ji]));
                         period1value= deltaold * gg_get(vf0.WU, iU, ji) + zlossold * EzWU +
                                       (1. - deltaold - zlossold) * (
@@ -2509,7 +2510,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 	double topepsprob;
 	//for(distiter = 0;distiter<maxiter;distiter++){
 	for(distiter = 0;distiter<4;distiter++){
-//		#pragma omp parallel for private(i,ti,ll,ji) firstprivate(cmzprob,cmepsprob,cmUEepsprob,cmzprob0,cmepsprob0,cmjprob,cmAtrans,cmPtrans,cmxStrans)
+		#pragma omp parallel for private(i,ti,ll,ji) firstprivate(cmzprob,cmepsprob,cmUEepsprob,cmzprob0,cmepsprob0,cmjprob,cmAtrans,cmPtrans,cmxStrans)
 		for(ll=0;ll<Npaths;ll++){
 			int * xSt,*xStm1; //xS.z.eps
             int * zt,*ztm1;int * epst,*epstm1;
