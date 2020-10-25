@@ -571,7 +571,8 @@ int isfinvec(gsl_vector * vec){
 
 
 int rouwenhorst(double ar1, double sig, gsl_matrix * pi_out, gsl_vector * grid_inout){
-
+// ar1 is the auto correlation and
+// sig is the conditinal standard deviation
 	gsl_matrix * PP = gsl_matrix_calloc(2,2);
 	gsl_matrix *PPm1= gsl_matrix_calloc(2,2);
 	gsl_matrix * qPP= gsl_matrix_calloc(2,2);
@@ -828,8 +829,23 @@ void printarray(char* name, double* vec, int rows, int append){
 		fprintf(matfile,"%f, ",vec[ri]);
 	}
 	fprintf(matfile,"\n");
-	if(append==0) printf("Printing matrix to, %s\n",name);
+	if(append==0) printf("Printing array to, %s\n",name);
 	fclose(matfile);
+}
+void printarray_int(char* name, int* vec, int rows, int append){
+    FILE* matfile;int ri;
+
+    if(append == 0){
+        matfile = fopen(name, "w");
+    }else{
+        matfile = fopen(name, "a");
+    }
+    for(ri=0;ri<rows;ri++){
+        fprintf(matfile,"%d, ",vec[ri]);
+    }
+    fprintf(matfile,"\n");
+    if(append==0) printf("Printing integer array to, %s\n",name);
+    fclose(matfile);
 }
 void printvec_int(char* name, gsl_vector_int* vec, int append){
 	FILE* matfile; int ri;
@@ -842,7 +858,7 @@ void printvec_int(char* name, gsl_vector_int* vec, int append){
 	for(ri=0;ri<rows;ri++){
 		fprintf(matfile,"%d\n",gsl_vector_int_get(vec,ri));
 	}
-	if(append==0) printf("Printing matrix to, %s\n",name);
+	if(append==0) printf("Printing vector to, %s\n",name);
 	fclose(matfile);
 }
 
