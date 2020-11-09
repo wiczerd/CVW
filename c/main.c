@@ -83,7 +83,7 @@ int eps_2emg = 1; //should we use a double-exponentially modified gaussian, or j
 int const nstarts = 1;  // how many starts per node
 
 double beta	= 0.997;		// discount factor
-double b 	= 0.; 		    // unemployment benefit
+double b 	= 0.75; 		    // unemployment benefit
 double wage_lev = 1.;       // will be a shifter so the average wage is >0
 double occ_wlevs[4] = {0.,-0.2657589,-0.4975667,-0.2189076}; // wage levels for each occupation
 double occ_size_dat[] = {0.2636133, 0.3117827, 0.1493095, 0.2752945};
@@ -113,20 +113,28 @@ char * parnames_cluall[] = {"alpha0","lambdaUS0","lambdaUM0","lambdaES","lambdaE
 char ** parnames[] = {parnames_clu0,parnames_clu1,parnames_clu2,parnames_cluall};
 
 char * tgtnames_clu0[]   = {"J2J","fnd","sep","swEE","swU","swSt","dur_ratio",
-                            "nrmflowE","nrmflowU"};
-char * tgtnames_clu1[]   = {"stns9010","stEEIQR","stEUEIQR","EUEmedian",
-                            "stkurtosis","EEskew","EUEskew",
-                            "swnsdif_st9010","swnsdif_EEIQR","swnsdif_EUEIQR","sw_EUEmedian",
-                            "swnsdif_EEskew","swnsdif_EUEskew"};
+                            "varflowE","varflowU"};
+char * tgtnames_clu1[]   = {"stns10" ,"stns25" ,          "stns75" ,"stns90",
+                            "stsw10" ,"stsw25" ,          "stsw75" ,"stsw90",
+                            "EEns10" ,"EEns25" ,"EEns50" ,"EEns75" ,"EEns90",
+                            "EEsw10" ,"EEsw25" ,"EEsw50" ,"EEsw75" ,"EEsw90",
+                            "EUEns10","EUEns25","EUEns50","EUEns75","EUEns90",
+                            "EUEsw10","EUEsw25","EUEsw50","EUEsw75","EUEsw90"};
+                           //{"stns9010","stEEIQR","stEUEIQR","EUEmedian",
+                           // "stkurtosis","EEskew","EUEskew",
+                           // "swnsdif_st9010","swnsdif_EEIQR","swnsdif_EUEIQR","sw_EUEmedian",
+                           // "swnsdif_EEskew","swnsdif_EUEskew"};
 char * tgtnames_clu2[]   = {"swPrUratio","swPrEEratio","frtratio","seprtratio","EEratio",
                             "recdifMVswp9505","recdifMVswskew","recdifMVswbigloss",
                             "recdifMVnsp9505","recdifMVnsskew","recdifMVnsbigloss"};
 char * tgtnames_cluall[]   = {"J2J","fnd","sep","swEE","swU","swSt","dur_ratio",
                             "nrmflowE","nrmflowU",
-                             "stns9010","stEEIQR","stEUEIQR","EUEmedian",
-                             "stkurtosis","EEskew","EUEskew",
-                            "swnsdif_st9010","swnsdif_EEIQR","swnsdif_EUEIQR","sw_EUEmedian",
-                            "swnsdif_EEskew","swnsdif_EUEskew",
+                              "stns10" ,"stns25" ,          "stns75" ,"stns90",
+                              "stsw10" ,"stsw25" ,          "stsw75" ,"stsw90",
+                              "EEns10" ,"EEns25" ,"EEns50" ,"EEns75" ,"EEns90",
+                              "EEsw10" ,"EEsw25" ,"EEsw50" ,"EEsw75" ,"EEsw90",
+                              "EUEns10","EUEns25","EUEns50","EUEns75","EUEns90",
+                              "EUEsw10","EUEsw25","EUEsw50","EUEsw75","EUEsw90",
                             "swPrUratio","swPrEEratio","frtratio","seprtratio","EEratio",
                             "recdifMVswp9505","recdifMVswskew","recdifMVswbigloss",
                             "recdifMVnsp9505","recdifMVnsskew","recdifMVnsbigloss"};
@@ -213,7 +221,7 @@ struct polfuns{
 };
 
 struct shocks{
-	gsl_matrix ** xGsel;
+	gsl_matrix ** zlosssel;
 	gsl_matrix ** xSsel;
 	gsl_matrix ** zsel;
 	gsl_matrix ** epssel;
@@ -413,7 +421,7 @@ int main(int argc,char *argv[] ) {
 	Nparams = 0;
 	for(i=0;i<Ncluster;i++)Nparams += Npar_cluster[i];
 	Ntgt_cluster[0] = ntgtavgflow; // was + nflows or +JJ
-	Ntgt_cluster[1] = 13; //  MSM: IQR for st, EE, EUE, dif btwn sw and ns in IQR & skew, kurtosis of st. N.b.: min distance was wage change distributions for EE, EUE, st in both sw & ns
+	Ntgt_cluster[1] = 6*Nqtls - 2;  // 6 condl distributions, not including medians for stayers // 13 ; for  MSM: IQR for st, EE, EUE, dif btwn sw and ns in IQR & skew, kurtosis of st. N.b.: min distance was wage change distributions for EE, EUE, st in both sw & ns
 	Ntgt_cluster[2] = 5+ 6; // 5 cyc flow targets, 6
 	Ntargets =0;
 	for(i=0;i<Ncluster;i++) Ntargets += Ntgt_cluster[i];
@@ -558,8 +566,8 @@ int main(int argc,char *argv[] ) {
     par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
 	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.05;ii++;
 	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.25;ii++;
-	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.02;ii++;
-	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.02;ii++;
+	par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
+	par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
 
 	//, alphaE_1, alphaU_1
 	par.param_lb[ii] = 0.010; par.param_ub[ii] = 0.90;ii++; //potentially these are not <1
@@ -574,8 +582,8 @@ int main(int argc,char *argv[] ) {
 
 		// update_z, scale_z, shape_z,
 		par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.10;  ii++;
-		par.param_lb[ii] = 0.500; par.param_ub[ii] =10.000; ii++;
-		par.param_lb[ii] = 0.500; par.param_ub[ii] = 7.000; ii++;
+		par.param_lb[ii] = 1.000; par.param_ub[ii] =10.000; ii++;
+		par.param_lb[ii] = 1.000; par.param_ub[ii] = 7.000; ii++;
 		//var_pe, autop,  gdfather, stwupdate
 		par.param_lb[ii]= 0.001;  par.param_ub[ii]= 0.010;  ii++;
 		par.param_lb[ii]= 0.500;  par.param_ub[ii]= 0.999;  ii++;
@@ -601,11 +609,11 @@ int main(int argc,char *argv[] ) {
 		par.param_lb[ii]=-1.999;   par.param_ub[ii] = 1.999; ii++; */
 
 		par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.02;ii++;
-        par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.25;ii++;
+        par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.35;ii++;
         par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.05;ii++;
         par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
-        par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
-        par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.02;ii++;
+        par.param_lb[ii] = 0.0005;par.param_ub[ii] = 0.95;ii++;
+        par.param_lb[ii] = 0.0005;par.param_ub[ii] = 0.02;ii++;
 
         // z_Acoef, z_Amag, eps_Acoef, eps_Amag
         par.param_lb[ii]=-1.499;   par.param_ub[ii] = 0.099; ii++;
@@ -1038,7 +1046,7 @@ int main(int argc,char *argv[] ) {
 						           par.zlev->data[zi] +
 						           par.xSlev->data[si] +
 						           occ_wlevs[ji]) + wage_lev;
-				if( w_hr< b && w_hr>0) b = w_hr;
+				//if( w_hr< b && w_hr>0) b = w_hr;
 			}
 		}
 
@@ -1586,13 +1594,14 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				for(jji=0;jji<JJ;jji++)
 					gg_set(pf->sU[jji],ii,ji,gg_get(pf->sU[jji],ii,ji)/sUnorm);
 				double WUhr;
+                int iehr = ai*NP*NS*NZ*NE+pi*NS*NZ*NE+0*NZ*NE+zi*NE+0; //assuming epsilon_i =0
 				if( par->wage_curve<0.00001 && par->wage_curve>-0.0001 )
-					WUhr = b +
+					WUhr = b*wagevec[iehr][ji] +
 					       beta*( pf->mU->data[ii*pf->mU->tda + ji]*vf->RU->data[ii*vf->RU->tda+ji] +
 					              (1.-pf->mU->data[ii*pf->mU->tda + ji])*( (1.-lambdaUShr)*EAPWU + lambdaUShr*EtWE ) ) ;
 
 				else
-					WUhr=pow(b,1.-par->wage_curve)/(1.-par->wage_curve) +
+					WUhr=pow(b*wagevec[iehr][ji],1.-par->wage_curve)/(1.-par->wage_curve) +
 											beta*( pf->mU->data[ii*pf->mU->tda + ji]*vf->RU->data[ii*vf->RU->tda+ji] +
 											(1.-pf->mU->data[ii*pf->mU->tda + ji])*( (1.-lambdaUShr)*EAPWU + lambdaUShr*EtWE ) ) ;
 
@@ -2684,14 +2693,14 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 
                         // separate if zi =0 or unemployment shock or want to separate
                         if (delta_hr > gg_get(sk->dsel[ll], i, ti)
-                            || zloss_hr > gg_get(sk->xGsel[ll], i, ti)
+                            || zloss_hr > gg_get(sk->zlosssel[ll], i, ti)
                             || gg_get(vf->WU, iU, jt[i]) > gg_get(vf->WE, ii, jt[i])) {
                             // mark unemployed
                             ut[i] = 1;
                             jtsep = jt[i];
                             // record some stuff about whether voluntary or not
                             if (gg_get(vf->WU, iU, jt[i]) > gg_get(vf->WE, ii, jt[i]) &&
-                                delta_hr <= gg_get(sk->dsel[ll], i, ti) && gg_get(sk->xGsel[ll], i, ti) >= zloss_hr) {
+                                delta_hr <= gg_get(sk->dsel[ll], i, ti) && gg_get(sk->zlosssel[ll], i, ti) >= zloss_hr) {
                                 Nquit[ll] += 1.;
                                 quitVFdiff[ll] += gg_get(vf->WU, iU, jt[i]) - gg_get(vf->WE, ii, jt[i]);
                                 quitepsval[ll][epst[i]]++;
@@ -2833,9 +2842,9 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                                 // increment individual specific shocks for stayers:
                                 xSt[i] = 0;
                                 for (si = 0; si < NS; si++) if (gg_get(sk->xSsel[ll], i, ti) > cmxStrans[xStm1[i]][si]) ++xSt[i];
-                                // no longer incrementing z:
-                                if (gg_get(sk->xGsel[ll], i, ti) > (1. - par->update_z)) {
-                                    // xGsel, but it's basically uncorrelated from all the other stuff I care about with this decision.
+                                //  incrementing z only sometimes:
+                                if (gg_get(sk->lambdaUMsel[ll], i, ti) > (1. - par->update_z)) {
+                                    // lambdaUMsel, but it's basically uncorrelated from all the other stuff I care about with this decision.
                                     zt[i] = 0;
                                     for (zi = 0; zi < NZ; zi++) if (gg_get(sk->zsel[ll], i, ti) > cmzprob[At][zi]) ++zt[i];
                                 } else {
@@ -2864,7 +2873,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                         if (ti >= burnin) gg_set(swprob_hist[ll], i, ti - burnin, gg_get(pf->mU, ii, jt[i]));
                         if (gg_get(pf->mU, ii, jt[i]) > gg_get(sk->msel[ll], i, ti) ||
                             // switch voluntarily or involuntarily
-                            zloss_hr > gg_get(sk->xGsel[ll], i, ti)) {
+                            zloss_hr > gg_get(sk->zlosssel[ll], i, ti)) {
                             //RU
                             double cumsij[JJ]; //cumul match prob for occupational placement
                             double alphasijhr[JJ];
@@ -2879,7 +2888,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                             for (jji = 1; jji < JJ; jji++)
                                 cumsij[jji] = cumsij[jji - 1] + alphasijhr[jji];
                             // if forced to move, make the probabilities sum to 1:
-                            if (zloss_hr > gg_get(sk->xGsel[ll], i, ti)) {
+                            if (zloss_hr > gg_get(sk->zlosssel[ll], i, ti)) {
                                 for (jji = 0; jji < JJ; jji++)
                                     alphasijhr[jji] = alphasijhr[jji] / cumsij[JJ - 1];
                                 cumsij[JJ - 1] = 1.0;
@@ -4636,14 +4645,14 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
     }
 
     w_qtls(w_EEns, 1, idx_EEns, qtlgrid, st->EEns_qtls);
-	w_qtls(w_EUEns, 1, idx_EUns, qtlgrid, st->EUEns_qtls);
 	w_qtls(w_EEsw, 1, idx_EEsw, qtlgrid, st->EEsw_qtls);
-	w_qtls(w_EUEsw, 1, idx_EUsw, qtlgrid, st->EUEsw_qtls);
-	w_qtls(w_EUns, 1, idx_EUns, qtlgrid, st->EUns_qtls);
-    w_qtls(w_UEns, 1, idx_UEns, qtlgrid, st->UEns_qtls);
+    w_qtls(w_EUEns, 1, idx_EUns, qtlgrid, st->EUEns_qtls);
+    w_qtls(w_EUEsw, 1, idx_EUsw, qtlgrid, st->EUEsw_qtls);
+    //w_qtls(w_EUns, 1, idx_EUns, qtlgrid, st->EUns_qtls);
+    //w_qtls(w_UEns, 1, idx_UEns, qtlgrid, st->UEns_qtls);
+    //w_qtls(w_EUsw, 1, idx_EUsw, qtlgrid, st->EUsw_qtls);
+    //w_qtls(w_UEsw, 1, idx_UEsw, qtlgrid, st->UEsw_qtls);
     w_qtls(w_stns, 1, idx_stns, qtlgrid, st->stns_qtls);
-    w_qtls(w_EUsw, 1, idx_EUsw, qtlgrid, st->EUsw_qtls);
-    w_qtls(w_UEsw, 1, idx_UEsw, qtlgrid, st->UEsw_qtls);
     w_qtls(w_stsw, 1, idx_stsw, qtlgrid, st->stsw_qtls);
 
     st->var_wg = gsl_stats_variance(w_all, 1, idx_all);
@@ -5229,8 +5238,8 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 	ii =0;
 
 	// an ad hoc one:
-	par->lambdaENew = 1.0; // give them X the probability of transitioning --- turning off for now
-    par->lambdaUNew = 1.0; // give them X the probability of transitioning
+	par->lambdaENew = 1.5; // give them X the probability of transitioning --- turning off for now
+    par->lambdaUNew = 2.0; // give them X the probability of transitioning
 
 	if( ci ==0 || ci == Ncluster){
 
@@ -5541,7 +5550,7 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 			                          par->zlev->data[zi] +
 			                          par->xSlev->data[si] +
 			                          occ_wlevs[ji]) + wage_lev;
-			if( w_hr< b && w_hr>0 && zi>0) b = w_hr;
+			//if( w_hr< b && w_hr>0 && zi>0) b = w_hr;
 		}
 	}
 	if(verbose>0){
@@ -5624,7 +5633,7 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 			ii++;
 			err_vec[ii] = (st.swProb_st - dat.swProb_st) * 2 / (st.swProb_st + dat.swProb_st);
 			ii++;
-			err_vec[ii] = 0.1*(mod_dur - dat_dur) *2 / (mod_dur + dat_dur);
+			err_vec[ii] = (mod_dur - dat_dur) *2 / (mod_dur + dat_dur);
 			ii ++;
 			// -------------------------------------
 			// Should this go in 1st cluster or second?
@@ -5636,44 +5645,45 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 			//err_vec[ii] = (st.doubleswU - dat.doubleswU) /(st.doubleswU + dat.doubleswU);
 			//err_vec[ii] = .5*(st.corrEUE_wgocc - dat.corrEUE_wgocc); //*2 / (st.corr_wgocc + dat.corr_wgocc);
 			ii++;
-			// -------------------------------------
-		    //for(i=0;i<JJ;i++)
-		    //    err_vec[ii+i] = (st.occ_margflow[i]-dat.occ_margflow[i])  ;
 
 			ii = Ntgt_cluster[0];
 		}
 
 
 		if (par->cluster_hr == 1 || par->cluster_hr == Ncluster) {
-            /*
-             * MINUMUM DISTANCE TARGETS
-			for (i = 0; i < Nqtls; i++)
-				err_vec[ii + i] = i==0 || i==Nqtls-1 ? (st.stns_qtls[i] - dat.stns_qtls[i])/( dat.stns_qtls[i]) / (double) Nqtls :
-						(st.stns_qtls[i] - dat.stns_qtls[i]) / (double) Nqtls;// *2/(st.stns_qtls[i]+dat.stns_qtls[i])
-			ii += Nqtls;
-			for (i = 0; i < Nqtls; i++)
-				err_vec[ii + i] =  i==0 || i==Nqtls-1 ? (st.stsw_qtls[i] - dat.stsw_qtls[i])/( dat.stsw_qtls[i]) / (double) Nqtls:
-						(st.stsw_qtls[i] - dat.stsw_qtls[i]) / (double) Nqtls;// *2/(st.stsw_qtls[i]+dat.stsw_qtls[i])
-			ii += Nqtls;
-			for (i = 0; i < Nqtls; i++)
-				err_vec[ii + i] =
-						(st.EEns_qtls[i] - dat.EEns_qtls[i]) / (double) Nqtls;// *2/(st.EEns_qtls[i]+dat.EEns_qtls[i])
-			ii += Nqtls;
-			for (i = 0; i < Nqtls; i++)
-				err_vec[ii + i] =
-						(st.EEsw_qtls[i] - dat.EEsw_qtls[i]) / (double) Nqtls;// *2/(st.EEsw_qtls[i]+dat.EEsw_qtls[i])
-			ii += Nqtls;
-			for (i = 0; i < Nqtls; i++)
-				err_vec[ii + i] =
-						(st.EUEns_qtls[i] - dat.EUEns_qtls[i]) / (double) Nqtls;// *2/(st.EUns_qtls[i]+dat.EUns_qtls[i])
-			ii += Nqtls;
-			for (i = 0; i < Nqtls; i++)
-				err_vec[ii + i] =
-						(st.EUEsw_qtls[i] - dat.EUEsw_qtls[i]) / (double) Nqtls;// *2/(st.EUsw_qtls[i]+dat.EUsw_qtls[i])
-			ii += Nqtls;
-            */
 
-            // MSM targets: +++
+            // MINUMUM DISTANCE TARGETS
+			for (i = 0; i < Nqtls; i++) {
+                if(i!= Nqtls/2) {
+                    err_vec[ii] = (st.stns_qtls[i] - dat.stns_qtls[i]) ;// /(double) (Nqtls - 1);
+                    ii++;
+                }
+            }
+			for (i = 0; i < Nqtls; i++) {
+                if(i!=Nqtls/2) {
+                    err_vec[ii] = (st.stsw_qtls[i] - dat.stsw_qtls[i]) ;// / (double) (Nqtls - 1);
+                    ii++;
+                }
+            }
+			for (i = 0; i < Nqtls; i++)
+				err_vec[ii + i] =
+						(st.EEns_qtls[i] - dat.EEns_qtls[i]) ; // / (double) Nqtls;
+			ii += Nqtls;
+			for (i = 0; i < Nqtls; i++)
+				err_vec[ii + i] =
+						(st.EEsw_qtls[i] - dat.EEsw_qtls[i]) ; // / (double) Nqtls;
+			ii += Nqtls;
+			for (i = 0; i < Nqtls; i++)
+				err_vec[ii + i] =
+						(st.EUEns_qtls[i] - dat.EUEns_qtls[i]); // / (double) Nqtls;
+			ii += Nqtls;
+			for (i = 0; i < Nqtls; i++)
+				err_vec[ii + i] =
+						(st.EUEsw_qtls[i] - dat.EUEsw_qtls[i]); // / (double) Nqtls;// *2/(st.EUsw_qtls[i]+dat.EUsw_qtls[i])
+			ii += Nqtls;
+
+
+            /* MSM targets: +++
             int p90i = 4; int p10i=0;
             int p50i=2;
             int p75i = 3; int p25i=1;
@@ -5734,7 +5744,7 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
             ii++;
             err_vec[ii] = (stEUEsw_skew - stEUEns_skew)- (datEUEsw_skew -datEUEns_skew);
             ii++;
-
+            */
         }
 		if (par->cluster_hr == 2 || par->cluster_hr == Ncluster) {
 			err_vec[ii] = tanh( (st.swProb_U_ratio - dat.swProb_U_ratio)/ (dat.swProb_U_ratio-1.));
@@ -6165,7 +6175,7 @@ int draw_shocks(struct shocks * sk){
 				gg_set( sk->lambdaUSsel[ll],i,ti, gsl_rng_uniform(rng0) );
                 gg_set( sk->lambdaUMsel[ll],i,ti, gsl_rng_uniform(rng0) );
 				gg_set( sk->xSsel[ll]     ,i,ti, gsl_rng_uniform(rng0) );
-				gg_set( sk->xGsel[ll]     ,i,ti, gsl_rng_uniform(rng0) );
+				gg_set( sk->zlosssel[ll]     ,i,ti, gsl_rng_uniform(rng0) );
 				gg_set( sk->jsel[ll]      ,i,ti, gsl_rng_uniform(rng0) );
 				gg_set( sk->dsel[ll]      ,i,ti, gsl_rng_uniform(rng0) );
 				gg_set( sk->msel[ll]      ,i,ti, gsl_rng_uniform(rng0) );
@@ -6389,7 +6399,7 @@ void alloc_shocks(struct shocks * sk){
     sk->lambdaUMsel = malloc(sizeof(gsl_matrix*)*Npaths);
     sk->Psel       = malloc(sizeof(gsl_matrix*)*Npaths);
 	sk->epssel      = malloc(sizeof(gsl_matrix*)*Npaths);
-	sk->xGsel      = malloc(sizeof(gsl_matrix*)*Npaths);
+	sk->zlosssel      = malloc(sizeof(gsl_matrix*)*Npaths);
 	sk->xSsel      = malloc(sizeof(gsl_matrix*)*Npaths);
 	sk->zsel       = malloc(sizeof(gsl_matrix*)*Npaths);
 	sk->jsel       = malloc(sizeof(gsl_matrix*)*Npaths);
@@ -6404,7 +6414,7 @@ void alloc_shocks(struct shocks * sk){
 		sk->lambdaUSsel[j] = gsl_matrix_calloc(Nsim,TTT);
         sk->lambdaUMsel[j] = gsl_matrix_calloc(Nsim,TTT);
 		sk->epssel[j]     = gsl_matrix_calloc(Nsim,TTT);
-		sk->xGsel[j]      = gsl_matrix_calloc(Nsim,TTT);
+		sk->zlosssel[j]      = gsl_matrix_calloc(Nsim,TTT);
 		sk->xSsel[j]      = gsl_matrix_calloc(Nsim,TTT);
 		sk->zsel[j]       = gsl_matrix_calloc(Nsim,TTT);
 		sk->jsel[j]       = gsl_matrix_calloc(Nsim,TTT);
@@ -6424,7 +6434,7 @@ void memcpy_shocks(struct shocks * sk_dest , struct shocks * sk_orig){
 		gsl_matrix_memcpy(sk_dest->lambdaUSsel[j],sk_orig->lambdaUSsel[j]);
         gsl_matrix_memcpy(sk_dest->lambdaUMsel[j],sk_orig->lambdaUMsel[j]);
 		gsl_matrix_memcpy(sk_dest->epssel[j],sk_orig->epssel[j]);
-		gsl_matrix_memcpy(sk_dest->xGsel[j],sk_orig->xGsel[j]);
+		gsl_matrix_memcpy(sk_dest->zlosssel[j],sk_orig->zlosssel[j]);
 		gsl_matrix_memcpy(sk_dest->xSsel[j],sk_orig->xSsel[j]);
 		gsl_matrix_memcpy(sk_dest->zsel[j],sk_orig->zsel[j]);
 		gsl_matrix_memcpy(sk_dest->jsel[j],sk_orig->jsel[j]);
@@ -6660,7 +6670,7 @@ void free_shocks(struct shocks * sk){
 		gsl_matrix_free(sk->lambdaUSsel[j]);
         gsl_matrix_free(sk->lambdaUMsel[j]);
 		gsl_matrix_free(sk->epssel[j]);
-		gsl_matrix_free(sk->xGsel[j]);
+		gsl_matrix_free(sk->zlosssel[j]);
 		gsl_matrix_free(sk->xSsel[j]);
 		gsl_matrix_free(sk->zsel[j]);
 		gsl_matrix_free(sk->jsel[j]);
@@ -6675,7 +6685,7 @@ void free_shocks(struct shocks * sk){
 	free(sk->lambdaEMsel);
 
 	free(sk->epssel);
-	free(sk->xGsel);
+	free(sk->zlosssel);
 	free(sk->xSsel);
 	free(sk->zsel);
 	free(sk->jsel);
