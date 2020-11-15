@@ -34,7 +34,7 @@ int const JJ = 4;     // number of occupations
 int const NS = 2;     // number of specific skill types
 int const NZ = 7;     // 9 number of occ match-quality types
 int const NE = 7;     // 8 number of firm epsilon match-quality types
-int const NP = 5;     // 5 number of occupation-specific productivies
+int const NP = 3;     // 5 number of occupation-specific productivies
 int const NA = 2;     // 2 number of aggregate productivities
 
 int NN ,NUN;
@@ -57,7 +57,7 @@ int cal_now, cf_now,jac_now;
 int const TT      = 12*13;    // periods per simulation path
 int const burnin  = 12*3;     // number of periods to throw away each time
 int        TTT ;
-int const Npaths  = 160;//160      // number of simulation paths to draw
+int const Npaths  = 64;//160      // number of simulation paths to draw
 int const Nsim    = 1000; // 1000
 
 int const Npwave  = 4;
@@ -83,7 +83,7 @@ int eps_2emg = 1; //should we use a double-exponentially modified gaussian, or j
 int const nstarts = 1;  // how many starts per node
 
 double beta	= 0.997;		// discount factor
-double b 	= 0.75; 		    // unemployment benefit
+double b 	= 0.0; 		    // unemployment benefit
 double wage_lev = 1.;       // will be a shifter so the average wage is >0
 double occ_wlevs[4] = {0.,-0.2657589,-0.4975667,-0.2189076}; // wage levels for each occupation
 double occ_size_dat[] = {0.2636133, 0.3117827, 0.1493095, 0.2752945};
@@ -92,9 +92,9 @@ double urt_avg = .055;     // average separation rate
 
 // specifics for the calibration routine.
 FILE * calhist;
-char calhi_f[] = "calhistX.csv";
+char calhi_f[] = "calhistXX.csv";
 FILE * parhist;
-char parhi_f[] = "paramhistX.csv";
+char parhi_f[] = "paramhistXX.csv";
 
 char exper_f[] = "noXX"; // the label for all the output that depends on a counter-factual.
 double * solver_state;
@@ -114,27 +114,31 @@ char ** parnames[] = {parnames_clu0,parnames_clu1,parnames_clu2,parnames_cluall}
 
 char * tgtnames_clu0[]   = {"J2J","fnd","sep","swEE","swU","swSt","dur_ratio",
                             "varflowE","varflowU"};
-char * tgtnames_clu1[]   = {"stns10" ,"stns25" ,          "stns75" ,"stns90",
-                            "stsw10" ,"stsw25" ,          "stsw75" ,"stsw90",
-                            "EEns10" ,"EEns25" ,"EEns50" ,"EEns75" ,"EEns90",
-                            "EEsw10" ,"EEsw25" ,"EEsw50" ,"EEsw75" ,"EEsw90",
-                            "EUEns10","EUEns25","EUEns50","EUEns75","EUEns90",
-                            "EUEsw10","EUEsw25","EUEsw50","EUEsw75","EUEsw90"};
-                           //{"stns9010","stEEIQR","stEUEIQR","EUEmedian",
-                           // "stkurtosis","EEskew","EUEskew",
-                           // "swnsdif_st9010","swnsdif_EEIQR","swnsdif_EUEIQR","sw_EUEmedian",
-                           // "swnsdif_EEskew","swnsdif_EUEskew"};
+char * tgtnames_clu1[]   = //{"stns10" ,"stns25" ,          "stns75" ,"stns90",
+                           // "stsw10" ,"stsw25" ,          "stsw75" ,"stsw90",
+                           // "EEns10" ,"EEns25" ,"EEns50" ,"EEns75" ,"EEns90",
+                           // "EEsw10" ,"EEsw25" ,"EEsw50" ,"EEsw75" ,"EEsw90",
+                           // "EUEns10","EUEns25","EUEns50","EUEns75","EUEns90",
+                           // "EUEsw10","EUEsw25","EUEsw50","EUEsw75","EUEsw90"};
+                           {"stns9010","stEEIQR","stEUEIQR","EUEmedian",
+                            "stkurtosis","EEskew","EUEskew",
+                            "swnsdif_st9010","swnsdif_EEIQR","swnsdif_EUEIQR","sw_EUEmedian",
+                            "swnsdif_EEskew","swnsdif_EUEskew"};
 char * tgtnames_clu2[]   = {"swPrUratio","swPrEEratio","frtratio","seprtratio","EEratio",
                             "recdifMVswp9505","recdifMVswskew","recdifMVswbigloss",
                             "recdifMVnsp9505","recdifMVnsskew","recdifMVnsbigloss"};
 char * tgtnames_cluall[]   = {"J2J","fnd","sep","swEE","swU","swSt","dur_ratio",
                             "nrmflowE","nrmflowU",
-                              "stns10" ,"stns25" ,          "stns75" ,"stns90",
-                              "stsw10" ,"stsw25" ,          "stsw75" ,"stsw90",
-                              "EEns10" ,"EEns25" ,"EEns50" ,"EEns75" ,"EEns90",
-                              "EEsw10" ,"EEsw25" ,"EEsw50" ,"EEsw75" ,"EEsw90",
-                              "EUEns10","EUEns25","EUEns50","EUEns75","EUEns90",
-                              "EUEsw10","EUEsw25","EUEsw50","EUEsw75","EUEsw90",
+                            //  "stns10" ,"stns25" ,          "stns75" ,"stns90",
+                            //  "stsw10" ,"stsw25" ,          "stsw75" ,"stsw90",
+                            //  "EEns10" ,"EEns25" ,"EEns50" ,"EEns75" ,"EEns90",
+                            //  "EEsw10" ,"EEsw25" ,"EEsw50" ,"EEsw75" ,"EEsw90",
+                            //  "EUEns10","EUEns25","EUEns50","EUEns75","EUEns90",
+                            //  "EUEsw10","EUEsw25","EUEsw50","EUEsw75","EUEsw90",
+                              "stns9010","stEEIQR","stEUEIQR","EUEmedian",
+                              "stkurtosis","EEskew","EUEskew",
+                              "swnsdif_st9010","swnsdif_EEIQR","swnsdif_EUEIQR","sw_EUEmedian",
+                              "swnsdif_EEskew","swnsdif_EUEskew",
                             "swPrUratio","swPrEEratio","frtratio","seprtratio","EEratio",
                             "recdifMVswp9505","recdifMVswskew","recdifMVswbigloss",
                             "recdifMVnsp9505","recdifMVnsskew","recdifMVnsbigloss"};
@@ -195,6 +199,7 @@ struct cal_params{
 	gsl_matrix * Atrans;
 	gsl_matrix * xStrans;
 	gsl_vector **zprob; // distribution from which to draw when z first drawn
+	gsl_matrix **Ztrans;
 	gsl_vector **epsprob, **UEepsprob; // iid, so just a vector of probabilities
 	gsl_vector * jprob;
 	gsl_vector * endogepsprob, *endogzprob;
@@ -421,7 +426,7 @@ int main(int argc,char *argv[] ) {
 	Nparams = 0;
 	for(i=0;i<Ncluster;i++)Nparams += Npar_cluster[i];
 	Ntgt_cluster[0] = ntgtavgflow; // was + nflows or +JJ
-	Ntgt_cluster[1] = 6*Nqtls - 2;  // 6 condl distributions, not including medians for stayers // 13 ; for  MSM: IQR for st, EE, EUE, dif btwn sw and ns in IQR & skew, kurtosis of st. N.b.: min distance was wage change distributions for EE, EUE, st in both sw & ns
+	Ntgt_cluster[1] = 13; //6*Nqtls - 2;  // 6 condl distributions, not including medians for stayers // 13 ; for  MSM: IQR for st, EE, EUE, dif btwn sw and ns in IQR & skew, kurtosis of st. N.b.: min distance was wage change distributions for EE, EUE, st in both sw & ns
 	Ntgt_cluster[2] = 5+ 6; // 5 cyc flow targets, 6
 	Ntargets =0;
 	for(i=0;i<Ncluster;i++) Ntargets += Ntgt_cluster[i];
@@ -2781,25 +2786,38 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                                             xSt[i] = xti1;
                                             zt[i] = zipp;
                                             epst[i] = epspp;
-                                        } else {//don't switch employer
+                                        }else{ //don't want to switch employers
                                             J2Jflag = 0;
                                             if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 0);
+                                            //zt[i] = ztm1[i]; // no occupation switch
+                                            //jt[i] = jtm1[i];
+                                            int xti1 = 0; // lose specific skill
                                             xSt[i] = xti1;
-                                            zt[i] = zipp;
+                                            zt[i] = zipp==0 ? 1 : zipp;
                                         }
-                                    } else {
-                                        zt[i] = ztm1[i]; // no occupation switch
-                                        jt[i] = jtm1[i];
+
+                                    }else {//don't get opportunity to switch employer lambdaEMsel > lambdaEM
+                                        J2Jflag = 0;
+	                                    if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 0);
+                                        // only move if Calvo shock comes:
+                                        if( gg_get(sk->lambdaESsel[ll], i, ti) < par->stwupdate ) {
+                                            int xti1 = 0; // lose specific skill
+                                            xSt[i] = xti1;
+                                            zt[i] = zipp == 0 ? 1 : zipp;
+                                        }else{
+                                            zt[i] = ztm1[i]; // no occupation switch
+                                            jt[i] = jtm1[i];
+                                        }
                                     }
-                                } // no else for tried to switch, but not successful
+                                }// no else clause needed for those who tried to switch but weren't successful
+
                             } else { //else condition on m: not trying to switch occupations
                                 //WEs
                                 if (gg_get(sk->lambdaESsel[ll], i, ti) < lambdaES_hr) {
                                     // can move
                                     gg_set(epssel_hist[ll], i, ti, gg_get(sk->epssel[ll], i, ti));
 
-                                    if (gg_get(sk->lambdaEMsel[ll], i, ti) <
-                                        par->gdfthr) { //godfather (gamma) shock? lambdaEMsel hasn't been used for this guy
+                                    if (gg_get(sk->lambdaEMsel[ll], i, ti) < par->gdfthr) { //godfather shock? lambdaEMsel hasn't been used for this guy
                                         int epspp = 0;
                                         double * cmepshr = UEtm1==0 ? cmepsprob[At] : cmUEepsprob[At];
                                         for (thi = 0; thi < NE; thi++) {
@@ -2840,8 +2858,10 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                             // now that mobility decisions are done (and no didn't separate) , see if it's a stayer:
                             if (J2Jflag == 0 && jt[i] == jtm1[i] && ut[i]==0){
                                 // increment individual specific shocks for stayers:
-                                xSt[i] = 0;
-                                for (si = 0; si < NS; si++) if (gg_get(sk->xSsel[ll], i, ti) > cmxStrans[xStm1[i]][si]) ++xSt[i];
+                                if(xSt[i] == 0) {
+                                    for (si = 0; si < NS; si++)
+                                        if (gg_get(sk->xSsel[ll], i, ti) > cmxStrans[xStm1[i]][si])++xSt[i];
+                                }
                                 //  incrementing z only sometimes:
                                 if (gg_get(sk->lambdaUMsel[ll], i, ti) > (1. - par->update_z)) {
                                     // lambdaUMsel, but it's basically uncorrelated from all the other stuff I care about with this decision.
@@ -3786,11 +3806,11 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
 
             int Nemp_ll = 0, Nunemp_ll = 0, Nnosep_ll = 0, Nfnd_ll = 0, NswU_ll = 0, NswE_ll = 0, NJ2J_ll = 0, Nspell_ll = 0, NswSt_ll = 0, Ndur_sw_ll = 0, Ndur_nosw_ll = 0, Nsep_ll = 0, NErisksep_ll = 0;
             int NdoubleswU_ll = 0, NdoubleswE_ll = 0;
-            int sw_spell = -1, tsep = -1;
+            int sw_spell = -1, tsep = -1, wsep = -1;
             int Nocc_ll = 0;
             for (i = 0; i < Nsim; i++) {
                 sw_spell = -1;
-                tsep = -1;
+                tsep = -1; wsep = -1;
                 int Noccs_i = 0;
                 int lastswU_wi = 0, lastswE_wi = 0;
                 for (wi = 0;
@@ -3815,6 +3835,7 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                     if (ri == 2) Nsepmo++;
                                     sw_spell = ggi_get(ht->jhist[ll], i, ti - 1);
                                     tsep = ti;
+                                    wsep = wi;
                                     if (sw_spell >= 0 && sw_spell < JJ) {
                                         Nnosep_wi = 0;
                                         Nsep_wi = 1;
@@ -3848,19 +3869,31 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                                         ht->alphasijhist[ll][jji], i, ti);
                                             }
                                             NswE_wi = 1;
-                                            if (ri == 2) ggi_set(ht->trxhist[ll], i, ti, 4);
+                                            if (ri == 2) {
+                                                int ssi;
+                                                for(ssi=0;ssi<Npwave;ssi++)
+                                                    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 4);
+                                            }
                                             if (lastswE_wi == 1) NdoubleswE_wi = 1;
                                             if (lastswU_wi == 1) NdoubleswU_wi = 1;
 
                                             Noccs_i++;
                                         } else {
                                             //J2J no occ switch
-                                            if (ri == 2) ggi_set(ht->trxhist[ll], i, ti, 0);
+                                            if (ri == 2) {
+                                                int ssi;
+                                                for(ssi=0;ssi<Npwave;ssi++)
+                                                    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 0);
+                                            }
                                         }
                                     } else {  // not EE
                                         if (ggi_get(ht->jhist[ll], i, ti - 1) != ggi_get(ht->jhist[ll], i, ti)) {
                                             NswSt_wi = 1;
-                                            if (ri == 2) ggi_set(ht->trxhist[ll], i, ti, 7);
+                                            if (ri == 2) {
+                                                int ssi;
+                                                for(ssi=0;ssi<Npwave;ssi++)
+                                                    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 7);
+                                            }
                                         }
                                     }
                                 }
@@ -3895,14 +3928,20 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                         Ndur_sw_wi = ti - tsep + 1;
                                         Noccs_i += 1;
                                         if (ri == 2) {
-                                            ggi_set(ht->trxhist[ll], i, ti, 6);
-                                            if (tsep > 0 && tsep < TT) ggi_set(ht->trxhist[ll], i, tsep, 5);
+                                            int ssi;
+                                            for(ssi=0;ssi<Npwave;ssi++)
+                                                ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 6);
+                                            for(ssi=0;ssi<Npwave;ssi++)
+                                                ggi_set(ht->trxhist[ll], i, ssi + wsep * Npwave, 5);
                                         }
                                     } else {
                                         Ndur_nosw_wi = ti - tsep + 1;
                                         if (ri == 2) {
-                                            ggi_set(ht->trxhist[ll], i, ti, 2);
-                                            if (tsep > 0 && tsep < TT) ggi_set(ht->trxhist[ll], i, tsep, 1);
+                                            int ssi;
+                                            for(ssi=0;ssi<Npwave;ssi++)
+                                                ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 2);
+                                            for(ssi=0;ssi<Npwave;ssi++)
+                                                ggi_set(ht->trxhist[ll], i, ssi + wsep * Npwave, 1);
                                         }
                                     }
                                 }
@@ -4334,7 +4373,7 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
         double w_EU = 0.;
         for (i = 0; i < Nsim; i++) {
             for (wi = 0; wi < TT / Npwave; wi++) {
-                double w_EEsw_wi = 0., w_EEns_wi = 0., w_stsw_wi = 0., w_stns_wi = 0., w_UEsw_wi = 0., w_UEns_wi = 0., w_EUsw_wi = 0., w_EUns_wi = 0.;
+
                 double wwv_EEsw_wi = 0., wwv_EEoccsw_wi = 0., wwv_UEsw_wi = 0., wwv_UEoccsw_wi = 0.;
                 int I_EEsw_wi = 0, I_EEns_wi = 0, I_stsw_wi = 0, I_stns_wi = 0, I_UEsw_wi = 0, I_UEns_wi = 0, I_EUsw_wi = 0, I_EUns_wi = 0;
                 int I_UEwvsw_wi = 0, I_EEwvsw_wi = 0;
@@ -4395,7 +4434,6 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                 if (ggi_get(ht->J2Jhist[ll], i, ti) == 1) {
 
                                     if (ggi_get(ht->jhist[ll], i, ti + 1) != ggi_get(ht->jhist[ll], i, ti - 1)) {
-                                        w_EEsw_wi = (wnext - wlast) / (wnext + wlast) * 2;
                                         wwv_EEsw_wi = wnext_wave + wlast_wave > 0 ? (wnext_wave - wlast_wave) /
                                                                                     (wnext_wave + wlast_wave) * 2 : 0.;
                                         wwv_EEoccsw_wi = (occwg[ll * JJ + ggi_get(ht->jhist[ll], i, ti + 1)] -
@@ -4406,7 +4444,6 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                         I_EEwvsw_wi = wnext_wave + wlast_wave > 0 ? 1 : 0;
                                         I_EEsw_wi = 1;
                                     } else {
-                                        w_EEns_wi = (wnext - wlast) / (wnext + wlast) * 2;
                                         I_EEns_wi = 1;
                                     }
                                 } else {  // not EE
@@ -4414,18 +4451,19 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                     if (wi > 3 && wi < TT / Npwave - 3) {
                                         int rri = 0;
                                         for (rri = 1; rri < Npwave * 3 + 1; rri++)
-                                            fullstayer = ggi_get(ht->J2Jhist[ll], i, ti - rri) ==1 || ggi_get(ht->uhist[ll],i,ti-rri)==1
-                                                    ? 0 : fullstayer;
+                                            fullstayer = ggi_get(ht->J2Jhist[ll], i, ti - rri) == 1 ||
+                                                         ggi_get(ht->uhist[ll], i, ti - rri) == 1
+                                                         ? 0 : fullstayer;
                                         for (rri = 0; rri < Npwave * 3; rri++)
-                                            fullstayer = ggi_get(ht->J2Jhist[ll], i, ti + rri) ==1 || ggi_get(ht->uhist[ll],i,ti+rri)==1
+                                            fullstayer = ggi_get(ht->J2Jhist[ll], i, ti + rri) == 1 ||
+                                                         ggi_get(ht->uhist[ll], i, ti + rri) == 1
                                                          ? 0 : fullstayer;
                                     }
-                                    if ( fullstayer== 1 && ggi_get(ht->jhist[ll], i, ti + 1) != ggi_get(ht->jhist[ll], i, ti - 1)) {
-                                        w_stsw_wi = (wnext - wlast) / (wnext + wlast) * 2;
+                                    if (fullstayer == 1 &&
+                                        ggi_get(ht->jhist[ll], i, ti + 1) != ggi_get(ht->jhist[ll], i, ti - 1)) {
                                         I_stsw_wi = 1;
 
-                                    } else if(fullstayer== 1 ){
-                                        w_stns_wi = (wnext - wlast) / (wnext + wlast) * 2;
+                                    } else if (fullstayer == 1) {
                                         I_stns_wi = 1;
                                     }
                                 }
@@ -4438,8 +4476,6 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                             if (ggi_get(ht->uhist[ll], i, ti + 1) == 0 && sw_spell > -1) {
                                 // switch occupations
                                 if (ggi_get(ht->jhist[ll], i, ti + 1) != sw_spell) {
-                                    w_UEsw_wi = (wnext - wlast) / (wnext + wlast) * 2;
-                                    w_EUsw_wi = w_EU;
                                     wwv_UEsw_wi = wnext_wave + wlast_waveEU > 0 ? (wnext_wave - wlast_waveEU) /
                                                                                   (wnext_wave + wlast_waveEU) * 2 : 0.;
                                     wwv_UEoccsw_wi =
@@ -4451,8 +4487,6 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                     I_EUsw_wi = 1;
 
                                 } else {
-                                    w_UEns_wi = (wnext - wlast) / (wnext + wlast) * 2;
-                                    w_EUns_wi = w_EU;
                                     I_UEns_wi = 1;
                                     I_EUns_wi = 1;
                                 }
@@ -4467,9 +4501,9 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                 }
                 if (I_stsw_wi == 1) I_stns_wi = 0; //if switched in one month, then a switcher
 
+                double wchng = log(wnext + pow(1 + wnext * wnext, 0.5)) - log(wlast + pow(1 + wlast * wlast, 0.5));
                 if (wi > 3 && wi < TT / Npwave - 3 && wnext > 0. && wlast > 0.) {
                     //double wchng = (wnext - wlast)/(wnext + wlast)*2;
-                    double wchng = log(wnext + pow(1 + wnext * wnext, 0.5)) - log(wlast + pow(1 + wlast * wlast, 0.5));
                     for (si = 0; si < Npwave; si++) {
                         ti = si + wi * Npwave;
                         gg_set(ht->wchnghist[ll], i, ti, wchng);
@@ -4477,8 +4511,6 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                     if (isfinite(wchng)) {
                         w_all[idx_all] = wchng;
                         // categorize transitions:
-                        int tri, rii;
-
                         if (I_EEns_wi == 1) {
                             trx_all[idx_all][0] = 1;
                             trx_all_rec[ri_wv][idx_all_rec[ri_wv]][0] = 1;
@@ -4531,11 +4563,8 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                     wwv_UEoccsw[idx_UEwvsw] = wwv_UEoccsw_wi;
                     idx_UEwvsw++;
                 }
-                double wchng;
-                if (wi > 3 && wi < TT / Npwave - 3 && wnext > 0. && wlast > 0.)
-                    wchng = log(wnext + pow(1 + wnext * wnext, 0.5)) - log(wlast + pow(1 + wlast * wlast, 0.5));
-                if (isfinite(wchng) && wi > 3 && wi < TT / Npwave - 3 && wnext > 0. && wlast > 0.) {
 
+                if (isfinite(wchng) && wi > 3 && wi < TT / Npwave - 3 && wnext > 0. && wlast > 0.) {
                     if (I_EEns_wi == 1 && idx_EEns < NJ2J) {
                         w_EEns[idx_EEns] = wchng;
                         w_MVnsrec[ri_wv][idx_MVnsrec[ri_wv]] = wchng;
@@ -5238,8 +5267,8 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 	ii =0;
 
 	// an ad hoc one:
-	par->lambdaENew = 1.5; // give them X the probability of transitioning --- turning off for now
-    par->lambdaUNew = 2.0; // give them X the probability of transitioning
+	par->lambdaENew = 1.0; // give them X the probability of transitioning
+    par->lambdaUNew = 1.0; // give them X the probability of transitioning
 
 	if( ci ==0 || ci == Ncluster){
 
@@ -5651,39 +5680,39 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 
 
 		if (par->cluster_hr == 1 || par->cluster_hr == Ncluster) {
-
+            /*
             // MINUMUM DISTANCE TARGETS
 			for (i = 0; i < Nqtls; i++) {
                 if(i!= Nqtls/2) {
-                    err_vec[ii] = (st.stns_qtls[i] - dat.stns_qtls[i]) ;// /(double) (Nqtls - 1);
+                    err_vec[ii] = (st.stns_qtls[i] - dat.stns_qtls[i])  /(double) (Nqtls - 1);
                     ii++;
                 }
             }
 			for (i = 0; i < Nqtls; i++) {
                 if(i!=Nqtls/2) {
-                    err_vec[ii] = (st.stsw_qtls[i] - dat.stsw_qtls[i]) ;// / (double) (Nqtls - 1);
+                    err_vec[ii] = (st.stsw_qtls[i] - dat.stsw_qtls[i])  / (double) (Nqtls - 1);
                     ii++;
                 }
             }
 			for (i = 0; i < Nqtls; i++)
 				err_vec[ii + i] =
-						(st.EEns_qtls[i] - dat.EEns_qtls[i]) ; // / (double) Nqtls;
+						(st.EEns_qtls[i] - dat.EEns_qtls[i])  / (double) Nqtls;
 			ii += Nqtls;
 			for (i = 0; i < Nqtls; i++)
 				err_vec[ii + i] =
-						(st.EEsw_qtls[i] - dat.EEsw_qtls[i]) ; // / (double) Nqtls;
+						(st.EEsw_qtls[i] - dat.EEsw_qtls[i])  / (double) Nqtls;
 			ii += Nqtls;
 			for (i = 0; i < Nqtls; i++)
 				err_vec[ii + i] =
-						(st.EUEns_qtls[i] - dat.EUEns_qtls[i]); // / (double) Nqtls;
+						(st.EUEns_qtls[i] - dat.EUEns_qtls[i]) / (double) Nqtls;
 			ii += Nqtls;
 			for (i = 0; i < Nqtls; i++)
 				err_vec[ii + i] =
-						(st.EUEsw_qtls[i] - dat.EUEsw_qtls[i]); // / (double) Nqtls;// *2/(st.EUsw_qtls[i]+dat.EUsw_qtls[i])
+						(st.EUEsw_qtls[i] - dat.EUEsw_qtls[i]) / (double) Nqtls;// *2/(st.EUsw_qtls[i]+dat.EUsw_qtls[i])
 			ii += Nqtls;
+            */
 
-
-            /* MSM targets: +++
+            // MSM targets: +++
             int p90i = 4; int p10i=0;
             int p50i=2;
             int p75i = 3; int p25i=1;
@@ -5712,39 +5741,50 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
             double datEEsw_skew  = ((dat.EEsw_qtls[p90i]  - dat.EEsw_qtls[p50i] ) - (dat.EEsw_qtls[p50i] - dat.EEsw_qtls[p10i])  )/(dat.EEsw_qtls[p90i]  - dat.EEsw_qtls[p10i]);
             double stEUEsw_skew  = ((st.EUEsw_qtls[p90i]  - st.EUEsw_qtls[p50i] ) - (st.EUEsw_qtls[p50i] - st.EUEsw_qtls[p10i])  )/(st.EUEsw_qtls[p90i]  - st.EUEsw_qtls[p10i]);
             double datEUEsw_skew = ((dat.EUEsw_qtls[p90i] - dat.EUEsw_qtls[p50i]) - (dat.EUEsw_qtls[p50i]- dat.EUEsw_qtls[p10i]) )/(dat.EUEsw_qtls[p90i] - dat.EUEsw_qtls[p10i]);
+            //dispersion stats:
+            err_vec[ii] =  ststns_9010 - datstns_9010; err_vec[ii] /= 3.0;
+            ii++;
+            err_vec[ii] =  stEEns_IQR - datEEns_IQR; err_vec[ii] /= 3.0;
+            ii++;
+            err_vec[ii] = stEUEns_IQR - datEUEns_IQR; err_vec[ii] /= 3.0;
+            ii++;
 
-            err_vec[ii] =  ststns_9010 - datstns_9010;
+            err_vec[ii] = (st.EUEns_qtls[p50i] - dat.EUEns_qtls[p50i])/( -dat.EUEns_qtls[p50i]); err_vec[ii] /= 3.0;
             ii++;
-            err_vec[ii] =  stEEns_IQR - datEEns_IQR;
-            ii++;
-            err_vec[ii] = stEUEns_IQR - datEUEns_IQR;
-            ii++;
-            err_vec[ii] = (st.EUEns_qtls[p50i] - dat.EUEns_qtls[p50i])/( -dat.EUEns_qtls[p50i]);
-            ii++;
+
+            // higher order moments stats
             // stns_kurtosis:
             err_vec[ii] = ((st.stns_qtls[p90i]  - st.stns_qtls[p10i] ) - (st.stns_qtls[p75i]  - st.stns_qtls[p25i]) ) -
                           ((dat.stns_qtls[p90i] - dat.stns_qtls[p10i]) - (dat.stns_qtls[p75i] - dat.stns_qtls[p25i]));
+            err_vec[ii] /= 4.0;
             ii++;
-            err_vec[ii] =  stEEns_skew - datEEns_skew;
+            err_vec[ii] =  stEEns_skew - datEEns_skew; err_vec[ii] /= 4.0;
             ii++;
-            err_vec[ii] =  stEUEns_skew - datEUEns_skew;
+            err_vec[ii] =  stEUEns_skew - datEUEns_skew; err_vec[ii] /= 4.0;
             ii++;
 
+            // occ switcher stats
             err_vec[ii] =  (ststsw_9010 - ststns_9010) - (datstsw_9010 - datstns_9010);
+            err_vec[ii] /= 3.0;
             ii++;
             err_vec[ii] =  (stEEsw_IQR - stEEns_IQR)/stEEns_IQR - (datEEsw_IQR - datEEns_IQR)/datEEns_IQR;
+            err_vec[ii] /= 3.0;
             ii++;
             err_vec[ii] =  (stEUEsw_IQR - stEUEns_IQR)/stEUEns_IQR - (datEUEsw_IQR -datEUEns_IQR)/datEUEns_IQR;
+            err_vec[ii] /= 3.0;
             ii++;
             err_vec[ii] = (st.EUEsw_qtls[p50i] - dat.EUEsw_qtls[p50i])/( -dat.EUEsw_qtls[p50i] );
+            err_vec[ii] /= 3.0;
             ii++;
 
 
             err_vec[ii] =  (stEEsw_skew - stEEns_skew) - (datEEsw_skew - datEEns_skew);
+            err_vec[ii] /= 4.0;
             ii++;
             err_vec[ii] = (stEUEsw_skew - stEUEns_skew)- (datEUEsw_skew -datEUEns_skew);
+            err_vec[ii] /= 4.0;
             ii++;
-            */
+
         }
 		if (par->cluster_hr == 2 || par->cluster_hr == Ncluster) {
 			err_vec[ii] = tanh( (st.swProb_U_ratio - dat.swProb_U_ratio)/ (dat.swProb_U_ratio-1.));
