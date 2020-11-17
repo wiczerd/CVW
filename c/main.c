@@ -120,9 +120,9 @@ char * tgtnames_clu1[]   = //{"stns10" ,"stns25" ,          "stns75" ,"stns90",
                            // "EEsw10" ,"EEsw25" ,"EEsw50" ,"EEsw75" ,"EEsw90",
                            // "EUEns10","EUEns25","EUEns50","EUEns75","EUEns90",
                            // "EUEsw10","EUEsw25","EUEsw50","EUEsw75","EUEsw90"};
-                           {"stns9010","stEEIQR","stEUEIQR","EUEmedian",
+                           {"stns9010","stEE9010","stEUE9010","EUEmedian",
                             "stkurtosis","EEskew","EUEskew",
-                            "swnsdif_st9010","swnsdif_EEIQR","swnsdif_EUEIQR","sw_EUEmedian",
+                            "swnsdif_st9010","swnsdif_EE9010","swnsdif_EUE9010","sw_EUEmedian",
                             "swnsdif_EEskew","swnsdif_EUEskew"};
 char * tgtnames_clu2[]   = {"swPrUratio","swPrEEratio","frtratio","seprtratio","EEratio",
                             "recdifMVswp9505","recdifMVswskew","recdifMVswbigloss",
@@ -135,9 +135,9 @@ char * tgtnames_cluall[]   = {"J2J","fnd","sep","swEE","swU","swSt","dur_ratio",
                             //  "EEsw10" ,"EEsw25" ,"EEsw50" ,"EEsw75" ,"EEsw90",
                             //  "EUEns10","EUEns25","EUEns50","EUEns75","EUEns90",
                             //  "EUEsw10","EUEsw25","EUEsw50","EUEsw75","EUEsw90",
-                              "stns9010","stEEIQR","stEUEIQR","EUEmedian",
+                              "stns9010","stEE9010","stEUE9010","EUEmedian",
                               "stkurtosis","EEskew","EUEskew",
-                              "swnsdif_st9010","swnsdif_EEIQR","swnsdif_EUEIQR","sw_EUEmedian",
+                              "swnsdif_st9010","swnsdif_EE9010","swnsdif_EUE9010","sw_EUEmedian",
                               "swnsdif_EEskew","swnsdif_EUEskew",
                             "swPrUratio","swPrEEratio","frtratio","seprtratio","EEratio",
                             "recdifMVswp9505","recdifMVswskew","recdifMVswbigloss",
@@ -426,7 +426,8 @@ int main(int argc,char *argv[] ) {
 	Nparams = 0;
 	for(i=0;i<Ncluster;i++)Nparams += Npar_cluster[i];
 	Ntgt_cluster[0] = ntgtavgflow; // was + nflows or +JJ
-	Ntgt_cluster[1] = 13; //6*Nqtls - 2;  // 6 condl distributions, not including medians for stayers // 13 ; for  MSM: IQR for st, EE, EUE, dif btwn sw and ns in IQR & skew, kurtosis of st. N.b.: min distance was wage change distributions for EE, EUE, st in both sw & ns
+	Ntgt_cluster[1] = 13 ; //for  MSM: IQR for st, EE, EUE, dif btwn sw and ns in IQR & skew, kurtosis of st. N.b.: min distance was wage change distributions for EE, EUE, st in both sw & ns //
+	//Ntgt_cluster[1] =  6*Nqtls - 2; //6 condl distributions, not including medians for stayers //
 	Ntgt_cluster[2] = 5+ 6; // 5 cyc flow targets, 6
 	Ntargets =0;
 	for(i=0;i<Ncluster;i++) Ntargets += Ntgt_cluster[i];
@@ -438,7 +439,7 @@ int main(int argc,char *argv[] ) {
 
 
 	if(verbose>1){
-		printf("Program version Oct 23, 2020\n");
+		printf("Program version Nov 15, 2020\n");
 
 		printf("Solving for 3 clusters, sized %d,%d,%d\n", Npar_cluster[0],Npar_cluster[1],Npar_cluster[2]);
 		printf("Targeting 3 clusters, sized %d,%d,%d\n", Ntgt_cluster[0],Ntgt_cluster[1],Ntgt_cluster[2]);
@@ -793,7 +794,7 @@ int main(int argc,char *argv[] ) {
                     // allocations for DFBOLS
                     x0_clu = malloc(Npar_cluster[ci] * sizeof(double));
                     int npt = 2 * Npar_cluster[ci] + 1;
-                    double rhobeg = pow(.5,(double)clu_iter/2.+1.);//  0.33*pow((double)(nnodes*nstarts),-1./(double)Npar_cluster[ci]);
+                    double rhobeg = 0.5; //pow(.5,(double)clu_iter/2.+1.);
                     rhobeg = rhobeg/ (double)nnodes;
                     double rhoend = clu_iter <max_cluiter-1 ? rhobeg/100 : rhobeg / 1000;
                     //if(ci==Ncluster) rhobeg /= 3;
@@ -2789,21 +2790,22 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                                         }else{ //don't want to switch employers
                                             J2Jflag = 0;
                                             if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 0);
-                                            //zt[i] = ztm1[i]; // no occupation switch
-                                            //jt[i] = jtm1[i];
+                                            epst[i] = epstm1[i];
                                             int xti1 = 0; // lose specific skill
                                             xSt[i] = xti1;
-                                            zt[i] = zipp==0 ? 1 : zipp;
+                                            zt[i] = zt[i] - zipp>=1 ? zt[i] - 1 : zipp;
                                         }
 
                                     }else {//don't get opportunity to switch employer lambdaEMsel > lambdaEM
                                         J2Jflag = 0;
 	                                    if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 0);
-                                        // only move if Calvo shock comes:
+                                        epst[i] = epstm1[i];
+	                                    // only move if Calvo shock comes:
                                         if( gg_get(sk->lambdaESsel[ll], i, ti) < par->stwupdate ) {
                                             int xti1 = 0; // lose specific skill
                                             xSt[i] = xti1;
-                                            zt[i] = zipp == 0 ? 1 : zipp;
+                                            zt[i] = zt[i] - zipp>=1 ? zt[i] - 1 : zipp;
+
                                         }else{
                                             zt[i] = ztm1[i]; // no occupation switch
                                             jt[i] = jtm1[i];
@@ -2856,23 +2858,23 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 
                             //still w/in no separation part:
                             // now that mobility decisions are done (and no didn't separate) , see if it's a stayer:
-                            if (J2Jflag == 0 && jt[i] == jtm1[i] && ut[i]==0){
+                            if (J2Jflag == 0  && ut[i]==0  && jt[i] == jtm1[i]){
                                 // increment individual specific shocks for stayers:
-                                if(xSt[i] == 0) {
+                                if(xSt[i] == 0 && jt[i] == jtm1[i] ) {
                                     for (si = 0; si < NS; si++)
                                         if (gg_get(sk->xSsel[ll], i, ti) > cmxStrans[xStm1[i]][si])++xSt[i];
                                 }
                                 //  incrementing z only sometimes:
-                                if (gg_get(sk->lambdaUMsel[ll], i, ti) > (1. - par->update_z)) {
+                                if (gg_get(sk->lambdaUMsel[ll], i, ti) > (1. - par->update_z) && jt[i] == jtm1[i]) {
                                     // lambdaUMsel, but it's basically uncorrelated from all the other stuff I care about with this decision.
                                     zt[i] = 0;
                                     for (zi = 0; zi < NZ; zi++) if (gg_get(sk->zsel[ll], i, ti) > cmzprob[At][zi]) ++zt[i];
-                                } else {
+                                } else if(jt[i] == jtm1[i]) {
                                     zt[i] = ztm1[i];
                                 }
                                 // impose wage stickiness for stayers. Doing ti> burnin to start at period 1, not 0
                                 if (ti > burnin) {
-                                    if (ggi_get(ht->J2Jhist[ll], i, ti - burnin) == 0 && jt[i] == jtm1[i] &&
+                                    if (ggi_get(ht->J2Jhist[ll], i, ti - burnin) == 0 &&
                                         gg_get(ht->whist[ll], i, ti - burnin-1)>0. && utm1[i]==0) {
                                         if (gg_get(sk->lambdaUSsel[ll], i, ti) >  par->stwupdate ) //lambdaUsel not ever used before here
                                             gg_set(ht->whist[ll], i, ti - burnin,
@@ -2885,7 +2887,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                         }
 
                     }
-                    if (ut[i] == 1) {  // ut ==1 unemployed. Can search even if just lost job
+                    if (utm1[i] == 1) {  // utm1 ==1 unemployed. Can search only in second period of job loss
                         ii = At * NP * NS * NZ + Pt[jt[i]] * NS * NZ + xSt[i] * NZ + zt[i];
 
                         if (ti >= burnin) { gg_set(ht->whist[ll], i, ti - burnin, 0.); }
@@ -2982,6 +2984,14 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                         }
                     }
                     //put the shocks in the history matrix
+
+                    // save this guy's state
+                    jtm1[i] = jt[i];
+                    utm1[i] = ut[i];
+                    xStm1[i] = xSt[i];
+                    ztm1[i] = zt[i];
+                    epstm1[i] = epst[i];
+
                     if (ti >= burnin) {
                         ggi_set(ht->xShist[ll], i, ti - burnin, xStm1[i]);
                         ggi_set(ht->zhist[ll], i, ti - burnin, ztm1[i]);
@@ -2993,13 +3003,6 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                         gg_set(WE_hist[ll], i, ti - burnin, gg_get(vf->WE, ii, jt[i]));
                         gg_set(WU_hist[ll], i, ti - burnin, gg_get(vf->WU, iU, jt[i]));
                     }
-
-                    // save this guy's state
-                    jtm1[i] = jt[i];
-                    utm1[i] = ut[i];
-                    xStm1[i] = xSt[i];
-                    ztm1[i] = zt[i];
-                    epstm1[i] = epst[i];
 
 
                 }// t=1:TTT
@@ -3870,9 +3873,10 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                             }
                                             NswE_wi = 1;
                                             if (ri == 2) {
-                                                int ssi;
-                                                for(ssi=0;ssi<Npwave;ssi++)
-                                                    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 4);
+                                                //int ssi;
+                                                //for(ssi=0;ssi<Npwave;ssi++)
+                                                //    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 4);
+                                                ggi_set(ht->trxhist[ll], i, ti, 4);
                                             }
                                             if (lastswE_wi == 1) NdoubleswE_wi = 1;
                                             if (lastswU_wi == 1) NdoubleswU_wi = 1;
@@ -3881,18 +3885,33 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                         } else {
                                             //J2J no occ switch
                                             if (ri == 2) {
-                                                int ssi;
-                                                for(ssi=0;ssi<Npwave;ssi++)
-                                                    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 0);
+                                                //int ssi;
+                                                //for(ssi=0;ssi<Npwave;ssi++)
+                                                //    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 0);
+                                                ggi_set(ht->trxhist[ll], i, ti, 0);
                                             }
                                         }
                                     } else {  // not EE
-                                        if (ggi_get(ht->jhist[ll], i, ti - 1) != ggi_get(ht->jhist[ll], i, ti)) {
-                                            NswSt_wi = 1;
-                                            if (ri == 2) {
-                                                int ssi;
-                                                for(ssi=0;ssi<Npwave;ssi++)
-                                                    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 7);
+                                        if(ti>0) {
+                                            //if (ggi_get(ht->uhist[ll], i, ti + 1) == 1)
+                                            if(ggi_get(ht->uhist[ll],i,ti-1)==0) {
+                                                if (ggi_get(ht->jhist[ll], i, ti - 1) !=
+                                                    ggi_get(ht->jhist[ll], i, ti)) {
+                                                    NswSt_wi = 1;
+                                                    if (ri == 2) {
+                                                        // int ssi;
+                                                        // for(ssi=0;ssi<Npwave;ssi++)
+                                                        //     ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 7);
+                                                        ggi_set(ht->trxhist[ll], i, ti, 7);
+                                                    }
+                                                } else {
+                                                    if (ri == 2) {
+                                                        // int ssi;
+                                                        // for(ssi=0;ssi<Npwave;ssi++)
+                                                        //     ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 3);
+                                                        ggi_set(ht->trxhist[ll], i, ti, 3);
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -3929,19 +3948,23 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                         Noccs_i += 1;
                                         if (ri == 2) {
                                             int ssi;
-                                            for(ssi=0;ssi<Npwave;ssi++)
-                                                ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 6);
-                                            for(ssi=0;ssi<Npwave;ssi++)
-                                                ggi_set(ht->trxhist[ll], i, ssi + wsep * Npwave, 5);
+                                            //for(ssi=0;ssi<Npwave;ssi++)
+                                            //    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 6);
+                                            ggi_set(ht->trxhist[ll], i, ti, 6);
+                                            //for(ssi=0;ssi<Npwave;ssi++)
+                                            //    ggi_set(ht->trxhist[ll], i, ssi + wsep * Npwave, 5);
+                                            ggi_set(ht->trxhist[ll], i, tsep, 5);
                                         }
                                     } else {
                                         Ndur_nosw_wi = ti - tsep + 1;
                                         if (ri == 2) {
                                             int ssi;
-                                            for(ssi=0;ssi<Npwave;ssi++)
-                                                ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 2);
-                                            for(ssi=0;ssi<Npwave;ssi++)
-                                                ggi_set(ht->trxhist[ll], i, ssi + wsep * Npwave, 1);
+                                            //for(ssi=0;ssi<Npwave;ssi++)
+                                            //    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 2);
+                                            ggi_set(ht->trxhist[ll], i, ti, 2);
+                                            //for(ssi=0;ssi<Npwave;ssi++)
+                                            //    ggi_set(ht->trxhist[ll], i, ssi + wsep * Npwave, 1);
+                                            ggi_set(ht->trxhist[ll], i, tsep, 1);
                                         }
                                     }
                                 }
@@ -4458,13 +4481,14 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                             fullstayer = ggi_get(ht->J2Jhist[ll], i, ti + rri) == 1 ||
                                                          ggi_get(ht->uhist[ll], i, ti + rri) == 1
                                                          ? 0 : fullstayer;
-                                    }
-                                    if (fullstayer == 1 &&
-                                        ggi_get(ht->jhist[ll], i, ti + 1) != ggi_get(ht->jhist[ll], i, ti - 1)) {
-                                        I_stsw_wi = 1;
 
-                                    } else if (fullstayer == 1) {
-                                        I_stns_wi = 1;
+                                        if (fullstayer == 1 &&
+                                            ggi_get(ht->jhist[ll], i, ti - 1) != ggi_get(ht->jhist[ll], i, ti)) {
+                                            I_stsw_wi = 1;
+
+                                        } else if (fullstayer == 1) {
+                                            I_stns_wi = 1;
+                                        }
                                     }
                                 }
                             }
@@ -5680,8 +5704,9 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 
 
 		if (par->cluster_hr == 1 || par->cluster_hr == Ncluster) {
-            /*
+
             // MINUMUM DISTANCE TARGETS
+            /*
 			for (i = 0; i < Nqtls; i++) {
                 if(i!= Nqtls/2) {
                     err_vec[ii] = (st.stns_qtls[i] - dat.stns_qtls[i])  /(double) (Nqtls - 1);
@@ -5741,12 +5766,24 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
             double datEEsw_skew  = ((dat.EEsw_qtls[p90i]  - dat.EEsw_qtls[p50i] ) - (dat.EEsw_qtls[p50i] - dat.EEsw_qtls[p10i])  )/(dat.EEsw_qtls[p90i]  - dat.EEsw_qtls[p10i]);
             double stEUEsw_skew  = ((st.EUEsw_qtls[p90i]  - st.EUEsw_qtls[p50i] ) - (st.EUEsw_qtls[p50i] - st.EUEsw_qtls[p10i])  )/(st.EUEsw_qtls[p90i]  - st.EUEsw_qtls[p10i]);
             double datEUEsw_skew = ((dat.EUEsw_qtls[p90i] - dat.EUEsw_qtls[p50i]) - (dat.EUEsw_qtls[p50i]- dat.EUEsw_qtls[p10i]) )/(dat.EUEsw_qtls[p90i] - dat.EUEsw_qtls[p10i]);
-            //dispersion stats:
+
+            double stEEns_9010   = (st.EEns_qtls[p90i]   - st.EEns_qtls[p10i]);
+            double datEEns_9010  = (dat.EEns_qtls[p90i]  - dat.EEns_qtls[p10i]);
+            double stEUEns_9010  = (st.EUEns_qtls[p90i]  - st.EUEns_qtls[p10i]);
+            double datEUEns_9010 = (dat.EUEns_qtls[p90i] - dat.EUEns_qtls[p10i]);
+
+            double stEEsw_9010   = (st.EEsw_qtls[p90i]   - st.EEsw_qtls[p10i]);
+            double datEEsw_9010  = (dat.EEsw_qtls[p90i]  - dat.EEsw_qtls[p10i]);
+            double stEUEsw_9010  = (st.EUEsw_qtls[p90i]  - st.EUEsw_qtls[p10i]);
+            double datEUEsw_9010 = (dat.EUEsw_qtls[p90i] - dat.EUEsw_qtls[p10i]);
+
+
+             //dispersion stats:
             err_vec[ii] =  ststns_9010 - datstns_9010; err_vec[ii] /= 3.0;
             ii++;
-            err_vec[ii] =  stEEns_IQR - datEEns_IQR; err_vec[ii] /= 3.0;
+            err_vec[ii] =  stEEns_9010 - datEEns_9010; err_vec[ii] /= 3.0;
             ii++;
-            err_vec[ii] = stEUEns_IQR - datEUEns_IQR; err_vec[ii] /= 3.0;
+            err_vec[ii] = stEUEns_9010 - datEUEns_9010; err_vec[ii] /= 3.0;
             ii++;
 
             err_vec[ii] = (st.EUEns_qtls[p50i] - dat.EUEns_qtls[p50i])/( -dat.EUEns_qtls[p50i]); err_vec[ii] /= 3.0;
@@ -5767,10 +5804,10 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
             err_vec[ii] =  (ststsw_9010 - ststns_9010) - (datstsw_9010 - datstns_9010);
             err_vec[ii] /= 3.0;
             ii++;
-            err_vec[ii] =  (stEEsw_IQR - stEEns_IQR)/stEEns_IQR - (datEEsw_IQR - datEEns_IQR)/datEEns_IQR;
+            err_vec[ii] =  (stEEsw_9010 - stEEns_9010)/stEEns_9010 - (datEEsw_9010 - datEEns_9010)/datEEns_9010;
             err_vec[ii] /= 3.0;
             ii++;
-            err_vec[ii] =  (stEUEsw_IQR - stEUEns_IQR)/stEUEns_IQR - (datEUEsw_IQR -datEUEns_IQR)/datEUEns_IQR;
+            err_vec[ii] =  (stEUEsw_9010 - stEUEns_9010)/stEUEns_9010 - (datEUEsw_9010 -datEUEns_9010)/datEUEns_9010;
             err_vec[ii] /= 3.0;
             ii++;
             err_vec[ii] = (st.EUEsw_qtls[p50i] - dat.EUEsw_qtls[p50i])/( -dat.EUEsw_qtls[p50i] );
