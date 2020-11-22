@@ -120,7 +120,7 @@ char * tgtnames_clu1[]   = //{"stns10" ,"stns25" ,          "stns75" ,"stns90",
                            // "EEsw10" ,"EEsw25" ,"EEsw50" ,"EEsw75" ,"EEsw90",
                            // "EUEns10","EUEns25","EUEns50","EUEns75","EUEns90",
                            // "EUEsw10","EUEsw25","EUEsw50","EUEsw75","EUEsw90"};
-                           {"stns9010","stEE9010","stEUE9010","EUEmedian",
+                           {"stns9010","EEns9010","EUEns9010","EUEmedian",
                             "stkurtosis","EEskew","EUEskew",
                             "swnsdif_st9010","swnsdif_EE9010","swnsdif_EUE9010","sw_EUEmedian",
                             "swnsdif_EEskew","swnsdif_EUEskew"};
@@ -135,7 +135,7 @@ char * tgtnames_cluall[]   = {"J2J","fnd","sep","swEE","swU","swSt","dur_ratio",
                             //  "EEsw10" ,"EEsw25" ,"EEsw50" ,"EEsw75" ,"EEsw90",
                             //  "EUEns10","EUEns25","EUEns50","EUEns75","EUEns90",
                             //  "EUEsw10","EUEsw25","EUEsw50","EUEsw75","EUEsw90",
-                              "stns9010","stEE9010","stEUE9010","EUEmedian",
+                              "stns9010","EEns9010","EUEns9010","EUEmedian",
                               "stkurtosis","EEskew","EUEskew",
                               "swnsdif_st9010","swnsdif_EE9010","swnsdif_EUE9010","sw_EUEmedian",
                               "swnsdif_EEskew","swnsdif_EUEskew",
@@ -2785,7 +2785,8 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                                             J2Jflag = 1;
                                             if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 1);
                                             xSt[i] = xti1;
-                                            zt[i] = zipp;
+                                            //  zt[i] = zipp; ad hoc adjustment! From <- to ,|
+                                            zt[i] = zipp==NZ-2 ? NZ-1 : zipp;
                                             epst[i] = epspp;
                                         }else{ //don't want to switch employers
                                             J2Jflag = 0;
@@ -2793,6 +2794,10 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                                             epst[i] = epstm1[i];
                                             int xti1 = 0; // lose specific skill
                                             xSt[i] = xti1;
+                                            //if( zt[i] > zipp )
+                                            //    zt[i] --;
+                                            //else if( zt[i] < zipp )
+                                            //    zt[i] ++;
                                             zt[i] = zt[i] - zipp>=1 ? zt[i] - 1 : zipp;
                                         }
 
@@ -2804,8 +2809,11 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                                         if( gg_get(sk->lambdaESsel[ll], i, ti) < par->stwupdate ) {
                                             int xti1 = 0; // lose specific skill
                                             xSt[i] = xti1;
+                                            //if( zt[i] > zipp )
+                                            //    zt[i] --;
+                                            //else if( zt[i] < zipp )
+                                            //    zt[i] ++;
                                             zt[i] = zt[i] - zipp>=1 ? zt[i] - 1 : zipp;
-
                                         }else{
                                             zt[i] = ztm1[i]; // no occupation switch
                                             jt[i] = jtm1[i];
@@ -2858,6 +2866,15 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
 
                             //still w/in no separation part:
                             // now that mobility decisions are done (and no didn't separate) , see if it's a stayer:
+                            if (J2Jflag == 0  && ut[i]==0  && jt[i] != jtm1[i]){
+                                if (ti > burnin) {
+                                    if (ggi_get(ht->J2Jhist[ll], i, ti - burnin) == 0 &&
+                                        gg_get(ht->whist[ll], i, ti - burnin-1)>0. && utm1[i]==0) {
+                                            gg_set(ht->whist[ll], i, ti - burnin,
+                                                   gg_get(ht->whist[ll], i, ti - burnin - 1) );
+                                    }
+                                }
+                            }
                             if (J2Jflag == 0  && ut[i]==0  && jt[i] == jtm1[i]){
                                 // increment individual specific shocks for stayers:
                                 if(xSt[i] == 0 && jt[i] == jtm1[i] ) {
@@ -5960,15 +5977,23 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 
 
     }
-    printf("marginal flow err: ");
-    for(i=0;i<JJ;i++)
-        printf("%f,", st.occ_margflow[i]-dat.occ_margflow[i])  ;
-    printf("\n");
+    if(verbose>2) {
+        printf("marginal flow err: ");
+        for (i = 0; i < JJ; i++)
+            printf("%f,", st.occ_margflow[i] - dat.occ_margflow[i]);
+        printf("\n");
+    }
 
     double quad_dist =0;
 	for(i=0;i<Nerr;i++)
 		quad_dist += err_vec[i]*err_vec[i];
 
+
+	if(verbose >=1){
+        printf("+++++++++++++++++++++++++++++\n");
+        printf("Calibration Objective Distance: %f \n", quad_dist);
+        printf("+++++++++++++++++++++++++++++\n");
+    }
 	if(print_lev>2){
 		char zname[21],epsname[21];
 		sprintf(zname,"zlev_%06.3f.csv",quad_dist);
