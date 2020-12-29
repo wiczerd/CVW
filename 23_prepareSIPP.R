@@ -167,6 +167,10 @@ sipp[lfstat == 1 & is.na(newemp), newemp := FALSE]
 sipp[newemp == TRUE, estintid := cumsum(newemp), by = id]
 sipp[lfstat == 1, estintid := na.locf(estintid, na.rm = FALSE), by = id]
 sipp[, newemp := NULL]
+#job duration
+sipp[ lfstat==1, jobdur:=seq_len(.N), by=list(id,estintid)]
+sipp[ lfstat==1, endjobdur:= max(jobdur), by=list(id,estintid)]
+
 
 # create an unemployment stint id
 sipp[, newunemp := lfstat >= 2 & (last.lfstat == 1 | mis == 1)]

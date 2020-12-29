@@ -827,11 +827,19 @@ DTseam[ lfstat_wave ==1 & is.finite(occ_wave), wtd.mean(occwage_wave,na.rm=T, we
 DTseam[ stayer_anan==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
 DTseam[ stayer_anan==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
 
-DTseam[ changer_anan==T & EU_wave==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
-DTseam[ changer_anan==T & EU_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+#DTseam[ changer_anan==T & EU_wave==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+#DTseam[ changer_anan==T & EU_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+
+#DTseam[ changer_anan==T & UE_wave==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+#DTseam[ changer_anan==T & UE_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+
+DTseam[ changer_anan==T & (EU_wave==T|UE_wave==T) & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+DTseam[ changer_anan==T & (EU_wave==T|UE_wave==T) & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
 
 DTseam[ changer_anan==T & UE_wave==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
 DTseam[ changer_anan==T & UE_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+
+
 
 DTseam[ changer_anan==T & EE_wave==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
 DTseam[ changer_anan==T & EE_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
@@ -877,6 +885,11 @@ MVswrec1_qtls- MVswrec0_qtls
 
 MVnsrec1_qtls- MVnsrec0_qtls
 
+#Overall change over the cycle:
+qtls_extcomb <- c(0.025,.05,.1,.25,.5,.75,.9,.95,0.975)
+dat_qtls_rec0 <- DTseam[recIndic_wave==F , wtd.quantile(wagechange_anan, p=qtls_extcomb,na.rm=T)]
+dat_qtls_rec1 <- DTseam[recIndic_wave==T , wtd.quantile(wagechange_anan, p=qtls_extcomb,na.rm=T)]
+dat_qtls_rec0 - dat_qtls_rec1
 
 # overall net flow matrix
 DTseam[ sw==T & ch==T & occL ==occD, occLDNA := T ]
@@ -901,7 +914,10 @@ for( li in seq(1,4)){
 	}
 }
 
-gross_marg             <- DTseam[ sw==T & ch==T , ftable(occD)/sum(is.finite(occD))]
+gross_marg             <- DTseam[ sw==T & ch==T &(EEfrq==T|UEfrq==T) , ftable(occD)/sum(is.finite(occD))]
+#how these change over the cycle
+gross_margR1           <- DTseam[ sw==T & ch==T &(EEfrq==T|UEfrq==T) & recIndic2_wave==T , ftable(occD)/sum(is.finite(occD))]
+gross_margR0           <- DTseam[ sw==T & ch==T &(EEfrq==T|UEfrq==T) & recIndic2_wave==F , ftable(occD)/sum(is.finite(occD))]
 
 
 for(Ui in c(T,F)){
