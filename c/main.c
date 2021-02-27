@@ -70,7 +70,7 @@ int const Ntrx    = 8; // number of transitions: EEns,EUns,UEns,stns,EEsw,EUsw,U
 
 int const Tnew = 4; //periods of new-ness to employment
 
-double const alphascl = 0.25;
+double const alphascl = 0.15;
 
 double qtlgrid[] = {0.1,0.25,0.5,0.75,0.9};
 double edgeqtls[] = {0.025, 0.05, 0.5, 0.95,0.975}; //{0.05, 0.1, 0.5, 0.9,0.95};
@@ -90,8 +90,8 @@ int eps_2emg = 1; //should we use a double-exponentially modified gaussian, or j
 int const nstarts = 1;  // how many starts per node
 
 double const beta	= 0.997;		// discount factor
-double const b 	= 0.0; 		    // unemployment benefit
-double       wage_lev = 1.;       // will be a shifter so the average wage is >0
+double const b 	= 0.4; 		    // unemployment benefit
+double       wage_lev = 1.5;    // will be a shifter so the average wage is >0
 double const occ_wlevs[4] = {0.,-0.2657589,-0.4975667,-0.2189076}; // wage levels for each occupation
 double const occ_size_dat[] = {0.2636133, 0.3117827, 0.1493095, 0.2752945};
 
@@ -107,13 +107,13 @@ char exper_f[] = "noXX"; // the label for all the output that depends on a count
 double * solver_state;
 
 
-char * parnames_clu0[] = {"alpha0","lambdaUS_Rec_frac","lambdaUM_Rec_frac","lambdaES_Rec","lambdaEM_Rec","delta_Rec","zloss_Rec","alphaE1","alphaU1",
+char * parnames_clu0[] = {"alpha0","lambdaUS_Rec","lambdaUM_Rec","lambdaES_Rec","lambdaEM_Rec","delta_Rec","zloss_Rec","alphaE1","alphaU1",
                           };
 char * parnames_clu1[] = {"update_z","scale_z","shape_z","var_pe","autop","gdfather",
 						  "stwupdt","var_eps","ltl_eps","rtl_eps"};
 char * parnames_clu2[] = {"Delta_Exp","lamEM_Exp","lamES_Exp","lamUS_Exp","lamUM_Exp","zloss_Exp",
                           "z_Acoef","z_Amag","eps_Acoef","eps_Amag"};
-char * parnames_cluall[] = {"alpha0","lambdaUS_Rec_frac","lambdaUM_Rec_frac","lambdaES_Rec","lambdaEM_Rec","delta_Rec","zloss_Rec","alphaE1","alphaU1",
+char * parnames_cluall[] = {"alpha0","lambdaUS_Rec","lambdaUM_Rec","lambdaES_Rec","lambdaEM_Rec","delta_Rec","zloss_Rec","alphaE1","alphaU1",
                             "update_z","scale_z","shape_z","var_pe","autop","gdfather","stwupdt","var_eps","ltl_eps","rtl_eps",
                             "Delta_Exp","lamEM_Exp","lamES_Exp","lamUS_Exp","lamUM_Exp","zloss_Exp",
                             "z_Acoef","z_Amag","eps_Acoef","eps_Amag"};
@@ -299,6 +299,8 @@ struct stats{
 
 	double var_wg; //variance of wages
 	double var_wg_rec[2]; //variance of wages in expansions and recessions
+	double med_abs_dev_rec[2];
+    double GroevMeed_rec[2];
 	double * MVsw_qtls_ratio;
 	double * MVns_qtls_ratio;
 
@@ -577,16 +579,16 @@ int main(int argc,char *argv[] ) {
                                par.epslev->data[thi] +
                                par.zlev->data[zi] +
                                par.xSlev->data[si]);
-    wage_lev = 1.;
+    wage_lev = 1.5;
 
 
     // parameter space:
-	// alpha0 , lambdaUS_rec_frac, lambdaUM_rec_frac, lambdaES_rec, lambdaEM_rec, delta_avg_rec, zloss_prob_rec
+	// alpha0 , lambdaUS_rec, lambdaUM_rec, lambdaES_rec, lambdaEM_rec, delta_avg_rec, zloss_prob_rec
 	ii =0;
 	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.20;ii++;
 
-	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.999;ii++;
-    par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.999;ii++;
+	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
+    par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
 
     par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.25;ii++;
 	par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.25;ii++;
@@ -961,7 +963,9 @@ int main(int argc,char *argv[] ) {
         //  Set to optimal?
         read_params("param_opt.csv", &par);
         glb_par = &par;
-
+        
+        int cal_old = cal_now;
+        cal_now = 0;
         print_lev = 2;
         opt_print = 1;
         exper_f[0] = 0;//sprintf(exper_f,"");
@@ -1101,6 +1105,7 @@ int main(int argc,char *argv[] ) {
     int print_lev_old = print_lev;
     print_lev = 2;
     opt_print = 1;
+
     par.cluster_hr= Ncluster;
     //baseline, print where we are
     double dist = param_dist(par.xparopt, & par ,Nparams,err,Ntargets);
@@ -2044,10 +2049,115 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
         free(idx_ion[i]);
 	free(idx_ion);
 
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    // now do experiments with cyclicality of returns off:
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    print_lev = 0;
+    int ncycrets = 2; //each cyclical sensitivity
+    nscenario = 2;
+
+    double z_Amag0 = par->z_Amag;
+    double eps_Amag0 = par->eps_Amag;
+    double z_Acoef0 = par->z_Acoef;
+    double eps_Acoef0 = par->eps_Acoef;
+
+
+    struct shocks  sk_norX[nscenario];
+    struct hists   ht_norX[nscenario];
+    struct valfuns vf_norX[nscenario];
+    struct polfuns pf_norX[nscenario];
+    struct stats   st_norX[nscenario];
+    for(i=0;i<nscenario;i++)
+        alloc_qtls( &st_norX[i] );
+    double nor_edge_qtls_all[nscenario][Nqtls];
+    double nor_edge_qtls_cyc[2][nscenario][Nqtls];
+    double nor_exprec_qtls[nscenario][Nextqtls];
+
+    int appendhr=0;
+
+    for(idx=0;idx<nscenario;idx++) {
+
+        allocate_mats(&vf_norX[idx], &pf_norX[idx], &ht_norX[idx], &sk_norX[idx]);
+
+        if(idx == 0 ){
+            par->z_Amag = 0.0;
+            par->z_Acoef = 0.0;
+        }
+        if(idx==1){
+            par->eps_Amag = 0.0;
+            par->eps_Acoef = 0.0;
+        }
+        double zlev1[NZ]; double zprob1[NZ];
+        disc_Weibull( zprob1,zlev1,NZ, 0., par->scale_z, par->shape_z );
+        double zprobsum =0.;
+        int ii,ai;
+        for(ii=0;ii<NZ;ii++){
+            gsl_vector_set( par->zlev,ii,zlev1[ii] );
+            zprobsum += zprob1[ii];
+            for(ai=0;ai<NA;ai++)
+                gsl_vector_set( par->zprob[ai],ii,zprob1[ii] );
+        }
+        convprobs(par->zprob[0],par->zlev,par->z_Acoef,par->z_Amag);
+        for(ai=0;ai<NA;ai++) disc_2emg(par->epsprob[ai]->data,par->epslev->data,(int)par->epsprob[ai]->size,
+                                                 0.,par->var_eps,par->lshape_eps,par->rshape_eps);
+        // convolve with cyclical adjustment for recession:
+        convprobs(par->epsprob[0],par->epslev,par->eps_Acoef,par->eps_Amag);
+
+        memcpy_shocks(&sk_norX[idx], sk);
+        memcpy_pf(&pf_norX[idx], pf);
+        memcpy_vf(&vf_norX[idx], vf);
+
+        print_lev =0;verbose =0;
+
+        sol_dyn( par, &vf_norX[idx], &pf_norX[idx], &sk_norX[idx] );
+        sim( par, &vf_norX[idx], &pf_norX[idx], &ht_norX[idx], &sk_norX[idx] );
+        int cf_old = cf_now; cf_now=1; // pretty sure should already have cf_now=1
+        sum_stats( par, &vf_norX[idx],&pf_norX[idx],&ht_norX[idx],&sk_norX[idx], &st_norX[idx]);
+        print_lev = pl_0; cf_now = cf_old;
+        verbose =vbs_0;
+
+        for(qi=0;qi<Nqtls;qi++) nor_edge_qtls_all[idx][qi] = st_norX[idx].edge_qtls[qi];
+        for(ri=0;ri<2;ri++) {
+            for (qi = 0; qi < Nqtls; qi++) nor_edge_qtls_cyc[ri][idx][qi] = st_norX[idx].edge_qtls_rec[ri][qi];
+        }
+        for(qi=0;qi<Nextqtls;qi++)nor_exprec_qtls[idx][qi] = st_norX[idx].exprec_qtls[qi];
+
+        printarray("nor_exprec_qtls.csv",nor_exprec_qtls[idx],Nextqtls,appendhr);
+        appendhr = 1;
+        free_mats( &vf_norX[idx],&pf_norX[idx],&ht_norX[idx],&sk_norX[idx] );
+
+        // put it all back:
+        par->z_Amag = z_Amag0;
+        par->eps_Amag = eps_Amag0;
+        par->z_Acoef = z_Acoef0;
+        par->eps_Acoef =  eps_Acoef0;
+
+    }
+    //put it back:
+    double zlev1[NZ]; double zprob1[NZ];
+    disc_Weibull( zprob1,zlev1,NZ, 0., par->scale_z, par->shape_z );
+    double zprobsum =0.;
+    int ii,ai;
+    for(ii=0;ii<NZ;ii++){
+        gsl_vector_set( par->zlev,ii,zlev1[ii] );
+        zprobsum += zprob1[ii];
+        for(ai=0;ai<NA;ai++)
+            gsl_vector_set( par->zprob[ai],ii,zprob1[ii] );
+    }
+    convprobs(par->zprob[0],par->zlev,par->z_Acoef,par->z_Amag);
+    for(ai=0;ai<NA;ai++) disc_2emg(par->epsprob[ai]->data,par->epslev->data,(int)par->epsprob[ai]->size,
+                                   0.,par->var_eps,par->lshape_eps,par->rshape_eps);
+    // convolve with cyclical adjustment for recession:
+    convprobs(par->epsprob[0],par->epslev,par->eps_Acoef,par->eps_Amag);
+
+
+
     ////////////////////////////////////////////////////////
     // turn off flows
 
-    printf("+++++++++++++++++++\n Going into experiments turning off flows");
+    printf("+++++++++++++++++++\n Going into experiments turning off flows \n");
 	sprintf(exper_f,"noff") ;
 
 	//change some parameter values:
@@ -2141,7 +2251,6 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 	double edge_qtls_all[nscenario][Nqtls];
 	double edge_qtls_cyc[2][nscenario][Nqtls];
 
-
 	scenariokey = fopen( "fscenariokey.csv","w+" );
 	fprintf(scenariokey,"Num, delta off, zloss off, lamUM off, lamUS off, lamES off, lamEM off \n");
 	fclose(scenariokey);
@@ -2166,7 +2275,7 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 		if(idx_ion[idx][0]==1){
 			//then we're turning off delta_Exp
             par->delta_Exp = delA0; //0.;
-            par->delta_Rec =   delA0; //delm0*exp(delA0);
+            par->delta_Rec = delA0; //delm0*exp(delA0);
             fprintf( scenariokey," 1,");
 		}else
             fprintf( scenariokey," 0,");
@@ -2179,7 +2288,7 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 		    fprintf(scenariokey, " 0,");
         if(idx_ion[idx][2]==1){
             //then we're turning off lambdaUS_Exp
-            par->lambdaUS_Rec      = lamUSA0; //lamUSm0*exp(lamUSA0);
+            par->lambdaUS_Rec = lamUSA0; //lamUSm0*exp(lamUSA0);
             par->lambdaUS_Exp = lamUSA0; //0.;
             fprintf( scenariokey," 1,");
         } else
@@ -2220,6 +2329,7 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
         for(ri=0;ri<2;ri++) {
             for (qi = 0; qi < Nqtls; qi++) edge_qtls_cyc[ri][idx][qi] = st_nofX[idx].edge_qtls_rec[ri][qi];
         }
+
         free_mats( &vf_nofX[idx],&pf_nofX[idx],&ht_nofX[idx],&sk_nofX[idx] );
 
 		// put it all back
@@ -4761,9 +4871,6 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
     w_qtls(w_stsw, 1, idx_stsw, qtlgrid, st->stsw_qtls);
 
     st->var_wg = gsl_stats_variance(w_all, 1, idx_all);
-    for (ri = 0; ri < 2; ri++) {
-        st->var_wg_rec[ri] = gsl_stats_variance(w_all_rec[ri], 1, idx_wall_rec[ri]);
-    }
 
     double *w_working = malloc(sizeof(double) * idx_wall);
     for (i = 0; i < idx_wall; i++) w_working[i] = w_all[i];
@@ -4782,14 +4889,20 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
 
 
     for (ri = 0; ri < 2; ri++) {
-        st->var_wg_rec[ri] = gsl_stats_variance(w_all_rec[ri], 1, idx_wall_rec[ri]);
+        double wgmean = gsl_stats_mean(w_all_rec[ri], 1, idx_wall_rec[ri]);
+        st->var_wg_rec[ri] = gsl_stats_variance_m(w_all_rec[ri], 1, idx_wall_rec[ri],wgmean);
 
         double *w_working_rec = malloc(sizeof(double) * idx_wall_rec[ri]);
         for (i = 0; i < idx_wall_rec[ri]; i++) w_working_rec[i] = w_all_rec[ri][i];
         w_qtls(w_working_rec, 1, idx_wall_rec[ri], qtlgrid, st->all_qtls_rec[ri]);
         w_qtls(w_working_rec, 1, idx_wall_rec[ri], edgeqtls, st->edge_qtls_rec[ri]);
-        st->var_wg_rec[ri] = gsl_stats_variance(w_working_rec, 1, idx_wall_rec[ri]);
-
+        double wgmedian =st->edge_qtls_rec[ri][2];
+        for (i = 0; i < idx_wall_rec[ri]; i++) w_working_rec[i] = w_working_rec[i] - wgmedian > 0 ?
+                w_working_rec[i] - wgmedian : wgmedian - w_working_rec[i] ;
+        double meandev = gsl_stats_mean(w_working_rec,1,idx_wall_rec[ri]);
+        gsl_sort(w_working_rec,1,idx_wall_rec[ri]);
+        st->med_abs_dev_rec[ri] = gsl_stats_quantile_from_sorted_data(w_working_rec,1,idx_wall_rec[ri],0.5);  // gsl_stats_median(w_working_rec,1,idx_wall_rec[ri]);
+        st->GroevMeed_rec[ri] = (wgmean - wgmedian)/meandev;
         free(w_working_rec);
 
     }
@@ -4887,12 +5000,12 @@ void set_xpspace( double *x, struct cal_params *par ){
     if( ci ==0 || ci == Ncluster){
 
         x[ii] = par->alpha0     ;ii++;
-        x[ii] = par->lambdaUS_Rec /par->lambdaUS_Exp  ;ii++;
-        x[ii] = par->lambdaUM_Rec /par->lambdaUM_Exp ;ii++;
+        x[ii] = par->lambdaUS_Rec  ;ii++;
+        x[ii] = par->lambdaUM_Rec  ;ii++;
         x[ii] = par->lambdaES_Rec  ;ii++;
         x[ii] = par->lambdaEM_Rec  ;ii++;
         x[ii] = par->delta_Rec     ;ii++;
-        x[ii] = par->zloss_Rec      ;ii++;
+        x[ii] = par->zloss_Rec     ;ii++;
         x[ii] = par->alphaE1    ;ii++;
         x[ii] = par->alphaU1    ;ii++;
 
@@ -4956,12 +5069,12 @@ void read_params(char* name, struct cal_params *par){
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
         par->lambdaUS_Rec = dd;
-        par->xparopt[pi] = dd; // THIS IS JUST A PLACE HOLDER: WILL BE REPLACED AS THE MULTIPLICATIVE FACTOR BELOW
+        par->xparopt[pi] = dd;
         pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
         par->lambdaUM_Rec = dd;
-        par->xparopt[pi] = dd; // THIS IS JUST A PLACE HOLDER: WILL BE REPLACED AS THE MULTIPLICATIVE FACTOR BELOW
+        par->xparopt[pi] = dd;
         pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
@@ -5115,9 +5228,6 @@ void read_params(char* name, struct cal_params *par){
         par->xparopt[pi] = dd;
         pi++;
 
-        par->xparopt[1] = par->xparopt[1]/par->xparopt[22];
-        par->xparopt[2] = par->xparopt[2]/par->xparopt[23];
-
         /*for (ji = 0; ji < JJ; ji++) {
             if (ji >= 1) {
                 rstatus = fscanf(parfile, "%s, ", sd);
@@ -5243,6 +5353,11 @@ void print_targets(char *name, struct stats * st, struct stats * dat){
     double datMVnsrec0_bigloss = ((dat->MVnsrec0_qtls[2] - dat->MVnsrec0_qtls[0])) /datMVnsrec0_p95p05;
 
     tgtfile = fopen(name,"a+");
+    fprintf(tgtfile,"Med Abs Dev Exp, %f,%f \n", st->med_abs_dev_rec[0],dat->med_abs_dev_rec[0]);
+    fprintf(tgtfile,"Med Abs Dev Rec, %f,%f \n", st->med_abs_dev_rec[1],dat->med_abs_dev_rec[1]);
+    fprintf(tgtfile,"Groeneveld  Meeden Exp, %f,%f \n", st->GroevMeed_rec[0],dat->GroevMeed_rec[0]);
+    fprintf(tgtfile,"Groeneveld and Meeden Rec, %f,%f \n", st->GroevMeed_rec[1],dat->GroevMeed_rec[1]);
+/*
     fprintf(tgtfile,"MVsw9505_rec,%f,%f \n", stMVswrec1_p95p05 , datMVswrec1_p95p05 );
     fprintf(tgtfile,"MVsw9505_exp,%f,%f \n", stMVswrec0_p95p05 , datMVswrec0_p95p05);
     fprintf(tgtfile,"MVswskew_rec,%f,%f \n", stMVswrec1_skew,  datMVswrec1_skew);
@@ -5255,7 +5370,7 @@ void print_targets(char *name, struct stats * st, struct stats * dat){
     fprintf(tgtfile,"MVnsskew_exp,%f,%f \n", stMVnsrec0_skew, datMVnsrec0_skew);
     fprintf(tgtfile,"MVns50025_rec,%f,%f \n", stMVnsrec1_bigloss , datMVnsrec1_bigloss);
     fprintf(tgtfile,"MVns50025_exp,%f,%f \n", stMVnsrec0_bigloss , datMVnsrec0_bigloss);
-
+*/
     fclose(tgtfile);
 
 }
@@ -5268,56 +5383,56 @@ void print_params(double *x, int n, struct cal_params * par){
 
 	ii =0;
 	parhist = fopen(parhi_f,"a+");
+    // had been: fprintf(parhist,"%8.6f, ", par->alpha0);
+	fprintf(parhist,"%.17g, ", par->alpha0);
 
-	fprintf(parhist,"%8.6f, ", par->alpha0);
+	fprintf(parhist,"%.17g, ", par->lambdaUS_Rec);
+    fprintf(parhist,"%.17g, ", par->lambdaUM_Rec);
+	fprintf(parhist,"%.17g, ", par->lambdaES_Rec);
+	fprintf(parhist,"%.17g, ", par->lambdaEM_Rec);
+	fprintf(parhist,"%.17g, ", par->delta_Rec   );
+	fprintf(parhist,"%.17g, ", par->zloss_Rec    );
+	fprintf(parhist,"%.17g, ", par->alphaE1  );
+	fprintf(parhist,"%.17g, ", par->alphaU1  );
 
-	fprintf(parhist,"%8.6f, ", par->lambdaUS_Rec/par->lambdaUS_Exp);
-    fprintf(parhist,"%8.6f, ", par->lambdaUM_Rec/par->lambdaUM_Exp);
-	fprintf(parhist,"%8.6f, ", par->lambdaES_Rec);
-	fprintf(parhist,"%8.6f, ", par->lambdaEM_Rec);
-	fprintf(parhist,"%8.6f, ", par->delta_Rec   );
-	fprintf(parhist,"%8.6f, ", par->zloss_Rec    );
-	fprintf(parhist,"%8.6f, ", par->alphaE1  );
-	fprintf(parhist,"%8.6f, ", par->alphaU1  );
+	fprintf(parhist,"%.17g, ", par->update_z );
+	fprintf(parhist,"%.17g, ", par->scale_z  );
+	fprintf(parhist,"%.17g, ", par->shape_z  );
 
-	fprintf(parhist,"%8.6f, ", par->update_z );
-	fprintf(parhist,"%8.6f, ", par->scale_z  );
-	fprintf(parhist,"%8.6f, ", par->shape_z  );
-
-	fprintf(parhist,"%8.6f, ", par->var_pe   );
-	fprintf(parhist,"%8.6f, ", par->autop    );
-	//fprintf(parhist,"%8.6f, ", par->var_ae   );
-	//fprintf(parhist,"%8.6f, ", par->autoa    );
-	fprintf(parhist,"%8.6f, ", par->gdfthr   );
-	fprintf(parhist,"%8.6f, ", par->stwupdate);
-	fprintf(parhist,"%8.6f, ", par->var_eps  );
+	fprintf(parhist,"%.17g, ", par->var_pe   );
+	fprintf(parhist,"%.17g, ", par->autop    );
+	//fprintf(parhist,"%.17g, ", par->var_ae   );
+	//fprintf(parhist,"%.17g, ", par->autoa    );
+	fprintf(parhist,"%.17g, ", par->gdfthr   );
+	fprintf(parhist,"%.17g, ", par->stwupdate);
+	fprintf(parhist,"%.17g, ", par->var_eps  );
 
 	if(eps_2emg==1){
-		fprintf(parhist,"%8.6f, ", par->lshape_eps);
-		fprintf(parhist,"%8.6f, ", par->rshape_eps);
+		fprintf(parhist,"%.17g, ", par->lshape_eps);
+		fprintf(parhist,"%.17g, ", par->rshape_eps);
 	}
 
 
-	fprintf(parhist,"%8.6f, ", par->delta_Exp   );
-	fprintf(parhist,"%8.6f, ", par->lambdaEM_Exp);
-	fprintf(parhist,"%8.6f, ", par->lambdaES_Exp);
-	fprintf(parhist,"%8.6f, ", par->lambdaUS_Exp);
-    fprintf(parhist,"%8.6f, ", par->lambdaUM_Exp);
-	fprintf(parhist,"%8.6f, ", par->zloss_Exp   );
-    fprintf(parhist,"%8.6f, ", par->z_Acoef       );
-    fprintf(parhist,"%8.6f, ", par->z_Amag        );
-    fprintf(parhist,"%8.6f, ", par->eps_Acoef     );
-    fprintf(parhist,"%8.6f, ", par->eps_Amag      );
+	fprintf(parhist,"%.17g, ", par->delta_Exp   );
+	fprintf(parhist,"%.17g, ", par->lambdaEM_Exp);
+	fprintf(parhist,"%.17g, ", par->lambdaES_Exp);
+	fprintf(parhist,"%.17g, ", par->lambdaUS_Exp);
+    fprintf(parhist,"%.17g, ", par->lambdaUM_Exp);
+	fprintf(parhist,"%.17g, ", par->zloss_Exp   );
+    fprintf(parhist,"%.17g, ", par->z_Acoef       );
+    fprintf(parhist,"%.17g, ", par->z_Amag        );
+    fprintf(parhist,"%.17g, ", par->eps_Acoef     );
+    fprintf(parhist,"%.17g, ", par->eps_Amag      );
 
     /*
     for(ji=0;ji<JJ;ji++){
 		if(ji>=1){
-			fprintf(parhist,"%8.6f, ", par->AloadP->data[ji]);
+			fprintf(parhist,"%.17g, ", par->AloadP->data[ji]);
 		}
 	} */
-    fprintf(parhist,"%8.6f, ", par->alpha_nf[1][0]);
+    fprintf(parhist,"%.17g, ", par->alpha_nf[1][0]);
     for(ji=1;ji<JJ;ji++){
-        fprintf(parhist,"%8.6f", par->alpha_nf[0][ji]);
+        fprintf(parhist,"%.17g", par->alpha_nf[0][ji]);
         if(ji<JJ-1)fprintf(parhist,", ");
     }
 
@@ -5340,8 +5455,8 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 	if( ci ==0 || ci == Ncluster){
 
 		par->alpha0     = x[ii];ii++;
-        //!!!!!!!!!
-		//just a place holder for being multiplicative factors for LambdaUS_Rec and LambdaUM_Rec
+        
+
 		par->lambdaUS_Rec = x[ii];ii++;
         par->lambdaUM_Rec = x[ii];ii++;
 
@@ -5392,9 +5507,6 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 		//	if(ji>0) ii++;
 		}
 	}
-	// CONVERT lambdaUS_Rec and LambdaUM_Rec to multiples of lambda US_exp and Lambda UM_exp
-	par->lambdaUS_Rec =par->lambdaUS_Rec*par->lambdaUS_Exp;
-    par->lambdaUM_Rec =par->lambdaUM_Rec*par->lambdaUM_Exp;
 
 	if(verbose>1){
 		printf("Set %d parameters at vector: \n(", ii);
@@ -5525,6 +5637,9 @@ void set_dat( struct stats * dat){
     memcpy(dat->occ_margflow_rec[0],datoccmargR0,sizeof(double )*JJ);
     memcpy(dat->occ_margflow_rec[1],datoccmargR1,sizeof(double )*JJ);
 
+    dat->med_abs_dev_rec[0] = 0.1342211; dat->med_abs_dev_rec[1] = 0.1499395;
+    dat->GroevMeed_rec[0] =  0.1062541 ; dat->GroevMeed_rec[1] =  -0.02000185;
+
 }
 
 double param_dist( double * x, struct cal_params *par , int Npar, double * err_vec , int Nerr){
@@ -5548,7 +5663,6 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
     set_dat(&dat);
 
     set_params( x, Npar, par, par->cluster_hr);
-	print_params(x, Npar, par);
 	if(par->shape_z ==0.){
 	    //this seemed to happen for some reason?
 	    printf("+++++++++++++++++++++++++++++++++++++++++++\n");
@@ -5715,8 +5829,9 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 		success = sum_stats(par, &vf, &pf, &ht, &sk, &st);
         free(ublb_occload[0]);free(ublb_occload[1]);free(ublb_occload);
 
-		//form error vector
+        print_params(x, Npar, par); // will include the new alphas that I found
 
+        //form error vector
 		ii = 0;
 		double dat_dur = dat.udur_sw / dat.udur_nosw;
 		double mod_dur = gsl_finite(st.udur_nosw) && gsl_finite(st.udur_sw) && st.udur_nosw>0 ?
@@ -6049,7 +6164,7 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 		quad_dist += err_vec[i]*err_vec[i];
 
 
-	if(verbose >=1){
+	if(verbose >=0){
         printf("+++++++++++++++++++++++++++++\n");
         printf("Calibration Objective Distance: %f \n", quad_dist);
         printf("+++++++++++++++++++++++++++++\n");
