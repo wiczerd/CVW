@@ -83,7 +83,7 @@ int        Npar_cluster[4] ={6,0,0,0}; // first the flows parameters, then the d
 int        Ntgt_cluster[4] ={6,0,0,0};
 
 int nflows=0; // number of net flows across occupations, will be useful for allocating parameters, etc
-int ntgtavgflow = 9; //overall flows, like J2J rate, finding rate, separation rate etc.
+int ntgtavgflow = 3; //overall flows, like J2J rate, finding rate, separation rate etc.
 
 
 int eps_2emg = 1; //should we use a double-exponentially modified gaussian, or just normal
@@ -92,7 +92,7 @@ int const nstarts = 1;  // how many starts per node
 double const beta	= 0.997;		// discount factor
 double const b 	= 0.4; 		    // unemployment benefit
 double       wage_lev = 1.5;    // will be a shifter so the average wage is >0
-double const occ_wlevs[4] = {0.,-0.2657589,-0.4975667,-0.2189076}; // wage levels for each occupation
+double const occ_wlevs[4] = {0., 0., 0., 0.}; //{0.,-0.2657589,-0.4975667,-0.2189076}; // wage levels for each occupation
 double const occ_size_dat[] = {0.2636133, 0.3117827, 0.1493095, 0.2752945};
 
 double const urt_avg = .055;     // average separation rate
@@ -107,20 +107,18 @@ char exper_f[] = "noXX"; // the label for all the output that depends on a count
 double * solver_state;
 
 
-char * parnames_clu0[] = {"alpha0","lambdaUS_Rec","lambdaUM_Rec","lambdaES_Rec","lambdaEM_Rec","delta_Rec","zloss_Rec","alphaE1","alphaU1",
+char * parnames_clu0[] = {"lambdaUS_Rec","lambdaES_Rec","delta_Rec"
                           };
-char * parnames_clu1[] = {"update_z","scale_z","shape_z","var_pe","autop","gdfather",
+char * parnames_clu1[] = {"var_pe","autop","gdfather",
 						  "stwupdt","var_eps","ltl_eps","rtl_eps"};
-char * parnames_clu2[] = {"Delta_Exp","lamEM_Exp","lamES_Exp","lamUS_Exp","lamUM_Exp","zloss_Exp",
-                          "z_Acoef","z_Amag","eps_Acoef","eps_Amag"};
-char * parnames_cluall[] = {"alpha0","lambdaUS_Rec","lambdaUM_Rec","lambdaES_Rec","lambdaEM_Rec","delta_Rec","zloss_Rec","alphaE1","alphaU1",
-                            "update_z","scale_z","shape_z","var_pe","autop","gdfather","stwupdt","var_eps","ltl_eps","rtl_eps",
-                            "Delta_Exp","lamEM_Exp","lamES_Exp","lamUS_Exp","lamUM_Exp","zloss_Exp",
-                            "z_Acoef","z_Amag","eps_Acoef","eps_Amag"};
+char * parnames_clu2[] = {"Delta_Exp","lamES_Exp","lamUS_Exp","eps_Acoef","eps_Amag"};
+char * parnames_cluall[] = {"lambdaUS_Rec","lambdaES_Rec","delta_Rec",
+                            "var_pe","autop","gdfather","stwupdt","var_eps","ltl_eps","rtl_eps",
+                            "Delta_Exp","lamES_Exp","lamUS_Exp",
+                            ,"eps_Acoef","eps_Amag"};
 char ** parnames[] = {parnames_clu0,parnames_clu1,parnames_clu2,parnames_cluall};
 
-char * tgtnames_clu0[]   = {"J2J","fnd","sep","swEE","swU","swSt","dur_ratio",
-                            "varflowE","varflowU"};
+char * tgtnames_clu0[]   = {"J2J","fnd","sep"};
 char * tgtnames_clu1[]   = //{"stns10" ,"stns25" ,          "stns75" ,"stns90",
                            // "stsw10" ,"stsw25" ,          "stsw75" ,"stsw90",
                            // "EEns10" ,"EEns25" ,"EEns50" ,"EEns75" ,"EEns90",
@@ -128,17 +126,15 @@ char * tgtnames_clu1[]   = //{"stns10" ,"stns25" ,          "stns75" ,"stns90",
                            // "EUEns10","EUEns25","EUEns50","EUEns75","EUEns90",
                            // "EUEsw10","EUEsw25","EUEsw50","EUEsw75","EUEsw90"};
                            {"stns9010","EEns9010","EUEns9010","EUEmedian",
-                            "stkurtosis","EEskew","EUEskew",
-                            "swnsdif_st9010","swnsdif_EE9010","swnsdif_EUE9010","sw_EUEmedian",
-                            "swnsdif_EEskew","swnsdif_EUEskew"};
-char * tgtnames_clu2[]   = {"swPrUratio","swPrEEratio","frtratio","seprtratio","EEratio",
+                            "stkurtosis","EEskew","EUEskew"
+                            };
+char * tgtnames_clu2[]   = {"frtratio","seprtratio","EEratio",
                             //"recdifMVswp9505","recdifMVswskew","recdifMVswbigloss",
                             //"recdifMVnsp9505","recdifMVnsskew","recdifMVnsbigloss"
                             "exprec025", "exprec05", "exprec10",
                             "exprec25" , "exprec75",
                              "exprec90", "exprec95", "exprec975"};
-char * tgtnames_cluall[]   = {"J2J","fnd","sep","swEE","swU","swSt","dur_ratio",
-                            "nrmflowE","nrmflowU",
+char * tgtnames_cluall[]   = {"J2J","fnd","sep",
                             //  "stns10" ,"stns25" ,          "stns75" ,"stns90",
                             //  "stsw10" ,"stsw25" ,          "stsw75" ,"stsw90",
                             //  "EEns10" ,"EEns25" ,"EEns50" ,"EEns75" ,"EEns90",
@@ -147,9 +143,7 @@ char * tgtnames_cluall[]   = {"J2J","fnd","sep","swEE","swU","swSt","dur_ratio",
                             //  "EUEsw10","EUEsw25","EUEsw50","EUEsw75","EUEsw90",
                               "stns9010","EEns9010","EUEns9010","EUEmedian",
                               "stkurtosis","EEskew","EUEskew",
-                              "swnsdif_st9010","swnsdif_EE9010","swnsdif_EUE9010","sw_EUEmedian",
-                              "swnsdif_EEskew","swnsdif_EUEskew",
-                            "swPrUratio","swPrEEratio","frtratio","seprtratio","EEratio",
+                              "frtratio","seprtratio","EEratio",
                               "exprec025", "exprec05", "exprec10",
                               "exprec25" , "exprec75",
                               "exprec90", "exprec95", "exprec975"};
@@ -438,16 +432,16 @@ int main(int argc,char *argv[] ) {
 	sprintf(exper_f,"%s","");
 	nflows = fact_int(JJ)/(fact_int(2)*fact_int(JJ-2));
 
-	Npar_cluster[0] = ntgtavgflow ; // was +nflows or +JJ
-	Npar_cluster[1] = 8;
+	Npar_cluster[0] = 3 ; // was +nflows or +JJ
+	Npar_cluster[1] = 5;
 	if(eps_2emg==1) Npar_cluster[1] +=2;
-	Npar_cluster[2] = 10 ; //cyclical parameters
+	Npar_cluster[2] = 5 ; //cyclical parameters
 	Nparams = 0;
 	for(i=0;i<Ncluster;i++)Nparams += Npar_cluster[i];
-	Ntgt_cluster[0] = ntgtavgflow; // was + nflows or +JJ
-	Ntgt_cluster[1] = 13 ; //for  MSM: IQR for st, EE, EUE, dif btwn sw and ns in IQR & skew, kurtosis of st. N.b.: min distance was wage change distributions for EE, EUE, st in both sw & ns //
+	Ntgt_cluster[0] = 3; // was + nflows or +JJ
+	Ntgt_cluster[1] = 7 ; //for  MSM: IQR for st, EE, EUE, dif btwn sw and ns in IQR & skew, kurtosis of st. N.b.: min distance was wage change distributions for EE, EUE, st in both sw & ns //
 	//Ntgt_cluster[1] =  6*Nqtls - 2; //6 condl distributions, not including medians for stayers //
-	Ntgt_cluster[2] = 5+ (Nextqtls-1); // 5 cyc flow targets, 6 moments
+	Ntgt_cluster[2] = 3+ (Nextqtls-1); // 5 cyc flow targets, 6 moments
 	Ntargets =0;
 	for(i=0;i<Ncluster;i++) Ntargets += Ntgt_cluster[i];
 
@@ -583,21 +577,17 @@ int main(int argc,char *argv[] ) {
 
 
     // parameter space:
-	// alpha0 , lambdaUS_rec, lambdaUM_rec, lambdaES_rec, lambdaEM_rec, delta_avg_rec, zloss_prob_rec
+	// lambdaUS_rec, lambdaES_rec, delta_avg_rec
 	ii =0;
-	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.20;ii++;
+	//par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.20;ii++;
 
 	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
-    par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
+    //par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
 
     par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.25;ii++;
-	par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.25;ii++;
+	//par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.25;ii++;
 	par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
-	par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
-
-	//, alphaE_1, alphaU_1
-	par.param_lb[ii] = 0.010; par.param_ub[ii] = 0.90;ii++; //potentially these are not <1
-	par.param_lb[ii] = 0.010; par.param_ub[ii] = 0.90;ii++; //potentially these are not <1
+	//par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
 
 	// alpha_nf matrix
 	//for(i=0;i<JJ;i++){ //was for(i=0;i<nflows;i++)
@@ -606,10 +596,6 @@ int main(int argc,char *argv[] ) {
 	if(Ncluster>1){
 		ii = Npar_cluster[0];
 
-		// update_z, scale_z, shape_z,
-		par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.10;  ii++;
-		par.param_lb[ii] = 1.000; par.param_ub[ii] =10.000; ii++;
-		par.param_lb[ii] = 1.000; par.param_ub[ii] = 7.000; ii++;
 		//var_pe, autop,  gdfather, stwupdate
 		par.param_lb[ii]= 0.001;  par.param_ub[ii]= 0.030;  ii++;
 		par.param_lb[ii]= 0.500;  par.param_ub[ii]= 0.999;  ii++;
@@ -628,33 +614,18 @@ int main(int argc,char *argv[] ) {
 		//delta_Exp, lambdaEM_Exp, lambdaES_Exp, lambdaUS_Exp, lambdaUM_exp , zloss_exp (can up-to double)
 
 		par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
+        //par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.35;ii++;
         par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.35;ii++;
-        par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.35;ii++;
-        par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
+        //par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
         par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.95;ii++;
-        par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
+        //par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
 
         // z_Acoef, z_Amag, eps_Acoef, eps_Amag
-        par.param_lb[ii]=-1.499;   par.param_ub[ii] = 0.099; ii++;
-        par.param_lb[ii]= 0.100;   par.param_ub[ii] = 0.999; ii++;
+        //par.param_lb[ii]=-1.499;   par.param_ub[ii] = 0.099; ii++;
+        //par.param_lb[ii]= 0.100;   par.param_ub[ii] = 0.999; ii++;
         par.param_lb[ii]=-1.499;   par.param_ub[ii] = 0.099; ii++;
         par.param_lb[ii]= 0.100;   par.param_ub[ii] = 0.999; ii++;
 
-        /* This was for the A coefficients:
-        par.param_lb[ii]=-2.999;   par.param_ub[ii] = 0.999; ii++;
-        par.param_lb[ii]= 0.001;   par.param_ub[ii] = 0.499; ii++;
-        par.param_lb[ii]=-0.999;   par.param_ub[ii] = 1.999; ii++;
-        par.param_lb[ii]=-0.999;   par.param_ub[ii] = 0.999; ii++; // hitting bound
-        par.param_lb[ii]=-1.999;   par.param_ub[ii] = 0.999; ii++;
-        par.param_lb[ii]=-1.999;   par.param_ub[ii] = 1.999; ii++; */
-
-        /*for(ji=0;ji<JJ;ji++){
-			if(ji>0){
-				par.param_lb[ii]=0.01;
-				par.param_ub[ii] = 1.99;
-				ii++;
-			}
-		}*/
 	}
 
 
@@ -773,7 +744,7 @@ int main(int argc,char *argv[] ) {
             x0starts_j[i] = x0starts[i];
         }
         // ad hoc adjustment:
-        x0starts_j[ntgtavgflow] = .1; x0starts_j[ntgtavgflow+1] = .9;
+        // x0starts_j[ntgtavgflow] = .1; x0starts_j[ntgtavgflow+1] = .9;
         #endif
 
         double mindist = 1e6;
@@ -1036,6 +1007,7 @@ int main(int argc,char *argv[] ) {
 			}
 		}
         convprobs(par.zprob[0],par.zlev,par.z_Acoef,par.z_Amag);
+        gsl_vector_set_zero(par.zlev);
 
 		//success  = disc_Weibull(par.epsprob->data, par.epslev->data, NE,0.,par.scale_eps,par.shape_eps);
 		for(ai=0;ai<NA;ai++)
@@ -1397,6 +1369,10 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
                     if (isinf(mhr) || isnan(mhr)) {
                         mhr = REhr >= EAPWE ? 1. : 0.;
                     }
+
+                    // for no switching
+                    mhr = 0.;
+
                     if(oldE==1)
                         gg_set(pf->mE, ii, ji, mhr);
 
@@ -1589,6 +1565,10 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 					mhr = RUhr > (1.-lambdaUShr)*EAPWU+ lambdaUShr*gsl_max(EtWE,EAPWU) ?
 							1. : 0. ;
 				}
+				//+++++++++++++++++++++++
+				// Force to be 0 switch prob
+				mhr = 0.;
+
 				gg_set(pf->mU,ii,ji, mhr );
 				//search dir for next iterations
 				double sUdenom = 0.;
@@ -5454,27 +5434,27 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 
 	if( ci ==0 || ci == Ncluster){
 
-		par->alpha0     = x[ii];ii++;
+		par->alpha0     = 1.0;
         
 
 		par->lambdaUS_Rec = x[ii];ii++;
-        par->lambdaUM_Rec = x[ii];ii++;
+        par->lambdaUM_Rec = 0.;
 
 		par->lambdaES_Rec = x[ii];ii++;
-		par->lambdaEM_Rec = x[ii];ii++;
+		par->lambdaEM_Rec = 0.;
 		par->delta_Rec    = x[ii];ii++;
-		par->zloss_Rec    = x[ii];ii++;
-		par->alphaE1    = x[ii];ii++;
-		par->alphaU1    = x[ii];ii++;
+		par->zloss_Rec    = 0.;
+		par->alphaE1    = 1.;
+		par->alphaU1    = 1.;
 
 		ii = Npar_cluster[0] ;
 
 	}
 	if(ci==1 || ci == Ncluster){
 
-		par->update_z  = x[ii];ii++;
-		par->scale_z    = x[ii];ii++;
-		par->shape_z    = x[ii];ii++;
+		par->update_z  = 0.;
+		par->scale_z    = 1.;
+		par->shape_z    = 1.;
 
 		par->var_pe     = x[ii];ii++;
 		par->autop      = x[ii];ii++;
@@ -5490,13 +5470,13 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 	}
 	if(ci==2 || ci == Ncluster){
 		par->delta_Exp     = x[ii];ii++;
-		par->lambdaEM_Exp  = x[ii];ii++;
+		par->lambdaEM_Exp  = 0.;
 		par->lambdaES_Exp  = x[ii];ii++;
 		par->lambdaUS_Exp  = x[ii];ii++;
-        par->lambdaUM_Exp  = x[ii];ii++;
-		par->zloss_Exp     = x[ii];ii++;
-		par->z_Acoef         = x[ii];ii++;
-        par->z_Amag          = x[ii];ii++;
+        par->lambdaUM_Exp  = 0.;
+		par->zloss_Exp     = 0.;
+		par->z_Acoef         = 0.;
+        par->z_Amag          = 0.;
         par->eps_Acoef       = x[ii];ii++;
         par->eps_Amag        = x[ii];ii++;
 
@@ -5711,6 +5691,9 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	}
     convprobs(par->zprob[0],par->zlev,par->z_Acoef,par->z_Amag);
 
+	// FOR THE NO OCC VERSION
+	gsl_vector_set_all(par->zlev,0.0);
+
 	if(eps_2emg==1){
 		//success = disc_Weibull( par->epsprob->data,par->epslev->data, NE, 0.,par->scale_eps,par->shape_eps );
         for(ai=0;ai<NA;ai++) success = disc_2emg(par->epsprob[ai]->data,par->epslev->data,(int)par->epsprob[ai]->size,
@@ -5796,6 +5779,18 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	    //solve the model. Can use the solution and directly get the flow directions. Will then solve alpha_nf matrix
 	    int iter_alphanf;
         int maxiter_alphanf = 1;
+	    if(cal_now == 1){
+            maxiter_alphanf =  3;
+            for(ji=0;ji<JJ;ji++){ for( ii=0;ii<JJ;ii++) par->alpha_nf[ji][ii] =0.; }
+            /*int ri;
+            for(ri=0;ri<2;ri++) {
+                for (ji = 0; ji < JJ; ji++) {
+                    for (ii = 0; ii < JJ; ii++)
+                        par->alpha_nf_rec[ri][ji][ii] = 0.;
+                }
+            }*/
+        }
+
 
         double**ublb_occload = malloc(sizeof(double*)*2);
         ublb_occload[0] = malloc(sizeof(double)*JJ);ublb_occload[1] = malloc(sizeof(double)*JJ);
@@ -5803,15 +5798,17 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
             ublb_occload[0][ji] = 0.5*par->AloadP->data[ji];
             ublb_occload[1][ji] = 1.5*par->AloadP->data[ji];
         }
-        //for(iter_alphanf=0;iter_alphanf<maxiter_alphanf;iter_alphanf++) {
+        for(iter_alphanf=0;iter_alphanf<maxiter_alphanf;iter_alphanf++) {
             success = sol_dyn(par, &vf, &pf, &sk);
             if (verbose > 2 && success != 0) printf("Problem solving model\n");
 
     		success = sim(par, &vf, &pf, &ht, &sk);
 	    	if (verbose > 2 && success != 0) printf("Problem simulating model\n");
 	    	success = sum_stats_flows( par, &vf, &pf, &ht, &sk, &st );
-            
-        //}
+            if(cal_now == 1)
+                success = reset_alphanf(par,  &pf,&st, &dat);
+            if(success != 0 ) break;
+        }
 		success = sum_stats(par, &vf, &pf, &ht, &sk, &st);
         free(ublb_occload[0]);free(ublb_occload[1]);free(ublb_occload);
 
