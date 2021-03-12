@@ -5796,6 +5796,18 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	    //solve the model. Can use the solution and directly get the flow directions. Will then solve alpha_nf matrix
 	    int iter_alphanf;
         int maxiter_alphanf = 1;
+	    if(cal_now == 1){
+            maxiter_alphanf =  3;
+            for(ji=0;ji<JJ;ji++){ for( ii=0;ii<JJ;ii++) par->alpha_nf[ji][ii] =0.; }
+            /*int ri;
+            for(ri=0;ri<2;ri++) {
+                for (ji = 0; ji < JJ; ji++) {
+                    for (ii = 0; ii < JJ; ii++)
+                        par->alpha_nf_rec[ri][ji][ii] = 0.;
+                }
+            }*/
+        }
+
 
         double**ublb_occload = malloc(sizeof(double*)*2);
         ublb_occload[0] = malloc(sizeof(double)*JJ);ublb_occload[1] = malloc(sizeof(double)*JJ);
@@ -5803,15 +5815,17 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
             ublb_occload[0][ji] = 0.5*par->AloadP->data[ji];
             ublb_occload[1][ji] = 1.5*par->AloadP->data[ji];
         }
-        //for(iter_alphanf=0;iter_alphanf<maxiter_alphanf;iter_alphanf++) {
+        for(iter_alphanf=0;iter_alphanf<maxiter_alphanf;iter_alphanf++) {
             success = sol_dyn(par, &vf, &pf, &sk);
             if (verbose > 2 && success != 0) printf("Problem solving model\n");
 
     		success = sim(par, &vf, &pf, &ht, &sk);
 	    	if (verbose > 2 && success != 0) printf("Problem simulating model\n");
 	    	success = sum_stats_flows( par, &vf, &pf, &ht, &sk, &st );
-            
-        //}
+            if(cal_now == 1)
+                success = reset_alphanf(par,  &pf,&st, &dat);
+            if(success != 0 ) break;
+        }
 		success = sum_stats(par, &vf, &pf, &ht, &sk, &st);
         free(ublb_occload[0]);free(ublb_occload[1]);free(ublb_occload);
 

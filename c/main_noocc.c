@@ -115,7 +115,7 @@ char * parnames_clu2[] = {"Delta_Exp","lamES_Exp","lamUS_Exp","eps_Acoef","eps_A
 char * parnames_cluall[] = {"lambdaUS_Rec","lambdaES_Rec","delta_Rec",
                             "var_pe","autop","gdfather","stwupdt","var_eps","ltl_eps","rtl_eps",
                             "Delta_Exp","lamES_Exp","lamUS_Exp",
-                            ,"eps_Acoef","eps_Amag"};
+                            "eps_Acoef","eps_Amag"};
 char ** parnames[] = {parnames_clu0,parnames_clu1,parnames_clu2,parnames_cluall};
 
 char * tgtnames_clu0[]   = {"J2J","fnd","sep"};
@@ -5779,36 +5779,21 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	    //solve the model. Can use the solution and directly get the flow directions. Will then solve alpha_nf matrix
 	    int iter_alphanf;
         int maxiter_alphanf = 1;
-	    if(cal_now == 1){
-            maxiter_alphanf =  3;
-            for(ji=0;ji<JJ;ji++){ for( ii=0;ii<JJ;ii++) par->alpha_nf[ji][ii] =0.; }
-            /*int ri;
-            for(ri=0;ri<2;ri++) {
-                for (ji = 0; ji < JJ; ji++) {
-                    for (ii = 0; ii < JJ; ii++)
-                        par->alpha_nf_rec[ri][ji][ii] = 0.;
-                }
-            }*/
-        }
-
-
-        double**ublb_occload = malloc(sizeof(double*)*2);
+	    double**ublb_occload = malloc(sizeof(double*)*2);
         ublb_occload[0] = malloc(sizeof(double)*JJ);ublb_occload[1] = malloc(sizeof(double)*JJ);
         for(ji=0;ji<JJ;ji++) {
             ublb_occload[0][ji] = 0.5*par->AloadP->data[ji];
             ublb_occload[1][ji] = 1.5*par->AloadP->data[ji];
         }
-        for(iter_alphanf=0;iter_alphanf<maxiter_alphanf;iter_alphanf++) {
+        //for(iter_alphanf=0;iter_alphanf<maxiter_alphanf;iter_alphanf++) {
             success = sol_dyn(par, &vf, &pf, &sk);
             if (verbose > 2 && success != 0) printf("Problem solving model\n");
 
     		success = sim(par, &vf, &pf, &ht, &sk);
 	    	if (verbose > 2 && success != 0) printf("Problem simulating model\n");
 	    	success = sum_stats_flows( par, &vf, &pf, &ht, &sk, &st );
-            if(cal_now == 1)
-                success = reset_alphanf(par,  &pf,&st, &dat);
-            if(success != 0 ) break;
-        }
+
+        //}
 		success = sum_stats(par, &vf, &pf, &ht, &sk, &st);
         free(ublb_occload[0]);free(ublb_occload[1]);free(ublb_occload);
 
@@ -5827,25 +5812,6 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 			ii++;
 			err_vec[ii] = (st.seprate - dat.seprate) * 2 / (st.seprate + dat.seprate);
 			ii++;
-			err_vec[ii] = (st.swProb_EE - dat.swProb_EE) * 2 / (st.swProb_EE + dat.swProb_EE);
-			ii++;
-			err_vec[ii] = (st.swProb_U - dat.swProb_U) * 2 / (st.swProb_U + dat.swProb_U);
-			ii++;
-			err_vec[ii] = (st.swProb_st - dat.swProb_st) * 2 / (st.swProb_st + dat.swProb_st);
-			ii++;
-			err_vec[ii] = (mod_dur - dat_dur) *2 / (mod_dur + dat_dur);
-			ii ++;
-			// -------------------------------------
-			// Should this go in 1st cluster or second?
-            err_vec[ii]   = 0.5*(st.varGflowsE - dat.varGflowsE)/(st.varGflowsE + dat.varGflowsE);
-			//err_vec[ii] = .5*(st.corrEE_wgocc  - dat.corrEE_wgocc); //*2 / (st.corr_wgocc + dat.corr_wgocc);
-			//err_vec[ii] = (st.doubleswE - dat.doubleswE) /(st.doubleswE + dat.doubleswE);
-			ii++;
-            err_vec[ii]   = 0.5*(st.varGflowsU - dat.varGflowsU)/(st.varGflowsU + dat.varGflowsU);
-			//err_vec[ii] = (st.doubleswU - dat.doubleswU) /(st.doubleswU + dat.doubleswU);
-			//err_vec[ii] = .5*(st.corrEUE_wgocc - dat.corrEUE_wgocc); //*2 / (st.corr_wgocc + dat.corr_wgocc);
-			ii++;
-
 			ii = Ntgt_cluster[0];
 		}
 
@@ -5947,7 +5913,7 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
             err_vec[ii] =  stEUEns_skew - datEUEns_skew; err_vec[ii] /= 4.0;
             ii++;
 
-            // occ switcher stats
+            /* occ switcher stats
             err_vec[ii] =  (ststsw_9010 - ststns_9010) - (datstsw_9010 - datstns_9010);
             err_vec[ii] /= 3.0;
             ii++;
@@ -5968,76 +5934,16 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
             err_vec[ii] = (stEUEsw_skew - stEUEns_skew)- (datEUEsw_skew -datEUEns_skew);
             err_vec[ii] /= 4.0;
             ii++;
-
+            */
         }
 		if (par->cluster_hr == 2 || par->cluster_hr == Ncluster) {
-			err_vec[ii] = tanh( (st.swProb_U_ratio - dat.swProb_U_ratio)/ (dat.swProb_U_ratio-1.));
-			ii++;
-			err_vec[ii] = tanh( (st.swProb_EE_ratio - dat.swProb_EE_ratio)/(dat.swProb_EE_ratio-1.) ) ;
-            ii++;
 			err_vec[ii] = tanh( (st.fndrt_ratio - dat.fndrt_ratio)/(dat.fndrt_ratio-1.) ) ;
 			ii++;
 			err_vec[ii] = tanh( (st.seprt_ratio - dat.seprt_ratio) / (1.-dat.seprt_ratio) ); //negative b/c sepratio is <1
 			ii++;
 			err_vec[ii] = tanh( (st.EE_ratio - dat.EE_ratio)/(dat.EE_ratio-1.) );
 			ii ++;
-            /*
-             * MINIMUM DISTANCE TARGETS:
-			for(i=0;i<Nqtls; i++) //skip the 50th pctile?
-				err_vec[ii+i] = i!=2 ? (st.MVsw_qtls_ratio[i] - dat.MVsw_qtls_ratio[i])/(double)(Nqtls-1) : (st.MVsw_qtls_ratio[i] - dat.MVsw_qtls_ratio[i])/(double)(2*Nqtls-1);
-			ii += Nqtls;
-			for(i=0;i<Nqtls; i++)
-				err_vec[ii+i] = i!=2 ? (st.MVns_qtls_ratio[i] - dat.MVns_qtls_ratio[i])/(double)(Nqtls-1): (st.MVns_qtls_ratio[i] - dat.MVns_qtls_ratio[i])/(double)(2*Nqtls-1);
-             */
-            /*
-            // MSM targets: +++
-            double stMVswrec1_p95p05 = (st.MVswrec1_qtls[3] - st.MVswrec1_qtls[1]);
-            double stMVswrec0_p95p05 = (st.MVswrec0_qtls[3] - st.MVswrec0_qtls[1]);
-            double stMVswrec1_skew = ((st.MVswrec1_qtls[3] - st.MVswrec1_qtls[2]) - (st.MVswrec1_qtls[2] - st.MVswrec1_qtls[1])) /stMVswrec1_p95p05;
-            double stMVswrec0_skew = ((st.MVswrec0_qtls[3] - st.MVswrec0_qtls[2]) - (st.MVswrec0_qtls[2] - st.MVswrec0_qtls[1])) /stMVswrec0_p95p05;
 
-            double stMVswrec1_bigloss = ((st.MVswrec1_qtls[2] - st.MVswrec1_qtls[0])) /stMVswrec1_p95p05;
-            double stMVswrec0_bigloss = ((st.MVswrec0_qtls[2] - st.MVswrec0_qtls[0])) /stMVswrec0_p95p05;
-
-            double stMVnsrec1_p95p05 = (st.MVnsrec1_qtls[3] - st.MVnsrec1_qtls[1]);
-            double stMVnsrec0_p95p05 = (st.MVnsrec0_qtls[3] - st.MVnsrec0_qtls[1]);
-            double stMVnsrec1_skew = ((st.MVnsrec1_qtls[3] - st.MVnsrec1_qtls[2]) - (st.MVnsrec1_qtls[2] - st.MVnsrec1_qtls[1])) /stMVnsrec1_p95p05;
-            double stMVnsrec0_skew = ((st.MVnsrec0_qtls[3] - st.MVnsrec0_qtls[2]) - (st.MVnsrec0_qtls[2] - st.MVnsrec0_qtls[1])) /stMVnsrec0_p95p05;
-
-            double stMVnsrec1_bigloss = ((st.MVnsrec1_qtls[2] - st.MVnsrec1_qtls[0])) /stMVnsrec1_p95p05;
-            double stMVnsrec0_bigloss = ((st.MVnsrec0_qtls[2] - st.MVnsrec0_qtls[0])) /stMVnsrec0_p95p05;
-
-            double datMVswrec1_p95p05 = (dat.MVswrec1_qtls[3] - dat.MVswrec1_qtls[1]);
-            double datMVswrec0_p95p05 = (dat.MVswrec0_qtls[3] - dat.MVswrec0_qtls[1]);
-            double datMVswrec1_skew = ((dat.MVswrec1_qtls[3] - dat.MVswrec1_qtls[2]) - (dat.MVswrec1_qtls[2] - dat.MVswrec1_qtls[1])) /datMVswrec1_p95p05;
-            double datMVswrec0_skew = ((dat.MVswrec0_qtls[3] - dat.MVswrec0_qtls[2]) - (dat.MVswrec0_qtls[2] - dat.MVswrec0_qtls[1])) /datMVswrec0_p95p05;
-
-            double datMVswrec1_bigloss = ((dat.MVswrec1_qtls[2] - dat.MVswrec1_qtls[0])) /datMVswrec1_p95p05;
-            double datMVswrec0_bigloss = ((dat.MVswrec0_qtls[2] - dat.MVswrec0_qtls[0])) /datMVswrec0_p95p05;
-
-            double datMVnsrec1_p95p05 = (dat.MVnsrec1_qtls[3] - dat.MVnsrec1_qtls[1]);
-            double datMVnsrec0_p95p05 = (dat.MVnsrec0_qtls[3] - dat.MVnsrec0_qtls[1]);
-            double datMVnsrec1_skew = ((dat.MVnsrec1_qtls[3] - dat.MVnsrec1_qtls[2]) - (dat.MVnsrec1_qtls[2] - dat.MVnsrec1_qtls[1])) /datMVnsrec1_p95p05;
-            double datMVnsrec0_skew = ((dat.MVnsrec0_qtls[3] - dat.MVnsrec0_qtls[2]) - (dat.MVnsrec0_qtls[2] - dat.MVnsrec0_qtls[1])) /datMVnsrec0_p95p05;
-
-            double datMVnsrec1_bigloss = ((dat.MVnsrec1_qtls[2] - dat.MVnsrec1_qtls[0])) /datMVnsrec1_p95p05;
-            double datMVnsrec0_bigloss = ((dat.MVnsrec0_qtls[2] - dat.MVnsrec0_qtls[0])) /datMVnsrec0_p95p05;
-
-
-            err_vec[ii] = (stMVswrec1_p95p05 - stMVswrec0_p95p05) - (datMVswrec1_p95p05 - datMVswrec0_p95p05);
-            ii++;
-            err_vec[ii] = (stMVswrec1_skew - stMVswrec0_skew) - (datMVswrec1_skew - datMVswrec0_skew);
-            ii++;
-            err_vec[ii] = (stMVswrec1_bigloss - stMVswrec0_bigloss) - (datMVswrec1_bigloss - datMVswrec0_bigloss);
-            ii++;
-
-            err_vec[ii] = (stMVnsrec1_p95p05 - stMVnsrec0_p95p05) - (datMVnsrec1_p95p05 - datMVnsrec0_p95p05);
-            ii++;
-            err_vec[ii] = (stMVnsrec1_skew - stMVnsrec0_skew) - (datMVnsrec1_skew - datMVnsrec0_skew);
-            ii++;
-            err_vec[ii] = (stMVnsrec1_bigloss - stMVnsrec0_bigloss) - (datMVnsrec1_bigloss - datMVnsrec0_bigloss);
-            ii++;
-            */
             //U-shaped decomposition targets:
             for(i=0;i<Nextqtls;i++){
                 if(i != 4) { // don't match the 50 pctile
