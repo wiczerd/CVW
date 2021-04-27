@@ -640,21 +640,6 @@ int main(int argc,char *argv[] ) {
         par.param_lb[ii]=-1.499;   par.param_ub[ii] = 0.099; ii++;
         par.param_lb[ii]= 0.100;   par.param_ub[ii] = 0.999; ii++;
 
-        /* This was for the A coefficients:
-        par.param_lb[ii]=-2.999;   par.param_ub[ii] = 0.999; ii++;
-        par.param_lb[ii]= 0.001;   par.param_ub[ii] = 0.499; ii++;
-        par.param_lb[ii]=-0.999;   par.param_ub[ii] = 1.999; ii++;
-        par.param_lb[ii]=-0.999;   par.param_ub[ii] = 0.999; ii++; // hitting bound
-        par.param_lb[ii]=-1.999;   par.param_ub[ii] = 0.999; ii++;
-        par.param_lb[ii]=-1.999;   par.param_ub[ii] = 1.999; ii++; */
-
-        /*for(ji=0;ji<JJ;ji++){
-			if(ji>0){
-				par.param_lb[ii]=0.01;
-				par.param_ub[ii] = 1.99;
-				ii++;
-			}
-		}*/
 	}
 
 
@@ -5107,13 +5092,6 @@ void read_params(char* name, struct cal_params *par){
         par->xparopt[pi] = dd;
         pi++;
 
-//		for(ji=ii+1;ji<JJ;ji++){
-//			rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
-//			par->alpha_nf[ii][ji]= dd;
-//			par->xparopt[pi] = dd; pi++;
-//		}
-
-
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
         par->update_z = dd;
@@ -5154,12 +5132,6 @@ void read_params(char* name, struct cal_params *par){
         // epsilon :
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
-        //par->scale_eps =dd;
-        //par->xparopt[pi] = dd; pi++;
-        //rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
-        //par->shape_eps =dd;
-        //par->xparopt[pi] = dd; pi++;
-
         par->var_eps = dd;
         par->xparopt[pi] = dd;
         pi++;
@@ -5193,12 +5165,12 @@ void read_params(char* name, struct cal_params *par){
         pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
-        par->lambdaUM_Exp = dd;
+        par->lambdaUS_Exp = dd;
         par->xparopt[pi] = dd;
         pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
-        par->lambdaUS_Exp = dd;
+        par->lambdaUM_Exp = dd;
         par->xparopt[pi] = dd;
         pi++;
         rstatus = fscanf(parfile, "%s, ", sd);

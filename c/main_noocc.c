@@ -1351,7 +1351,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
                                                  pow(gg_get(pf->sE[jji], ii, ji), 1. - par->alphaE1), 1.);
                     }
                     REhr += gsl_max(1. - totalphaS, 0.) * // potentially update z:
-                            ((1. - par->update_z) * EAPWE + par->update_z * EzWE[ji]);
+                            (EAPWE );
                     if (gsl_finite(REhr) == 0) {
                         //printf("Uhoh. Bad REhr");
                     }
@@ -1393,22 +1393,16 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
                         }
                         if (sEjiDenom > 0) {
                             for (jji = 0; jji < JJ; jji++) {
-                                if (jji != ji) {
-                                    double dirreturn = dirjE[jji] -
-                                                       par->kappa; //-par->kappa+ lambdaEMhr*EztWE[jji] + (1.-lambdaEMhr)*EzWE[jji]- EAPWE;
-                                    dirreturn = dirreturn < 0 ? 0. : dirreturn;
-                                    gg_set(pf->sE[jji], ii, ji,
-                                           exp(par->alpha_nf[ji][jji]) *
-                                           pow(dirreturn / sEnorm, 1. / par->alphaE1)
-                                           / sEjiDenom);
+                                if (jji == ji) {
+                                    gg_set(pf->sE[jji], ii, ji, 1.);
                                 } else { // this is kind of redundant because it should have initialized to 0
                                     gg_set(pf->sE[jji], ii, ji, 0.);
                                 }
                             }
                         } else {
                             for (jji = 0; jji < JJ; jji++) {
-                                if (jji != ji) {
-                                    gg_set(pf->sE[jji], ii, ji, 1. / (double) (JJ - 1));
+                                if (jji == ji) {
+                                    gg_set(pf->sE[jji], ii, ji, 1.);
                                 } else
                                     gg_set(pf->sE[jji], ii, ji, 0.);
                             }
@@ -1583,20 +1577,15 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				}
 				if(sUdenom > 0 ){
 					for (jji = 0; jji < JJ; jji++) {
-						if (jji != ji) {
-							double dirreturn = dirjU[jji]-par->kappa; //-par->kappa + EzWU[jji] - EAPWU;
-							dirreturn = dirreturn < 0 ? 0. : dirreturn;
-							gg_set(pf->sU[jji], ii, ji,
-							        exp(par->alpha_nf[ji][jji])*
-							        pow(dirreturn/sUnorm, 1. / par->alphaU1)
-							        / sUdenom);
+						if (jji == ji) {
+							gg_set(pf->sU[jji], ii, ji,1.);
 						} else {//this is kind of redundant, because it should have initialized to 0
 							gg_set(pf->sU[jji], ii, ji, 0.);
 						}
 					}
 				}else{
 					for(jji=0;jji<JJ;jji++){
-						if(jji!=ji){ gg_set(pf->sU[jji],ii,ji,1./(double)(JJ-1) );
+						if(jji==ji){ gg_set(pf->sU[jji],ii,ji,1.);
 						}else
 							gg_set(pf->sU[jji],ii,ji,0.);
 					}
@@ -5041,74 +5030,67 @@ void read_params(char* name, struct cal_params *par){
 
         int pi = 0;
         strcpy(sd, "\000");
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->alpha0 = dd;
-        par->xparopt[pi] = dd;
-        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->alpha0 = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
         par->lambdaUS_Rec = dd;
         par->xparopt[pi] = dd;
         pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->lambdaUM_Rec = dd;
-        par->xparopt[pi] = dd;
-        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->lambdaUM_Rec = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
         par->lambdaES_Rec = dd;
         par->xparopt[pi] = dd;
         pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->lambdaEM_Rec = dd;
-        par->xparopt[pi] = dd;
-        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->lambdaEM_Rec = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
         par->delta_Rec = dd;
         par->xparopt[pi] = dd;
         pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->zloss_Rec = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->alphaE1 = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->alphaU1 = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-
-//		for(ji=ii+1;ji<JJ;ji++){
-//			rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
-//			par->alpha_nf[ii][ji]= dd;
-//			par->xparopt[pi] = dd; pi++;
-//		}
-
-
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->update_z = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->scale_z = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->shape_z = dd;
-        par->xparopt[pi] = dd;
-        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->zloss_Rec = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->alphaE1 = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->alphaU1 = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->update_z = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->scale_z = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->shape_z = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
 
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
@@ -5134,12 +5116,6 @@ void read_params(char* name, struct cal_params *par){
         // epsilon :
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
-        //par->scale_eps =dd;
-        //par->xparopt[pi] = dd; pi++;
-        //rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
-        //par->shape_eps =dd;
-        //par->xparopt[pi] = dd; pi++;
-
         par->var_eps = dd;
         par->xparopt[pi] = dd;
         pi++;
@@ -5161,11 +5137,11 @@ void read_params(char* name, struct cal_params *par){
         par->delta_Exp = dd;
         par->xparopt[pi] = dd;
         pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->lambdaEM_Exp = dd;
-        par->xparopt[pi] = dd;
-        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->lambdaEM_Exp = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
         par->lambdaES_Exp = dd;
@@ -5173,30 +5149,30 @@ void read_params(char* name, struct cal_params *par){
         pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
-        par->lambdaUM_Exp = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
         par->lambdaUS_Exp = dd;
         par->xparopt[pi] = dd;
         pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->zloss_Exp = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->z_Acoef = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->z_Amag = dd;
-        par->xparopt[pi] = dd;
-        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->lambdaUM_Exp = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->zloss_Exp = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->z_Acoef = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->z_Amag = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
         par->eps_Acoef = dd;
@@ -5364,25 +5340,24 @@ void print_params(double *x, int n, struct cal_params * par){
 	ii =0;
 	parhist = fopen(parhi_f,"a+");
     // had been: fprintf(parhist,"%8.6f, ", par->alpha0);
-	fprintf(parhist,"%.17g, ", par->alpha0);
+	//fprintf(parhist,"%.17g, ", par->alpha0);
 
 	fprintf(parhist,"%.17g, ", par->lambdaUS_Rec);
-    fprintf(parhist,"%.17g, ", par->lambdaUM_Rec);
+    //fprintf(parhist,"%.17g, ", par->lambdaUM_Rec);
 	fprintf(parhist,"%.17g, ", par->lambdaES_Rec);
-	fprintf(parhist,"%.17g, ", par->lambdaEM_Rec);
+	//fprintf(parhist,"%.17g, ", par->lambdaEM_Rec);
 	fprintf(parhist,"%.17g, ", par->delta_Rec   );
-	fprintf(parhist,"%.17g, ", par->zloss_Rec    );
-	fprintf(parhist,"%.17g, ", par->alphaE1  );
-	fprintf(parhist,"%.17g, ", par->alphaU1  );
+	//fprintf(parhist,"%.17g, ", par->zloss_Rec    );
+	//fprintf(parhist,"%.17g, ", par->alphaE1  );
+	//fprintf(parhist,"%.17g, ", par->alphaU1  );
 
-	fprintf(parhist,"%.17g, ", par->update_z );
-	fprintf(parhist,"%.17g, ", par->scale_z  );
-	fprintf(parhist,"%.17g, ", par->shape_z  );
+	//fprintf(parhist,"%.17g, ", par->update_z );
+	//fprintf(parhist,"%.17g, ", par->scale_z  );
+	//fprintf(parhist,"%.17g, ", par->shape_z  );
 
 	fprintf(parhist,"%.17g, ", par->var_pe   );
 	fprintf(parhist,"%.17g, ", par->autop    );
-	//fprintf(parhist,"%.17g, ", par->var_ae   );
-	//fprintf(parhist,"%.17g, ", par->autoa    );
+
 	fprintf(parhist,"%.17g, ", par->gdfthr   );
 	fprintf(parhist,"%.17g, ", par->stwupdate);
 	fprintf(parhist,"%.17g, ", par->var_eps  );
@@ -5394,13 +5369,13 @@ void print_params(double *x, int n, struct cal_params * par){
 
 
 	fprintf(parhist,"%.17g, ", par->delta_Exp   );
-	fprintf(parhist,"%.17g, ", par->lambdaEM_Exp);
+	//fprintf(parhist,"%.17g, ", par->lambdaEM_Exp);
 	fprintf(parhist,"%.17g, ", par->lambdaES_Exp);
 	fprintf(parhist,"%.17g, ", par->lambdaUS_Exp);
-    fprintf(parhist,"%.17g, ", par->lambdaUM_Exp);
-	fprintf(parhist,"%.17g, ", par->zloss_Exp   );
-    fprintf(parhist,"%.17g, ", par->z_Acoef       );
-    fprintf(parhist,"%.17g, ", par->z_Amag        );
+    //fprintf(parhist,"%.17g, ", par->lambdaUM_Exp);
+	//fprintf(parhist,"%.17g, ", par->zloss_Exp   );
+    //fprintf(parhist,"%.17g, ", par->z_Acoef       );
+    //fprintf(parhist,"%.17g, ", par->z_Amag        );
     fprintf(parhist,"%.17g, ", par->eps_Acoef     );
     fprintf(parhist,"%.17g, ", par->eps_Amag      );
 
@@ -5806,11 +5781,11 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 				st.udur_sw / st.udur_nosw : 0.;
 		if (par->cluster_hr == 0 || par->cluster_hr == Ncluster) {
 		    // weighting duration and randomness low (0.1)
-			err_vec[ii] = (st.J2Jprob - dat.J2Jprob) * 2 / (st.J2Jprob + dat.J2Jprob);
+			err_vec[ii] = 2.* (st.J2Jprob - dat.J2Jprob) * 2 / (st.J2Jprob + dat.J2Jprob);
             ii++;
-			err_vec[ii] = (st.findrate - dat.findrate) * 2 / (st.findrate + dat.findrate);
+			err_vec[ii] = 2.* (st.findrate - dat.findrate) * 2 / (st.findrate + dat.findrate);
 			ii++;
-			err_vec[ii] = (st.seprate - dat.seprate) * 2 / (st.seprate + dat.seprate);
+			err_vec[ii] = 2.* (st.seprate - dat.seprate) * 2 / (st.seprate + dat.seprate);
 			ii++;
 			ii = Ntgt_cluster[0];
 		}
