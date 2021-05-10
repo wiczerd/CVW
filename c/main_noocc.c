@@ -5781,11 +5781,11 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 				st.udur_sw / st.udur_nosw : 0.;
 		if (par->cluster_hr == 0 || par->cluster_hr == Ncluster) {
 		    // weighting duration and randomness low (0.1)
-			err_vec[ii] = 2.* (st.J2Jprob - dat.J2Jprob) * 2 / (st.J2Jprob + dat.J2Jprob);
+			err_vec[ii] = 3.* (st.J2Jprob - dat.J2Jprob) * 2 / (st.J2Jprob + dat.J2Jprob);
             ii++;
-			err_vec[ii] = 2.* (st.findrate - dat.findrate) * 2 / (st.findrate + dat.findrate);
+			err_vec[ii] = 3.* (st.findrate - dat.findrate) * 2 / (st.findrate + dat.findrate);
 			ii++;
-			err_vec[ii] = 2.* (st.seprate - dat.seprate) * 2 / (st.seprate + dat.seprate);
+			err_vec[ii] = 3.* (st.seprate - dat.seprate) * 2 / (st.seprate + dat.seprate);
 			ii++;
 			ii = Ntgt_cluster[0];
 		}
