@@ -21,6 +21,8 @@ wt <- "truncweight"
 wc <- "wagechange_anan"
 recDef <- "recIndic2_wave"
 
+decomp_now = F # run the decomposition? Or just load for Calibration Stats?
+
 wdur = F #will include duration in the variables in the regression
 
 minEarn = 1040 
@@ -783,25 +785,27 @@ DTseam[ !(EUfrq==T|UEfrq==T) | !is.finite(dur), dur := 0.]
 #++++++++++++++++++++++++++++++++++++++++++++++++++++
 # ------- The Decomposition ----------------
 #++++++++++++++++++++++++++++++++++++++++++++++++++++
-if( freq == "wave"){
-	if(wdur ==T){
-		MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
-		saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
+if(decomp_now ==T){
+	
+	if( freq == "wave"){
+		if(wdur ==T){
+			MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
+			saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
+		}else{
+			MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
+			saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE_nodur.RData"))
+		}
 	}else{
-		MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
-		saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE_nodur.RData"))
+		if(wdur==T){
+			MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
+			saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN_dur.RData"))
+		}else{
+			MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
+			saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN.RData"))
+		}
+		# MM_betaE_betaR_IR <-readRDS(paste0(outputdir,"/MM_ANAN.RData"))
 	}
-}else{
-	if(wdur==T){
-		MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
-		saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN_dur.RData"))
-	}else{
-		MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
-		saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN.RData"))
-	}
-	# MM_betaE_betaR_IR <-readRDS(paste0(outputdir,"/MM_ANAN.RData"))
 }
-
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # The calibration targets ------------------------------------------------
 #J2J
@@ -887,9 +891,23 @@ MVnsrec1_qtls- MVnsrec0_qtls
 
 #Overall change over the cycle:
 qtls_extcomb <- c(0.025,.05,.1,.25,.5,.75,.9,.95,0.975)
-dat_qtls_rec0 <- DTseam[recIndic_wave==F , wtd.quantile(wagechange_anan, p=qtls_extcomb,na.rm=T)]
-dat_qtls_rec1 <- DTseam[recIndic_wave==T , wtd.quantile(wagechange_anan, p=qtls_extcomb,na.rm=T)]
+dat_qtls_rec0 <- DTseam[recIndic_wave==F , wtd.quantile(wagechange_anan, p=qtls_extcomb,na.rm=T,weights=truncweight)]
+dat_qtls_rec1 <- DTseam[recIndic_wave==T , wtd.quantile(wagechange_anan, p=qtls_extcomb,na.rm=T,weights=truncweight)]
 dat_qtls_rec0 - dat_qtls_rec1
+
+dat_skew_rec0 <-DTseam[ recIndic_wave==F, wtd.mean((wagechange_anan - wtd.mean(wagechange_anan,weights=truncweight) )^3,weights=truncweight)*
+							wtd.var(wagechange_anan,weights=truncweight)^(-3/2) ]
+
+#ModSkew_rec <- DTseam[ rec==1 & wchng>-99, mean((wchng - mean(wchng))^3)*var(wchng)^(-3/2)]
+#ModSkew_exp <- DTseam[ rec==0 & wchng>-99, mean((wchng - mean(wchng))^3)*var(wchng)^(-3/2)]
+
+dat_GroenveldMeeden_rec <- DTseam[ recIndic_wave==T, wtd.GroenveldMeeden(wagechange_anan,truncweight)]
+dat_GroenveldMeeden_exp <- DTseam[ recIndic_wave==F, wtd.GroenveldMeeden(wagechange_anan,truncweight)]
+
+dat_MAD_rec <- DTseam[ recIndic_wave==T, wtd.mad(wagechange_anan,truncweight)]
+dat_MAD_exp <- DTseam[ recIndic_wave==F, wtd.mad(wagechange_anan,truncweight)]
+
+
 
 # overall net flow matrix
 DTseam[ sw==T & ch==T & occL ==occD, occLDNA := T ]
