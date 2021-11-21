@@ -6,6 +6,7 @@ library(xtable)
 library(Hmisc)
 library(quantreg)
 library(ggplot2)
+library(foreign)
 
 #setwd("G:/Research_Analyst/Eubanks/Occupation Switching")
 wd0 = "~/workspace/CVW/R"
@@ -19,6 +20,8 @@ setwd(wd0)
 wt <- "truncweight"
 wc <- "wagechange_anan"
 recDef <- "recIndic2_wave"
+
+decomp_now = F # run the decomposition? Or just load for Calibration Stats?
 
 wdur = F #will include duration in the variables in the regression
 
@@ -286,10 +289,12 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 			wcRec <- wcRec[datsampR,]
 			wcExp <- wcExp[datsampE,]
 		}
-		
-		if(durEU==T){
+		# here is where the quantile regression happens
+		if(durEU==T){ 
+			#do we include duration in the regression?
 			regform <- formula(paste(c("wc~factor(s)","dur","0"),collapse=" + ") )
 		}else{
+			#this form is just the dummies:
 			regform <- formula(paste(c("wc~factor(s)","0"),collapse=" + ") )
 		}
 		rhere <- rq( regform ,tau= qtlgridEst, data=wcRec, weights = wt, method="sfn")
@@ -328,7 +333,9 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		  betaE <- array(0.,dim=c(NS,length(qtlgridSamp)) )
 		  betaR <- array(0.,dim=c(NS,length(qtlgridSamp)) )
 		}
+		#we interpolate over the coefficients so that we have the quatile regresison coefficeients defined over the whole space, not just where we estimated
 		for(si in seq(1,ncol(betaptsE))){
+			#first make sure that coefficients on dummies are monotone in quantile (this might not be a needed check):
 			if(si<=NS){
 				gpE <- c(T,betaptsE[2:length(qtlgridEst),si]>=betaptsE[1:length(qtlgridEst)-1,si]) #ensure monotonicity
 				gpR <- c(T,betaptsR[2:length(qtlgridEst),si]>=betaptsR[1:length(qtlgridEst)-1,si]) #ensure monotonicity
@@ -339,6 +346,8 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 				gpR <- gpR==gpR #just setting them all to true
 				methodhr = "natural"
 			}
+			
+			#interpolate the coefficients
 			if(min(qtlgridSamp)<min(qtlgridEst[gpR]) | max(qtlgridSamp)>max(qtlgridEst[gpR])){
 				betaE[si,] <- spline(x=c(min(qtlgridSamp) ,qtlgridEst[gpE], max(qtlgridSamp)), 
 									 y=c(min(betaptsE[gpE,si]), betaptsE[gpE,si],max(betaptsE[gpE,si])), method=methodhr, xout=qtlgridSamp)$y
@@ -360,10 +369,11 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 		wc_BR <- matrix(NA, nrow=nsampE*length(qtlgridSamp),ncol=1) #storing the counter-factual distribution
 		
 		qi = 1
+		#sets up to create distributions of earnings change (wc) based on coefficients:
 		for(q in qtlgridSamp){
 			sumBetaE <- ""
 			sumBetaR <- ""
-			for(si in seq(1,NS) ){
+			for(si in seq(1,NS) ){ #loop over the coefficients and create a string that says to sum them:
 				sumBetaE <- paste(sumBetaE,paste0("betaE[",as.character(si),",qi]*s",as.character(si)," + ") )
 				sumBetaR <- paste(sumBetaR,paste0("betaR[",as.character(si),",qi]*s",as.character(si)," + ") )
 			}
@@ -375,6 +385,7 @@ MMdecomp <- function(wcDF,NS,recname,wcname,wtname, std_errs=F,no_occ=F,durEU=F)
 				sumBetaR <- paste(sumBetaR,"0" )
 			}
 			
+			#creates the simulation-based distribution:      sample group       evaluate command that sums estimated coefficients
 			wc_IR[ ((qi-1)*nsampR+1):(qi*nsampR) ] <- wcRec[ sampR[,qi] , eval(parse(text=sumBetaE))]
 			wc_BR[ ((qi-1)*nsampE+1):(qi*nsampE) ] <- wcExp[ sampE[,qi] , eval(parse(text=sumBetaR))]
 
@@ -654,10 +665,18 @@ DTseam[ !is.finite(occL), occL := occ]
 DTseam[ EE_wave==T , occL := last.occ]
 DTseam[ , next.occ :=shift(occ,type="lead"), by=id]
 DTseam[ !is.finite(occD), occD := next.occ]
-
+#++++++++++++++++++++
+# export to stata:
+#++++++++++++++++++++
+export_loc = "~/Dropbox/Carrillo_Visschers_Wiczer/SIPP/sipp_wavefreq.dta"
+write.dta(subset(DTseam,select=c("ageGrp","date","EE_wave","EU_wave","HSCol","id","lfstat_wave","max.unempdur_wave",
+ 	"occ_1d","occ_wave","occ90","occD","occL","rawwgchange_wave","recIndic_wave","recIndic2_wave","switched_wave",
+ 	"UE_wave","unrt","wagechange_anan","wagechange_wave","wave","wavewage","wpfinwgt","perwt","truncweight")),
+ 	export_loc)
+#
 toKeep <- c("switchedOcc_wave","switched_wave","switched_anan","esr_max",
 				 "ageGrp","HSCol","next.stable_emp","last.stable_emp","wavewage",
-				 "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint","levwage","max.unempdur_wave",
+				 "recIndic","recIndic_wave","recIndic2_wave","recIndic_stint","levwage","max.unempdur_wave","max.unempdur",
 				 "wagechange_wave","wagechangeEUE_wave","rawwgchange_wave","rawwgchangeEUE_wave","wagechange_anan",
 				 "wagechange_notransbad","wagechange_wave_low","wagechange_wave_high","wagechange_wave_jcbad","pctmaxmis",
 				 "EE_wave","EU_wave","UE_wave","changer","stayer","EE_anan","EU_anan","UE_anan","changer_anan","stayer_anan","valid_anan",
@@ -763,25 +782,29 @@ if(freq == "wave"){
 }
 DTseam[ EUfrq==T|UEfrq==T, dur := max.unempdur_wave]
 DTseam[ !(EUfrq==T|UEfrq==T) | !is.finite(dur), dur := 0.]
-
-# 
-if( freq == "wave"){
-	if(wdur ==T){
-		MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
-		saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
+#++++++++++++++++++++++++++++++++++++++++++++++++++++
+# ------- The Decomposition ----------------
+#++++++++++++++++++++++++++++++++++++++++++++++++++++
+if(decomp_now ==T){
+	
+	if( freq == "wave"){
+		if(wdur ==T){
+			MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
+			saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE.RData"))
+		}else{
+			MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
+			saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE_nodur.RData"))
+		}
 	}else{
-		MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
-		saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_waveallEUE_nodur.RData"))
+		if(wdur==T){
+			MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
+			saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN_dur.RData"))
+		}else{
+			MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
+			saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN.RData"))
+		}
+		# MM_betaE_betaR_IR <-readRDS(paste0(outputdir,"/MM_ANAN.RData"))
 	}
-}else{
-	if(wdur==T){
-		MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = T)
-		saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN_dur.RData"))
-	}else{
-		MM_betaE_betaR_IR <- MMdecomp(DTseam,NS,recDef,wcname=wc,wtname=wt,std_errs = MMstd_errs, no_occ = F,durEU = F)
-		saveRDS(MM_betaE_betaR_IR,paste0(outputdir,"/MM_ANAN.RData"))
-	}
-	# MM_betaE_betaR_IR <-readRDS(paste0(outputdir,"/MM_ANAN.RData"))
 }
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -809,11 +832,19 @@ DTseam[ lfstat_wave ==1 & is.finite(occ_wave), wtd.mean(occwage_wave,na.rm=T, we
 DTseam[ stayer_anan==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
 DTseam[ stayer_anan==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
 
-DTseam[ changer_anan==T & EU_wave==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
-DTseam[ changer_anan==T & EU_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+#DTseam[ changer_anan==T & EU_wave==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+#DTseam[ changer_anan==T & EU_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+
+#DTseam[ changer_anan==T & UE_wave==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+#DTseam[ changer_anan==T & UE_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+
+DTseam[ changer_anan==T & (EU_wave==T|UE_wave==T) & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+DTseam[ changer_anan==T & (EU_wave==T|UE_wave==T) & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
 
 DTseam[ changer_anan==T & UE_wave==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
 DTseam[ changer_anan==T & UE_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
+
+
 
 DTseam[ changer_anan==T & EE_wave==T & switched_wave==T, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
 DTseam[ changer_anan==T & EE_wave==T & switched_wave==F, wtd.quantile(wagechange_anan, probs = c(.1,.25,.5,.75,.9),na.rm = T, weights = truncweight )]
@@ -859,6 +890,25 @@ MVswrec1_qtls- MVswrec0_qtls
 
 MVnsrec1_qtls- MVnsrec0_qtls
 
+#Overall change over the cycle:
+qtls_extcomb <- c(0.025,.05,.1,.25,.5,.75,.9,.95,0.975)
+dat_qtls_rec0 <- DTseam[recIndic_wave==F , wtd.quantile(wagechange_anan, p=qtls_extcomb,na.rm=T,weights=truncweight)]
+dat_qtls_rec1 <- DTseam[recIndic_wave==T , wtd.quantile(wagechange_anan, p=qtls_extcomb,na.rm=T,weights=truncweight)]
+dat_qtls_rec0 - dat_qtls_rec1
+
+dat_skew_rec0 <-DTseam[ recIndic_wave==F, wtd.mean((wagechange_anan - wtd.mean(wagechange_anan,weights=truncweight) )^3,weights=truncweight)*
+							wtd.var(wagechange_anan,weights=truncweight)^(-3/2) ]
+
+#ModSkew_rec <- DTseam[ rec==1 & wchng>-99, mean((wchng - mean(wchng))^3)*var(wchng)^(-3/2)]
+#ModSkew_exp <- DTseam[ rec==0 & wchng>-99, mean((wchng - mean(wchng))^3)*var(wchng)^(-3/2)]
+
+dat_GroenveldMeeden_rec <- DTseam[ recIndic_wave==T, wtd.GroenveldMeeden(wagechange_anan,truncweight)]
+dat_GroenveldMeeden_exp <- DTseam[ recIndic_wave==F, wtd.GroenveldMeeden(wagechange_anan,truncweight)]
+
+dat_MAD_rec <- DTseam[ recIndic_wave==T, wtd.mad(wagechange_anan,truncweight)]
+dat_MAD_exp <- DTseam[ recIndic_wave==F, wtd.mad(wagechange_anan,truncweight)]
+
+
 
 # overall net flow matrix
 DTseam[ sw==T & ch==T & occL ==occD, occLDNA := T ]
@@ -876,13 +926,21 @@ grossL[4,c(1,2,3)] <- DTseam[ occL==4 & sw==T & ch==T , ftable(occD)/sum(is.fini
 
 netL <- array(0, dim=c(4,4))
 netLUi <- array(0, dim=c(4,4,2))
+grossVar <- array(dim=c(5,2))
 for( li in seq(1,4)){
 	for( di in seq(1,4)){
 		netL[li,di] = grossL[li,di] - grossL[di,li]
 	}
 }
 
+gross_marg             <- DTseam[ sw==T & ch==T &(EEfrq==T|UEfrq==T) , ftable(occD)/sum(is.finite(occD))]
+#how these change over the cycle
+gross_margR1           <- DTseam[ sw==T & ch==T &(EEfrq==T|UEfrq==T) & recIndic2_wave==T , ftable(occD)/sum(is.finite(occD))]
+gross_margR0           <- DTseam[ sw==T & ch==T &(EEfrq==T|UEfrq==T) & recIndic2_wave==F , ftable(occD)/sum(is.finite(occD))]
+
+
 for(Ui in c(T,F)){
+	ii = ifelse(Ui, 1,2)
 	grossL <- array(0,dim = c(4,4)) 
 	noccsw <- array(0,dim = c(4)) 
 	noccsw <- DTseam[ sw==T & ch==T & EUfrq==Ui, ftable(occL)/sum(is.finite(occL)& is.finite(occD))]
@@ -890,11 +948,17 @@ for(Ui in c(T,F)){
 	grossL[2,c(1,3,4)] <- DTseam[ occL==2 & sw==T & ch==T & EUfrq==Ui , ftable(occD)/sum(is.finite(occD))]*noccsw[2]
 	grossL[3,c(1,2,4)] <- DTseam[ occL==3 & sw==T & ch==T & EUfrq==Ui , ftable(occD)/sum(is.finite(occD))]*noccsw[3]
 	grossL[4,c(1,2,3)] <- DTseam[ occL==4 & sw==T & ch==T & EUfrq==Ui , ftable(occD)/sum(is.finite(occD))]*noccsw[4]
+	grossVar[1,ii] = var(grossL[1,c(2,3,4)]/noccsw[1])
+	grossVar[2,ii] = var(grossL[2,c(1,3,4)]/noccsw[2])
+	grossVar[3,ii] = var(grossL[3,c(1,2,4)]/noccsw[3])
+	grossVar[4,ii] = var(grossL[4,c(1,2,3)]/noccsw[4])
+	# weighted average across these, the calibration target!
+	grossVar[5,ii] = grossVar[1,ii]*noccsw[1]+grossVar[2,ii]*noccsw[2]+grossVar[3,ii]*noccsw[3]+grossVar[4,ii]*noccsw[4]
 	
 	netL <- array(0, dim=c(4,4))
 	for( li in seq(1,4)){
 		for( di in seq(1,4)){
-			ii = ifelse(Ui, 1,2)
+			#ii = ifelse(Ui, 1,2)
 			netLUi[li,di,ii] = grossL[li,di] - grossL[di,li]
 		}
 	}

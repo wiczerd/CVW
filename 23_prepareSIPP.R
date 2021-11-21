@@ -1,4 +1,3 @@
-# June 22, 2016
 
 # Read in SIPP data and prepare it for analysis
 library(foreign)
@@ -76,8 +75,10 @@ sipp <- sipp[!is.na(month) & !is.na(year),]
 sipp[, date := as.Date(paste(month, "/1/", year, sep=""), "%m/%d/%Y")]
 
 # create unique ID across all panels
-sipp[, id := paste(id, panel, sep = "")]
-sipp[, id := as.integer(factor(id)) ]
+sipp[, uid := paste(id, panel, sep = "")]
+sipp[, uid := as.integer(factor(uid)) ]
+
+save.dta13(subset(sipp, select = c("uid","id","panel")), file="~/Dropbox/Carrillo_Visschers_Wiczer/SIPP/idkey.dta")
 
 # sort by id and date
 setkey(sipp, id, date)
@@ -165,6 +166,10 @@ sipp[lfstat == 1 & is.na(newemp), newemp := FALSE]
 sipp[newemp == TRUE, estintid := cumsum(newemp), by = id]
 sipp[lfstat == 1, estintid := na.locf(estintid, na.rm = FALSE), by = id]
 sipp[, newemp := NULL]
+#job duration
+sipp[ lfstat==1, jobdur:=seq_len(.N), by=list(id,estintid)]
+sipp[ lfstat==1, endjobdur:= max(jobdur), by=list(id,estintid)]
+
 
 # create an unemployment stint id
 sipp[, newunemp := lfstat >= 2 & (last.lfstat == 1 | mis == 1)]
@@ -442,7 +447,7 @@ sipp <- subset(sipp, age >=16 & age<=65)
 sipp[, Young := age <= 30]
 sipp[age < 31, ageGrp := 1]
 sipp[age >= 31 & age < 56, ageGrp := 2]
-sipp[age >= 56, ageGrp := 3]
+sipp[age >= 56 & age<=65, ageGrp := 3]
 sipp[, HSCol := (educ >= 4) + (educ >= 2)]
 sipp[ , maxmis:= max(mis), by=id]
 
