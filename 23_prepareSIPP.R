@@ -985,8 +985,7 @@ sipp[ date>= (date0+365*5) & date<(date0+365*6), yri := 6]
 
 ########## save prepared data--------------
 #a bit of cleanup
-sipp[ , c("PCEPI","last.earnm","last.job",
-		  "smonth","syear","epppnum","ui_r"):=NULL]
+sipp[ , c("PCEPI","last.earnm","last.job","epppnum"):=NULL]
 
 sipp[ , date0:=NULL]
 #saveRDS(sipp, "./preparedSipp.RData")

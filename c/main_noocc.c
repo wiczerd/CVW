@@ -46,11 +46,11 @@ int fix_wdist_now = 0 ;
 
 int maxiter = 1000; //1000
 double vftol = 1e-4;
-double rhotightening = 1.;
-double caltol = 1e-3;
-double smth_flows = 0.25;
-double smth_sw    = 0.025;
-double smth_wchng = 0.05;
+double const rhotightening = 1.;
+double const caltol = 1e-3;
+double const smth_flows = 0.25;
+double const smth_sw    = 0.005;
+double const smth_wchng = 0.01;
 
 // THESE are set in main, possibly by command line
 int cal_now, cf_now,jac_now;
@@ -70,8 +70,11 @@ int const Ntrx    = 8; // number of transitions: EEns,EUns,UEns,stns,EEsw,EUsw,U
 
 int const Tnew = 4; //periods of new-ness to employment
 
-double     qtlgrid[] = {0.1,0.25,0.5,0.75,0.9};
-double     edgeqtls[] = {0.025, 0.05, 0.5, 0.95,0.975}; //{0.05, 0.1, 0.5, 0.9,0.95};
+double const alphascl = 0.15;
+
+double qtlgrid[] = {0.1,0.25,0.5,0.75,0.9};
+double edgeqtls[] = {0.025, 0.05, 0.5, 0.95,0.975}; //{0.05, 0.1, 0.5, 0.9,0.95};
+double extqtls[]  = {0.025, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95,0.975};
 int        Nparams = 16;
 int        Ntargets= 8;
 
@@ -80,19 +83,19 @@ int        Npar_cluster[4] ={6,0,0,0}; // first the flows parameters, then the d
 int        Ntgt_cluster[4] ={6,0,0,0};
 
 int nflows=0; // number of net flows across occupations, will be useful for allocating parameters, etc
-int ntgtavgflow = 9; //overall flows, like J2J rate, finding rate, separation rate etc.
+int ntgtavgflow = 3; //overall flows, like J2J rate, finding rate, separation rate etc.
 
 
 int eps_2emg = 1; //should we use a double-exponentially modified gaussian, or just normal
 int const nstarts = 1;  // how many starts per node
 
-double beta	= 0.997;		// discount factor
-double b 	= 0.0; 		    // unemployment benefit
-double wage_lev = 1.;       // will be a shifter so the average wage is >0
-double occ_wlevs[4] = {0.,-0.2657589,-0.4975667,-0.2189076}; // wage levels for each occupation
-double occ_size_dat[] = {0.2636133, 0.3117827, 0.1493095, 0.2752945};
+double const beta	= 0.997;		// discount factor
+double const b 	= 0.4; 		    // unemployment benefit
+double       wage_lev = 1.5;    // will be a shifter so the average wage is >0
+double const occ_wlevs[4] = {0., 0., 0., 0.}; //{0.,-0.2657589,-0.4975667,-0.2189076}; // wage levels for each occupation
+double const occ_size_dat[] = {0.2636133, 0.3117827, 0.1493095, 0.2752945};
 
-double urt_avg = .055;     // average separation rate
+double const urt_avg = .055;     // average separation rate
 
 // specifics for the calibration routine.
 FILE * calhist;
@@ -104,20 +107,18 @@ char exper_f[] = "noXX"; // the label for all the output that depends on a count
 double * solver_state;
 
 
-char * parnames_clu0[] = {"alpha0","lambdaUS_Rec","lambdaUM_Rec","lambdaES_Rec","lambdaEM_Rec","delta_Rec","zloss_Rec","alphaE1","alphaU1",
+char * parnames_clu0[] = {"lambdaUS_Rec","lambdaES_Rec","delta_Rec"
                           };
-char * parnames_clu1[] = {"update_z","scale_z","shape_z","var_pe","autop","gdfather",
+char * parnames_clu1[] = {"var_pe","autop","gdfather",
 						  "stwupdt","var_eps","ltl_eps","rtl_eps"};
-char * parnames_clu2[] = {"Delta_Exp","lamEM_Exp","lamES_Exp","lamUS_Exp","lamUM_Exp","zloss_Exp",
-                          "z_Acoef","z_Amag","eps_Acoef","eps_Amag"};
-char * parnames_cluall[] = {"alpha0","lambdaUS_Rec","lambdaUM_Rec","lambdaES_Rec","lambdaEM_Rec","delta_Rec","zloss_Rec","alphaE1","alphaU1",
-                            "update_z","scale_z","shape_z","var_pe","autop","gdfather","stwupdt","var_eps","ltl_eps","rtl_eps",
-                            "Delta_Exp","lamEM_Exp","lamES_Exp","lamUS_Exp","lamUM_Exp","zloss_Exp",
-                            "z_Acoef","z_Amag","eps_Acoef","eps_Amag"};
+char * parnames_clu2[] = {"Delta_Exp","lamES_Exp","lamUS_Exp","eps_Acoef","eps_Amag"};
+char * parnames_cluall[] = {"lambdaUS_Rec","lambdaES_Rec","delta_Rec",
+                            "var_pe","autop","gdfather","stwupdt","var_eps","ltl_eps","rtl_eps",
+                            "Delta_Exp","lamES_Exp","lamUS_Exp",
+                            "eps_Acoef","eps_Amag"};
 char ** parnames[] = {parnames_clu0,parnames_clu1,parnames_clu2,parnames_cluall};
 
-char * tgtnames_clu0[]   = {"J2J","fnd","sep","swEE","swU","swSt","dur_ratio",
-                            "varflowE","varflowU"};
+char * tgtnames_clu0[]   = {"J2J","fnd","sep"};
 char * tgtnames_clu1[]   = //{"stns10" ,"stns25" ,          "stns75" ,"stns90",
                            // "stsw10" ,"stsw25" ,          "stsw75" ,"stsw90",
                            // "EEns10" ,"EEns25" ,"EEns50" ,"EEns75" ,"EEns90",
@@ -125,17 +126,15 @@ char * tgtnames_clu1[]   = //{"stns10" ,"stns25" ,          "stns75" ,"stns90",
                            // "EUEns10","EUEns25","EUEns50","EUEns75","EUEns90",
                            // "EUEsw10","EUEsw25","EUEsw50","EUEsw75","EUEsw90"};
                            {"stns9010","EEns9010","EUEns9010","EUEmedian",
-                            "stkurtosis","EEskew","EUEskew",
-                            "swnsdif_st9010","swnsdif_EE9010","swnsdif_EUE9010","sw_EUEmedian",
-                            "swnsdif_EEskew","swnsdif_EUEskew"};
-char * tgtnames_clu2[]   = {"swPrUratio","swPrEEratio","frtratio","seprtratio","EEratio",
+                            "stkurtosis","EEskew","EUEskew"
+                            };
+char * tgtnames_clu2[]   = {"frtratio","seprtratio","EEratio",
                             //"recdifMVswp9505","recdifMVswskew","recdifMVswbigloss",
                             //"recdifMVnsp9505","recdifMVnsskew","recdifMVnsbigloss"
                             "exprec025", "exprec05", "exprec10",
                             "exprec25" , "exprec75",
                              "exprec90", "exprec95", "exprec975"};
-char * tgtnames_cluall[]   = {"J2J","fnd","sep","swEE","swU","swSt","dur_ratio",
-                            "nrmflowE","nrmflowU",
+char * tgtnames_cluall[]   = {"J2J","fnd","sep",
                             //  "stns10" ,"stns25" ,          "stns75" ,"stns90",
                             //  "stsw10" ,"stsw25" ,          "stsw75" ,"stsw90",
                             //  "EEns10" ,"EEns25" ,"EEns50" ,"EEns75" ,"EEns90",
@@ -144,9 +143,7 @@ char * tgtnames_cluall[]   = {"J2J","fnd","sep","swEE","swU","swSt","dur_ratio",
                             //  "EUEsw10","EUEsw25","EUEsw50","EUEsw75","EUEsw90",
                               "stns9010","EEns9010","EUEns9010","EUEmedian",
                               "stkurtosis","EEskew","EUEskew",
-                              "swnsdif_st9010","swnsdif_EE9010","swnsdif_EUE9010","sw_EUEmedian",
-                              "swnsdif_EEskew","swnsdif_EUEskew",
-                            "swPrUratio","swPrEEratio","frtratio","seprtratio","EEratio",
+                              "frtratio","seprtratio","EEratio",
                               "exprec025", "exprec05", "exprec10",
                               "exprec25" , "exprec75",
                               "exprec90", "exprec95", "exprec975"};
@@ -161,7 +158,7 @@ char ** tgtnames[] = {tgtnames_clu0,tgtnames_clu1,tgtnames_clu2,tgtnames_cluall}
 struct cal_params{
 	int cluster_hr, rank;
 	double gdfthr;      // probability of a J2J without a choice
-	double lambdaEM0, lambdaES0, lambdaUS0, lambdaUM0; //probability of ability to make a move
+	double lambdaEM_Rec, lambdaES_Rec, lambdaUS_Rec, lambdaUM_Rec; //probability of ability to make a move
 	double lambdaENew,lambdaUNew;   // this is the addl arrival that comes right after a UE transition
 	double alpha0; 	    // scale of alpha function
 	double alphaU1;		// concavity of alpha function
@@ -186,10 +183,10 @@ struct cal_params{
 	double rshape_eps;  // right-tail skewness of epsilon
 	double wage_curve;  // curviness of utility function over wages
     double delta_Exp;
-	double zloss_Exp;   // elasticity wrt zloss prob
-    double delta_avg;     // average separation rate
+	double zloss_Exp;   // expansion rate of zloss prob
+    double delta_Rec   ;     // recession separation rate
 	double lambdaUS_Exp,lambdaUM_Exp,lambdaES_Exp,lambdaEM_Exp; //How the move chance changes over the cycle
-    double zloss;
+    double zloss_Rec;
 	double stwupdate; // update rate for wages of stayers
     double * xparopt, *xsolopt;
 
@@ -296,6 +293,8 @@ struct stats{
 
 	double var_wg; //variance of wages
 	double var_wg_rec[2]; //variance of wages in expansions and recessions
+	double med_abs_dev_rec[2];
+    double GroevMeed_rec[2];
 	double * MVsw_qtls_ratio;
 	double * MVns_qtls_ratio;
 
@@ -366,7 +365,6 @@ int sum_stats_flows(struct cal_params * par, struct valfuns *vf, struct polfuns 
 double param_dist( double * x, struct cal_params *par, int Npar, double * err_vec , int Nerr);
 void compute_derivs(double ** cal_Jacobian, struct cal_params * par0, int printJac );
 
-void fix_wagedists(struct stats *dat, struct stats *mod, struct hists * ht , struct cal_params * par );
 int reset_alphanf(struct cal_params *par,  struct polfuns *pf,struct stats *st,struct stats *dat);
 void shock_cf(  struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct hists *ht, struct shocks *sk ,struct stats *st);
 void ion_permute( int nshocks, int ** idx_ion );
@@ -434,16 +432,16 @@ int main(int argc,char *argv[] ) {
 	sprintf(exper_f,"%s","");
 	nflows = fact_int(JJ)/(fact_int(2)*fact_int(JJ-2));
 
-	Npar_cluster[0] = ntgtavgflow ; // was +nflows or +JJ
-	Npar_cluster[1] = 8;
+	Npar_cluster[0] = 3 ; // was +nflows or +JJ
+	Npar_cluster[1] = 5;
 	if(eps_2emg==1) Npar_cluster[1] +=2;
-	Npar_cluster[2] = 10 ; //cyclical parameters
+	Npar_cluster[2] = 5 ; //cyclical parameters
 	Nparams = 0;
 	for(i=0;i<Ncluster;i++)Nparams += Npar_cluster[i];
-	Ntgt_cluster[0] = ntgtavgflow; // was + nflows or +JJ
-	Ntgt_cluster[1] = 13 ; //for  MSM: IQR for st, EE, EUE, dif btwn sw and ns in IQR & skew, kurtosis of st. N.b.: min distance was wage change distributions for EE, EUE, st in both sw & ns //
+	Ntgt_cluster[0] = 3; // was + nflows or +JJ
+	Ntgt_cluster[1] = 7 ; //for  MSM: IQR for st, EE, EUE, dif btwn sw and ns in IQR & skew, kurtosis of st. N.b.: min distance was wage change distributions for EE, EUE, st in both sw & ns //
 	//Ntgt_cluster[1] =  6*Nqtls - 2; //6 condl distributions, not including medians for stayers //
-	Ntgt_cluster[2] = 5+ (Nextqtls-1); // 5 cyc flow targets, 6 moments
+	Ntgt_cluster[2] = 3+ (Nextqtls-1); // 5 cyc flow targets, 6 moments
 	Ntargets =0;
 	for(i=0;i<Ncluster;i++) Ntargets += Ntgt_cluster[i];
 
@@ -503,7 +501,7 @@ int main(int argc,char *argv[] ) {
 	par.scale_z = 1.;
 	par.shape_z = 1.;
 	par.update_z = 0.05;
-	par.zloss  = 0.025;
+	par.zloss_Rec  = 0.025;
 	par.zloss_Exp =0.;
 
 
@@ -549,14 +547,14 @@ int main(int argc,char *argv[] ) {
 	par.alphaE1 = 0.5;
 	par.alphaU1 = 0.5;
     par.alpha0  = 0.05*pow((double)(JJ-1),-par.alphaE1);
-    par.lambdaUS0  = 0.2 / 0.5;
-    par.lambdaUM0  = 0.2 / 0.5;
-    par.lambdaES0 = 0.01;
-	par.lambdaEM0 = 0.8;
+    par.lambdaUS_Rec  = 0.2 / 0.5;
+    par.lambdaUM_Rec  = 0.2 / 0.5;
+    par.lambdaES_Rec = 0.01;
+	par.lambdaEM_Rec = 0.8;
 	par.kappa     = 0.00 ;
 	par.gdfthr    = 0.5 ;
 	par.wage_curve= 0.0 ;
-	par.delta_avg = 0.01;
+	par.delta_Rec    = 0.01;
 	par.delta_Exp = 0.;
 	par.lambdaUS_Exp = 0.0;
     par.lambdaUM_Exp = 0.0;
@@ -575,24 +573,21 @@ int main(int argc,char *argv[] ) {
                                par.epslev->data[thi] +
                                par.zlev->data[zi] +
                                par.xSlev->data[si]);
-    wage_lev = 1.;
+    wage_lev = 1.5;
 
 
     // parameter space:
-	// alpha0 , lambdaUS, lambdaUM, lambdaES, lambdaEM, delta_avg, zloss_prob
+	// lambdaUS_rec, lambdaES_rec, delta_avg_rec
 	ii =0;
-	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.20;ii++;
+	//par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.20;ii++;
 
 	par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
-    par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
-	par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.05;ii++;
-	par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.25;ii++;
-	par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
-	par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
+    //par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
 
-	//, alphaE_1, alphaU_1
-	par.param_lb[ii] = 0.010; par.param_ub[ii] = 0.90;ii++; //potentially these are not <1
-	par.param_lb[ii] = 0.010; par.param_ub[ii] = 0.90;ii++; //potentially these are not <1
+    par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.25;ii++;
+	//par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.25;ii++;
+	par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
+	//par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
 
 	// alpha_nf matrix
 	//for(i=0;i<JJ;i++){ //was for(i=0;i<nflows;i++)
@@ -601,12 +596,8 @@ int main(int argc,char *argv[] ) {
 	if(Ncluster>1){
 		ii = Npar_cluster[0];
 
-		// update_z, scale_z, shape_z,
-		par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.10;  ii++;
-		par.param_lb[ii] = 1.000; par.param_ub[ii] =10.000; ii++;
-		par.param_lb[ii] = 1.000; par.param_ub[ii] = 7.000; ii++;
 		//var_pe, autop,  gdfather, stwupdate
-		par.param_lb[ii]= 0.001;  par.param_ub[ii]= 0.010;  ii++;
+		par.param_lb[ii]= 0.001;  par.param_ub[ii]= 0.030;  ii++;
 		par.param_lb[ii]= 0.500;  par.param_ub[ii]= 0.999;  ii++;
 		par.param_lb[ii]= 0.01;   par.param_ub[ii]= 0.99;   ii++;
 		par.param_lb[ii]= 0.001;  par.param_ub[ii]= 0.10;   ii++;
@@ -620,35 +611,21 @@ int main(int argc,char *argv[] ) {
 	}
 	if(Ncluster>2){
 		ii = Npar_cluster[1]+Npar_cluster[0];
-		//delta_Exp, lambdaEM, lambdaES, lambdaUS, lambdaUM, zloss (can up-to double)
-		/* This was for the A coefficients:
-		 * par.param_lb[ii]=-2.999;   par.param_ub[ii] = 0.999; ii++;
-		par.param_lb[ii]= 0.001;   par.param_ub[ii] = 0.499; ii++;
-		par.param_lb[ii]=-0.999;   par.param_ub[ii] = 1.999; ii++;
-		par.param_lb[ii]=-0.999;   par.param_ub[ii] = 0.999; ii++; // hitting bound
-        par.param_lb[ii]=-1.999;   par.param_ub[ii] = 0.999; ii++;
-		par.param_lb[ii]=-1.999;   par.param_ub[ii] = 1.999; ii++; */
+		//delta_Exp, lambdaEM_Exp, lambdaES_Exp, lambdaUS_Exp, lambdaUM_exp , zloss_exp (can up-to double)
 
 		par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
+        //par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.35;ii++;
         par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.35;ii++;
-        par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.05;ii++;
-        par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
+        //par.param_lb[ii] = 0.001; par.param_ub[ii] = 0.95;ii++;
         par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.95;ii++;
-        par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
+        //par.param_lb[ii] = 0.0001;par.param_ub[ii] = 0.02;ii++;
 
         // z_Acoef, z_Amag, eps_Acoef, eps_Amag
-        par.param_lb[ii]=-1.499;   par.param_ub[ii] = 0.099; ii++;
-        par.param_lb[ii]= 0.100;   par.param_ub[ii] = 0.999; ii++;
+        //par.param_lb[ii]=-1.499;   par.param_ub[ii] = 0.099; ii++;
+        //par.param_lb[ii]= 0.100;   par.param_ub[ii] = 0.999; ii++;
         par.param_lb[ii]=-1.499;   par.param_ub[ii] = 0.099; ii++;
         par.param_lb[ii]= 0.100;   par.param_ub[ii] = 0.999; ii++;
 
-        /*for(ji=0;ji<JJ;ji++){
-			if(ji>0){
-				par.param_lb[ii]=0.01;
-				par.param_ub[ii] = 1.99;
-				ii++;
-			}
-		}*/
 	}
 
 
@@ -767,7 +744,7 @@ int main(int argc,char *argv[] ) {
             x0starts_j[i] = x0starts[i];
         }
         // ad hoc adjustment:
-        x0starts_j[ntgtavgflow] = .1; x0starts_j[ntgtavgflow+1] = .9;
+        // x0starts_j[ntgtavgflow] = .1; x0starts_j[ntgtavgflow+1] = .9;
         #endif
 
         double mindist = 1e6;
@@ -957,7 +934,9 @@ int main(int argc,char *argv[] ) {
         //  Set to optimal?
         read_params("param_opt.csv", &par);
         glb_par = &par;
-
+        
+        int cal_old = cal_now;
+        cal_now = 0;
         print_lev = 2;
         opt_print = 1;
         exper_f[0] = 0;//sprintf(exper_f,"");
@@ -1028,6 +1007,7 @@ int main(int argc,char *argv[] ) {
 			}
 		}
         convprobs(par.zprob[0],par.zlev,par.z_Acoef,par.z_Amag);
+        gsl_vector_set_zero(par.zlev);
 
 		//success  = disc_Weibull(par.epsprob->data, par.epslev->data, NE,0.,par.scale_eps,par.shape_eps);
 		for(ai=0;ai<NA;ai++)
@@ -1097,6 +1077,7 @@ int main(int argc,char *argv[] ) {
     int print_lev_old = print_lev;
     print_lev = 2;
     opt_print = 1;
+
     par.cluster_hr= Ncluster;
     //baseline, print where we are
     double dist = param_dist(par.xparopt, & par ,Nparams,err,Ntargets);
@@ -1182,19 +1163,19 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 			               pow(wagevec[ii][ji], 1.-par->wage_curve) / (1. - par->wage_curve) / (1. - beta));
 		}
 	}
-
+    // initialize
 	for(ii=0;ii<NUN;ii++){
 		if( par->wage_curve< 0.0001 && par->wage_curve> -0.0001 )
 			gg_set(vf0.WU,ii,0,
-			       (1.-par->lambdaUS0)*b
+			       (1.-par->lambdaUS_Exp)*b
 			       /(1.-beta) +
-			       par->lambdaUS0*(wagevec[ii*NE+NE/2][0])
+			       par->lambdaUS_Exp*(wagevec[ii*NE+NE/2][0])
 			       /(1.-beta));
 		else
 			gg_set(vf0.WU,ii,0,
-		               (1.-par->lambdaUS0)*pow(b, 1.-par->wage_curve) / (1. - par->wage_curve)
+		               (1.-par->lambdaUS_Exp)*pow(b, 1.-par->wage_curve) / (1. - par->wage_curve)
 		               /(1.-beta) +
-		               par->lambdaUS0*pow(wagevec[ii*NE+NE/2][0], 1.-par->wage_curve)/(1.-par->wage_curve)
+		               par->lambdaUS_Exp*pow(wagevec[ii*NE+NE/2][0], 1.-par->wage_curve)/(1.-par->wage_curve)
 		               /(1.-beta));
 		for(ji=1;ji<JJ;ji++)  gg_set(vf0.WU,ii,ji, gg_get(vf0.WU,ii,0));
 	}
@@ -1216,11 +1197,12 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
                     int iU = ai * NP * NS * NZ + pi * NS * NZ + si * NZ + zi;
 
-                    double lambdaEMhr = ai == 0 ? par->lambdaEM0 : par->lambdaEM_Exp;
-                    double lambdaEShr = ai == 0 ? par->lambdaES0 : par->lambdaES_Exp; //par->lambdaES0 * exp(par->lambdaES_Exp * (double) ai);
+                    double lambdaEMhr = ai == 0 ? par->lambdaEM_Rec : par->lambdaEM_Exp;
+                    double lambdaEShr = ai == 0 ? par->lambdaES_Rec : par->lambdaES_Exp; //par->lambdaES_Rec * exp(par->lambdaES_Exp * (double) ai);
+                    lambdaEShr *= alphascl; //to scale it with alpha
 
-                    double delta_hr   = ai == 0 ? par->delta_avg : par->delta_Exp ; //par->delta_avg * exp(par->delta_Exp * (double) ai);
-                    double zloss_hr   = ai == 0 ? par->zloss     : par->zloss_Exp; //par->zloss * exp(par->zloss_Exp * (double) ai);
+                    double delta_hr   = ai == 0 ? par->delta_Rec : par->delta_Exp ; //par->delta_Rec * exp(par->delta_Exp * (double) ai);
+                    double zloss_hr   = ai == 0 ? par->zloss_Rec : par->zloss_Exp; //par->zloss_Rec * exp(par->zloss_Exp * (double) ai);
 
                     double lambdaEMold,lambdaESold,deltaold,zlossold;
                     lambdaEMold = lambdaEMhr;
@@ -1341,7 +1323,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
                                         EztWE[jji] += gsl_max(
                                                 gg_get(vf0.WE,
                                                        aai * NP * NS * NZ * NE + ppi * NS * NZ * NE + zzi * NE + tti,
-                                                       jji), EzWU) *
+                                                       jji), EzWU) * //should be EAPWE instead of EzWU
                                                       gsl_vector_get(par->zprob[ai], zzi) *
                                                       (par->epsprob[ai]->data[tti]) * gg_get(par->Atrans, ai, aai) *
                                                       gg_get(par->Ptrans[ji], pi, ppi);
@@ -1353,7 +1335,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
                         if (jji != ji) {
                             // constructing RE
                             dirjE[jji] =lambdaEMhr * EztWE[jji] +
-                                     (1. - lambdaEMhr) *EAPWE; //(par->stwupdate *EzWE[jji]  + (1. - par->stwupdate) * EAPWE);
+                                     (1. - lambdaEMhr) * (par->stwupdate *EzWE[jji]  + (1. - par->stwupdate) * EAPWE);
                             // REhr is needed for whether we want to switch or not. That should have optimal search directions in it
                             REhr += dirjE[jji] * gsl_min(par->alpha0 *
                                                          exp(par->alpha_nf[ji][jji] * par->alphaE1) *
@@ -1369,7 +1351,7 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
                                                  pow(gg_get(pf->sE[jji], ii, ji), 1. - par->alphaE1), 1.);
                     }
                     REhr += gsl_max(1. - totalphaS, 0.) * // potentially update z:
-                            ((1. - par->update_z) * EAPWE + par->update_z * EzWE[ji]);
+                            (EAPWE );
                     if (gsl_finite(REhr) == 0) {
                         //printf("Uhoh. Bad REhr");
                     }
@@ -1387,6 +1369,10 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
                     if (isinf(mhr) || isnan(mhr)) {
                         mhr = REhr >= EAPWE ? 1. : 0.;
                     }
+
+                    // for no switching
+                    mhr = 0.;
+
                     if(oldE==1)
                         gg_set(pf->mE, ii, ji, mhr);
 
@@ -1407,22 +1393,16 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
                         }
                         if (sEjiDenom > 0) {
                             for (jji = 0; jji < JJ; jji++) {
-                                if (jji != ji) {
-                                    double dirreturn = dirjE[jji] -
-                                                       par->kappa; //-par->kappa+ lambdaEMhr*EztWE[jji] + (1.-lambdaEMhr)*EzWE[jji]- EAPWE;
-                                    dirreturn = dirreturn < 0 ? 0. : dirreturn;
-                                    gg_set(pf->sE[jji], ii, ji,
-                                           exp(par->alpha_nf[ji][jji]) *
-                                           pow(dirreturn / sEnorm, 1. / par->alphaE1)
-                                           / sEjiDenom);
+                                if (jji == ji) {
+                                    gg_set(pf->sE[jji], ii, ji, 1.);
                                 } else { // this is kind of redundant because it should have initialized to 0
                                     gg_set(pf->sE[jji], ii, ji, 0.);
                                 }
                             }
                         } else {
                             for (jji = 0; jji < JJ; jji++) {
-                                if (jji != ji) {
-                                    gg_set(pf->sE[jji], ii, ji, 1. / (double) (JJ - 1));
+                                if (jji == ji) {
+                                    gg_set(pf->sE[jji], ii, ji, 1.);
                                 } else
                                     gg_set(pf->sE[jji], ii, ji, 0.);
                             }
@@ -1491,9 +1471,11 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 
 				int jji,zzi,tti,aai,ppi;
 
-				double lambdaUShr = ai==0 ? par->lambdaUS0: par->lambdaUS_Exp;
-                double lambdaUMhr = ai==0 ? par->lambdaUM0: par->lambdaUM_Exp;
-                double zloss_hr   = ai==0 ? par->zloss    : par->zloss_Exp   ; //relevant because might get a really bad z draw
+				double lambdaUShr = ai==0 ? par->lambdaUS_Rec: par->lambdaUS_Exp;
+                double lambdaUMhr = ai==0 ? par->lambdaUM_Rec: par->lambdaUM_Exp;
+                double zloss_hr   = ai==0 ? par->zloss_Rec   : par->zloss_Exp   ; //relevant because might get a really bad z draw
+                lambdaUShr *= alphascl; //to scale it as if also going through alpha
+
 
                 double EzDelWU = 0.; //value if in the forced-switch position
                 for(jji=0;jji<JJ;jji++) {
@@ -1570,13 +1552,17 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 							        gsl_vector_get(par->UEepsprob[ai],tti)*gg_get(par->Atrans,ai,aai)*gg_get(par->Ptrans[ji], pi, ppi);}
 					}
 				}
-				double EWnom = (1.-lambdaUShr)*EAPWU+ lambdaUShr*gsl_max(EtWE,EAPWU)  ;
+				double EWnom = (1.-lambdaUShr)*EAPWU + lambdaUShr*gsl_max(EtWE,EAPWU)  ;
 				double mhr = exp((RUhr-EWnom)/rhotightening)/
 				               (exp((RUhr-EWnom)/rhotightening)+1.);
 				if( isinf(mhr) || isnan(mhr) ){
 					mhr = RUhr > (1.-lambdaUShr)*EAPWU+ lambdaUShr*gsl_max(EtWE,EAPWU) ?
 							1. : 0. ;
 				}
+				//+++++++++++++++++++++++
+				// Force to be 0 switch prob
+				mhr = 0.;
+
 				gg_set(pf->mU,ii,ji, mhr );
 				//search dir for next iterations
 				double sUdenom = 0.;
@@ -1591,20 +1577,15 @@ int sol_dyn( struct cal_params * par, struct valfuns * vf, struct polfuns * pf, 
 				}
 				if(sUdenom > 0 ){
 					for (jji = 0; jji < JJ; jji++) {
-						if (jji != ji) {
-							double dirreturn = dirjU[jji]-par->kappa; //-par->kappa + EzWU[jji] - EAPWU;
-							dirreturn = dirreturn < 0 ? 0. : dirreturn;
-							gg_set(pf->sU[jji], ii, ji,
-							        exp(par->alpha_nf[ji][jji])*
-							        pow(dirreturn/sUnorm, 1. / par->alphaU1)
-							        / sUdenom);
+						if (jji == ji) {
+							gg_set(pf->sU[jji], ii, ji,1.);
 						} else {//this is kind of redundant, because it should have initialized to 0
 							gg_set(pf->sU[jji], ii, ji, 0.);
 						}
 					}
 				}else{
 					for(jji=0;jji<JJ;jji++){
-						if(jji!=ji){ gg_set(pf->sU[jji],ii,ji,1./(double)(JJ-1) );
+						if(jji==ji){ gg_set(pf->sU[jji],ii,ji,1.);
 						}else
 							gg_set(pf->sU[jji],ii,ji,0.);
 					}
@@ -1763,9 +1744,6 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 	gsl_vector * zlev_0 = gsl_vector_calloc(NZ);
 	gsl_vector_memcpy(zlev_0,par->zlev);
 
-//	double zloss0 = par->zloss;
-//	double delta0 = par->delta_avg;
-//	double gdfthr0 = par->gdfthr;
 
 	gsl_vector * eps_0 = gsl_vector_calloc(NE);
 	gsl_vector_memcpy(eps_0,par->epslev);
@@ -1821,7 +1799,6 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 			for(zi=0;zi<NZ;zi++) gsl_vector_set(par->zlev,zi,zmean + 0.0001*((double)zi-(double)NZ/2.)/(double)NZ);
 	        printf("Setting z shocks to their mean %f\n",zmean);
 
-//	        par->zloss=0.;
 
             fprintf(scenariokey," 1,");
         }else
@@ -1834,7 +1811,7 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
                 gsl_vector_set(par->epslev,ei,epsmean+ 0.0001*((double)ei-(double)NE/2. )/(double)NE);
 
             //par->gdfthr =0.;
-            //par->delta_avg=0.;
+            //par->delta_Rec   =0.;
 
 	        printf("Setting epsilon shocks to their mean %f\n",epsmean);
 
@@ -1880,9 +1857,6 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
         sum_stats( par, &vf_noX[idx],&pf_noX[idx],&ht_noX[idx],&sk_noX[idx], &st_noX[idx]);
         print_lev = pl_0; verbose =vbs_0;
 
-//	    par->zloss = zloss0;
-//	    par->gdfthr =gdfthr0;
-//	    par->delta_avg= delta0;
 
 	    gsl_vector_memcpy(par->Plev, Plev_0);
         gsl_vector_memcpy(par->Alev,Alev_0);
@@ -2044,47 +2018,150 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
         free(idx_ion[i]);
 	free(idx_ion);
 
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    // now do experiments with cyclicality of returns off:
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    print_lev = 0;
+    int ncycrets = 2; //each cyclical sensitivity
+    nscenario = 2;
+
+    double z_Amag0 = par->z_Amag;
+    double eps_Amag0 = par->eps_Amag;
+    double z_Acoef0 = par->z_Acoef;
+    double eps_Acoef0 = par->eps_Acoef;
+
+
+    struct shocks  sk_norX[nscenario];
+    struct hists   ht_norX[nscenario];
+    struct valfuns vf_norX[nscenario];
+    struct polfuns pf_norX[nscenario];
+    struct stats   st_norX[nscenario];
+    for(i=0;i<nscenario;i++)
+        alloc_qtls( &st_norX[i] );
+    double nor_edge_qtls_all[nscenario][Nqtls];
+    double nor_edge_qtls_cyc[2][nscenario][Nqtls];
+    double nor_exprec_qtls[nscenario][Nextqtls];
+
+    int appendhr=0;
+
+    for(idx=0;idx<nscenario;idx++) {
+
+        allocate_mats(&vf_norX[idx], &pf_norX[idx], &ht_norX[idx], &sk_norX[idx]);
+
+        if(idx == 0 ){
+            par->z_Amag = 0.0;
+            par->z_Acoef = 0.0;
+        }
+        if(idx==1){
+            par->eps_Amag = 0.0;
+            par->eps_Acoef = 0.0;
+        }
+        double zlev1[NZ]; double zprob1[NZ];
+        disc_Weibull( zprob1,zlev1,NZ, 0., par->scale_z, par->shape_z );
+        double zprobsum =0.;
+        int ii,ai;
+        for(ii=0;ii<NZ;ii++){
+            gsl_vector_set( par->zlev,ii,zlev1[ii] );
+            zprobsum += zprob1[ii];
+            for(ai=0;ai<NA;ai++)
+                gsl_vector_set( par->zprob[ai],ii,zprob1[ii] );
+        }
+        convprobs(par->zprob[0],par->zlev,par->z_Acoef,par->z_Amag);
+        for(ai=0;ai<NA;ai++) disc_2emg(par->epsprob[ai]->data,par->epslev->data,(int)par->epsprob[ai]->size,
+                                                 0.,par->var_eps,par->lshape_eps,par->rshape_eps);
+        // convolve with cyclical adjustment for recession:
+        convprobs(par->epsprob[0],par->epslev,par->eps_Acoef,par->eps_Amag);
+
+        memcpy_shocks(&sk_norX[idx], sk);
+        memcpy_pf(&pf_norX[idx], pf);
+        memcpy_vf(&vf_norX[idx], vf);
+
+        print_lev =0;verbose =0;
+
+        sol_dyn( par, &vf_norX[idx], &pf_norX[idx], &sk_norX[idx] );
+        sim( par, &vf_norX[idx], &pf_norX[idx], &ht_norX[idx], &sk_norX[idx] );
+        int cf_old = cf_now; cf_now=1; // pretty sure should already have cf_now=1
+        sum_stats( par, &vf_norX[idx],&pf_norX[idx],&ht_norX[idx],&sk_norX[idx], &st_norX[idx]);
+        print_lev = pl_0; cf_now = cf_old;
+        verbose =vbs_0;
+
+        for(qi=0;qi<Nqtls;qi++) nor_edge_qtls_all[idx][qi] = st_norX[idx].edge_qtls[qi];
+        for(ri=0;ri<2;ri++) {
+            for (qi = 0; qi < Nqtls; qi++) nor_edge_qtls_cyc[ri][idx][qi] = st_norX[idx].edge_qtls_rec[ri][qi];
+        }
+        for(qi=0;qi<Nextqtls;qi++)nor_exprec_qtls[idx][qi] = st_norX[idx].exprec_qtls[qi];
+
+        printarray("nor_exprec_qtls.csv",nor_exprec_qtls[idx],Nextqtls,appendhr);
+        appendhr = 1;
+        free_mats( &vf_norX[idx],&pf_norX[idx],&ht_norX[idx],&sk_norX[idx] );
+
+        // put it all back:
+        par->z_Amag = z_Amag0;
+        par->eps_Amag = eps_Amag0;
+        par->z_Acoef = z_Acoef0;
+        par->eps_Acoef =  eps_Acoef0;
+
+    }
+    //put it back:
+    double zlev1[NZ]; double zprob1[NZ];
+    disc_Weibull( zprob1,zlev1,NZ, 0., par->scale_z, par->shape_z );
+    double zprobsum =0.;
+    int ii,ai;
+    for(ii=0;ii<NZ;ii++){
+        gsl_vector_set( par->zlev,ii,zlev1[ii] );
+        zprobsum += zprob1[ii];
+        for(ai=0;ai<NA;ai++)
+            gsl_vector_set( par->zprob[ai],ii,zprob1[ii] );
+    }
+    convprobs(par->zprob[0],par->zlev,par->z_Acoef,par->z_Amag);
+    for(ai=0;ai<NA;ai++) disc_2emg(par->epsprob[ai]->data,par->epslev->data,(int)par->epsprob[ai]->size,
+                                   0.,par->var_eps,par->lshape_eps,par->rshape_eps);
+    // convolve with cyclical adjustment for recession:
+    convprobs(par->epsprob[0],par->epslev,par->eps_Acoef,par->eps_Amag);
+
+
+
     ////////////////////////////////////////////////////////
     // turn off flows
 
-    printf("+++++++++++++++++++\n Going into experiments turning off flows");
+    printf("+++++++++++++++++++\n Going into experiments turning off flows \n");
 	sprintf(exper_f,"noff") ;
 
 	//change some parameter values:
 	double Aexp = 1.; //gsl_vector_get(par->Alev,1);
 
 	double delA0     = par->delta_Exp;
-	double delm0     = par->delta_avg;
+	double delm0     = par->delta_Rec;
 	par->delta_Exp = delm0; //0.;
-	par->delta_avg =   delm0; //delm0*exp(delA0);
+	par->delta_Rec = delm0; //delm0*exp(delA0);
 
 	double zlossA0   = par->zloss_Exp;
-	double zlossm0   = par->zloss;
-	par->zloss_Exp = zlossA0; ///0.;
-	par->zloss       = zlossA0; //zlossm0*exp(zlossA0);
+	double zlossm0   = par->zloss_Rec;
+	par->zloss_Exp   = zlossA0; ///0.;
+	par->zloss_Rec   = zlossA0; //zlossm0*exp(zlossA0);
 
 	double lamEMA0      = par->lambdaEM_Exp;
-	double lamEMm0      = par->lambdaEM0;
-	par->lambdaEM0      = lamEMA0;//lamEMm0*exp(lamEMA0);
-	par->lambdaEM_Exp = lamEMA0;
+	double lamEMm0      = par->lambdaEM_Rec;
+	par->lambdaEM_Rec   = lamEMA0;//lamEMm0*exp(lamEMA0);
+	par->lambdaEM_Exp   = lamEMA0;
 
 	double lamESA0      = par->lambdaES_Exp;
-	double lamESm0      = par->lambdaES0;
-	par->lambdaES_Exp = lamESA0;
-	par->lambdaES0      = lamESA0;
+	double lamESm0      = par->lambdaES_Rec;
+	par->lambdaES_Exp   = lamESA0;
+	par->lambdaES_Rec   = lamESA0;
 
 	double lamUSA0      = par->lambdaUS_Exp;
-	double lamUSm0      = par->lambdaUS0;
-	par->lambdaUS0      = lamUSA0; //lamUSm0*exp(lamUSA0);
-	par->lambdaUS_Exp = lamUSA0; //0.;
+	double lamUSm0      = par->lambdaUS_Rec;
+	par->lambdaUS_Rec   = lamUSA0; //lamUSm0*exp(lamUSA0);
+	par->lambdaUS_Exp   = lamUSA0; //0.;
 
     double lamUMA0      = par->lambdaUM_Exp;
-    double lamUMm0      = par->lambdaUM0;
-    par->lambdaUM0      = lamUMA0; //lamUMm0*exp(lamUMA0);
-    par->lambdaUM_Exp = lamUMA0; //0.;
+    double lamUMm0      = par->lambdaUM_Rec;
+    par->lambdaUM_Rec   = lamUMA0; //lamUMm0*exp(lamUMA0);
+    par->lambdaUM_Exp   = lamUMA0; //0.;
 
-    //par->zloss =0.;
-	//par->gdfthr =0.;
     struct shocks sk_noflow;
     struct hists ht_noflow;
     struct valfuns vf_noflow;
@@ -2111,12 +2188,12 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 	par->lambdaUS_Exp = lamUSA0;
     par->lambdaUM_Exp = lamUMA0;
 
-	par->delta_avg = delm0;
-	par->zloss     = zlossm0;
-	par->lambdaEM0 = lamEMm0;
-	par->lambdaES0 =lamESm0;
-	par->lambdaUS0 = lamUSm0;
-    par->lambdaUM0 = lamUMm0;
+	par->delta_Rec    = delm0;
+	par->zloss_Rec    = zlossm0;
+	par->lambdaEM_Rec = lamEMm0;
+	par->lambdaES_Rec =lamESm0;
+	par->lambdaUS_Rec = lamUSm0;
+    par->lambdaUM_Rec = lamUMm0;
 
 	printf("The additional variance due to flows is: %f \n", st->var_wg - st_noflow.var_wg);
 	printf("The additional variance due to flows is: %f in recession and %f in expansion \n",
@@ -2143,7 +2220,6 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 	double edge_qtls_all[nscenario][Nqtls];
 	double edge_qtls_cyc[2][nscenario][Nqtls];
 
-
 	scenariokey = fopen( "fscenariokey.csv","w+" );
 	fprintf(scenariokey,"Num, delta off, zloss off, lamUM off, lamUS off, lamES off, lamEM off \n");
 	fclose(scenariokey);
@@ -2168,27 +2244,27 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
 		if(idx_ion[idx][0]==1){
 			//then we're turning off delta_Exp
             par->delta_Exp = delA0; //0.;
-            par->delta_avg =   delA0; //delm0*exp(delA0);
+            par->delta_Rec = delA0; //delm0*exp(delA0);
             fprintf( scenariokey," 1,");
 		}else
             fprintf( scenariokey," 0,");
 		if(idx_ion[idx][1]==1){
 			//then we're turning off zloss_Exp
             par->zloss_Exp = zlossA0; ///0.;
-            par->zloss       = zlossA0; //zlossm0*exp(zlossA0);
+            par->zloss_Rec = zlossA0; //zlossm0*exp(zlossA0);
             fprintf( scenariokey," 1,");
 		} else
 		    fprintf(scenariokey, " 0,");
         if(idx_ion[idx][2]==1){
             //then we're turning off lambdaUS_Exp
-            par->lambdaUS0      = lamUSA0; //lamUSm0*exp(lamUSA0);
+            par->lambdaUS_Rec = lamUSA0; //lamUSm0*exp(lamUSA0);
             par->lambdaUS_Exp = lamUSA0; //0.;
             fprintf( scenariokey," 1,");
         } else
             fprintf(scenariokey, " 0,");
         if(idx_ion[idx][3]==1){
             //then we're turning off lambdaUM_Exp
-            par->lambdaUM0      = lamUMA0; //lamUMm0*exp(lamUMA0);
+            par->lambdaUM_Rec      = lamUMA0; //lamUMm0*exp(lamUMA0);
             par->lambdaUM_Exp = lamUMA0; //0.;
             fprintf( scenariokey," 1,");
         } else
@@ -2196,13 +2272,13 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
         if(idx_ion[idx][4]==1){
             //then we're turning off lambdaES_Exp
             par->lambdaES_Exp = lamESA0;
-            par->lambdaES0      = lamESA0;
+            par->lambdaES_Rec      = lamESA0;
             fprintf( scenariokey," 1,");
         } else
             fprintf(scenariokey, " 0,");
         if(idx_ion[idx][5]==1){
 			//then we're turning off lambdaEM_Exp
-            par->lambdaEM0 = lamEMA0; //lamEMm0*exp(lamEMA0);
+            par->lambdaEM_Rec = lamEMA0; //lamEMm0*exp(lamEMA0);
             par->lambdaEM_Exp = lamEMA0;//0.;
             fprintf( scenariokey," 1,");
 		} else
@@ -2222,6 +2298,7 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
         for(ri=0;ri<2;ri++) {
             for (qi = 0; qi < Nqtls; qi++) edge_qtls_cyc[ri][idx][qi] = st_nofX[idx].edge_qtls_rec[ri][qi];
         }
+
         free_mats( &vf_nofX[idx],&pf_nofX[idx],&ht_nofX[idx],&sk_nofX[idx] );
 
 		// put it all back
@@ -2232,12 +2309,12 @@ void shock_cf(struct cal_params * par, struct valfuns *vf, struct polfuns *pf, s
         par->lambdaES_Exp =lamESA0;
         par->lambdaEM_Exp = lamEMA0;
 
-        par->delta_avg = delm0;
-        par->zloss     = zlossm0;
-        par->lambdaEM0 = lamEMm0;
-        par->lambdaES0 =lamESm0;
-        par->lambdaUS0 = lamUSm0;
-        par->lambdaUM0 = lamUMm0;
+        par->delta_Rec    = delm0;
+        par->zloss_Rec    = zlossm0;
+        par->lambdaEM_Rec = lamEMm0;
+        par->lambdaES_Rec =lamESm0;
+        par->lambdaUS_Rec = lamUSm0;
+        par->lambdaUM_Rec = lamUMm0;
 
 	}
 
@@ -2627,12 +2704,12 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                         Pjhist[ji][si+wi*Npwave] = Pt[ji];
                 }
                 for(si=0;si<Npwave;si++) {
-                    lambdaEMhist[si + wi * Npwave] = At == 0 ? par->lambdaEM0 : par->lambdaEM_Exp;
-                    lambdaEShist[si + wi * Npwave] = At == 0 ? par->lambdaES0 : par->lambdaES_Exp;
-                    lambdaUShist[si + wi * Npwave] = At == 0 ? par->lambdaUS0 : par->lambdaUS_Exp;
-                    lambdaUMhist[si + wi * Npwave] = At == 0 ? par->lambdaUM0 : par->lambdaUM_Exp;
-                    deltahist[si + wi * Npwave] = At == 0 ? par->delta_avg : par->delta_Exp;
-                    zlosshist[si + wi * Npwave] = At == 0 ? par->zloss : par->zloss_Exp;
+                    lambdaEMhist[si + wi * Npwave] = At == 0 ? par->lambdaEM_Rec          : par->lambdaEM_Exp ;
+                    lambdaEShist[si + wi * Npwave] = At == 0 ? par->lambdaES_Rec*alphascl : par->lambdaES_Exp*alphascl;
+                    lambdaUShist[si + wi * Npwave] = At == 0 ? par->lambdaUS_Rec*alphascl : par->lambdaUS_Exp*alphascl;
+                    lambdaUMhist[si + wi * Npwave] = At == 0 ? par->lambdaUM_Rec          : par->lambdaUM_Exp;
+                    deltahist[si + wi * Npwave] = At == 0 ? par->delta_Rec : par->delta_Exp;
+                    zlosshist[si + wi * Npwave] = At == 0 ? par->zloss_Rec : par->zloss_Exp;
                 }
                 for(si=0;si<Npwave;si++) {
                     Athist[si + wi * Npwave] = At;
@@ -2650,6 +2727,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
             for(i=0;i<Nsim;i++){
                 int UEtm1 =0; // state that just found a new job. Will use this to give the EE boost
                 int jtsep =-1; // index of occupation when lost job
+                int invol_z = 0; //indicator for if they involuntarily lost and have to switch
                 for(ti=0;ti<TTT;ti++) {
 
                     double lambdaEM_hr = UEtm1==0? lambdaEMhist[ti] : lambdaEMhist[ti]*par->lambdaENew;
@@ -2703,6 +2781,9 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                             // mark unemployed
                             ut[i] = 1;
                             jtsep = jt[i];
+                            if(zloss_hr > gg_get(sk->zlosssel[ll], i, ti)){
+                                invol_z=1;
+                            }
                             // record some stuff about whether voluntary or not
                             if (gg_get(vf->WU, iU, jt[i]) > gg_get(vf->WE, ii, jt[i]) &&
                                 delta_hr <= gg_get(sk->dsel[ll], i, ti) && gg_get(sk->zlosssel[ll], i, ti) >= zloss_hr) {
@@ -2791,12 +2872,15 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                                             J2Jflag = 0;
                                             if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 0);
                                             epst[i] = epstm1[i];
-                                            int xti1 = 0; // lose specific skill
-                                            xSt[i] = xti1;
-
-                                            zt[i] = zt[i] - zipp>=1 ? zt[i] - 1 : zipp;
+                                            if( gg_get(sk->lambdaUSsel[ll], i, ti) < par->stwupdate ) {
+                                                int xti1 = 0; // lose specific skill
+                                                xSt[i] = xti1;
+                                                zt[i] = zt[i] - zipp >= 1 ? zt[i] - 1 : zipp;
+                                            }else{
+                                                zt[i] = ztm1[i]; // no occupation switch
+                                                jt[i] = jtm1[i];
+                                            }
                                         }
-
                                     }else {//don't get opportunity to switch employer lambdaEMsel > lambdaEM
                                         J2Jflag = 0;
 	                                    if (ti >= burnin) ggi_set(ht->J2Jhist[ll], i, ti - burnin, 0);
@@ -2931,7 +3015,7 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                         // actually evaluate the probabilities:
                         if (gg_get(pf->mU, ii, jt[i]) > gg_get(sk->msel[ll], i, ti) ||
                             // switch voluntarily or involuntarily
-                            zloss_hr > gg_get(sk->zlosssel[ll], i, ti)) {
+                            invol_z == 1) {
 
                             if (gg_get(sk->jsel[ll], i, ti) > cumsij[JJ - 1]) {
                                 jt[i] = jtm1[i];
@@ -2953,6 +3037,9 @@ int sim( struct cal_params * par, struct valfuns *vf, struct polfuns *pf, struct
                             for (zi = 0; zi < NZ; zi++) {
                                 if (gg_get(sk->zsel[ll], i, ti) > cmzprob[At][zi]) ++zt[i];
                             }
+                            // enforce invol_z has bad outcome:
+                            if(invol_z==1) zt[i] = zt[i]>NZ/2 ? NZ - zt[i] : zt[i];
+
                             if (gg_get(sk->lambdaUMsel[ll], i, ti) < lambdaUM_hr) {
                                 // draw a new epsilon
                                 epst[i] = 0;
@@ -3772,6 +3859,7 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
         printf(" The fraction of periods in recession is %f, with %d periods \n",
                (double) recFrac / (double) (TT * Npaths), recFrac);
     }
+    //double avgalpha = 0.; double avgalphaN=0.;
 
     for (ri = 0; ri < 3; ri++) { //run this 3 times for (0) expansion, (1) recession and (2) pooled
         Nemp = 0;
@@ -3788,6 +3876,7 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
         Nsep = 0;
         NErisksep = 0;
         Nocc_ten = 0.;
+
         #pragma omp parallel for private(ll, ti, i, wi, si, ji, jji) \
         reduction( +: Nemp ) reduction( +:Nunemp) reduction( +:Nnosep) \
         reduction( +: Nfnd) reduction( +: NswU) reduction( +: NswE) reduction( +: Nspell) \
@@ -3839,6 +3928,7 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                     Nnosep_wi = 1;
                                     double alphasiji_sum =0.;
                                     for (jji = 0; jji < JJ; jji++) alphasiji_sum += gg_get(ht->alphasijhist[ll][jji], i, ti);
+                                    //avgalpha +=alphasiji_sum; avgalphaN +=1.;
 
                                     PrswE_wi += gg_get(ht->swprob_hist[ll],i,ti)*gg_get(ht->lambdaEM_hist[ll],i,ti)*alphasiji_sum;
                                     PrnswE_wi += (1.-gg_get(ht->swprob_hist[ll],i,ti))*gg_get(ht->lambdaES_hist[ll],i,ti);
@@ -3867,9 +3957,9 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
 
                                             NswE_wi = 1;
                                             if (ri == 2) {
-                                                //int ssi;
-                                                //for(ssi=0;ssi<Npwave;ssi++)
-                                                //    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 4);
+                                                int ssi;
+                                                for(ssi=0;ssi<Npwave;ssi++)
+                                                    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 4);
                                                 ggi_set(ht->trxhist[ll], i, ti, 4);
                                             }
 
@@ -3877,9 +3967,9 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                         } else {
                                             //J2J no occ switch
                                             if (ri == 2) {
-                                                //int ssi;
-                                                //for(ssi=0;ssi<Npwave;ssi++)
-                                                //    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 0);
+                                                int ssi;
+                                                for(ssi=0;ssi<Npwave;ssi++)
+                                                    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 0);
                                                 ggi_set(ht->trxhist[ll], i, ti, 0);
                                             }
                                         }
@@ -3891,16 +3981,16 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                                     ggi_get(ht->jhist[ll], i, ti)) {
                                                     NswSt_wi = 1;
                                                     if (ri == 2) {
-                                                        // int ssi;
-                                                        // for(ssi=0;ssi<Npwave;ssi++)
-                                                        //     ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 7);
+                                                        int ssi;
+                                                        for(ssi=0;ssi<Npwave;ssi++)
+                                                            ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 7);
                                                         ggi_set(ht->trxhist[ll], i, ti, 7);
                                                     }
                                                 } else {
                                                     if (ri == 2) {
-                                                        // int ssi;
-                                                        // for(ssi=0;ssi<Npwave;ssi++)
-                                                        //     ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 3);
+                                                        int ssi;
+                                                        for(ssi=0;ssi<Npwave;ssi++)
+                                                            ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 3);
                                                         ggi_set(ht->trxhist[ll], i, ti, 3);
                                                     }
                                                 }
@@ -3918,6 +4008,8 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                     alphasiji_sum += gg_get(ht->alphasijhist[ll][jji], i, ti);
                                 }
                                 PrswU_wi += gg_get(ht->swprob_hist[ll],i,ti)*gg_get(ht->lambdaUM_hist[ll],i,ti)*alphasiji_sum;
+
+                                //avgalpha += alphasiji_sum;//avgalphaN += 1.;
 
                                 // if found a job:
                                 if (ggi_get(ht->uhist[ll], i, ti + 1) == 0 && sw_spell > -1 && tsep > -1) {
@@ -3946,22 +4038,22 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
                                         Noccs_i += 1;
                                         if (ri == 2) {
                                             int ssi;
-                                            //for(ssi=0;ssi<Npwave;ssi++)
-                                            //    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 6);
+                                            for(ssi=0;ssi<Npwave;ssi++)
+                                                ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 6);
                                             ggi_set(ht->trxhist[ll], i, ti, 6);
-                                            //for(ssi=0;ssi<Npwave;ssi++)
-                                            //    ggi_set(ht->trxhist[ll], i, ssi + wsep * Npwave, 5);
+                                            for(ssi=0;ssi<Npwave;ssi++)
+                                                ggi_set(ht->trxhist[ll], i, ssi + wsep * Npwave, 5);
                                             ggi_set(ht->trxhist[ll], i, tsep, 5);
                                         }
                                     } else {
                                         Ndur_nosw_wi = ti - tsep + 1;
                                         if (ri == 2) {
                                             int ssi;
-                                            //for(ssi=0;ssi<Npwave;ssi++)
-                                            //    ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 2);
+                                            for(ssi=0;ssi<Npwave;ssi++)
+                                                ggi_set(ht->trxhist[ll], i, ssi + wi * Npwave, 2);
                                             ggi_set(ht->trxhist[ll], i, ti, 2);
-                                            //for(ssi=0;ssi<Npwave;ssi++)
-                                            //    ggi_set(ht->trxhist[ll], i, ssi + wsep * Npwave, 1);
+                                            for(ssi=0;ssi<Npwave;ssi++)
+                                                ggi_set(ht->trxhist[ll], i, ssi + wsep * Npwave, 1);
                                             ggi_set(ht->trxhist[ll], i, tsep, 1);
                                         }
                                     }
@@ -4031,6 +4123,9 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
             NErisksep_rec[ri] += NErisksep;
         }
     }
+
+    //avgalpha = avgalpha/avgalphaN;
+
     st->J2Jprob = Nnosep > 0 ? (double) NJ2J / (double) Nnosep : 0.;
     st->findrate = Nunemp > 0 ? (double) Nfnd / (double) Nunemp : 1.;
     st->seprate = Nemp > 0 ? (double) Nsep / (double) NErisksep
@@ -4328,6 +4423,11 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
         printf(" \n");
     }
 
+    // +++++++++++++++++++++++++++++++++++++
+    // Loop to get wage changes:
+
+
+    // allocating things:
     double *w_stns = Nemp > 0 ? malloc(sizeof(double) * Nemp) : malloc(sizeof(double) * Npaths * Nsim * TT / Npwave);
     double *w_stsw = NswSt > 0 ? malloc(sizeof(double) * NswSt) : malloc(sizeof(double) * Npaths * Nsim * TT / Npwave);
     double *w_EEsw = NJ2J > 0 ? malloc(sizeof(double) * NJ2J) : malloc(sizeof(double) * Npaths * Nsim * TT / Npwave);
@@ -4740,9 +4840,6 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
     w_qtls(w_stsw, 1, idx_stsw, qtlgrid, st->stsw_qtls);
 
     st->var_wg = gsl_stats_variance(w_all, 1, idx_all);
-    for (ri = 0; ri < 2; ri++) {
-        st->var_wg_rec[ri] = gsl_stats_variance(w_all_rec[ri], 1, idx_wall_rec[ri]);
-    }
 
     double *w_working = malloc(sizeof(double) * idx_wall);
     for (i = 0; i < idx_wall; i++) w_working[i] = w_all[i];
@@ -4761,14 +4858,20 @@ int sum_stats(struct cal_params *par, struct valfuns *vf, struct polfuns *pf, st
 
 
     for (ri = 0; ri < 2; ri++) {
-        st->var_wg_rec[ri] = gsl_stats_variance(w_all_rec[ri], 1, idx_wall_rec[ri]);
+        double wgmean = gsl_stats_mean(w_all_rec[ri], 1, idx_wall_rec[ri]);
+        st->var_wg_rec[ri] = gsl_stats_variance_m(w_all_rec[ri], 1, idx_wall_rec[ri],wgmean);
 
         double *w_working_rec = malloc(sizeof(double) * idx_wall_rec[ri]);
         for (i = 0; i < idx_wall_rec[ri]; i++) w_working_rec[i] = w_all_rec[ri][i];
         w_qtls(w_working_rec, 1, idx_wall_rec[ri], qtlgrid, st->all_qtls_rec[ri]);
         w_qtls(w_working_rec, 1, idx_wall_rec[ri], edgeqtls, st->edge_qtls_rec[ri]);
-        st->var_wg_rec[ri] = gsl_stats_variance(w_working_rec, 1, idx_wall_rec[ri]);
-
+        double wgmedian =st->edge_qtls_rec[ri][2];
+        for (i = 0; i < idx_wall_rec[ri]; i++) w_working_rec[i] = w_working_rec[i] - wgmedian > 0 ?
+                w_working_rec[i] - wgmedian : wgmedian - w_working_rec[i] ;
+        double meandev = gsl_stats_mean(w_working_rec,1,idx_wall_rec[ri]);
+        gsl_sort(w_working_rec,1,idx_wall_rec[ri]);
+        st->med_abs_dev_rec[ri] = gsl_stats_quantile_from_sorted_data(w_working_rec,1,idx_wall_rec[ri],0.5);  // gsl_stats_median(w_working_rec,1,idx_wall_rec[ri]);
+        st->GroevMeed_rec[ri] = (wgmean - wgmedian)/meandev;
         free(w_working_rec);
 
     }
@@ -4866,12 +4969,12 @@ void set_xpspace( double *x, struct cal_params *par ){
     if( ci ==0 || ci == Ncluster){
 
         x[ii] = par->alpha0     ;ii++;
-        x[ii] = par->lambdaUS0  ;ii++;
-        x[ii] = par->lambdaUM0  ;ii++;
-        x[ii] = par->lambdaES0  ;ii++;
-        x[ii] = par->lambdaEM0  ;ii++;
-        x[ii] = par->delta_avg  ;ii++;
-        x[ii] = par->zloss      ;ii++;
+        x[ii] = par->lambdaUS_Rec  ;ii++;
+        x[ii] = par->lambdaUM_Rec  ;ii++;
+        x[ii] = par->lambdaES_Rec  ;ii++;
+        x[ii] = par->lambdaEM_Rec  ;ii++;
+        x[ii] = par->delta_Rec     ;ii++;
+        x[ii] = par->zloss_Rec     ;ii++;
         x[ii] = par->alphaE1    ;ii++;
         x[ii] = par->alphaU1    ;ii++;
 
@@ -4910,6 +5013,7 @@ void set_xpspace( double *x, struct cal_params *par ){
         x[ii] = par->eps_Acoef      ;ii++;
         x[ii] = par->eps_Amag       ;ii++;
     }
+
 }
 
 void read_params(char* name, struct cal_params *par){
@@ -4926,74 +5030,67 @@ void read_params(char* name, struct cal_params *par){
 
         int pi = 0;
         strcpy(sd, "\000");
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->alpha0 = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
-        par->alpha0 = dd;
+        par->lambdaUS_Rec = dd;
         par->xparopt[pi] = dd;
         pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->lambdaUM_Rec = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
-        par->lambdaUS0 = dd;
+        par->lambdaES_Rec = dd;
         par->xparopt[pi] = dd;
         pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->lambdaEM_Rec = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
-        par->lambdaUM0 = dd;
+        par->delta_Rec = dd;
         par->xparopt[pi] = dd;
         pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->lambdaES0 = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->lambdaEM0 = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->delta_avg = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->zloss = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->alphaE1 = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->alphaU1 = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-
-//		for(ji=ii+1;ji<JJ;ji++){
-//			rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,&endptr);
-//			par->alpha_nf[ii][ji]= dd;
-//			par->xparopt[pi] = dd; pi++;
-//		}
-
-
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->update_z = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->scale_z = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->shape_z = dd;
-        par->xparopt[pi] = dd;
-        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->zloss_Rec = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->alphaE1 = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->alphaU1 = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->update_z = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->scale_z = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->shape_z = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
 
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
@@ -5005,17 +5102,7 @@ void read_params(char* name, struct cal_params *par){
         par->autop = dd;
         par->xparopt[pi] = dd;
         pi++;
-        // var_ae, autoa
-        //rstatus = fscanf(parfile, "%s, ", sd);
-        //dd = strtod(sd, &endptr);
-        //par->var_ae = dd;
-        //par->xparopt[pi] = dd;
-        //pi++;
-        //rstatus = fscanf(parfile, "%s, ", sd);
-        //dd = strtod(sd, &endptr);
-        //par->autoa = dd;
-        //par->xparopt[pi] = dd;
-        //pi++;
+
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
         par->gdfthr = dd;
@@ -5029,12 +5116,6 @@ void read_params(char* name, struct cal_params *par){
         // epsilon :
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
-        //par->scale_eps =dd;
-        //par->xparopt[pi] = dd; pi++;
-        //rstatus = fscanf(parfile,"%s, ",sd);dd = strtod(sd,NULL);
-        //par->shape_eps =dd;
-        //par->xparopt[pi] = dd; pi++;
-
         par->var_eps = dd;
         par->xparopt[pi] = dd;
         pi++;
@@ -5056,11 +5137,11 @@ void read_params(char* name, struct cal_params *par){
         par->delta_Exp = dd;
         par->xparopt[pi] = dd;
         pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->lambdaEM_Exp = dd;
-        par->xparopt[pi] = dd;
-        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->lambdaEM_Exp = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
         par->lambdaES_Exp = dd;
@@ -5068,30 +5149,30 @@ void read_params(char* name, struct cal_params *par){
         pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
-        par->lambdaUM_Exp = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
         par->lambdaUS_Exp = dd;
         par->xparopt[pi] = dd;
         pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->zloss_Exp = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->z_Acoef = dd;
-        par->xparopt[pi] = dd;
-        pi++;
-        rstatus = fscanf(parfile, "%s, ", sd);
-        dd = strtod(sd, &endptr);
-        par->z_Amag = dd;
-        par->xparopt[pi] = dd;
-        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->lambdaUM_Exp = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->zloss_Exp = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->z_Acoef = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
+//        rstatus = fscanf(parfile, "%s, ", sd);
+//        dd = strtod(sd, &endptr);
+//        par->z_Amag = dd;
+//        par->xparopt[pi] = dd;
+//        pi++;
         rstatus = fscanf(parfile, "%s, ", sd);
         dd = strtod(sd, &endptr);
         par->eps_Acoef = dd;
@@ -5102,7 +5183,6 @@ void read_params(char* name, struct cal_params *par){
         par->eps_Amag = dd;
         par->xparopt[pi] = dd;
         pi++;
-
 
         /*for (ji = 0; ji < JJ; ji++) {
             if (ji >= 1) {
@@ -5229,6 +5309,11 @@ void print_targets(char *name, struct stats * st, struct stats * dat){
     double datMVnsrec0_bigloss = ((dat->MVnsrec0_qtls[2] - dat->MVnsrec0_qtls[0])) /datMVnsrec0_p95p05;
 
     tgtfile = fopen(name,"a+");
+    fprintf(tgtfile,"Med Abs Dev Exp, %f,%f \n", st->med_abs_dev_rec[0],dat->med_abs_dev_rec[0]);
+    fprintf(tgtfile,"Med Abs Dev Rec, %f,%f \n", st->med_abs_dev_rec[1],dat->med_abs_dev_rec[1]);
+    fprintf(tgtfile,"Groeneveld  Meeden Exp, %f,%f \n", st->GroevMeed_rec[0],dat->GroevMeed_rec[0]);
+    fprintf(tgtfile,"Groeneveld and Meeden Rec, %f,%f \n", st->GroevMeed_rec[1],dat->GroevMeed_rec[1]);
+/*
     fprintf(tgtfile,"MVsw9505_rec,%f,%f \n", stMVswrec1_p95p05 , datMVswrec1_p95p05 );
     fprintf(tgtfile,"MVsw9505_exp,%f,%f \n", stMVswrec0_p95p05 , datMVswrec0_p95p05);
     fprintf(tgtfile,"MVswskew_rec,%f,%f \n", stMVswrec1_skew,  datMVswrec1_skew);
@@ -5241,7 +5326,7 @@ void print_targets(char *name, struct stats * st, struct stats * dat){
     fprintf(tgtfile,"MVnsskew_exp,%f,%f \n", stMVnsrec0_skew, datMVnsrec0_skew);
     fprintf(tgtfile,"MVns50025_rec,%f,%f \n", stMVnsrec1_bigloss , datMVnsrec1_bigloss);
     fprintf(tgtfile,"MVns50025_exp,%f,%f \n", stMVnsrec0_bigloss , datMVnsrec0_bigloss);
-
+*/
     fclose(tgtfile);
 
 }
@@ -5254,56 +5339,55 @@ void print_params(double *x, int n, struct cal_params * par){
 
 	ii =0;
 	parhist = fopen(parhi_f,"a+");
+    // had been: fprintf(parhist,"%8.6f, ", par->alpha0);
+	//fprintf(parhist,"%.17g, ", par->alpha0);
 
-	fprintf(parhist,"%8.6f, ", par->alpha0);
+	fprintf(parhist,"%.17g, ", par->lambdaUS_Rec);
+    //fprintf(parhist,"%.17g, ", par->lambdaUM_Rec);
+	fprintf(parhist,"%.17g, ", par->lambdaES_Rec);
+	//fprintf(parhist,"%.17g, ", par->lambdaEM_Rec);
+	fprintf(parhist,"%.17g, ", par->delta_Rec   );
+	//fprintf(parhist,"%.17g, ", par->zloss_Rec    );
+	//fprintf(parhist,"%.17g, ", par->alphaE1  );
+	//fprintf(parhist,"%.17g, ", par->alphaU1  );
 
-	fprintf(parhist,"%8.6f, ", par->lambdaUS0);
-    fprintf(parhist,"%8.6f, ", par->lambdaUM0);
-	fprintf(parhist,"%8.6f, ", par->lambdaES0);
-	fprintf(parhist,"%8.6f, ", par->lambdaEM0);
-	fprintf(parhist,"%8.6f, ", par->delta_avg);
-	fprintf(parhist,"%8.6f, ", par->zloss    );
-	fprintf(parhist,"%8.6f, ", par->alphaE1  );
-	fprintf(parhist,"%8.6f, ", par->alphaU1  );
+	//fprintf(parhist,"%.17g, ", par->update_z );
+	//fprintf(parhist,"%.17g, ", par->scale_z  );
+	//fprintf(parhist,"%.17g, ", par->shape_z  );
 
-	fprintf(parhist,"%8.6f, ", par->update_z );
-	fprintf(parhist,"%8.6f, ", par->scale_z  );
-	fprintf(parhist,"%8.6f, ", par->shape_z  );
+	fprintf(parhist,"%.17g, ", par->var_pe   );
+	fprintf(parhist,"%.17g, ", par->autop    );
 
-	fprintf(parhist,"%8.6f, ", par->var_pe   );
-	fprintf(parhist,"%8.6f, ", par->autop    );
-	//fprintf(parhist,"%8.6f, ", par->var_ae   );
-	//fprintf(parhist,"%8.6f, ", par->autoa    );
-	fprintf(parhist,"%8.6f, ", par->gdfthr   );
-	fprintf(parhist,"%8.6f, ", par->stwupdate);
-	fprintf(parhist,"%8.6f, ", par->var_eps  );
+	fprintf(parhist,"%.17g, ", par->gdfthr   );
+	fprintf(parhist,"%.17g, ", par->stwupdate);
+	fprintf(parhist,"%.17g, ", par->var_eps  );
 
 	if(eps_2emg==1){
-		fprintf(parhist,"%8.6f, ", par->lshape_eps);
-		fprintf(parhist,"%8.6f, ", par->rshape_eps);
+		fprintf(parhist,"%.17g, ", par->lshape_eps);
+		fprintf(parhist,"%.17g, ", par->rshape_eps);
 	}
 
 
-	fprintf(parhist,"%8.6f, ", par->delta_Exp   );
-	fprintf(parhist,"%8.6f, ", par->lambdaEM_Exp);
-	fprintf(parhist,"%8.6f, ", par->lambdaES_Exp);
-	fprintf(parhist,"%8.6f, ", par->lambdaUS_Exp);
-    fprintf(parhist,"%8.6f, ", par->lambdaUM_Exp);
-	fprintf(parhist,"%8.6f, ", par->zloss_Exp   );
-    fprintf(parhist,"%8.6f, ", par->z_Acoef       );
-    fprintf(parhist,"%8.6f, ", par->z_Amag        );
-    fprintf(parhist,"%8.6f, ", par->eps_Acoef     );
-    fprintf(parhist,"%8.6f, ", par->eps_Amag      );
+	fprintf(parhist,"%.17g, ", par->delta_Exp   );
+	//fprintf(parhist,"%.17g, ", par->lambdaEM_Exp);
+	fprintf(parhist,"%.17g, ", par->lambdaES_Exp);
+	fprintf(parhist,"%.17g, ", par->lambdaUS_Exp);
+    //fprintf(parhist,"%.17g, ", par->lambdaUM_Exp);
+	//fprintf(parhist,"%.17g, ", par->zloss_Exp   );
+    //fprintf(parhist,"%.17g, ", par->z_Acoef       );
+    //fprintf(parhist,"%.17g, ", par->z_Amag        );
+    fprintf(parhist,"%.17g, ", par->eps_Acoef     );
+    fprintf(parhist,"%.17g, ", par->eps_Amag      );
 
     /*
     for(ji=0;ji<JJ;ji++){
 		if(ji>=1){
-			fprintf(parhist,"%8.6f, ", par->AloadP->data[ji]);
+			fprintf(parhist,"%.17g, ", par->AloadP->data[ji]);
 		}
 	} */
-    fprintf(parhist,"%8.6f, ", par->alpha_nf[1][0]);
+    fprintf(parhist,"%.17g, ", par->alpha_nf[1][0]);
     for(ji=1;ji<JJ;ji++){
-        fprintf(parhist,"%8.6f", par->alpha_nf[0][ji]);
+        fprintf(parhist,"%.17g", par->alpha_nf[0][ji]);
         if(ji<JJ-1)fprintf(parhist,", ");
     }
 
@@ -5325,29 +5409,31 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 
 	if( ci ==0 || ci == Ncluster){
 
-		par->alpha0     = x[ii];ii++;
-		par->lambdaUS0  = x[ii];ii++;
-        par->lambdaUM0  = x[ii];ii++;
-		par->lambdaES0 = x[ii];ii++;
-		par->lambdaEM0 = x[ii];ii++;
-		par->delta_avg = x[ii];ii++;
-		par->zloss     = x[ii];ii++;
-		par->alphaE1    = x[ii];ii++;
-		par->alphaU1    = x[ii];ii++;
+		par->alpha0     = 1.0;
+        
+
+		par->lambdaUS_Rec = x[ii];ii++;
+        par->lambdaUM_Rec = 0.;
+
+		par->lambdaES_Rec = x[ii];ii++;
+		par->lambdaEM_Rec = 0.;
+		par->delta_Rec    = x[ii];ii++;
+		par->zloss_Rec    = 0.;
+		par->alphaE1    = 1.;
+		par->alphaU1    = 1.;
 
 		ii = Npar_cluster[0] ;
 
 	}
 	if(ci==1 || ci == Ncluster){
 
-		par->update_z  = x[ii];ii++;
-		par->scale_z    = x[ii];ii++;
-		par->shape_z    = x[ii];ii++;
+		par->update_z  = 0.;
+		par->scale_z    = 1.;
+		par->shape_z    = 1.;
 
 		par->var_pe     = x[ii];ii++;
 		par->autop      = x[ii];ii++;
-	//	par->var_ae     = x[ii];ii++;
-	//	par->autoa      = x[ii];ii++;
+		
 		par->gdfthr     = x[ii];ii++;
 		par->stwupdate  = x[ii];ii++;
 		par->var_eps    = x[ii];ii++;
@@ -5359,13 +5445,13 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 	}
 	if(ci==2 || ci == Ncluster){
 		par->delta_Exp     = x[ii];ii++;
-		par->lambdaEM_Exp  = x[ii];ii++;
+		par->lambdaEM_Exp  = 0.;
 		par->lambdaES_Exp  = x[ii];ii++;
 		par->lambdaUS_Exp  = x[ii];ii++;
-        par->lambdaUM_Exp  = x[ii];ii++;
-		par->zloss_Exp     = x[ii];ii++;
-		par->z_Acoef         = x[ii];ii++;
-        par->z_Amag          = x[ii];ii++;
+        par->lambdaUM_Exp  = 0.;
+		par->zloss_Exp     = 0.;
+		par->z_Acoef         = 0.;
+        par->z_Amag          = 0.;
         par->eps_Acoef       = x[ii];ii++;
         par->eps_Amag        = x[ii];ii++;
 
@@ -5376,6 +5462,7 @@ void set_params( double * x, int n, struct cal_params * par,int ci){
 		//	if(ji>0) ii++;
 		}
 	}
+
 	if(verbose>1){
 		printf("Set %d parameters at vector: \n(", ii);
 		for(i=0;i<Npar_cluster[ci]-1;i++)
@@ -5464,7 +5551,7 @@ void set_dat( struct stats * dat){
     memcpy(dat->MVnsrec0_qtls,datMVnsrec0_qtls,Nqtls*sizeof(double));
     memcpy(dat->MVswrec0_qtls,datMVswrec0_qtls,Nqtls*sizeof(double));
                                 //    .025         .05          .1         .25        0.5         0.75          .9            .95         .975
-    double dat_exprec_qtls[] = {0.261033973, 0.160520295, 0.113645699, 0.045558623, 0.007709008, 0.014740235, 0.056388661, 0.100087590, 0.176027574};
+    double dat_exprec_qtls[] = {0.23788055,   0.14230627,  0.10589743,  0.04399185, 0.00719353, 0.01486299, 0.06277232,  0.11558531, 0.18772096};//{0.261033973, 0.160520295, 0.113645699, 0.045558623, 0.007709008, 0.014740235, 0.056388661, 0.100087590, 0.176027574};
     memcpy( dat->exprec_qtls, dat_exprec_qtls, Nextqtls*sizeof(double));
     // Occupation numbers 1: NRC, 2: RC, 3: NRM, 4:RM
 
@@ -5505,6 +5592,9 @@ void set_dat( struct stats * dat){
     memcpy(dat->occ_margflow_rec[0],datoccmargR0,sizeof(double )*JJ);
     memcpy(dat->occ_margflow_rec[1],datoccmargR1,sizeof(double )*JJ);
 
+    dat->med_abs_dev_rec[0] = 0.1342211; dat->med_abs_dev_rec[1] = 0.1499395;
+    dat->GroevMeed_rec[0] =  0.1062541 ; dat->GroevMeed_rec[1] =  -0.02000185;
+
 }
 
 double param_dist( double * x, struct cal_params *par , int Npar, double * err_vec , int Nerr){
@@ -5528,7 +5618,6 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
     set_dat(&dat);
 
     set_params( x, Npar, par, par->cluster_hr);
-	print_params(x, Npar, par);
 	if(par->shape_z ==0.){
 	    //this seemed to happen for some reason?
 	    printf("+++++++++++++++++++++++++++++++++++++++++++\n");
@@ -5576,6 +5665,9 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 			gsl_vector_set( par->zprob[ai],ii,zprob1[ii] );
 	}
     convprobs(par->zprob[0],par->zlev,par->z_Acoef,par->z_Amag);
+
+	// FOR THE NO OCC VERSION
+	gsl_vector_set_all(par->zlev,0.0);
 
 	if(eps_2emg==1){
 		//success = disc_Weibull( par->epsprob->data,par->epslev->data, NE, 0.,par->scale_eps,par->shape_eps );
@@ -5662,72 +5754,39 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 	    //solve the model. Can use the solution and directly get the flow directions. Will then solve alpha_nf matrix
 	    int iter_alphanf;
         int maxiter_alphanf = 1;
-	    if(cal_now == 1){
-            maxiter_alphanf =  3;
-            for(ji=0;ji<JJ;ji++){ for( ii=0;ii<JJ;ii++) par->alpha_nf[ji][ii] =0.; }
-            /*int ri;
-            for(ri=0;ri<2;ri++) {
-                for (ji = 0; ji < JJ; ji++) {
-                    for (ii = 0; ii < JJ; ii++)
-                        par->alpha_nf_rec[ri][ji][ii] = 0.;
-                }
-            }*/
-        }
-
-
-        double**ublb_occload = malloc(sizeof(double*)*2);
+	    double**ublb_occload = malloc(sizeof(double*)*2);
         ublb_occload[0] = malloc(sizeof(double)*JJ);ublb_occload[1] = malloc(sizeof(double)*JJ);
         for(ji=0;ji<JJ;ji++) {
             ublb_occload[0][ji] = 0.5*par->AloadP->data[ji];
             ublb_occload[1][ji] = 1.5*par->AloadP->data[ji];
         }
-        for(iter_alphanf=0;iter_alphanf<maxiter_alphanf;iter_alphanf++) {
+        //for(iter_alphanf=0;iter_alphanf<maxiter_alphanf;iter_alphanf++) {
             success = sol_dyn(par, &vf, &pf, &sk);
             if (verbose > 2 && success != 0) printf("Problem solving model\n");
 
     		success = sim(par, &vf, &pf, &ht, &sk);
 	    	if (verbose > 2 && success != 0) printf("Problem simulating model\n");
 	    	success = sum_stats_flows( par, &vf, &pf, &ht, &sk, &st );
-            if(cal_now == 1)
-                success = reset_alphanf(par,  &pf,&st, &dat);
-            if(success != 0 ) break;
-        }
+
+        //}
 		success = sum_stats(par, &vf, &pf, &ht, &sk, &st);
         free(ublb_occload[0]);free(ublb_occload[1]);free(ublb_occload);
 
-		//form error vector
+        print_params(x, Npar, par); // will include the new alphas that I found
 
+        //form error vector
 		ii = 0;
 		double dat_dur = dat.udur_sw / dat.udur_nosw;
 		double mod_dur = gsl_finite(st.udur_nosw) && gsl_finite(st.udur_sw) && st.udur_nosw>0 ?
 				st.udur_sw / st.udur_nosw : 0.;
 		if (par->cluster_hr == 0 || par->cluster_hr == Ncluster) {
 		    // weighting duration and randomness low (0.1)
-			err_vec[ii] = (st.J2Jprob - dat.J2Jprob) * 2 / (st.J2Jprob + dat.J2Jprob);
+			err_vec[ii] = 3.* (st.J2Jprob - dat.J2Jprob) * 2 / (st.J2Jprob + dat.J2Jprob);
             ii++;
-			err_vec[ii] = (st.findrate - dat.findrate) * 2 / (st.findrate + dat.findrate);
+			err_vec[ii] = 3.* (st.findrate - dat.findrate) * 2 / (st.findrate + dat.findrate);
 			ii++;
-			err_vec[ii] = (st.seprate - dat.seprate) * 2 / (st.seprate + dat.seprate);
+			err_vec[ii] = 3.* (st.seprate - dat.seprate) * 2 / (st.seprate + dat.seprate);
 			ii++;
-			err_vec[ii] = (st.swProb_EE - dat.swProb_EE) * 2 / (st.swProb_EE + dat.swProb_EE);
-			ii++;
-			err_vec[ii] = (st.swProb_U - dat.swProb_U) * 2 / (st.swProb_U + dat.swProb_U);
-			ii++;
-			err_vec[ii] = (st.swProb_st - dat.swProb_st) * 2 / (st.swProb_st + dat.swProb_st);
-			ii++;
-			err_vec[ii] = (mod_dur - dat_dur) *2 / (mod_dur + dat_dur);
-			ii ++;
-			// -------------------------------------
-			// Should this go in 1st cluster or second?
-            err_vec[ii]   = 0.5*(st.varGflowsE - dat.varGflowsE)/(st.varGflowsE + dat.varGflowsE);
-			//err_vec[ii] = .5*(st.corrEE_wgocc  - dat.corrEE_wgocc); //*2 / (st.corr_wgocc + dat.corr_wgocc);
-			//err_vec[ii] = (st.doubleswE - dat.doubleswE) /(st.doubleswE + dat.doubleswE);
-			ii++;
-            err_vec[ii]   = 0.5*(st.varGflowsU - dat.varGflowsU)/(st.varGflowsU + dat.varGflowsU);
-			//err_vec[ii] = (st.doubleswU - dat.doubleswU) /(st.doubleswU + dat.doubleswU);
-			//err_vec[ii] = .5*(st.corrEUE_wgocc - dat.corrEUE_wgocc); //*2 / (st.corr_wgocc + dat.corr_wgocc);
-			ii++;
-
 			ii = Ntgt_cluster[0];
 		}
 
@@ -5829,7 +5888,7 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
             err_vec[ii] =  stEUEns_skew - datEUEns_skew; err_vec[ii] /= 4.0;
             ii++;
 
-            // occ switcher stats
+            /* occ switcher stats
             err_vec[ii] =  (ststsw_9010 - ststns_9010) - (datstsw_9010 - datstns_9010);
             err_vec[ii] /= 3.0;
             ii++;
@@ -5850,80 +5909,20 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
             err_vec[ii] = (stEUEsw_skew - stEUEns_skew)- (datEUEsw_skew -datEUEns_skew);
             err_vec[ii] /= 4.0;
             ii++;
-
+            */
         }
 		if (par->cluster_hr == 2 || par->cluster_hr == Ncluster) {
-			err_vec[ii] = tanh( (st.swProb_U_ratio - dat.swProb_U_ratio)/ (dat.swProb_U_ratio-1.));
-			ii++;
-			err_vec[ii] = tanh( (st.swProb_EE_ratio - dat.swProb_EE_ratio)/(dat.swProb_EE_ratio-1.) ) ;
-            ii++;
 			err_vec[ii] = tanh( (st.fndrt_ratio - dat.fndrt_ratio)/(dat.fndrt_ratio-1.) ) ;
 			ii++;
 			err_vec[ii] = tanh( (st.seprt_ratio - dat.seprt_ratio) / (1.-dat.seprt_ratio) ); //negative b/c sepratio is <1
 			ii++;
 			err_vec[ii] = tanh( (st.EE_ratio - dat.EE_ratio)/(dat.EE_ratio-1.) );
 			ii ++;
-            /*
-             * MINIMUM DISTANCE TARGETS:
-			for(i=0;i<Nqtls; i++) //skip the 50th pctile?
-				err_vec[ii+i] = i!=2 ? (st.MVsw_qtls_ratio[i] - dat.MVsw_qtls_ratio[i])/(double)(Nqtls-1) : (st.MVsw_qtls_ratio[i] - dat.MVsw_qtls_ratio[i])/(double)(2*Nqtls-1);
-			ii += Nqtls;
-			for(i=0;i<Nqtls; i++)
-				err_vec[ii+i] = i!=2 ? (st.MVns_qtls_ratio[i] - dat.MVns_qtls_ratio[i])/(double)(Nqtls-1): (st.MVns_qtls_ratio[i] - dat.MVns_qtls_ratio[i])/(double)(2*Nqtls-1);
-             */
-            /*
-            // MSM targets: +++
-            double stMVswrec1_p95p05 = (st.MVswrec1_qtls[3] - st.MVswrec1_qtls[1]);
-            double stMVswrec0_p95p05 = (st.MVswrec0_qtls[3] - st.MVswrec0_qtls[1]);
-            double stMVswrec1_skew = ((st.MVswrec1_qtls[3] - st.MVswrec1_qtls[2]) - (st.MVswrec1_qtls[2] - st.MVswrec1_qtls[1])) /stMVswrec1_p95p05;
-            double stMVswrec0_skew = ((st.MVswrec0_qtls[3] - st.MVswrec0_qtls[2]) - (st.MVswrec0_qtls[2] - st.MVswrec0_qtls[1])) /stMVswrec0_p95p05;
 
-            double stMVswrec1_bigloss = ((st.MVswrec1_qtls[2] - st.MVswrec1_qtls[0])) /stMVswrec1_p95p05;
-            double stMVswrec0_bigloss = ((st.MVswrec0_qtls[2] - st.MVswrec0_qtls[0])) /stMVswrec0_p95p05;
-
-            double stMVnsrec1_p95p05 = (st.MVnsrec1_qtls[3] - st.MVnsrec1_qtls[1]);
-            double stMVnsrec0_p95p05 = (st.MVnsrec0_qtls[3] - st.MVnsrec0_qtls[1]);
-            double stMVnsrec1_skew = ((st.MVnsrec1_qtls[3] - st.MVnsrec1_qtls[2]) - (st.MVnsrec1_qtls[2] - st.MVnsrec1_qtls[1])) /stMVnsrec1_p95p05;
-            double stMVnsrec0_skew = ((st.MVnsrec0_qtls[3] - st.MVnsrec0_qtls[2]) - (st.MVnsrec0_qtls[2] - st.MVnsrec0_qtls[1])) /stMVnsrec0_p95p05;
-
-            double stMVnsrec1_bigloss = ((st.MVnsrec1_qtls[2] - st.MVnsrec1_qtls[0])) /stMVnsrec1_p95p05;
-            double stMVnsrec0_bigloss = ((st.MVnsrec0_qtls[2] - st.MVnsrec0_qtls[0])) /stMVnsrec0_p95p05;
-
-            double datMVswrec1_p95p05 = (dat.MVswrec1_qtls[3] - dat.MVswrec1_qtls[1]);
-            double datMVswrec0_p95p05 = (dat.MVswrec0_qtls[3] - dat.MVswrec0_qtls[1]);
-            double datMVswrec1_skew = ((dat.MVswrec1_qtls[3] - dat.MVswrec1_qtls[2]) - (dat.MVswrec1_qtls[2] - dat.MVswrec1_qtls[1])) /datMVswrec1_p95p05;
-            double datMVswrec0_skew = ((dat.MVswrec0_qtls[3] - dat.MVswrec0_qtls[2]) - (dat.MVswrec0_qtls[2] - dat.MVswrec0_qtls[1])) /datMVswrec0_p95p05;
-
-            double datMVswrec1_bigloss = ((dat.MVswrec1_qtls[2] - dat.MVswrec1_qtls[0])) /datMVswrec1_p95p05;
-            double datMVswrec0_bigloss = ((dat.MVswrec0_qtls[2] - dat.MVswrec0_qtls[0])) /datMVswrec0_p95p05;
-
-            double datMVnsrec1_p95p05 = (dat.MVnsrec1_qtls[3] - dat.MVnsrec1_qtls[1]);
-            double datMVnsrec0_p95p05 = (dat.MVnsrec0_qtls[3] - dat.MVnsrec0_qtls[1]);
-            double datMVnsrec1_skew = ((dat.MVnsrec1_qtls[3] - dat.MVnsrec1_qtls[2]) - (dat.MVnsrec1_qtls[2] - dat.MVnsrec1_qtls[1])) /datMVnsrec1_p95p05;
-            double datMVnsrec0_skew = ((dat.MVnsrec0_qtls[3] - dat.MVnsrec0_qtls[2]) - (dat.MVnsrec0_qtls[2] - dat.MVnsrec0_qtls[1])) /datMVnsrec0_p95p05;
-
-            double datMVnsrec1_bigloss = ((dat.MVnsrec1_qtls[2] - dat.MVnsrec1_qtls[0])) /datMVnsrec1_p95p05;
-            double datMVnsrec0_bigloss = ((dat.MVnsrec0_qtls[2] - dat.MVnsrec0_qtls[0])) /datMVnsrec0_p95p05;
-
-
-            err_vec[ii] = (stMVswrec1_p95p05 - stMVswrec0_p95p05) - (datMVswrec1_p95p05 - datMVswrec0_p95p05);
-            ii++;
-            err_vec[ii] = (stMVswrec1_skew - stMVswrec0_skew) - (datMVswrec1_skew - datMVswrec0_skew);
-            ii++;
-            err_vec[ii] = (stMVswrec1_bigloss - stMVswrec0_bigloss) - (datMVswrec1_bigloss - datMVswrec0_bigloss);
-            ii++;
-
-            err_vec[ii] = (stMVnsrec1_p95p05 - stMVnsrec0_p95p05) - (datMVnsrec1_p95p05 - datMVnsrec0_p95p05);
-            ii++;
-            err_vec[ii] = (stMVnsrec1_skew - stMVnsrec0_skew) - (datMVnsrec1_skew - datMVnsrec0_skew);
-            ii++;
-            err_vec[ii] = (stMVnsrec1_bigloss - stMVnsrec0_bigloss) - (datMVnsrec1_bigloss - datMVnsrec0_bigloss);
-            ii++;
-            */
             //U-shaped decomposition targets:
             for(i=0;i<Nextqtls;i++){
                 if(i != 4) { // don't match the 50 pctile
-                    err_vec[ii] = (st.exprec_qtls[i] - dat.exprec_qtls[i]) ;
+                    err_vec[ii] = extqtls[i]>0.5 ? (st.exprec_qtls[i] - dat.exprec_qtls[i])/pow(1.-extqtls[i],0.5) : (st.exprec_qtls[i] - dat.exprec_qtls[i])/pow(extqtls[i], 0.5 );
                     ii++;
                 }
             }
@@ -6001,6 +6000,27 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
         for (i = 0; i < JJ; i++)
             printf("%f,", st.occ_margflow[i] - dat.occ_margflow[i]);
         printf("\n");
+        printf("err vector:\n");
+        for(i=0;i<Ntgt_cluster[0];i++)
+            printf("%15s,",tgtnames_clu0[i]);
+        printf("\n");
+        for(i=0;i<Ntgt_cluster[0];i++)
+            printf("%*f,",15,err_vec[i]);
+        printf("\n");
+        int shift = Ntgt_cluster[0];
+        for(i=0;i<Ntgt_cluster[1];i++)
+            printf("%15s,",tgtnames_clu1[i]);
+        printf("\n");
+        for(i=0;i<Ntgt_cluster[1];i++)
+            printf("%*f,",15,err_vec[i+shift]);
+        printf("\n");
+        shift += Ntgt_cluster[1];
+        for(i=0;i<Ntgt_cluster[2];i++)
+            printf("%15s,",tgtnames_clu2[i]);
+        printf("\n");
+        for(i=0;i<Ntgt_cluster[2];i++)
+            printf("%*f,",15,err_vec[i+shift]);
+        printf("\n");
     }
 
     double quad_dist =0;
@@ -6008,7 +6028,7 @@ double param_dist( double * x, struct cal_params *par , int Npar, double * err_v
 		quad_dist += err_vec[i]*err_vec[i];
 
 
-	if(verbose >=1){
+	if(verbose >=0){
         printf("+++++++++++++++++++++++++++++\n");
         printf("Calibration Objective Distance: %f \n", quad_dist);
         printf("+++++++++++++++++++++++++++++\n");
@@ -6157,30 +6177,6 @@ double f_wrapper_nlopt(unsigned n, const double * x, double * grad, void * par){
 
 }
 
-void fix_wagedists(struct stats *dat, struct stats *mod, struct hists * ht, struct cal_params * par){
-    // renorms the wage changes to be equal to the data.
-
-    // mulitplication factors:
-
-    int qi, ii;
-
-    for (qi = 0; qi < Nqtls; qi++) {
-        par->w_fac[0][qi] = mod->EEns_qtls[qi] > 1e-6 || mod->EEns_qtls[qi] < -1e-6 ? dat->EEns_qtls[qi]/mod->EEns_qtls[qi] : 1.0;
-        par->w_fac[1][qi] = mod->EUns_qtls[qi] > 1e-6 || mod->EUns_qtls[qi] < -1e-6 ? dat->EUns_qtls[qi]/mod->EUns_qtls[qi] : 1.0;
-        par->w_fac[2][qi] = mod->UEns_qtls[qi] > 1e-6 || mod->UEns_qtls[qi] < -1e-6 ? dat->UEns_qtls[qi]/mod->UEns_qtls[qi] : 1.0;
-        par->w_fac[3][qi] = mod->stns_qtls[qi] > 1e-6 || mod->stns_qtls[qi] < -1e-6 ? dat->stns_qtls[qi]/mod->stns_qtls[qi] : 1.0;
-
-        par->w_fac[4][qi] = mod->EEsw_qtls[qi] > 1e-6 || mod->EEsw_qtls[qi] < -1e-6 ? dat->EEsw_qtls[qi]/mod->EEsw_qtls[qi] : 1.0;
-        par->w_fac[5][qi] = mod->EUsw_qtls[qi] > 1e-6 || mod->EUsw_qtls[qi] < -1e-6 ? dat->EUsw_qtls[qi]/mod->EUsw_qtls[qi] : 1.0;
-        par->w_fac[6][qi] = mod->UEsw_qtls[qi] > 1e-6 || mod->UEsw_qtls[qi] < -1e-6 ? dat->UEsw_qtls[qi]/mod->UEsw_qtls[qi] : 1.0;
-        par->w_fac[7][qi] = mod->stsw_qtls[qi] > 1e-6 || mod->stsw_qtls[qi] < -1e-6 ? dat->stsw_qtls[qi]/mod->stsw_qtls[qi] : 1.0;
-        for(ii=0;ii<Ntrx;ii++)
-            par->w_fac[ii][qi] = par->w_fac[ii][qi] < 0 ? -par->w_fac[ii][qi] : par->w_fac[ii][qi];
-    }
-
-
-}
-
 
 void dfovec_iface_(double * errvec, double * x, const int * n, const int* m){
 	// this is going to interface with dfovec.f and call param_dist using the global params
@@ -6213,7 +6209,6 @@ void dfovec_iface_(double * errvec, double * x, const int * n, const int* m){
 
 	dist = param_dist( x_pspace, glb_par, nv ,errvec, mv );
 	//dist =  (double)(rand() % 1000) /1000.;
-
 
 	verbose=verbose_old;
 	print_lev = print_lev_old;

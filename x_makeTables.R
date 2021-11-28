@@ -248,7 +248,7 @@ wc = "wagechange_anan"
 	}	
 		
 	#overall earnings change
-	tabqtls <- c(.05,.10,.25,.5,.75,.90,.95)
+	tabqtls <- c(0.025,.05,.10,.25,.5,.75,.90,.95,0.975)
 	tN <- (length(tabqtls)+1)
 	ann_wavedist <- array(0., dim=c(2,length(tabqtls)+1))
 	ann_wavedist[1,1]   <- DTseam[!(eval(as.name(recDef)) ) & (sw|!sw) 
@@ -260,16 +260,15 @@ wc = "wagechange_anan"
 	ann_wavedist[2,2:tN]<- DTseam[ (eval(as.name(recDef))  ) & (sw|!sw) 
 								   &(st|ch), wtd.quantile(eval(as.name(wc)),na.rm=T,weights=eval(as.name(wt)), probs=tabqtls)]
 	
-	nexp <- DTseam[!(eval(as.name(recDef)) )  & (sw|!sw) 
-				   &(stayer_anan|changer_anan)&nextann.wavewage>0&lastann.wavewage>=minLEarn,    sum(is.finite(eval(as.name(wc)))*eval(as.name(wt)))]
-	nrec <- DTseam[ (eval(as.name(recDef)) ) & (sw|!sw) 
-				   &(stayer_anan|changer_anan)&nextann.wavewage>0&lastann.wavewage>=minLEarn,    sum(is.finite(eval(as.name(wc)))*eval(as.name(wt)))]
-	nrec/(nexp+nrec)
+	#nexp <- DTseam[!(eval(as.name(recDef)) )  & (sw|!sw) 
+	#			   &(stayer_anan|changer_anan)&nextann.wavewage>0&lastann.wavewage>=minLEarn,    sum(is.finite(eval(as.name(wc)))*eval(as.name(wt)))]
+	#nrec <- DTseam[ (eval(as.name(recDef)) ) & (sw|!sw) 
+	#			   &(stayer_anan|changer_anan)&nextann.wavewage>0&lastann.wavewage>=minLEarn,    sum(is.finite(eval(as.name(wc)))*eval(as.name(wt)))]
+	#nrec/(nexp+nrec)
 	plt_wavedist <- data.table(ann_wavedist)
-	names(plt_wavedist) <- c("Mean","P5","P10","P25","P50","P75","P90","P95")
+	names(plt_wavedist) <- c("Mean","P2.5","P5","P10","P25","P50","P75","P90","P95","P97.5")
 	plt_wavedist[ , Cycle := as.factor(c("Exp","Rec"))]
 	plt_melt <- melt(plt_wavedist, id.vars = "Cycle")
-	
 	ggplot( plt_wavedist , aes(Cycle)) + theme_bw()+
 		geom_boxplot(aes( ymin=P10,lower=P25,middle=Mean,upper=P75,ymax=P90 , color=Cycle),stat="identity")+
 		scale_x_discrete(labels=c("Expansion","Recession"))+ xlab("")+ylab("Log earnings change")+
@@ -279,6 +278,17 @@ wc = "wagechange_anan"
 	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".eps"),device = cairo_ps,height=5,width=10)
 	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".png"),height=5,width=10)
 
+	ushape <- data.table(cbind(tabqtls, t(ann_wavedist[1:2,2:tN]) ))
+	names(ushape) = c("qtls","Exp","Rec")
+	ushape[ , dif:= Exp - Rec]
+	ggplot( ushape) + theme_bw()+
+	  geom_line(aes(x=qtls,y=dif) )  + xlab("Annual-Annual Log Earnings Change Quantile")+ylab("Difference Expansion - Recession")+
+	  theme(legend.position = "none")
+	nametab = "Ufull"
+	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".eps"),device = cairo_ps,height=5,width=10)
+	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".png"),height=5,width=10)
+	
+	
 	out_wavedist <- xtable(plt_wavedist, digits=3, 
 						   caption=paste0("Distribution of earnings changes \\label{tab:",nametab,"_",wclab,"_",reclab,"}"))
 	if(demolbl>=1 & demolbl<=7){
@@ -292,7 +302,7 @@ wc = "wagechange_anan"
 	
 	# wage quantiles ---------------------------------------------------------------
 	# entire sample, expansion - recession
-	tabqtls <- c(.1,.25,.5,.75,.9)
+	tabqtls <- c(0.025,.05,.10,.25,.5,.75,.90,.95,0.975)
 	overalltabqtls <- c(0.01,.1,.5,.9,0.99)
 	tN <- (length(tabqtls)+1)
 	tab_wavedist <- array(0., dim=c(9,length(tabqtls)+1))
@@ -368,7 +378,7 @@ wc = "wagechange_anan"
 	
 	dat_wavedist <- data.table(dat_wavedist[4:9,])
 	dat_wavedist <- data.table(dat_wavedist[c(2,3,5,6),])
-	names(dat_wavedist) <- c("Mean","P10","P25","P50","P75","P90")
+	names(dat_wavedist) <- c("Mean","P2.5","P5","P10","P25","P50","P75","P90","P95","P97.5") #c("Mean","P10","P25","P50","P75","P90")
 	dat_wavedist[ , cat := as.factor(c("SameEmp-Exp","ChngEmp-Exp","SameEmp-Rec","ChngEmp-Rec"))]
 	dat_wavedist[ , Cycle := as.factor(c("Exp","Exp","Rec","Rec"))]
 	
@@ -387,6 +397,18 @@ wc = "wagechange_anan"
 		print(out_wavedist,include.rownames=T, include.colnames=T,
 			  file=paste0(outputdir,"/",nametab,"_",wclab,"_",reclab,".tex"))
 	}
+	
+	
+	ushape <- data.table(cbind(tabqtls, t(ann_wavedist[1:2,2:tN]) ))
+	names(ushape) = c("qtls","Exp","Rec")
+	ushape[ , dif:= Exp - Rec]
+	ggplot( ushape) + theme_bw()+
+	  geom_line(aes(x=qtls,y=dif) )  + xlab("Annual-Annual Log Earnings Change Quantile")+ylab("Difference Expansion - Recession")+
+	  theme(legend.position = "none")
+	nametab = "Ufull"
+	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".eps"),device = cairo_ps,height=5,width=10)
+	ggsave(file=paste0(outputdir,"/",nametab,"_",reclab,"_",wclab,".png"),height=5,width=10)
+	
 	
 	
 	#______________________________________________________

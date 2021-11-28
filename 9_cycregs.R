@@ -403,3 +403,56 @@ rownames(DecDispregs_mod) = c("ch0sw0", "ch0sw1", "ch1sw0" ,"ch1sw1")
 
 (MadDispregs_mod[,1] - MadDispregs_mod[,2])/abs(MadDispregs_mod[,1])
 (DecDispregs_mod[,1] - DecDispregs_mod[,2])/abs(DecDispregs_mod[,1])
+
+
+wcSkew_ts <- DTseam[ truncweight>0, wtd.GroenveldMeeden(wagechange_anan,wt =truncweight) , by=list(month,year)]
+unrate_ts <- DTseam[ truncweight>0 , wtd.mean(unrt, weights =truncweight)/100, by=list(month,year)]
+funrate_ts <- DTseam[ truncweight>0 , wtd.mean(filunrt, weights =truncweight), by=list(month,year)]
+wts_ts <- DTseam[ truncweight>0 , sum(truncweight), by=list(month,year)]
+wcSkewUn_ts <- merge(wcSkew_ts,unrate_ts, by=c("month", "year"))
+wcSkewUn_ts <- merge(wcSkewUn_ts,funrate_ts, by=c("month", "year"))
+names(wcSkewUn_ts) <- c("month","year","GMskewness","unrate","HPunrate")
+wcSkewUn_ts <- merge(wcSkewUn_ts,wts_ts, by=c("month", "year"))
+names(wcSkewUn_ts) <- c("month","year","GMskewness","unrate","HPunrate","truncweight")
+
+summary(lm(GMskewness~HPunrate, weights = truncweight , data=wcSkewUn_ts))
+
+
+wcSkew_mvts <- DTseam[ ch==T & truncweight>0, wtd.GroenveldMeeden(wagechange_anan,wt =truncweight) , by=list(month,year)]
+unrate_mvts <- DTseam[ ch==T & truncweight>0 , wtd.mean(unrt, weights =truncweight)/100, by=list(month,year)]
+funrate_mvts <- DTseam[ ch==T & truncweight>0 , wtd.mean(filunrt, weights =truncweight), by=list(month,year)]
+wts_mvts <- DTseam[ ch==T & truncweight>0 , sum(truncweight), by=list(month,year)]
+wcSkewUn_mvts <- merge(wcSkew_mvts,unrate_mvts, by=c("month", "year"))
+wcSkewUn_mvts <- merge(wcSkewUn_mvts,funrate_mvts, by=c("month", "year"))
+names(wcSkewUn_mvts) <- c("month","year","GMskewness","unrate","HPunrate")
+wcSkewUn_mvts <- merge(wcSkewUn_mvts,wts_mvts, by=c("month", "year"))
+names(wcSkewUn_mvts) <- c("month","year","GMskewness","unrate","HPunrate","truncweight")
+
+summary(lm(GMskewness~HPunrate, weights = truncweight , data=wcSkewUn_mvts))
+
+wcSkew_swts <- DTseam[ sw==T & truncweight>0, wtd.GroenveldMeeden(wagechange_anan,wt =truncweight) , by=list(month,year)]
+unrate_swts <- DTseam[ sw==T & truncweight>0 , wtd.mean(unrt, weights =truncweight)/100, by=list(month,year)]
+funrate_swts <- DTseam[ sw==T & truncweight>0 , wtd.mean(filunrt, weights =truncweight), by=list(month,year)]
+wts_swts <- DTseam[ sw==T & truncweight>0 , sum(truncweight), by=list(month,year)]
+wcSkewUn_swts <- merge(wcSkew_swts,unrate_swts, by=c("month", "year"))
+wcSkewUn_swts <- merge(wcSkewUn_swts,funrate_swts, by=c("month", "year"))
+names(wcSkewUn_swts) <- c("month","year","GMskewness","unrate","HPunrate")
+wcSkewUn_swts <- merge(wcSkewUn_swts,wts_swts, by=c("month", "year"))
+names(wcSkewUn_swts) <- c("month","year","GMskewness","unrate","HPunrate","truncweight")
+
+summary(lm(GMskewness~HPunrate, weights = truncweight , data=wcSkewUn_swts))
+
+
+wcSkew_stts <- DTseam[ st==T & sw==F & truncweight>0, wtd.GroenveldMeeden(wagechange_anan,wt =truncweight) , by=list(month,year)]
+unrate_stts <- DTseam[ st==T & sw==F & truncweight>0 , wtd.mean(unrt, weights =truncweight)/100, by=list(month,year)]
+funrate_stts <- DTseam[ st==T  & sw==F& truncweight>0 , wtd.mean(filunrt, weights =truncweight), by=list(month,year)]
+wts_stts <- DTseam[ st==T  & sw==F& truncweight>0 , sum(truncweight), by=list(month,year)]
+wcSkewUn_stts <- merge(wcSkew_stts,unrate_stts, by=c("month", "year"))
+wcSkewUn_stts <- merge(wcSkewUn_stts,funrate_stts, by=c("month", "year"))
+names(wcSkewUn_stts) <- c("month","year","GMskewness","unrate","HPunrate")
+wcSkewUn_stts <- merge(wcSkewUn_stts,wts_stts, by=c("month", "year"))
+names(wcSkewUn_stts) <- c("month","year","GMskewness","unrate","HPunrate","truncweight")
+wcSkewUn_stts[GMskewness==-Inf, GMskewness:=NaN]
+
+summary(lm(GMskewness~HPunrate, weights = truncweight , data=wcSkewUn_stts))
+>>>>>>> fdbfa861afbd72045674b57f22cedff18749b3c9
