@@ -957,10 +957,7 @@ for(Ui in c(T,F)){
 	netL <- array(0, dim=c(4,4))
 	for( li in seq(1,4)){
 		for( di in seq(1,4)){
-<<<<<<< HEAD
 			#ii = ifelse(Ui, 1,2)
-=======
->>>>>>> fdbfa861afbd72045674b57f22cedff18749b3c9
 			netLUi[li,di,ii] = grossL[li,di] - grossL[di,li]
 		}
 	}

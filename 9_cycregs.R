@@ -275,6 +275,18 @@ rownames(DecDispregs_mvsw) = c("ch0sw0", "ch0sw1", "ch1sw0" ,"ch1sw1")
 (DecDispregs_mvsw[,1] - DecDispregs_mvsw[,2])/abs(DecDispregs_mvsw[,1])
 
 
+
+
+#> qtls_extcomb <- c(0.025,.05,.1,.25,.5,.75,.9,.95,0.975)
+#> dat_qtls_rec0 <- DTseam[recIndic_wave==F , wtd.quantile(wagechange_anan, p=qtls_extcomb,na.rm=T,weights=truncweight)]
+# dat_qtls_rec1 <- DTseam[recIndic_wave==T , wtd.quantile(wagechange_anan, p=qtls_extcomb,na.rm=T,weights=truncweight)]
+#> dat_qtls_rec0 - dat_qtls_rec1
+#2.5%       5.0%      10.0%      25.0%      50.0%      75.0%      90.0%      95.0%      97.5% 
+#0.23788055 0.14230627 0.10589743 0.04399185 0.00719353 0.01486299 0.06277232 0.11558531 0.18772096 
+
+
+#setup U-shapes 
+
 #++++++++++++++++++++++++++++++++++
 # Now do it with the model output:
 #++++++++++++++++++++++++++++++++++
